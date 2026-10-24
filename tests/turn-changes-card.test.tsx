@@ -442,6 +442,48 @@ describe("SessionChat end-of-turn card", () => {
 		]);
 	});
 
+	it("offers Undo only on the last turn's card, and on none when the session is archived", () => {
+		const turn = (prefix: string): unknown[] =>
+			turnRecords(
+				[
+					{
+						tool: "Edit",
+						id: `${prefix}-e1`,
+						input: {file_path: "/repo/a.ts", old_string: "a", new_string: "b"},
+					},
+					{
+						tool: "Edit",
+						id: `${prefix}-e2`,
+						input: {file_path: "/repo/b.ts", old_string: "a", new_string: "b"},
+					},
+				],
+				prefix,
+			);
+		const {lines, toolResultMap} = processTranscript([...turn("t1"), ...turn("t2")], 0);
+		const undoByCard = (archived: boolean) => {
+			const {container, unmount} = render(
+				<SettingsProvider>
+					<SessionChat
+						sessionId="test-session"
+						lines={lines}
+						toolResultMap={toolResultMap}
+						shouldScrollToEnd={false}
+						archived={archived}
+					/>
+				</SettingsProvider>,
+			);
+			const result = [...container.querySelectorAll<HTMLElement>("[data-turn-changes-card]")].map(
+				(card) => within(card).queryByRole("button", {name: "Undo"}) !== null,
+			);
+			unmount();
+			return result;
+		};
+		expect({live: undoByCard(false), archived: undoByCard(true)}).toStrictEqual({
+			live: [false, true],
+			archived: [false, false],
+		});
+	});
+
 	it("renders the card inside the turn's final text entry", () => {
 		const {lines, toolResultMap} = processTranscript(EDIT_RECORDS, 0);
 		const {container} = render(
@@ -459,7 +501,7 @@ describe("SessionChat end-of-turn card", () => {
 			entry: card.closest("[data-record-index]")?.getAttribute("data-record-index"),
 			text: card.textContent,
 		}));
-		expect(cards).toStrictEqual([{entry: "5", text: "Edited 2 filesUndocache.ts+2−1index.ts+1−0See all+3−1"}]);
+		expect(cards).toStrictEqual([{entry: "5", text: "Edited 2 filescache.ts+2−1index.ts+1−0See all+3−1"}]);
 	});
 });
 
@@ -485,7 +527,7 @@ function fileRowNames(): string[] {
 
 describe("TurnChangesCard", () => {
 	it("caps the list at four rows and expands with Show N more", () => {
-		render(<TurnChangesCard sessionId="test-session" changes={changesWith(6)} />);
+		render(<TurnChangesCard sessionId="test-session" changes={changesWith(6)} undoable />);
 		const before = fileRowNames();
 		const more = screen.getByRole("button", {name: "Show 2 more"});
 		const expandedBefore = more.getAttribute("aria-expanded");
@@ -512,7 +554,7 @@ describe("TurnChangesCard", () => {
 	});
 
 	it("draws a single file as upstream's outlined card with no header, its row 44px below the previous row", () => {
-		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(1)} />);
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(1)} undoable />);
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
 		const item = screen.getByRole("listitem");
 		const undo = within(card).getByRole("button", {name: "Undo"});
@@ -562,7 +604,7 @@ describe("TurnChangesCard", () => {
 			render(
 				<SettingsProvider>
 					<TileHost sessionId="turn-card-tooltip" onExpandWithoutPane={() => {}}>
-						<TurnChangesCard sessionId="turn-card-tooltip" changes={changesWith(1)} />
+						<TurnChangesCard sessionId="turn-card-tooltip" changes={changesWith(1)} undoable />
 					</TileHost>
 				</SettingsProvider>,
 			);
@@ -584,7 +626,7 @@ describe("TurnChangesCard", () => {
 	});
 
 	it("reveals each row's hover-only chevron on touch", () => {
-		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		const chevrons = screen.getAllByRole("link").map((link) => link.querySelector("svg:last-of-type"));
 
 		expect(chevrons.map((chevron) => chevron?.getAttribute("class")?.includes(TOUCH_REVEAL))).toStrictEqual([
@@ -594,7 +636,7 @@ describe("TurnChangesCard", () => {
 	});
 
 	it("keeps the multi-file header and its 8px top margin", () => {
-		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
 		expect({
 			header: screen.getByText("Edited 2 files").textContent,
@@ -603,14 +645,14 @@ describe("TurnChangesCard", () => {
 	});
 
 	it("uses upstream's U+2212 minus in the row stats and the closing See all totals", () => {
-		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
 			"Edited 2 filesUndofile-1.ts+1\u22121file-2.ts+2\u22121See all+3\u22122",
 		);
 	});
 
 	it("draws upstream's summary card: inset ring, 10px radius, 13/19 rows with 16px icons and 12/15 git stats", () => {
-		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
 		const [row] = screen.getAllByRole("link");
 		const pick = (element: Element | null | undefined, names: string[]) =>
@@ -648,7 +690,7 @@ describe("TurnChangesCard", () => {
 	});
 
 	it("links each file row to the file viewer", () => {
-		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		expect(
 			screen.getAllByRole("link").map((link) => ({
 				href: link.getAttribute("href"),
@@ -675,7 +717,7 @@ describe("TurnChangesCard", () => {
 			render(
 				<SettingsProvider>
 					<TileHost sessionId="turn-card-session" onExpandWithoutPane={() => {}}>
-						<TurnChangesCard sessionId="turn-card-session" changes={changesWith(2)} />
+						<TurnChangesCard sessionId="turn-card-session" changes={changesWith(2)} undoable />
 					</TileHost>
 				</SettingsProvider>,
 			);
@@ -719,7 +761,7 @@ describe("TurnChangesCard", () => {
 			render(
 				<SettingsProvider>
 					<TileHost sessionId="turn-card-single" onExpandWithoutPane={() => {}}>
-						<TurnChangesCard sessionId="turn-card-single" changes={changesWith(1)} />
+						<TurnChangesCard sessionId="turn-card-single" changes={changesWith(1)} undoable />
 					</TileHost>
 				</SettingsProvider>,
 			);
@@ -736,7 +778,7 @@ describe("TurnChangesCard", () => {
 	});
 
 	it("renders a static header outside a pane host", () => {
-		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} />);
+		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		expect(screen.queryByRole("button", {name: /^Edited/})).toBeNull();
 	});
 });
@@ -785,7 +827,7 @@ describe("TurnChangesCard Undo", () => {
 		const send = vi.fn<(text: string) => void>();
 		render(
 			<TurnUndoSendContext.Provider value={send}>
-				<TurnChangesCard sessionId="s-1" changes={changesWith(2)} />
+				<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />
 			</TurnUndoSendContext.Provider>,
 		);
 
@@ -816,7 +858,7 @@ describe("TurnChangesCard Undo", () => {
 		const send = vi.fn<(text: string) => void>();
 		render(
 			<TurnUndoSendContext.Provider value={send}>
-				<TurnChangesCard sessionId="s-1" changes={changesWith(1)} />
+				<TurnChangesCard sessionId="s-1" changes={changesWith(1)} undoable />
 			</TurnUndoSendContext.Provider>,
 		);
 
@@ -834,7 +876,7 @@ describe("TurnChangesCard Undo", () => {
 			jsonResponse(READY_PREVIEW),
 			jsonResponse({reverted: ["/repo/src/file-1.ts", "/repo/src/file-2.ts"]}),
 		]);
-		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} />);
+		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />);
 
 		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
 		const dialog = await screen.findByRole("alertdialog");
@@ -861,7 +903,7 @@ describe("TurnChangesCard Undo", () => {
 
 	it("writes nothing when the dialog is cancelled", async () => {
 		const calls = stubFetch([jsonResponse(READY_PREVIEW)]);
-		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} />);
+		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />);
 
 		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
 		const dialog = await screen.findByRole("alertdialog");
@@ -879,7 +921,7 @@ describe("TurnChangesCard Undo", () => {
 				],
 			}),
 		]);
-		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} />);
+		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />);
 
 		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
 		const alert = await screen.findByRole("alert");

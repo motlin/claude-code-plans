@@ -150,6 +150,7 @@ describe("Changes entry points", () => {
 		inHost(
 			"turn-session",
 			<TurnChangesCard
+				undoable
 				sessionId="turn-session"
 				changes={{
 					turnUuid: "u-7",

@@ -236,3 +236,17 @@ export function collectTurnChanges(
 	if (!turnInProgress) finish();
 	return result;
 }
+
+/**
+ * Upstream passes the card its `sessionRef`, and so its Undo, only while the turn is the
+ * session's last entry: the anchor of the final turn's card, or undefined when the final turn
+ * drew none (a later prompt started a turn after the last card).
+ */
+export function lastTurnChangesAnchor(
+	lines: readonly SessionLine[],
+	changes: ReadonlyMap<number, TurnChanges>,
+): number | undefined {
+	if (changes.size === 0) return undefined;
+	const last = Math.max(...changes.keys());
+	return lines.some((line) => line.lineIndex > last && isTurnStartLine(line)) ? undefined : last;
+}

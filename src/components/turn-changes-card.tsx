@@ -85,11 +85,20 @@ function UndoFeedback({undo}: {undo: ReturnType<typeof useTurnUndo>}) {
  * chevron sit right-aligned, and Undo, which upstream does not draw on an
  * archived session, stays hidden until hover or focus.
  *
- * Undo, as upstream, sends a message asking Claude to undo the turn's files when the
- * session has a live pane. Without one it falls back to the local direct revert behind
+ * Undo shows only when `undoable`: upstream offers it on the session's last turn alone,
+ * never on an archived session. As upstream, it sends a message asking Claude to undo
+ * the turn's files when the session has a live pane. Without one it falls back to the local direct revert behind
  * a confirm, which upstream has no counterpart for.
  */
-export function TurnChangesCard({sessionId, changes}: {sessionId: string; changes: TurnChanges}) {
+export function TurnChangesCard({
+	sessionId,
+	changes,
+	undoable,
+}: {
+	sessionId: string;
+	changes: TurnChanges;
+	undoable: boolean;
+}) {
 	const host = useOptionalPaneHost();
 	const [showAll, setShowAll] = useState(false);
 	const undo = useTurnUndo();
@@ -148,14 +157,16 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 								<ChevronIcon expanded={false} />
 							</span>
 						</span>
-						<button
-							type="button"
-							disabled={undo.state.kind === "busy"}
-							onClick={startUndo}
-							className={`${UNDO_CLASS} sr-only group-hover/card:not-sr-only focus-visible:not-sr-only`}
-						>
-							Undo
-						</button>
+						{undoable && (
+							<button
+								type="button"
+								disabled={undo.state.kind === "busy"}
+								onClick={startUndo}
+								className={`${UNDO_CLASS} sr-only group-hover/card:not-sr-only focus-visible:not-sr-only`}
+							>
+								Undo
+							</button>
+						)}
 					</li>
 				</ul>
 				<UndoFeedback undo={undo} />
@@ -187,9 +198,16 @@ export function TurnChangesCard({sessionId, changes}: {sessionId: string; change
 						<ChevronRight aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-ink-muted" />
 					</button>
 				)}
-				<button type="button" disabled={undo.state.kind === "busy"} onClick={startUndo} className={UNDO_CLASS}>
-					Undo
-				</button>
+				{undoable && (
+					<button
+						type="button"
+						disabled={undo.state.kind === "busy"}
+						onClick={startUndo}
+						className={UNDO_CLASS}
+					>
+						Undo
+					</button>
+				)}
 			</div>
 			<UndoFeedback undo={undo} />
 			<ul aria-label={title} className="flex flex-col">

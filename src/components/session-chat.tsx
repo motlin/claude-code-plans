@@ -56,7 +56,7 @@ import {messageHeading, messageText} from "../lib/transcript-action-targets";
 import {WaitingPickupStatus, WaitingUserTurn} from "./waiting-user-turn";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
-import {collectTurnChanges, type TurnChanges} from "../lib/turn-changes";
+import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
 import {useSettings} from "./settings-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
@@ -139,6 +139,8 @@ export interface SessionChatProps {
 	sessionLive?: boolean;
 	/** The transcript's trailing turn hasn't ended yet, so it draws no end-of-turn card. */
 	turnInProgress?: boolean;
+	/** An archived session, whose end-of-turn cards offer no Undo, as upstream. */
+	archived?: boolean;
 	/** Interrupts Claude so it reads the head waiting prompt next: the head row's Send now, busy until it settles. */
 	onSendNow?: (() => Promise<void> | void) | undefined;
 	/** Focuses the session composer, where a mouse click on Send now leaves focus. */
@@ -472,6 +474,7 @@ export const SessionChat = React.memo(function SessionChat({
 	permissionWaitToolUseId = null,
 	sessionLive = false,
 	turnInProgress = false,
+	archived = false,
 	onSendNow,
 	onFocusComposer,
 }: SessionChatProps) {
@@ -681,6 +684,7 @@ export const SessionChat = React.memo(function SessionChat({
 											measurementKey={measurementKey}
 											measurementSource={measurementSource}
 											turnInProgress={turnInProgress}
+											archived={archived}
 										/>
 										{sessionLive && (
 											<WaitingPickupStatus key={`pickup-${sessionId}`} waitingIds={waitingIds} />
@@ -784,6 +788,7 @@ function LineEntry({
 	nextLine,
 	className,
 	turnChanges,
+	undoable = false,
 	footer,
 	precedesReply = false,
 	precedesStatus = null,
@@ -801,6 +806,8 @@ function LineEntry({
 	precedesPrompt?: boolean;
 	/** The end-of-turn changes card this line closes, shown after its content. */
 	turnChanges?: TurnChanges | undefined;
+	/** Whether that card offers Undo: the session's last turn, unarchived. */
+	undoable?: boolean;
 	/** Undefined preserves Verbose record actions; null suppresses a non-endpoint footer. */
 	footer?: React.ReactNode;
 }) {
@@ -832,7 +839,9 @@ function LineEntry({
 		<>
 			{line.type === "assistant" && <TurnHeading speaker="assistant" text={messageText(line)} />}
 			{content}
-			{turnChanges && <TurnChangesCard sessionId={renderProps.sessionId} changes={turnChanges} />}
+			{turnChanges && (
+				<TurnChangesCard sessionId={renderProps.sessionId} changes={turnChanges} undoable={undoable} />
+			)}
 			{isAssistant &&
 				(footer === undefined ? (
 					<AssistantTurnActions line={line} sessionId={renderProps.sessionId} />
@@ -929,6 +938,7 @@ function GroupedToolCallEntry({
 	notices,
 	footer,
 	turnChanges,
+	undoable = false,
 	sessionId,
 	toolResultMap,
 	subagentLookup,
@@ -938,6 +948,8 @@ function GroupedToolCallEntry({
 	notices: readonly FoldedNotice[];
 	footer?: React.ReactNode;
 	turnChanges?: TurnChanges | undefined;
+	/** Whether the card offers Undo: the session's last turn, unarchived. */
+	undoable?: boolean;
 	sessionId: string;
 	toolResultMap: Map<string, ToolResultInfo>;
 	subagentLookup: SubagentLookup;
@@ -1009,7 +1021,7 @@ function GroupedToolCallEntry({
 							/>
 						),
 				)}
-			{turnChanges && <TurnChangesCard sessionId={sessionId} changes={turnChanges} />}
+			{turnChanges && <TurnChangesCard sessionId={sessionId} changes={turnChanges} undoable={undoable} />}
 			<div>{footer}</div>
 		</div>
 	);
@@ -2131,6 +2143,7 @@ function buildSessionListEntries(
 	verbose: boolean,
 	held: HeldAssistantFooter | null,
 	turnInProgress: boolean,
+	archived: boolean,
 ): SessionListEntry[] {
 	const waitingPrompts = recordLines.filter(
 		(line): line is Extract<SessionLine, {type: "queued-prompt"}> => line.type === "queued-prompt",
@@ -2206,6 +2219,7 @@ function buildSessionListEntries(
 		showThinking: renderProps.showThinking,
 		turnInProgress,
 	});
+	const undoAnchor = archived ? undefined : lastTurnChangesAnchor(lines, turnChangesByLine);
 	const entries: PendingSessionListEntry[] = [];
 	let prevVisibleType: string | null = null;
 	let i = 0;
@@ -2475,6 +2489,7 @@ function buildSessionListEntries(
 								line={line}
 								nextLine={lines[groupStart + 1]}
 								turnChanges={turnChangesByLine.get(line.lineIndex)}
+								undoable={line.lineIndex === undoAnchor}
 								footer={footerFor(line)}
 								{...renderProps}
 							/>
@@ -2510,6 +2525,7 @@ function buildSessionListEntries(
 								entries={groupLines}
 								notices={runNotices}
 								turnChanges={groupChanges}
+								undoable={groupChanges !== undefined && groupChanges.anchorLineIndex === undoAnchor}
 								footer={footerFor(line)}
 								{...renderProps}
 							/>
@@ -2597,6 +2613,7 @@ function buildSessionListEntries(
 				line={line}
 				nextLine={nextLine}
 				turnChanges={turnChangesByLine.get(line.lineIndex)}
+				undoable={line.lineIndex === undoAnchor}
 				footer={footerFor(line)}
 				precedesReply={precedesReply}
 				precedesStatus={precedesStatus}
@@ -3267,6 +3284,7 @@ function SessionLineList({
 	measurementKey,
 	measurementSource,
 	turnInProgress,
+	archived,
 	...renderProps
 }: LineRenderProps & {
 	lines: SessionLine[];
@@ -3274,10 +3292,18 @@ function SessionLineList({
 	measurementKey: string;
 	measurementSource: object | undefined;
 	turnInProgress: boolean;
+	archived: boolean;
 }) {
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const [held, setHeld] = useState<HeldAssistantFooter | null>(null);
-	const entries = buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held, turnInProgress);
+	const entries = buildSessionListEntries(
+		lines,
+		renderProps,
+		verbose,
+		verbose ? null : held,
+		turnInProgress,
+		archived,
+	);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
 	return (
 		<ExpansionStoreContext.Provider value={expansionStore}>
