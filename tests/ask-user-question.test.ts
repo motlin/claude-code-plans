@@ -4,7 +4,10 @@ import {
 	formatAnswerPrompt,
 	makeInitialDraft,
 	normalizeQuestions,
+	OUTCOME_LABEL,
 	parseAnswerResult,
+	questionOutcome,
+	questionOutcomes,
 	type QuestionLike,
 } from "../src/lib/ask-user-question";
 
@@ -338,6 +341,74 @@ describe("parseAnswerResult with the read-carefully answer envelope", () => {
 			{question: questions[0], answer: "#1, and I want to be able to add guitar tab", notes: null},
 			{question: questions[1], answer: "Cloudflare Pages (Recommended)", notes: null},
 			{question: questions[2], answer: "all three and let us pick", notes: null},
+		]);
+	});
+});
+
+describe("questionOutcome", () => {
+	it("classifies each upstream non-answer sentence and leaves a real answer unclassified", () => {
+		const answers = [
+			"",
+			"[No preference]",
+			"The user did not answer this question. Make a reasonable assumption and carry on, but tell the user what assumption you made.",
+			"[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]",
+			"[User dismissed — do not proceed, wait for next instruction]",
+			"Red",
+		];
+		expect(answers.map((answer) => questionOutcome(answer))).toStrictEqual([
+			"skipped",
+			"skipped",
+			"skipped",
+			"replied",
+			"dismissed",
+			undefined,
+		]);
+	});
+
+	it("labels each outcome with upstream's words", () => {
+		expect(OUTCOME_LABEL).toStrictEqual({
+			skipped: "Skipped",
+			replied: "Replied in chat",
+			dismissed: "Not answered",
+		});
+	});
+});
+
+describe("questionOutcomes", () => {
+	const input = {
+		questions: [
+			{question: "Q1", header: "First", options: [{label: "Red"}, {label: "Blue"}]},
+			{question: "Q2", header: "Second", options: [{label: "Cat"}, {label: "Dog"}]},
+		],
+	};
+
+	it("gives a question with no recorded answer neither an answer nor an outcome", () => {
+		const call = {input, result: "The user did not answer the questions.", resultMeta: {answers: {}}};
+		expect(questionOutcomes(call)).toStrictEqual([{question: "Q1"}, {question: "Q2"}]);
+	});
+
+	it("splits real answers from classified non-answers", () => {
+		const call = {
+			input,
+			result: 'Your questions have been answered: "Q1"="Red", "Q2"="[No preference]". You can now continue with these answers in mind.',
+			resultMeta: {
+				answers: {Q1: {answer: "Red", notes: null}, Q2: {answer: "[No preference]", notes: null}},
+			},
+		};
+		expect(questionOutcomes(call)).toStrictEqual([
+			{question: "Q1", answer: "Red"},
+			{question: "Q2", unanswered: "skipped"},
+		]);
+	});
+
+	it("falls back to the result text when no structured answers were recorded", () => {
+		const call = {
+			input,
+			result: 'Your questions have been answered: "Q1"="Blue", "Q2"="[User dismissed — do not proceed, wait for next instruction]". You can now continue with these answers in mind.',
+		};
+		expect(questionOutcomes(call)).toStrictEqual([
+			{question: "Q1", answer: "Blue"},
+			{question: "Q2", unanswered: "dismissed"},
 		]);
 	});
 });

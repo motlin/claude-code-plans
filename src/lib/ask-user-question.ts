@@ -4,6 +4,7 @@
  */
 
 import {z} from "zod";
+import {QUESTION_DISMISSED_BY_MESSAGE} from "./composer-pending-gate";
 import type {ToolResultMeta} from "./tool-labels";
 import {parseToolRejection} from "./tool-rejection";
 
@@ -213,6 +214,55 @@ export function isWithdrawnQuestion(call: AskedCall): boolean {
 	if (questions === null) return false;
 	const answers = answersFromResultMeta(call.resultMeta, questions) ?? parseAnswerResult(result, questions);
 	return answers?.every((entry) => entry.answer.startsWith(DISMISSED_ANSWER_PREFIX)) === true;
+}
+
+/** Why a question has no real answer, as upstream classifies its recorded answer text. */
+export type QuestionOutcome = "skipped" | "replied" | "dismissed";
+
+/** Upstream's word for each unanswered outcome. */
+export const OUTCOME_LABEL = {skipped: "Skipped", replied: "Replied in chat", dismissed: "Not answered"} as const;
+
+const SKIPPED_ANSWERS: ReadonlySet<string> = new Set([
+	"",
+	"[No preference]",
+	"The user did not answer this question. Make a reasonable assumption and carry on, but tell the user what assumption you made.",
+]);
+const DISMISSED_ANSWER = "[User dismissed — do not proceed, wait for next instruction]";
+
+/** Classify a recorded answer as one of upstream's non-answers; a real answer returns undefined. */
+export function questionOutcome(answer: string): QuestionOutcome | undefined {
+	if (SKIPPED_ANSWERS.has(answer)) return "skipped";
+	if (answer === QUESTION_DISMISSED_BY_MESSAGE) return "replied";
+	if (answer === DISMISSED_ANSWER) return "dismissed";
+	return undefined;
+}
+
+export interface QuestionOutcomeEntry {
+	question: string;
+	answer?: string;
+	unanswered?: QuestionOutcome;
+}
+
+/**
+ * Each asked question with its real answer or its non-answer outcome. Answers
+ * come from the structured result, else from the result text; a question with
+ * no recorded entry carries neither field.
+ */
+export function questionOutcomes(call: AskedCall): QuestionOutcomeEntry[] {
+	const questions = normalizeQuestions(call.input) ?? [];
+	const recorded = new Map<string, string>();
+	const metaAnswers = call.resultMeta?.answers;
+	if (metaAnswers !== undefined) {
+		for (const [question, entry] of Object.entries(metaAnswers)) recorded.set(question, entry.answer);
+	} else if (call.result !== undefined) {
+		for (const entry of parseAnswerResult(call.result, questions) ?? []) recorded.set(entry.question, entry.answer);
+	}
+	return questions.map(({question}) => {
+		const answer = recorded.get(question);
+		if (answer === undefined) return {question};
+		const unanswered = questionOutcome(answer);
+		return unanswered === undefined ? {question, answer} : {question, unanswered};
+	});
 }
 
 const NOTES_MARKER = " user notes: ";
