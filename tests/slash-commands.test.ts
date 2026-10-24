@@ -80,13 +80,19 @@ describe("BUILTIN_SLASH_COMMANDS", () => {
 			},
 			{
 				name: "compact",
-				description: "Clear conversation history but keep a summary in context",
+				description: "Free up context by summarizing the session so far",
 				source: "builtin",
-				argumentHint: "[instructions]",
+				argumentHint: "<optional custom summarization instructions>",
 			},
-			{name: "clear", description: "Clear conversation history and free up context", source: "builtin"},
+			{name: "clear", description: "Start a new session with empty context", source: "builtin"},
 			{name: "context", description: "Show current context usage", source: "builtin"},
-			{name: "review", description: "Review a pull request", source: "builtin", argumentHint: "[pr]"},
+			{name: "recap", description: "Generate a one-line session recap", source: "builtin"},
+			{
+				name: "review",
+				description: "Review the current diff or a PR for bugs and cleanups",
+				source: "builtin",
+				argumentHint: "[low|medium|high|xhigh|max] [--fix] [--comment] [<pr#>|<branch>|<path>]",
+			},
 			{
 				name: "init",
 				description: "Initialize a new CLAUDE.md file with codebase documentation",
