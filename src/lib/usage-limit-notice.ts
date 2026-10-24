@@ -74,6 +74,11 @@ function kindFromText(text: string): {kind: Kind; model?: string} | null {
 	return model === undefined ? {kind} : {kind: "model", model};
 }
 
+/** Upstream's `nt`: whether a message's text names a usage limit. */
+export function isUsageLimitText(text: string): boolean {
+	return kindFromText(text) !== null;
+}
+
 const HEADLINES: Record<Exclude<Kind, "model">, string> = {
 	generic: "Usage limit reached",
 	session: "Session limit reached",
