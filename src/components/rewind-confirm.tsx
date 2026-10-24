@@ -1,9 +1,10 @@
 import {Dialog} from "@base-ui/react/dialog";
-import {useId, useRef, useState} from "react";
+import {useRef, useState} from "react";
 
 import type {RewindChoice, RewindPreview} from "../hooks/use-rewind-request";
 import {DiffStats} from "./tool-renderers/shared";
 import {DensityScope} from "./ui/density";
+import {Select} from "./ui/select";
 
 /** Upstream's `ece`: the quote card shows the prompt's first 600 characters. */
 const QUOTE_LIMIT = 600;
@@ -35,7 +36,7 @@ function fileCount(count: number): string {
 
 /**
  * claude.ai/code's "Rewind to this message?" confirm (`tce`): the prompt in a
- * quote card and, when there is code to restore, a Restore select with the
+ * quote card and, when there is code to restore, upstream's styled Restore select with the
  * dry run's file count. Cancel takes the initial focus; closing is blocked
  * while the rewind runs.
  */
@@ -43,7 +44,6 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 	const [choice, setChoice] = useState<RewindChoice>(conversation ? "both" : "code");
 	const [running, setRunning] = useState(false);
 	const cancelRef = useRef<HTMLButtonElement>(null);
-	const selectId = useId();
 	const pending = preview === "pending";
 	const files = typeof preview === "object" ? preview : null;
 	const choices = conversation ? ALL_CHOICES : (["code"] as const);
@@ -80,27 +80,13 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 							{preview !== "none" && (
 								<>
 									{choices.length > 1 && (
-										<div className="flex flex-col gap-1">
-											<label htmlFor={selectId} className="text-body font-medium text-primary">
-												Restore
-											</label>
-											<select
-												id={selectId}
-												value={choice}
-												disabled={running || pending}
-												onChange={(event) => {
-													const next = choices.find((value) => value === event.target.value);
-													if (next !== undefined) setChoice(next);
-												}}
-												className="h-8 rounded-r6 border border-border bg-surface-1 px-2 text-body text-primary disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-											>
-												{choices.map((value) => (
-													<option key={value} value={value}>
-														{CHOICE_LABELS[value]}
-													</option>
-												))}
-											</select>
-										</div>
+										<Select
+											label="Restore"
+											items={choices.map((value) => ({value, label: CHOICE_LABELS[value]}))}
+											value={choice}
+											disabled={running || pending}
+											onChange={setChoice}
+										/>
 									)}
 									<div
 										aria-live="polite"

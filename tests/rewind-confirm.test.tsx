@@ -100,18 +100,38 @@ function fileColumn(): HTMLElement | null {
 	return document.querySelector<HTMLElement>('[aria-live="polite"].flex-col');
 }
 
+function restoreTrigger(): HTMLElement | null {
+	return screen.queryByRole("combobox", {name: "Restore"});
+}
+
+async function openRestore(trigger: HTMLElement): Promise<void> {
+	fireEvent.click(trigger);
+	await advance(0);
+}
+
+/** Opens upstream's styled Restore select and picks the option with this label. */
+async function pickRestore(label: string): Promise<void> {
+	const trigger = restoreTrigger();
+	if (trigger === null) throw new Error("no Restore select");
+	await openRestore(trigger);
+	/* jsdom has no layout, so the positioned popup reads as hidden. */
+	const option = screen.getByRole("option", {name: label, hidden: true});
+	fireEvent.pointerDown(option, {pointerType: "mouse"});
+	fireEvent.click(option);
+	await settle();
+}
+
 function view() {
-	const select = screen.queryByLabelText<HTMLSelectElement>("Restore");
+	const trigger = restoreTrigger();
 	return {
 		title: dialog()?.querySelector("h2")?.textContent ?? null,
 		quote: dialog()?.querySelector("p.line-clamp-2")?.textContent ?? null,
 		select:
-			select === null
+			trigger === null
 				? null
 				: {
-						value: select.value,
-						disabled: select.disabled,
-						options: [...select.options].map((option) => option.textContent),
+						value: trigger.textContent,
+						disabled: trigger.hasAttribute("data-disabled"),
 					},
 		column: fileColumn()?.textContent ?? null,
 	};
@@ -161,11 +181,7 @@ describe("useRewindRequest + RewindConfirm", () => {
 			checking: {
 				title: "Rewind to this message?",
 				quote: "Add a test",
-				select: {
-					value: "both",
-					disabled: true,
-					options: ["Code and conversation", "Conversation only", "Code only"],
-				},
+				select: {value: "Code and conversation", disabled: true},
 				column: "Checking for file changes…Changes made through shell commands aren’t reverted. Commits stay in place.",
 			},
 			none: {title: "Rewind to this message?", quote: "Add a test", select: null, column: null},
@@ -183,21 +199,61 @@ describe("useRewindRequest + RewindConfirm", () => {
 			expect(document.activeElement).toBe(cancel);
 		});
 		const cancelFocused = document.activeElement === cancel;
-		fireEvent.change(screen.getByLabelText("Restore"), {target: {value: "conversation"}});
+		await pickRestore("Conversation only");
 
 		expect({files, cancelFocused, hidden: fileColumn()?.classList.contains("invisible")}).toStrictEqual({
 			files: {
 				title: "Rewind to this message?",
 				quote: "Add a test",
-				select: {
-					value: "both",
-					disabled: false,
-					options: ["Code and conversation", "Conversation only", "Code only"],
-				},
+				select: {value: "Code and conversation", disabled: false},
 				column: "2 files · +4−3Changes made through shell commands aren’t reverted. Commits stay in place.",
 			},
 			cancelFocused: true,
 			hidden: true,
+		});
+	});
+
+	it("renders Restore as upstream's styled Combobox select: labelled trigger with caret, check-marked listbox options", async () => {
+		const {preview} = setup();
+		preview.resolve(FILES);
+		await settle();
+		const trigger = restoreTrigger();
+		const field = trigger?.closest("[data-cds='Combobox']");
+		const label = screen.getByText("Restore", {selector: "label"});
+		const closed = {
+			labelFor: label.getAttribute("for") === trigger?.id,
+			labelClass: label.className,
+			fieldClass: field?.className ?? null,
+			triggerClass: trigger?.className ?? null,
+			caret: trigger?.querySelector("svg") !== null,
+		};
+		await pickRestore("Code only");
+		const picked = restoreTrigger()?.textContent;
+		await openRestore(restoreTrigger() ?? document.body);
+		const listbox = screen.getByRole("listbox", {hidden: true});
+		const options = screen.getAllByRole("option", {hidden: true}).map((option) => ({
+			name: option.textContent,
+			selected: option.getAttribute("aria-selected"),
+			check: option.querySelector("svg") !== null,
+		}));
+
+		expect({closed, picked, popup: listbox.closest("[data-cds='Combobox']") !== null, options}).toStrictEqual({
+			closed: {
+				labelFor: true,
+				labelClass: "text-body text-primary font-medium leading-none",
+				fieldClass:
+					"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-normal text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-2 w-full min-w-0",
+				triggerClass:
+					"flex min-w-0 flex-1 items-center gap-1.5 self-stretch ps-2 text-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden",
+				caret: true,
+			},
+			picked: "Code only",
+			popup: true,
+			options: [
+				{name: "Code and conversation", selected: "false", check: false},
+				{name: "Conversation only", selected: "false", check: false},
+				{name: "Code only", selected: "true", check: true},
+			],
 		});
 	});
 
@@ -235,7 +291,7 @@ describe("useRewindRequest + RewindConfirm", () => {
 		const {preview, restore, restoreCode, run} = setup();
 		preview.resolve(FILES);
 		await settle();
-		fireEvent.change(screen.getByLabelText("Restore"), {target: {value: "code"}});
+		await pickRestore("Code only");
 		fireEvent.click(screen.getByRole("button", {name: "Rewind"}));
 		restore.resolve({ok: true, skipped: 0});
 		await settle();
@@ -272,7 +328,7 @@ describe("useRewindRequest + RewindConfirm", () => {
 		const {preview, restore} = setup();
 		preview.resolve(FILES);
 		await settle();
-		fireEvent.change(screen.getByLabelText("Restore"), {target: {value: "code"}});
+		await pickRestore("Code only");
 		fireEvent.click(screen.getByRole("button", {name: "Rewind"}));
 		restore.resolve({ok: true, skipped: 2});
 		await settle();
