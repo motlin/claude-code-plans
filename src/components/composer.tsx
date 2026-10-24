@@ -68,6 +68,7 @@ import {nearestCommand} from "../lib/command-suggest";
 import {ComposerCommandNotice} from "./composer-command-notice";
 import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {AttachedContextChips} from "./attached-context-chips";
+import {ErrorCardShell} from "./error-card-shell";
 import type {ChinMenu} from "./composer-launch-menus";
 import {
 	COMPOSER_CARD_CLASS,
@@ -511,10 +512,9 @@ export function Composer({
 	const launchOptions = launch.draftKey === draftKey ? launch.options : NO_LAUNCH_OPTIONS;
 	const [openMenu, setOpenMenu] = useState<ChinMenu | null>(null);
 	const chinPickRef = useRef<ChinPickHandle>(null);
-	// Upstream's literal error band: shown until the text it refused changes.
-	const [commandNotice, setCommandNotice] = useState<{draftKey: string; text: string; message: string} | null>(null);
-	const commandNoticeText =
-		commandNotice?.draftKey === draftKey && commandNotice.text === prompt ? commandNotice.message : null;
+	// Upstream's literal error band: kept while typing, cleared by Dismiss or the next submit.
+	const [commandError, setCommandError] = useState<{draftKey: string; body: string} | null>(null);
+	const commandErrorBody = commandError?.draftKey === draftKey ? commandError.body : null;
 	// Upstream's "isn’t a command here" footnote: set by the send of an unknown command, cleared by the next submit.
 	const [unknownCommand, setUnknownCommand] = useState<{
 		draftKey: string;
@@ -803,6 +803,7 @@ export function Composer({
 		if (trigger !== undefined && variant === "session") startComposerSubmitJourneys(trigger, draftKey);
 		const trimmed = prompt.trim();
 		setUnknownCommand(null);
+		setCommandError(null);
 		if (trimmed.startsWith("/") && runHostCommand(trimmed)) return;
 		// Other slash commands run as typed; attached context and comments wait for the next real prompt.
 		if (trimmed.startsWith("/")) {
@@ -876,7 +877,7 @@ export function Composer({
 				toast?.({kind: "error", message: command.toast});
 				break;
 			case "band":
-				setCommandNotice({draftKey, text: prompt, message: command.text});
+				setCommandError({draftKey, body: command.text});
 				break;
 		}
 		return true;
@@ -1189,12 +1190,20 @@ export function Composer({
 					e.target.value = "";
 				}}
 			/>
-			{commandNoticeText !== null && (
-				<p role="alert" className="mb-1.5 ps-1 text-footnote text-danger-000">
-					{commandNoticeText}
-				</p>
+			{commandErrorBody !== null && (
+				<div data-composer-command-error className="mb-1.5">
+					<ErrorCardShell
+						headline="Couldn’t complete that"
+						hint={commandErrorBody}
+						icon="warning"
+						announce="alert"
+						onDismiss={() => {
+							setCommandError(null);
+						}}
+					/>
+				</div>
 			)}
-			{commandNoticeText === null && shownUnknownCommand !== null && (
+			{commandErrorBody === null && shownUnknownCommand !== null && (
 				<ComposerCommandNotice
 					name={shownUnknownCommand.name}
 					suggestion={shownUnknownCommand.suggestion}

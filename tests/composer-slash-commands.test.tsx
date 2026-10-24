@@ -655,7 +655,6 @@ describe("Composer host commands", () => {
 	}
 
 	const toastText = () => document.querySelector("[data-toast-message]")?.textContent;
-	const band = () => document.querySelector("p[role=alert]")?.textContent;
 	const modelTrigger = () => document.querySelector("[data-cds=ModelSelector]");
 
 	it("opens the Model menu for a bare /model and empties the composer", async () => {
@@ -750,26 +749,102 @@ describe("Composer host commands", () => {
 		expect({sends: onSend.mock.calls, text: textarea.value}).toStrictEqual({sends: [], text: "/model gpt5"});
 	});
 
-	it("shows the argument band for /permissions plan, keeps the text, and clears it on typing", () => {
+	const bandCard = () => document.querySelector("[data-composer-command-error]");
+	const bandAlert = () => bandCard()?.querySelector("[role=alert]")?.textContent;
+	const ARGS_BODY =
+		"/permissions doesn’t take arguments here. Remove the text after the command, then send it again.";
+
+	it("shows the literal error card for /permissions plan and keeps the text", () => {
 		const {textarea, onSend} = hostSetup();
 
 		send(textarea, "/permissions plan");
-		const shown = {
+		const card = bandCard();
+		const shell = card?.firstElementChild;
+
+		expect({
 			sends: onSend.mock.calls,
 			text: textarea.value,
-			band: band(),
-			className: document.querySelector("p[role=alert]")?.className,
-		};
+			slot: card?.className,
+			shell: shell?.className,
+			alert: bandAlert(),
+			headline: shell?.children[1]?.querySelector(".grow")?.textContent,
+			hint: shell?.children[2]?.textContent,
+			dismiss: card?.querySelector("button")?.getAttribute("aria-label"),
+			focused: document.activeElement === textarea,
+		}).toStrictEqual({
+			sends: [],
+			text: "/permissions plan",
+			slot: "mb-1.5",
+			shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7 select-text",
+			alert: `Couldn’t complete that ${ARGS_BODY}`,
+			headline: "Couldn’t complete that",
+			hint: ARGS_BODY,
+			dismiss: "Dismiss",
+			focused: true,
+		});
+	});
+
+	it("shows the extra-lines body for a multi-line /permissions", () => {
+		const {textarea} = hostSetup();
+
+		send(textarea, "/permissions\nmore");
+
+		expect(bandCard()?.firstElementChild?.children[2]?.textContent).toBe(
+			"/permissions only works on a single line. Remove the extra lines, then send it again.",
+		);
+	});
+
+	it("keeps the literal error card while typing", () => {
+		const {textarea} = hostSetup();
+
+		send(textarea, "/permissions plan");
 		fireEvent.change(textarea, {target: {value: "/permissions"}});
 
-		expect({shown, afterTyping: band()}).toStrictEqual({
-			shown: {
-				sends: [],
-				text: "/permissions plan",
-				band: "/permissions doesn’t take arguments here. Remove the text after the command, then send it again.",
-				className: "mb-1.5 ps-1 text-footnote text-danger-000",
-			},
-			afterTyping: undefined,
+		expect({text: textarea.value, alert: bandAlert()}).toStrictEqual({
+			text: "/permissions",
+			alert: `Couldn’t complete that ${ARGS_BODY}`,
+		});
+	});
+
+	it("closes the literal error card on Dismiss and keeps the text", () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/permissions plan");
+		const dismiss = bandCard()?.querySelector("button");
+		if (!dismiss) throw new Error("no Dismiss button");
+		fireEvent.click(dismiss);
+
+		expect({card: bandCard(), text: textarea.value, sends: onSend.mock.calls}).toStrictEqual({
+			card: null,
+			text: "/permissions plan",
+			sends: [],
+		});
+	});
+
+	it("clears the literal error card on the next submit", () => {
+		const {textarea, onSend} = hostSetup();
+
+		send(textarea, "/permissions plan");
+		send(textarea, "hello");
+
+		expect({card: bandCard(), sends: onSend.mock.calls}).toStrictEqual({
+			card: null,
+			sends: [["hello", {}]],
+		});
+	});
+
+	it("replaces the literal error card when the next submit is refused too", () => {
+		const {textarea} = hostSetup();
+
+		send(textarea, "/permissions plan");
+		send(textarea, "/allowed-tools\nx");
+
+		expect({
+			cards: document.querySelectorAll("[data-composer-command-error]").length,
+			alert: bandAlert(),
+		}).toStrictEqual({
+			cards: 1,
+			alert: "Couldn’t complete that /allowed-tools only works on a single line. Remove the extra lines, then send it again.",
 		});
 	});
 
