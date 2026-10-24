@@ -1,7 +1,8 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {markFailedSend, readFailedSend} from "../hooks/use-composer-draft";
 import {type DeliveryResult} from "../hooks/use-composer-queue";
-import {isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
+import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
+import {requestComposerTakeBack} from "../lib/context-attach";
 import {type SessionLine} from "../lib/transcript";
 
 /**
@@ -16,6 +17,8 @@ export function useLiveHerdrPrompt(
 	postPrompt: (sessionId: string, prompt: string, options: {midTurn?: true}) => Promise<void> = sendHerdrPrompt,
 	/** Hands a rejected prompt back, as upstream's composer catch refills the composer. */
 	onRejected?: (prompt: string) => void,
+	/** Whether the session has a live pane now; a held prompt is delivered when this turns true. */
+	hasLivePane = true,
 ) {
 	const [stored, setState] = useState<StoredLiveHerdrPromptState>(EMPTY_LIVE_HERDR_PROMPT_STATE);
 	const state = useMemo<LiveHerdrPromptState>(() => ({...stored, isPending: stored.phase !== "idle"}), [stored]);
@@ -66,6 +69,11 @@ export function useLiveHerdrPrompt(
 					setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
 					return "not-ready";
 				}
+				// Upstream `heldForHost`: with no pane to type into, the row waits for one instead of failing.
+				if (isNoLivePane(error)) {
+					setState({phase: "held", prompt, rejection: null});
+					return "failed";
+				}
 				// Upstream `local_send_rejected`: the bubble goes, the card and the refilled composer take over.
 				// Attachments are composed into the text locally, so every rejected prompt can be resent.
 				setState({
@@ -85,11 +93,34 @@ export function useLiveHerdrPrompt(
 		[postPrompt, sessionId, transcriptRecordCount],
 	);
 
+	const sendRef = useRef(send);
+	sendRef.current = send;
+	const hadLivePaneRef = useRef(hasLivePane);
+	useEffect(() => {
+		const gained = hasLivePane && !hadLivePaneRef.current;
+		hadLivePaneRef.current = hasLivePane;
+		if (gained && stored.phase === "held") void sendRef.current(stored.prompt);
+	}, [hasLivePane, stored.phase, stored.prompt]);
+
+	/** Upstream `onRecallHeld`: the held row goes and its text returns to the composer above the draft. */
+	const withdraw = useCallback(() => {
+		if (stored.phase !== "held") return;
+		requestComposerTakeBack(sessionId, stored.prompt);
+		setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
+	}, [sessionId, stored.phase, stored.prompt]);
+
 	const clearRejection = useCallback(() => {
 		setState((current) => (current.rejection === null ? current : {...current, rejection: null}));
 	}, []);
 
-	return {send, clearRejection, state};
+	return {send, clearRejection, withdraw, state};
+}
+
+/** herdr's answer for a session with no live pane to type into: hold the prompt until one appears. */
+function isNoLivePane(error: unknown): boolean {
+	return (
+		error instanceof HerdrRequestError && (error.code === "session-not-found" || error.code === "pane-not-found")
+	);
 }
 
 /** The prompt text a line hands back to the person, or null for a line that echoes no prompt. */
@@ -125,9 +156,10 @@ export interface SendRejection {
 
 /**
  * Where the live-pane prompt is: `sending` while the POST is in flight (upstream's
- * `deliveryStatus:"sending"` row), `sent` once herdr typed it and the transcript has yet to echo it.
+ * `deliveryStatus:"sending"` row), `sent` once herdr typed it and the transcript has yet to echo it,
+ * `held` while the session has no live pane to take it (upstream's `heldForHost` row).
  */
-type LiveHerdrPromptPhase = "idle" | "sending" | "sent";
+type LiveHerdrPromptPhase = "idle" | "sending" | "sent" | "held";
 
 interface StoredLiveHerdrPromptState {
 	phase: LiveHerdrPromptPhase;
@@ -136,7 +168,7 @@ interface StoredLiveHerdrPromptState {
 }
 
 interface LiveHerdrPromptState extends StoredLiveHerdrPromptState {
-	/** The pane has a prompt of ours on the way: sending or sent. */
+	/** The pane has a prompt of ours on the way: sending, sent, or held for a pane. */
 	isPending: boolean;
 }
 

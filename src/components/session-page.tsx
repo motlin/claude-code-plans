@@ -16,7 +16,7 @@ import {ChapterChips} from "./chapter-chips";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {Composer} from "./composer";
-import {SendingUserRow} from "./pending-user-row";
+import {HeldUserRow, SendingUserRow} from "./pending-user-row";
 import {StreamingMessage} from "./streaming-message";
 import {HeldSteerTurns, OptimisticWaitingTurn} from "./waiting-user-turn";
 import {SessionHookContext} from "./session-hook-context";
@@ -546,13 +546,20 @@ function SessionView({
 					forkSession({...target, cwd: forkCwd});
 				};
 	const refillRejectedPrompt = useCallback((prompt: string) => refillComposer(sessionId, prompt), [sessionId]);
-	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex, processed.lines, undefined, refillRejectedPrompt);
+	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
+	const liveHerdrPrompt = useLiveHerdrPrompt(
+		sessionId,
+		endIndex,
+		processed.lines,
+		undefined,
+		refillRejectedPrompt,
+		promptBehavior.hasLivePane,
+	);
 	const {retryRejection, dismissRejection} = useSendRejectionActions(
 		sessionId,
 		liveHerdrPrompt.state.rejection,
 		liveHerdrPrompt.clearRejection,
 	);
-	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const stopAvailable = canStopResponse({
 		hasLivePane: promptBehavior.hasLivePane,
 		writesEnabled: herdr.writesEnabled,
@@ -1161,6 +1168,14 @@ function SessionView({
 
 							{liveHerdrPrompt.state.phase === "sending" && (
 								<SendingUserRow prompt={liveHerdrPrompt.state.prompt} />
+							)}
+							{liveHerdrPrompt.state.phase === "held" && (
+								// The herdr subscription's reconnect state isn't sent to the browser yet, so this never says reconnecting.
+								<HeldUserRow
+									prompt={liveHerdrPrompt.state.prompt}
+									reconnecting={false}
+									onWithdraw={liveHerdrPrompt.withdraw}
+								/>
 							)}
 							{liveHerdrPrompt.state.phase === "sent" && (
 								<OptimisticWaitingTurn
