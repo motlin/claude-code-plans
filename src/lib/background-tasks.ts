@@ -1,3 +1,4 @@
+import type {NoticeKind} from "./background-notice-summary";
 import type {HookBackgroundTaskPayload} from "./hook-events";
 import {asRecord} from "./narrow";
 import {isRunningBackgroundTask} from "./session-state";
@@ -132,17 +133,63 @@ function allTags(text: string, name: string): string[] {
 	);
 }
 
+/**
+ * Upstream's status normalisation: a notification's running reads as completed, killed as
+ * stopped, blocked and cancelled as failed, and anything else as completed. A missing status
+ * (Monitor events) is no finished task.
+ */
 function notificationStatus(status: string | null): Exclude<BackgroundTaskStatus, "running"> | null {
 	switch (status) {
-		case "completed":
-			return "completed";
+		case null:
+			return null;
 		case "failed":
+		case "blocked":
+		case "cancelled":
 			return "failed";
 		case "killed":
 		case "stopped":
 			return "stopped";
 		default:
-			return null;
+			return "completed";
+	}
+}
+
+/** The task type upstream reads from a notification summary's leading noun. */
+const SUMMARY_TASK_TYPES: Readonly<Record<string, string>> = {
+	Agent: "local_agent",
+	"Background agent": "local_agent",
+	"Background workflow": "local_workflow",
+	Workflow: "local_workflow",
+	"Dynamic workflow": "local_workflow",
+	"Background command": "local_bash",
+	Monitor: "local_bash",
+	"Remote task": "remote_agent",
+};
+
+const SUMMARY_NOUN =
+	/^(Agent|Background agent|Dynamic workflow|Background workflow|Workflow|Background command|Monitor|Remote task|Task) "((?:(?!" (?:(?:failed|was stopped|is blocked):|from the previous session|was checkpointed) ).)+)" (?:completed|finished|failed|was|stopped|stream|script|appears|ended|is blocked|(?:\(run [^\s)"]+\) )?didn't finish before|from the previous session)/;
+
+function summaryTaskType(summary: string): string | null {
+	const noun = SUMMARY_NOUN.exec(summary)?.[1];
+	return noun === undefined ? null : (SUMMARY_TASK_TYPES[noun] ?? null);
+}
+
+/** Upstream's noun kind for a notification's task type; an unknown or missing type is a task. */
+export function noticeKind(notification: Pick<TaskNotification, "taskType">): NoticeKind {
+	switch (notification.taskType) {
+		case "local_bash":
+			return "shell";
+		case "local_agent":
+		case "remote_agent":
+		case "in_process_teammate":
+			return "agent";
+		case "local_workflow":
+			return "workflow";
+		case "monitor_mcp":
+		case "monitor_ws":
+			return "monitor";
+		default:
+			return "task";
 	}
 }
 
@@ -156,6 +203,8 @@ export interface TaskNotification {
 	command: boolean;
 	/** A background Agent, whose completion upstream settles on its own "Ran agent" row. */
 	agent: boolean;
+	/** The `<task-type>` tag, else the type the summary's leading noun implies, as upstream reads it. */
+	taskType: string | null;
 	description: string;
 	/** How long the task ran, from the notification's `<usage><duration_ms>`. */
 	durationMs: number | null;
@@ -194,6 +243,7 @@ export function parseTaskNotification(text: string): TaskNotification | null {
 		status,
 		command: summary.startsWith("Background command"),
 		agent: summary.startsWith("Agent "),
+		taskType: tag(trimmed, "task-type") ?? summaryTaskType(summary),
 		description: /"([^"]*)"/.exec(summary)?.[1] ?? summary,
 		durationMs: durationOf(tag(trimmed, "duration_ms")),
 	};

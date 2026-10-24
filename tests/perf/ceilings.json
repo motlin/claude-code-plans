@@ -47,11 +47,11 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 414105,
+		"ceiling": 418509,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 408972 / 1251066 as the composer's did-you-mean matcher landed; the complete CLI command-name set (about 160 built-in names, aliases and bundled skills the composer needs to tell a typo from a real command) tipped home to 414105 / 1265272. Ceilings set to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-23"
+		"reason": "Cold JS drifted through the 1% band from 414105 as the upstream task-event rows landed (run rows, keeps-pin opener, combined group step); upstream's task-notification status normalisation and summary-noun task-type table tipped home gzip to 418509. Ceiling set to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-24"
 	},
 	"bundle.home.raw": {
 		"ceiling": 1265272,

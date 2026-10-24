@@ -25,8 +25,13 @@ import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow} from "./agent-message-row";
 import {AgentNameContext, type AgentNameResolver} from "./agent-name-context";
 import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
-import {backgroundNoticeSummary, type NoticeKind} from "../lib/background-notice-summary";
-import {parseTaskNotification, stoppedAgentDescription, type TaskNotification} from "../lib/background-tasks";
+import {backgroundNoticeSummary} from "../lib/background-notice-summary";
+import {
+	noticeKind,
+	parseTaskNotification,
+	stoppedAgentDescription,
+	type TaskNotification,
+} from "../lib/background-tasks";
 import {SlashCommandText} from "./slash-command-chip";
 import {SlashCommandsContext} from "./slash-commands-context";
 import {UserPlainText} from "./user-plain-text";
@@ -1469,12 +1474,9 @@ function undeliveredTaskRows(
 	const flush = () => {
 		const [first] = slot;
 		if (first !== undefined) {
-			const events = slot.map(({notification}) => taskEvent(notification));
-			const [only] = events;
-			// A lone stopped task reads "Background task stopped", as upstream drew a killed command.
 			rows.set(
 				first.index,
-				events.length === 1 && only?.status === "stopped" ? [{...only, kind: "task"}] : events,
+				slot.map(({notification}) => taskEvent(notification)),
 			);
 		}
 		slot = [];
@@ -1492,10 +1494,6 @@ function undeliveredTaskRows(
 	}
 	flush();
 	return rows;
-}
-
-function noticeKind(notification: TaskNotification): NoticeKind {
-	return notification.command ? "shell" : notification.agent ? "agent" : "task";
 }
 
 function taskEvent(notification: TaskNotification): TaskEvent {
@@ -2098,6 +2096,7 @@ function slowCommandCompletion(command: SlowCommand): TaskNotification {
 		status: command.status,
 		command: true,
 		agent: false,
+		taskType: "local_bash",
 		description: command.description,
 		durationMs: null,
 	};

@@ -3,7 +3,8 @@
 import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
-import {parseTaskNotification} from "../src/lib/background-tasks";
+import {backgroundNoticeSummary} from "../src/lib/background-notice-summary";
+import {noticeKind, parseTaskNotification} from "../src/lib/background-tasks";
 import {summarizeToolCallStats} from "../src/lib/session-utils";
 import type {Subagent} from "../src/lib/subagents";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
@@ -215,6 +216,7 @@ describe("parseTaskNotification", () => {
 			status: "completed",
 			command: true,
 			agent: false,
+			taskType: "local_bash",
 			description: "Run the test suite",
 			durationMs: null,
 		});
@@ -227,6 +229,7 @@ describe("parseTaskNotification", () => {
 			status: "stopped",
 			command: false,
 			agent: true,
+			taskType: "local_agent",
 			description: "Fetch reminders",
 			durationMs: null,
 		});
@@ -243,9 +246,75 @@ describe("parseTaskNotification", () => {
 			status: "completed",
 			command: false,
 			agent: true,
+			taskType: "local_agent",
 			description: "Commit crank sensitivity change",
 			durationMs: 26738,
 		});
+	});
+
+	it("normalises statuses as upstream: blocked and cancelled fail, running and unknown complete", () => {
+		expect(
+			["blocked", "cancelled", "running", "weird", "killed"].map(
+				(status) => parseTaskNotification(notification(status, 'Background command "Build" completed'))?.status,
+			),
+		).toStrictEqual(["failed", "failed", "completed", "completed", "stopped"]);
+	});
+
+	it("drops a notification with no status, as Monitor events carry none", () => {
+		expect(
+			parseTaskNotification(
+				"<task-notification>\n<task-id>m1</task-id>\n<summary>Monitor event</summary>\n</task-notification>",
+			),
+		).toBeNull();
+	});
+
+	it("takes the noun from the task type tag before the summary prefix", () => {
+		const workflow = parseTaskNotification(
+			notification("completed", 'Background command "Run the suite" completed').replace(
+				"<status>",
+				"<task-type>local_workflow</task-type>\n<status>",
+			),
+		)!;
+		expect(backgroundNoticeSummary([{status: workflow.status, kind: noticeKind(workflow)}])).toStrictEqual([
+			{key: "completed", text: "1 background workflow completed", danger: false},
+		]);
+	});
+
+	it("maps upstream's task types and summary prefixes to nouns, anything else to task", () => {
+		const kinds = [
+			["local_bash", null],
+			["local_agent", null],
+			["remote_agent", null],
+			["in_process_teammate", null],
+			["local_workflow", null],
+			["monitor_mcp", null],
+			["monitor_ws", null],
+			["artifact-watch-lifecycle", null],
+			[null, 'Monitor "CI" stream ended'],
+			[null, 'Remote task "Deploy" completed'],
+			[null, 'Dynamic workflow "Sweep" finished'],
+			[null, 'Task "Other" completed'],
+		].map(([type, summary]) => {
+			const text = notification("completed", summary ?? 'Thing "x" completed');
+			const parsed = parseTaskNotification(
+				type === null ? text : text.replace("<status>", `<task-type>${type}</task-type>\n<status>`),
+			)!;
+			return noticeKind(parsed);
+		});
+		expect(kinds).toStrictEqual([
+			"shell",
+			"agent",
+			"agent",
+			"agent",
+			"workflow",
+			"monitor",
+			"monitor",
+			"task",
+			"shell",
+			"agent",
+			"workflow",
+			"task",
+		]);
 	});
 
 	it("ignores text that does not open with a task notification", () => {
