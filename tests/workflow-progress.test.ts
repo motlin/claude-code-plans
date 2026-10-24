@@ -17,8 +17,8 @@ import {
 	phaseStatus,
 	progressSummary,
 	pulseVars,
-	workflowSummary,
 } from "../src/lib/workflow-progress";
+import {workflowSummary} from "../src/lib/workflow-name";
 
 function agent(fields: Partial<WorkflowAgentEntry> & Pick<WorkflowAgentEntry, "index" | "state">): WorkflowAgentEntry {
 	return {type: "workflow_agent", label: `agent-${fields.index}`, agentId: `a${fields.index}`, ...fields};

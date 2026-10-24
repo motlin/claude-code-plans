@@ -65,3 +65,24 @@ export function linesHaveWorkflowCall(
 		);
 	});
 }
+
+/** Upstream `Se`. */
+const SUMMARY_PREFIX = /^(?:Dynamic w|W)orkflow ".*" (?:completed|failed|stopped|was killed)(?::\s*(.+))?\.?\s*$/s;
+
+function capitalize(text: string): string {
+	return text.length > 0 ? (text[0] ?? "").toUpperCase() + text.slice(1) : text;
+}
+
+/**
+ * Upstream `we`: a task summary without the `Workflow "…" completed|failed|…:`
+ * boilerplate, capitalized; undefined when it says nothing beyond the description.
+ */
+export function workflowSummary(summary: string | undefined, description: string | undefined): string | undefined {
+	if (!summary || summary === description) return undefined;
+	const match = SUMMARY_PREFIX.exec(summary);
+	if (match) {
+		const detail = match[1]?.trim();
+		return detail ? capitalize(detail) : undefined;
+	}
+	return capitalize(summary);
+}

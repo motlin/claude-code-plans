@@ -206,6 +206,8 @@ export interface TaskNotification {
 	/** The `<task-type>` tag, else the type the summary's leading noun implies, as upstream reads it. */
 	taskType: string | null;
 	description: string;
+	/** The `<summary>` as written, e.g. `Workflow "x" failed: why`. */
+	summary: string;
 	/** How long the task ran, from the notification's `<usage><duration_ms>`. */
 	durationMs: number | null;
 }
@@ -245,6 +247,7 @@ export function parseTaskNotification(text: string): TaskNotification | null {
 		agent: summary.startsWith("Agent "),
 		taskType: tag(trimmed, "task-type") ?? summaryTaskType(summary),
 		description: /"([^"]*)"/.exec(summary)?.[1] ?? summary,
+		summary,
 		durationMs: durationOf(tag(trimmed, "duration_ms")),
 	};
 }

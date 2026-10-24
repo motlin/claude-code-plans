@@ -157,8 +157,11 @@ describe("standalone calls end a tool run", () => {
 			...call({id: "flow", name: "Workflow", input: {script: "fabricated"}, result: "done"}),
 			...call(bash("two")),
 		];
-		const expected = [human, tool(["Fabricated one"]), tool(["Ran workflow"]), tool(["Fabricated two"])];
-		expect(bothModes(records)).toStrictEqual({normal: expected, verbose: expected});
+		// Outside Verbose the settled workflow row is a plain label, not a disclosure button.
+		expect(bothModes(records)).toStrictEqual({
+			normal: [human, tool(["Fabricated one"]), tool([]), tool(["Fabricated two"])],
+			verbose: [human, tool(["Fabricated one"]), tool(["Ran workflow"]), tool(["Fabricated two"])],
+		});
 	});
 
 	it("never joins two standalones", () => {

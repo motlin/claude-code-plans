@@ -241,3 +241,132 @@ describe("Workflow call in the session transcript", () => {
 		expect(screen.queryByRole("button", {name: `View workflow: ${NAME}`})).toBeNull();
 	});
 });
+
+const LAUNCH_TEXT = `Workflow launched in background. Task ID: ${TASK_ID}\nSummary: Explore and review\nRun ID: wf_test-1`;
+
+function settledRecords(extra: unknown[]): unknown[] {
+	const [call, launch] = records(true) as [unknown, {message: {content: Array<Record<string, unknown>>}}];
+	launch.message.content[0] = {...launch.message.content[0], content: LAUNCH_TEXT};
+	return [call, launch, ...extra];
+}
+
+function workflowNotification(status: string, summary: string): unknown {
+	return {
+		type: "user",
+		uuid: "u-note",
+		timestamp: "2026-10-19T12:01:00.000Z",
+		message: {
+			role: "user",
+			content: [
+				"<task-notification>",
+				`<task-id>${TASK_ID}</task-id>`,
+				`<tool-use-id>${TOOL_USE_ID}</tool-use-id>`,
+				`<status>${status}</status>`,
+				`<summary>${summary}</summary>`,
+				"</task-notification>",
+			].join("\n"),
+		},
+	};
+}
+
+const TASK_STOP_RECORDS: unknown[] = [
+	{
+		type: "assistant",
+		uuid: "a2",
+		timestamp: "2026-10-19T12:00:30.000Z",
+		message: {
+			role: "assistant",
+			content: [{type: "tool_use", id: "toolu_stop", name: "TaskStop", input: {task_id: TASK_ID}}],
+		},
+	},
+	{
+		type: "user",
+		uuid: "u2",
+		timestamp: "2026-10-19T12:00:31.000Z",
+		message: {
+			role: "user",
+			content: [
+				{type: "tool_result", tool_use_id: "toolu_stop", content: `Successfully stopped task: ${TASK_ID}`},
+			],
+		},
+	},
+];
+
+function renderSettled(extra: unknown[], workflowRuns: WorkflowRun[] = []) {
+	const {lines, toolResultMap} = processTranscript(settledRecords(extra));
+	return render(
+		<BackgroundTasksOpenerProvider
+			value={{open: vi.fn<(focus?: BackgroundTasksFocus) => void>(), running: new Map()}}
+		>
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				workflowRuns={workflowRuns}
+				showCompactSummaries
+				showTranscriptOnly
+			/>
+		</BackgroundTasksOpenerProvider>,
+	);
+}
+
+function launchRow(container: HTMLElement): HTMLElement {
+	const row = [...container.querySelectorAll<HTMLElement>("[data-tool-row]")].find((element) =>
+		element.textContent.startsWith("Ran workflow"),
+	);
+	if (row === undefined) throw new Error("no Ran workflow row");
+	return row;
+}
+
+describe("settled Workflow row", () => {
+	it("reads Ran workflow and the name, with no disclosure or body", async () => {
+		const {container} = renderSettled([], [run({status: "completed"})]);
+		await screen.findByText("Ran workflow");
+		const row = launchRow(container);
+
+		expect({
+			text: row.textContent,
+			disclosures: row.querySelectorAll("[aria-expanded]").length,
+			name: [...row.querySelectorAll("span")].find((span) => span.textContent === NAME)?.className,
+		}).toStrictEqual({
+			text: `Ran workflow${NAME}Ran workflow ${NAME}`,
+			disclosures: 0,
+			name: "truncate min-w-0 text-body text-secondary",
+		});
+	});
+
+	it("gives a failed run's status a summary tooltip and a coarse-pointer inline summary", async () => {
+		const {container} = renderSettled(
+			[workflowNotification("failed", `Workflow "${NAME}" failed: agent crashed\nwhile exploring`)],
+			[run({status: "failed"})],
+		);
+		await screen.findByText("Ran workflow");
+		const row = launchRow(container);
+		const status = row.querySelector<HTMLElement>('[id$="-outcome"]');
+		if (status === null) throw new Error("no Failed status");
+		fireEvent.focus(status);
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect({
+			text: status.textContent,
+			tabIndex: status.tabIndex,
+			statusClass: status.className,
+			tooltip: tooltip.querySelector(".line-clamp-3")?.outerHTML,
+			coarse: row.querySelector(".hidden")?.outerHTML,
+		}).toStrictEqual({
+			text: "Failed",
+			tabIndex: 0,
+			statusClass:
+				"shrink-0 text-body outline-none hide-focus-ring focus-visible:ring-focus rounded-r2 text-danger-ink",
+			tooltip: '<span class="line-clamp-3 whitespace-pre-wrap">Agent crashed\nwhile exploring</span>',
+			coarse: '<span class="hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0">Agent crashed\nwhile exploring</span>',
+		});
+	});
+
+	it("marks the row Stopped when a TaskStop ended its task", async () => {
+		const {container} = renderSettled(TASK_STOP_RECORDS, [run({status: "completed"})]);
+		await screen.findByText("Ran workflow");
+
+		expect(launchRow(container).textContent).toBe(`Ran workflow${NAME}StoppedRan workflow ${NAME} Stopped`);
+	});
+});

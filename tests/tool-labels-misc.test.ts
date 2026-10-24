@@ -7,7 +7,7 @@ import {getToolRenderer} from "../src/components/tool-renderers";
 import {FallbackRenderer} from "../src/components/tool-renderers/fallback-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {toolInputSchemas} from "../src/lib/tool-input-schemas";
-import {toolLabel, type ToolLabel} from "../src/lib/tool-labels";
+import {runningToolLabel, toolLabel, type ToolLabel} from "../src/lib/tool-labels";
 
 afterEach(cleanup);
 
@@ -112,6 +112,9 @@ describe("worktree, scheduling, notification and workflow labels", () => {
 			push: label("PushNotification", {message: "PR is green", status: "proactive"}),
 			workflow: label("Workflow", {scriptPath: "/x/wf.js"}),
 			workflowArgs: label("Workflow", {scriptPath: "/x/wf.js", args: {max: 60}}),
+			workflowScript: label("Workflow", {script: "export const meta = {name: 'deep-research', phases: []}"}),
+			workflowNamed: label("Workflow", {name: "triage", scriptPath: "/x/wf.js"}),
+			workflowNameless: label("Workflow", {script: "run()"}),
 			lsp: label("LSP", {file_path: "src/a.ts", line: 1, character: 2}),
 			listResources: label("ListMcpResourcesTool", {}),
 			readResource: label("ReadMcpResourceTool", {server: "s", uri: "u"}),
@@ -120,14 +123,26 @@ describe("worktree, scheduling, notification and workflow labels", () => {
 			sendUserMessage: {verb: "Sent"},
 			sendUserFile: {verb: "Sent"},
 			push: {verb: "Sent notification"},
-			workflow: {verb: "Ran workflow"},
-			workflowArgs: {verb: "Ran workflow"},
+			workflow: {verb: "Ran workflow", meta: "wf"},
+			workflowArgs: {verb: "Ran workflow", meta: "wf"},
+			workflowScript: {verb: "Ran workflow", meta: "deep-research"},
+			workflowNamed: {verb: "Ran workflow", meta: "triage"},
+			workflowNameless: {verb: "Ran workflow"},
 			lsp: {verb: "Inspected code"},
 			listResources: {verb: "Listed resources"},
 			readResource: {verb: "Read resource"},
 			readResourceDir: {
 				verb: "Listed resource folder",
 			},
+		});
+	});
+});
+
+describe("running Workflow label", () => {
+	it("reads Running workflow and the name", () => {
+		expect(runningToolLabel({name: "Workflow", input: {scriptPath: "/x/wf.js"}})).toStrictEqual({
+			verb: "Running workflow",
+			meta: "wf",
 		});
 	});
 });

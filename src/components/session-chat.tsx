@@ -72,7 +72,7 @@ import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
 import type {SessionWorkflowRun, TranscriptCut} from "../lib/api/sessions";
-import {workflowCallName} from "../lib/workflow-name";
+import {workflowCallName, workflowSummary} from "../lib/workflow-name";
 import {rewindLayout, type RewindMarkerPlacement} from "../lib/rewind-layout";
 import type {ToolUseBlock} from "../lib/schemas";
 import {toolBucket, type ToolBucket} from "../lib/tool-runs";
@@ -116,6 +116,7 @@ import {asRecord, isKeyOf} from "../lib/narrow";
 import {toolMarkActivity} from "../lib/working-mark-activity";
 import {WorkingMark} from "./working-mark";
 import {StepScreenshotStrip, StepScreenshots} from "./step-screenshot-strip";
+import {Tooltip} from "./ui/tooltip";
 
 function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
 	return "sessionId" in line && line.sessionId !== undefined ? line.sessionId : fallbackSessionId;
@@ -1330,11 +1331,17 @@ type BackgroundOutcome = "failed" | "stopped";
 
 interface BackgroundOutcomes {
 	byLaunch: ReadonlyMap<string, BackgroundOutcome>;
+	/** The notification that settled each launch, whose summary a Workflow row's status tooltip shows. */
+	notificationByLaunch: ReadonlyMap<string, TaskNotification>;
 	/** The launch each successful TaskStop ended, keyed by the TaskStop's tool_use id. */
 	stoppedBy: ReadonlyMap<string, string>;
 }
 
-const BackgroundOutcomeContext = createContext<BackgroundOutcomes>({byLaunch: new Map(), stoppedBy: new Map()});
+const BackgroundOutcomeContext = createContext<BackgroundOutcomes>({
+	byLaunch: new Map(),
+	notificationByLaunch: new Map(),
+	stoppedBy: new Map(),
+});
 
 /** The tool_use id the session's permission prompt waits on, if any. */
 const PermissionWaitContext = createContext<string | null>(null);
@@ -1353,17 +1360,25 @@ function withPermissionWait<Call extends {id: string}>(
 }
 
 const BACKGROUND_LAUNCH_ID = /running in background with ID: (\S+?)\.?(?:\s|$)/;
+/** A Workflow launch result names its task: `Workflow launched in background. Task ID: w1x6xh5i3`. */
+const WORKFLOW_LAUNCH_ID = /^Workflow launched in background\. Task ID: (\S+)/;
 const TASK_STOPPERS = new Set(["TaskStop", "KillShell"]);
 
-/** The background task id a `run_in_background` Bash call's result reports. */
+/** The background task id a `run_in_background` Bash call's or a Workflow call's result reports. */
 function backgroundLaunchTaskId(
 	block: ToolUseBlock,
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
 ): string | null {
-	if (block.name !== "Bash" || block.input["run_in_background"] !== true) return null;
+	const pattern =
+		block.name === "Workflow"
+			? WORKFLOW_LAUNCH_ID
+			: block.name === "Bash" && block.input["run_in_background"] === true
+				? BACKGROUND_LAUNCH_ID
+				: null;
+	if (pattern === null) return null;
 	const info = toolResultMap.get(block.id);
 	if (info === undefined || info.isError) return null;
-	return BACKGROUND_LAUNCH_ID.exec(info.result)?.[1] ?? null;
+	return pattern.exec(info.result)?.[1] ?? null;
 }
 
 /** The task id a successful TaskStop (or older KillShell) call stopped. */
@@ -1373,6 +1388,11 @@ function stoppedTaskId(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, T
 	if (info === undefined || info.isError) return null;
 	const taskId = block.input["task_id"] ?? block.input["shell_id"];
 	return typeof taskId === "string" ? taskId : null;
+}
+
+/** Upstream `we`: a workflow notification's summary less its `Workflow "…" failed:` prefix, capitalized. */
+function workflowNotificationSummary(notification: TaskNotification | undefined): string | undefined {
+	return notification === undefined ? undefined : workflowSummary(notification.summary, notification.description);
 }
 
 /**
@@ -1386,6 +1406,7 @@ function backgroundLaunchOutcomes(
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
 ): BackgroundOutcomes {
 	const byLaunch = new Map<string, BackgroundOutcome>();
+	const notificationByLaunch = new Map<string, TaskNotification>();
 	const notified = new Set<string>();
 	const launchByTaskId = new Map<string, string>();
 	const stops: {stopId: string; taskId: string}[] = [];
@@ -1393,6 +1414,7 @@ function backgroundLaunchOutcomes(
 		const notification = taskNotificationOf(line);
 		if (notification !== null && notification.toolUseId !== null) {
 			notified.add(notification.toolUseId);
+			notificationByLaunch.set(notification.toolUseId, notification);
 			if (notification.status !== "completed") byLaunch.set(notification.toolUseId, notification.status);
 		}
 		const content = line.type === "assistant" ? line.message?.content : undefined;
@@ -1412,7 +1434,7 @@ function backgroundLaunchOutcomes(
 		byLaunch.set(launch, "stopped");
 		stoppedBy.set(stopId, launch);
 	}
-	return {byLaunch, stoppedBy};
+	return {byLaunch, notificationByLaunch, stoppedBy};
 }
 
 function failedLaunchIds({byLaunch}: BackgroundOutcomes): ReadonlySet<string> {
@@ -2187,6 +2209,7 @@ function slowCommandCompletion(command: SlowCommand): TaskNotification {
 		agent: false,
 		taskType: "local_bash",
 		description: command.description,
+		summary: "",
 		durationMs: null,
 	};
 }
@@ -5281,7 +5304,9 @@ function ToolCallRow({
 	// An Agent row whose subagent resolves opens the Subagent pane on it rather
 	// than expanding inline, as upstream does.
 	const paneAgentId = isAgent && openSubagent !== null ? call.subagentInfo?.agentId : undefined;
-	const hasBody = !rendersEmptyBody(call);
+	// Upstream's settled workflow row is a plain label with no body; only Verbose discloses the call.
+	const isWorkflow = call.name === "Workflow";
+	const hasBody = !rendersEmptyBody(call) && !(isWorkflow && !verbose);
 	// An artifact card is the row's whole body and stays visible, as upstream
 	// draws it under the "Published artifact" label.
 	const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
@@ -5324,7 +5349,8 @@ function ToolCallRow({
 	// rejected or interrupted the call, or a secondary "Denied" when they rejected
 	// it with a reply.
 	// A background launch takes the status its later notification reports.
-	const backgroundOutcome = useContext(BackgroundOutcomeContext).byLaunch.get(call.id);
+	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
+	const backgroundOutcome = backgroundOutcomes.byLaunch.get(call.id);
 	const status =
 		call.isError === true
 			? call.stopped === true
@@ -5340,15 +5366,28 @@ function ToolCallRow({
 					: backgroundOutcome === "failed"
 						? "Failed"
 						: null;
+	// Upstream's `S1` row tooltips a stopped or failed workflow's status with its summary.
+	const workflowStatusSummary =
+		isWorkflow && status !== null && backgroundOutcome !== undefined
+			? workflowNotificationSummary(backgroundOutcomes.notificationByLaunch.get(call.id))
+			: undefined;
+	// A settled workflow reads in secondary ink, or danger once it failed, as upstream's `S1` draws it.
+	const workflowInk =
+		isWorkflow && !call.isError ? (status === "Failed" ? "text-danger-ink" : "text-secondary") : null;
 	// A null ink marks an in-flight label, which upstream draws as ShimmerText.
-	const labelClass = call.isError ? ink : busy ? null : isSkill ? "text-secondary" : ink;
+	const labelClass = call.isError ? ink : busy ? null : isSkill ? "text-secondary" : (workflowInk ?? ink);
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !busy;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
 	// Upstream draws every standalone status row in one 24px padded layout, whether it
 	// completed, failed, or is still running.
 	const isTurnStatus = !isAgent && !nested;
 	const disclosureLayout = isTurnStatus ? "min-w-0 self-stretch me-[52px] px-1 py-0.5" : "self-start py-0";
-	const paramClass = isSkill || isCompletedPaneAgent ? "text-primary" : isFailedSkill ? "text-secondary" : labelClass;
+	const paramClass =
+		isSkill || isCompletedPaneAgent
+			? "text-primary"
+			: isFailedSkill || (workflowInk !== null && !busy)
+				? "text-secondary"
+				: labelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
 	// Upstream's 6px row gap less the chevron's -4px start margin leaves its 12px
@@ -5356,7 +5395,8 @@ function ToolCallRow({
 	const chevronClass = isAgent ? "shrink-0 -ms-1 self-center text-t6" : `shrink-0 -ms-1 ${ink}`;
 	// A failed call whose param is its own description keeps that description as
 	// written ("Rebase and push X"); upstream past-tenses it only on success.
-	const failedDescription = status === null ? null : getToolDescription(call.name, call.input);
+	// A workflow keeps its name instead.
+	const failedDescription = status === null || isWorkflow ? null : getToolDescription(call.name, call.input);
 	const phrase =
 		failedDescription ??
 		(isAgent && (nested || !busy)
@@ -5494,14 +5534,31 @@ function ToolCallRow({
 				</button>
 			)}
 			{diffStats && <DiffStatPill added={diffStats.added} removed={diffStats.removed} />}
-			{status !== null && (
-				<span
-					id={`${statusId}-outcome`}
-					className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}
-				>
-					{status}
-				</span>
-			)}
+			{status !== null &&
+				(workflowStatusSummary === undefined ? (
+					<span
+						id={`${statusId}-outcome`}
+						className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}
+					>
+						{status}
+					</span>
+				) : (
+					<>
+						<Tooltip content={workflowStatusSummary} multiline lineClamp>
+							<span
+								id={`${statusId}-outcome`}
+								// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's status is a tab stop that reaches its summary tooltip
+								tabIndex={0}
+								className={`shrink-0 text-body outline-none hide-focus-ring focus-visible:ring-focus rounded-r2 ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}
+							>
+								{status}
+							</span>
+						</Tooltip>
+						<span className="hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0">
+							{workflowStatusSummary}
+						</span>
+					</>
+				))}
 			{permissionLabel !== null && call.permission !== undefined && (
 				<span
 					data-permission-decision=""

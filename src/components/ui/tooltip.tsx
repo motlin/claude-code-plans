@@ -123,6 +123,7 @@ export function Tooltip({
 	delay = OPEN_DELAY_MS,
 	sideOffset = 4,
 	maxWidth,
+	lineClamp = false,
 	className,
 	children,
 }: {
@@ -146,6 +147,8 @@ export function Tooltip({
 	stacked?: boolean;
 	/** Wrap long content and break it at its newlines, e.g. a timestamp followed by per-turn details. */
 	multiline?: boolean;
+	/** Clamp the content to three lines, keeping its whitespace, as upstream's settled workflow status tip does. */
+	lineClamp?: boolean;
 	/**
 	 * `reason`: upstream's disabled-reason tooltip. The balanced 240px box, opened at once when focus arrives
 	 * (upstream `data-instant="focus"`), and the anchored child is left undescribed because the reason already
@@ -294,7 +297,7 @@ export function Tooltip({
 
 	const label = (
 		<>
-			{content}
+			{lineClamp ? <span className="line-clamp-3 whitespace-pre-wrap">{content}</span> : content}
 			{detail !== undefined && (
 				<>
 					{" "}

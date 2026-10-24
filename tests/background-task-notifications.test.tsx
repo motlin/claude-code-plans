@@ -218,6 +218,7 @@ describe("parseTaskNotification", () => {
 			agent: false,
 			taskType: "local_bash",
 			description: "Run the test suite",
+			summary: 'Background command "Run the test suite" completed (exit code 0)',
 			durationMs: null,
 		});
 	});
@@ -231,6 +232,7 @@ describe("parseTaskNotification", () => {
 			agent: true,
 			taskType: "local_agent",
 			description: "Fetch reminders",
+			summary: 'Agent "Fetch reminders" was stopped',
 			durationMs: null,
 		});
 	});
@@ -248,6 +250,7 @@ describe("parseTaskNotification", () => {
 			agent: true,
 			taskType: "local_agent",
 			description: "Commit crank sensitivity change",
+			summary: 'Agent "Commit crank sensitivity change" finished',
 			durationMs: 26738,
 		});
 	});

@@ -11,6 +11,7 @@ import {
 import {isRecord} from "./narrow";
 import {pastTense, startsWithKnownVerb} from "./past-tense";
 import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
+import {workflowCallName} from "./workflow-name";
 
 /**
  * What a tool row needs from the call's `toolUseResult`, pulled out through
@@ -200,7 +201,6 @@ const FIXED_LABELS: Record<string, {verb: string}> = {
 	},
 	WaitForMcpServers: {verb: "Loaded connectors"},
 	RefreshMcpTools: {verb: "Refreshed tools"},
-	Workflow: {verb: "Ran workflow"},
 	SendFeedback: {verb: "Sent feedback"},
 	SendUserMessage: {verb: "Sent"},
 	SendUserFile: {verb: "Sent"},
@@ -571,6 +571,9 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		}
 		case "Artifact":
 			return artifactLabel(input);
+		case "Workflow":
+			// Upstream's settled row names the run beside the verb.
+			return withMeta({verb: "Ran workflow"}, workflowCallName(input) ?? null);
 		case "SendMessage":
 			return sendMessageLabel(call);
 		case "AskUserQuestion": {
