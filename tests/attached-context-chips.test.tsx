@@ -249,6 +249,136 @@ describe("AttachedContextChips cds tiles", () => {
 		});
 	});
 
+	it("renders an excerpt chip as upstream's 120px quote tile with a rail, the clamped text and an Excerpt badge", () => {
+		const {container} = renderChips([{id: "chip-e", kind: "excerpt", text: "Even so, they’re ful"}]);
+		const tile = container.querySelector("li[data-cds=MessageAttachmentsQuote]");
+		const link = tile?.querySelector("[data-cds=CardLink]") ?? null;
+		const quote = tile?.querySelector("blockquote") ?? null;
+		const remove = tile?.querySelector("button[data-cds-attachment-remove]") ?? null;
+		expect({
+			attachment: tile?.getAttribute("data-cds-attachment"),
+			tile: classes(tile ?? null),
+			link: {role: link?.getAttribute("role"), tabIndex: link?.getAttribute("tabindex"), classes: classes(link)},
+			srName: link?.querySelector("span.sr-only")?.textContent,
+			row: classes(quote?.parentElement ?? null),
+			rail: classes(quote?.previousElementSibling ?? null),
+			quote: {dir: quote?.getAttribute("dir"), classes: classes(quote), text: quote?.textContent},
+			badge: {
+				classes: classes(tile?.querySelector("[data-cds=Badge]") ?? null),
+				text: tile?.querySelector("[data-cds=Badge]")?.textContent,
+			},
+			remove: {label: remove?.getAttribute("aria-label"), classes: classes(remove)},
+		}).toStrictEqual({
+			attachment: "",
+			tile: [
+				"focus-visible:shadow-focus",
+				"group/tile",
+				"isolate",
+				"outline-none",
+				"relative",
+				"rounded-r7",
+				"shrink-0",
+				"size-[7.5rem]",
+			],
+			link: {
+				role: "button",
+				tabIndex: "0",
+				classes: [
+					"after:absolute",
+					"after:content-['']",
+					"after:inset-0",
+					"after:rounded-card-xs",
+					"cursor-pointer",
+					"outline-none",
+				],
+			},
+			srName: "Even so, they’re ful",
+			row: ["flex", "gap-1.5", "min-h-0", "min-w-0"],
+			rail: ["bg-border", "rounded-full", "self-stretch", "shrink-0", "w-[3px]"],
+			quote: {
+				dir: "auto",
+				classes: [
+					"[overflow-wrap:anywhere]",
+					"break-words",
+					"flex-1",
+					"font-normal",
+					"leading-tight",
+					"line-clamp-5",
+					"min-w-0",
+					"text-caption",
+					"text-secondary",
+				],
+				text: "Even so, they’re ful",
+			},
+			badge: {
+				classes: [
+					"align-middle",
+					"bg-fill-ghost-hover",
+					"font-medium",
+					"font-sans",
+					"gap-1",
+					"h-5",
+					"inline-flex",
+					"items-center",
+					"max-w-full",
+					"min-w-0",
+					"px-2",
+					"rounded-full",
+					"self-start",
+					"shrink-0",
+					"text-caption",
+					"text-secondary",
+					"whitespace-nowrap",
+				],
+				text: "Excerpt",
+			},
+			remove: {
+				label: "Remove Even so, they’re ful",
+				classes: [
+					"-end-2",
+					"-top-2",
+					"absolute",
+					"before:-inset-0.5",
+					"before:absolute",
+					"before:content-['']",
+					"bg-surface-3",
+					"cursor-pointer",
+					"focus-visible:shadow-focus",
+					"group-focus-visible/tile:opacity-100",
+					"group-has-[:focus-visible]/tile:opacity-100",
+					"group-hover/tile:opacity-100",
+					"hover:text-primary",
+					"inline-flex",
+					"items-center",
+					"justify-center",
+					"opacity-0",
+					"outline-none",
+					"rounded-full",
+					"shadow-card-ring",
+					"size-5",
+					"text-secondary",
+					"touch:opacity-100",
+					"z-[1]",
+				],
+			},
+		});
+	});
+
+	it("removes an excerpt tile from its corner button", () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		attachContext(SESSION, {kind: "excerpt", text: "Hermit crabs"});
+		function Live() {
+			return <AttachedContextChips sessionId={SESSION} context={useContextChips(SESSION)} comments={[]} />;
+		}
+		const {container} = render(<Live />);
+		fireEvent.click(screen.getByRole("button", {name: "Remove Hermit crabs"}));
+		const left = container.querySelector("li[data-cds=MessageAttachmentsQuote]");
+		cleanup();
+		takeContextChips(SESSION);
+		stop();
+		expect(left).toBeNull();
+	});
+
 	describe("removal focus hand-off", () => {
 		const tiles: readonly ContextChip[] = [1, 2, 3].map((n) => ({
 			id: `chip-${n}`,
@@ -524,6 +654,14 @@ describe("AttachedContextChips text preview", () => {
 		const {container} = renderChips([MESSAGE]);
 		fireEvent.click(linkOf(container, "Message"));
 		expect(await openedPreview()).toStrictEqual({title: "Excerpt", variant: "excerpt", text: "hello\nworld"});
+	});
+
+	it("opens an excerpt tile as an Excerpt", async () => {
+		const {container} = renderChips([{id: "chip-e", kind: "excerpt", text: "Hermit crabs"}]);
+		const link = container.querySelector<HTMLElement>("li[data-cds=MessageAttachmentsQuote] [data-cds=CardLink]");
+		if (link === null) throw new Error("no excerpt CardLink");
+		fireEvent.click(link);
+		expect(await openedPreview()).toStrictEqual({title: "Excerpt", variant: "excerpt", text: "Hermit crabs"});
 	});
 
 	it("opens a selection as a file titled by its label", async () => {

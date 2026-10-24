@@ -17,6 +17,7 @@ import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {absoluteMentionPath} from "./files/mention-path";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
+import {ExcerptQuote} from "./message-excerpt-tiles";
 import {
 	BADGE_CLASS,
 	CARD_BODY_CLASS,
@@ -142,12 +143,15 @@ function Tile({
 	chip,
 	kind,
 	status,
+	name = contextChipLabel(chip),
 	children,
 }: {
 	sessionId: string;
 	chip: ContextChip;
-	kind: "MessageAttachmentsImage" | "MessageAttachmentsFile";
+	kind: "MessageAttachmentsImage" | "MessageAttachmentsFile" | "MessageAttachmentsQuote";
 	status: string;
+	/** What the remove button names, when it isn't the chip's label: an excerpt's own text. */
+	name?: string;
 	children: ReactNode;
 }) {
 	const label = contextChipLabel(chip);
@@ -171,7 +175,7 @@ function Tile({
 			<button
 				type="button"
 				data-cds-attachment-remove=""
-				aria-label={`Remove ${label}`}
+				aria-label={`Remove ${name}`}
 				onMouseDown={keepFocusOnPointerRemove}
 				onClick={removeHandler(() => {
 					removeChip(sessionId, chip);
@@ -339,6 +343,49 @@ function FileChip({
 	);
 }
 
+/**
+ * A transcript excerpt as upstream's cds quote tile: the text beside a rail,
+ * clamped to five lines over an "Excerpt" badge, with a CardLink that opens it.
+ */
+function ExcerptChip({
+	sessionId,
+	chip,
+	onOpen,
+}: {
+	sessionId: string;
+	chip: ContextChip;
+	onOpen: (chip: ContextChip, link: HTMLElement) => void;
+}) {
+	const text = chip.text ?? "";
+	return (
+		<Tile sessionId={sessionId} chip={chip} kind="MessageAttachmentsQuote" status="" name={text}>
+			<span
+				data-cds="CardLink"
+				role="button"
+				tabIndex={0}
+				onClick={(event) => {
+					event.preventDefault();
+					onOpen(chip, event.currentTarget);
+				}}
+				onKeyDown={(event) => {
+					if (event.key === "Enter" || event.key === " ") {
+						event.preventDefault();
+						onOpen(chip, event.currentTarget);
+					}
+
+					removeOnDeleteKey(event, () => {
+						removeChip(sessionId, chip);
+					});
+				}}
+				className="outline-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-pointer"
+			>
+				<span className="sr-only">{text}</span>
+			</span>
+			<ExcerptQuote text={text} label={contextChipLabel(chip)} />
+		</Tile>
+	);
+}
+
 interface TextPreview {
 	title: string;
 	text: string;
@@ -467,6 +514,11 @@ export function AttachedContextChips({
 						if (chip.kind === "file" && chip.name !== undefined) {
 							return (
 								<FileChip key={chip.id} sessionId={sessionId} chip={chip} onOpen={openFilePreview} />
+							);
+						}
+						if (chip.kind === "excerpt") {
+							return (
+								<ExcerptChip key={chip.id} sessionId={sessionId} chip={chip} onOpen={openTextPreview} />
 							);
 						}
 						const label = contextChipLabel(chip);
