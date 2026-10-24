@@ -1126,6 +1126,7 @@ function SessionView({
 														hookActive: isActive,
 														summaryState: sessionSummaryState,
 													})}
+													turnInProgress={workingMarkerState.status !== "idle"}
 													permissionWaitToolUseId={permissionWaitId}
 													onSendNow={requestSendNowInterrupt}
 													onFocusComposer={focusSessionComposer}

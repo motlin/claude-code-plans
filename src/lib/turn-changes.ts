@@ -1,5 +1,7 @@
 import type {ToolResultInfo} from "./sessions";
 import {diffStatsForCall, type ToolCallLike} from "./session-utils";
+import {defined} from "./defined";
+import {rendersBare, splitRuns, type RunCall} from "./tool-runs";
 import type {SessionLine} from "./transcript";
 
 /** One file's summed diff stats across a turn's edit calls. */
@@ -22,6 +24,13 @@ export interface TurnChanges extends TurnChangesSummary {
 	turnUuid: string;
 	/** The line the card follows: the turn's last visible assistant row, else its last assistant line. */
 	anchorLineIndex: number;
+	/**
+	 * Upstream `V1`: one file, edited in exactly one run, and that run draws as a bare row, which
+	 * already shows the edit, so upstream `B1` drops the card. Local rows don't draw such runs bare
+	 * yet (tool-run-standalone-buckets, tool-run-same-target-bare), so the sole edit may sit in a
+	 * summary group, whose pill still shows its stats.
+	 */
+	soleVisibleEditToolRow: boolean;
 }
 
 /** A turn call, which counts only once its result is in (`hasResult` false skips it). */
@@ -75,6 +84,13 @@ function callStats(call: ToolCallLike): {added: number; removed: number} {
 	return {added: typeof source === "string" ? lineCount(source) : 0, removed: 0};
 }
 
+/** Upstream `tye`: the file a completed edit call counts toward, or null when it doesn't count. */
+function countedEditPath(call: TurnEditCall): string | null {
+	if (call.isError === true || call.hasResult === false) return null;
+	const path = editedFile(call);
+	return path === null || isScratchpadPath(path) || isMemoryPath(path) ? null : path;
+}
+
 /**
  * Sum Edit/Write/MultiEdit/NotebookEdit diff stats per file, counting what
  * upstream `tye` counts: failed and still-pending calls are skipped, as are
@@ -83,9 +99,8 @@ function callStats(call: ToolCallLike): {added: number; removed: number} {
 export function aggregateTurnEdits(calls: readonly TurnEditCall[]): TurnChangesSummary {
 	const files = new Map<string, TurnFileChange>();
 	for (const call of calls) {
-		if (call.isError === true || call.hasResult === false) continue;
-		const path = editedFile(call);
-		if (path === null || isScratchpadPath(path) || isMemoryPath(path)) continue;
+		const path = countedEditPath(call);
+		if (path === null) continue;
 		const stats = callStats(call);
 		const file = files.get(path) ?? {path, added: 0, removed: 0};
 		file.added += stats.added;
@@ -118,44 +133,73 @@ function drawsRow(line: SessionLine, showTools: boolean): boolean {
 	);
 }
 
+type TurnCall = TurnEditCall & RunCall;
+
 interface TurnAccumulator {
 	uuid: string | undefined;
-	calls: TurnEditCall[];
+	/** The turn's `tools` items: the tool calls between two prose blocks. */
+	items: TurnCall[][];
 	lastAssistant: number | undefined;
 	lastRow: number | undefined;
+}
+
+export interface CollectTurnChangesOptions {
+	showTools?: boolean;
+	showThinking?: boolean;
+	/** The transcript's trailing turn hasn't ended, and upstream draws no card until it does. */
+	turnInProgress?: boolean;
+}
+
+function newTurn(): TurnAccumulator {
+	return {uuid: undefined, items: [[]], lastAssistant: undefined, lastRow: undefined};
+}
+
+/** Upstream `V1`'s run count: one file, one run holding a counted edit, and that run drawn bare. */
+function soleVisibleEditToolRow(items: readonly TurnCall[][], fileCount: number, showThinking: boolean): boolean {
+	let runsWithEdits = 0;
+	let lastBare = false;
+	for (const item of items) {
+		for (const run of splitRuns(item)) {
+			if (!run.some((call) => countedEditPath(call) !== null)) continue;
+			runsWithEdits += 1;
+			lastBare = rendersBare(run, {showThinking});
+		}
+	}
+	return fileCount === 1 && runsWithEdits === 1 && lastBare;
 }
 
 /**
  * Split the transcript into prompt-to-prompt turns and summarize each turn's
  * file edits, keyed by the line index its card follows: the turn's last row,
  * as upstream draws the card after a turn's final tool row as readily as after
- * its prose. Turns that edited nothing are left out.
+ * its prose. Turns that edited nothing are left out, as are a turn still in
+ * progress and, while tools are shown, a turn whose edit a sole bare row shows.
  */
 export function collectTurnChanges(
 	lines: readonly SessionLine[],
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
-	showTools = true,
+	{showTools = true, showThinking = false, turnInProgress = false}: CollectTurnChangesOptions = {},
 ): Map<number, TurnChanges> {
 	const result = new Map<number, TurnChanges>();
-	let turn: TurnAccumulator = {
-		uuid: undefined,
-		calls: [],
-		lastAssistant: undefined,
-		lastRow: undefined,
-	};
+	let turn = newTurn();
+	let precedingThinking = false;
 
 	const finish = () => {
 		const anchor = turn.lastRow ?? turn.lastAssistant;
 		if (anchor === undefined || turn.uuid === undefined) return;
-		const summary = aggregateTurnEdits(turn.calls);
+		const summary = aggregateTurnEdits(turn.items.flat());
 		if (summary.files.length === 0) return;
-		result.set(anchor, {turnUuid: turn.uuid, anchorLineIndex: anchor, ...summary});
+		const sole = soleVisibleEditToolRow(turn.items, summary.files.length, showThinking);
+		// Local adaptation: with tools hidden no bare row carries the edit, so the card stays.
+		if (sole && showTools) return;
+		result.set(anchor, {turnUuid: turn.uuid, anchorLineIndex: anchor, ...summary, soleVisibleEditToolRow: sole});
 	};
 
 	for (const line of lines) {
 		if (isTurnStartLine(line)) {
 			finish();
-			turn = {uuid: undefined, calls: [], lastAssistant: undefined, lastRow: undefined};
+			turn = newTurn();
+			precedingThinking = false;
 		}
 		if (line.type !== "user" && line.type !== "assistant") continue;
 		turn.uuid ??= line.uuid;
@@ -165,17 +209,30 @@ export function collectTurnChanges(
 		const content = line.message?.content;
 		if (!Array.isArray(content)) continue;
 		for (const block of content) {
+			if (block.type === "text" && block.text.trim() !== "") {
+				if (turn.items.at(-1)?.length !== 0) turn.items.push([]);
+				continue;
+			}
+			if (block.type === "thinking") {
+				precedingThinking = true;
+				continue;
+			}
 			if (block.type !== "tool_use") continue;
 			const result = toolResultMap.get(block.id);
-			turn.calls.push({
+			defined(turn.items.at(-1), "a turn always has a tools item").push({
+				id: block.id,
 				name: block.name,
 				input: block.input,
 				isError: result?.isError,
 				resultMeta: result?.resultMeta,
 				hasResult: result !== undefined,
+				result: result?.result,
+				pending: result === undefined,
+				precedingThinking,
 			});
+			precedingThinking = false;
 		}
 	}
-	finish();
+	if (!turnInProgress) finish();
 	return result;
 }

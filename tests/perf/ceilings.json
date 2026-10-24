@@ -61,18 +61,18 @@
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 601238,
+		"ceiling": 607387,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 594973 / 1800265 as the composer started checking sent slash commands; the unknown-command notice (the complete CLI command-name set, the did-you-mean matcher and the Use button) tipped session to 601238 / 1817919. Ceilings set to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-23"
+		"reason": "Cold JS drifted through the 1% band from 601238 / 1817919 as the turn card took upstream's edit counting and run model; the sole-bare-edit-row gate (src/lib/tool-runs.ts bucket and same-target tests in the transcript chunk) tipped session to 607387 / 1837021. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1817919,
+		"ceiling": 1837021,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 594973 / 1800265 as the composer started checking sent slash commands; the unknown-command notice (the complete CLI command-name set, the did-you-mean matcher and the Use button) tipped session to 601238 / 1817919. Ceilings set to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-23"
+		"reason": "Cold JS drifted through the 1% band from 601238 / 1817919 as the turn card took upstream's edit counting and run model; the sole-bare-edit-row gate (src/lib/tool-runs.ts bucket and same-target tests in the transcript chunk) tipped session to 607387 / 1837021. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-24"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

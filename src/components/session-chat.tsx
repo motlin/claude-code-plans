@@ -137,6 +137,8 @@ export interface SessionChatProps {
 	permissionWaitToolUseId?: string | null;
 	/** Whether the CLI is still running, so the prompts waiting in its queue can still be read. */
 	sessionLive?: boolean;
+	/** The transcript's trailing turn hasn't ended yet, so it draws no end-of-turn card. */
+	turnInProgress?: boolean;
 	/** Interrupts Claude so it reads the head waiting prompt next: the head row's Send now, busy until it settles. */
 	onSendNow?: (() => Promise<void> | void) | undefined;
 	/** Focuses the session composer, where a mouse click on Send now leaves focus. */
@@ -469,6 +471,7 @@ export const SessionChat = React.memo(function SessionChat({
 	slashCommands = EMPTY_SLASH_COMMANDS,
 	permissionWaitToolUseId = null,
 	sessionLive = false,
+	turnInProgress = false,
 	onSendNow,
 	onFocusComposer,
 }: SessionChatProps) {
@@ -677,6 +680,7 @@ export const SessionChat = React.memo(function SessionChat({
 											shouldScrollToEnd={shouldScrollToEnd}
 											measurementKey={measurementKey}
 											measurementSource={measurementSource}
+											turnInProgress={turnInProgress}
 										/>
 										{sessionLive && (
 											<WaitingPickupStatus key={`pickup-${sessionId}`} waitingIds={waitingIds} />
@@ -2126,6 +2130,7 @@ function buildSessionListEntries(
 	renderProps: LineRenderProps,
 	verbose: boolean,
 	held: HeldAssistantFooter | null,
+	turnInProgress: boolean,
 ): SessionListEntry[] {
 	const waitingPrompts = recordLines.filter(
 		(line): line is Extract<SessionLine, {type: "queued-prompt"}> => line.type === "queued-prompt",
@@ -2196,7 +2201,11 @@ function buildSessionListEntries(
 		if (span === undefined || asksPendingQuestion(line, renderProps.toolResultMap)) return null;
 		return <AssistantDisplaySpanFooter span={span} />;
 	};
-	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap, renderProps.showTools);
+	const turnChangesByLine = collectTurnChanges(lines, renderProps.toolResultMap, {
+		showTools: renderProps.showTools,
+		showThinking: renderProps.showThinking,
+		turnInProgress,
+	});
 	const entries: PendingSessionListEntry[] = [];
 	let prevVisibleType: string | null = null;
 	let i = 0;
@@ -3257,16 +3266,18 @@ function SessionLineList({
 	shouldScrollToEnd,
 	measurementKey,
 	measurementSource,
+	turnInProgress,
 	...renderProps
 }: LineRenderProps & {
 	lines: SessionLine[];
 	shouldScrollToEnd: boolean;
 	measurementKey: string;
 	measurementSource: object | undefined;
+	turnInProgress: boolean;
 }) {
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const [held, setHeld] = useState<HeldAssistantFooter | null>(null);
-	const entries = buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held);
+	const entries = buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held, turnInProgress);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
 	return (
 		<ExpansionStoreContext.Provider value={expansionStore}>

@@ -157,6 +157,7 @@ describe("Changes entry points", () => {
 					added: 1,
 					removed: 0,
 					files: [{path: "/repo/a.ts", added: 1, removed: 0}],
+					soleVisibleEditToolRow: false,
 				}}
 			/>,
 		);

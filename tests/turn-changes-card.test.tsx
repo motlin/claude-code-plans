@@ -252,6 +252,59 @@ const EDIT_RECORDS = [
 	},
 ];
 
+type TurnStep = {text: string} | {tool: string; id: string; input: Record<string, unknown>; result?: string};
+
+/** One prompt-to-prompt turn: each step is its own assistant line, each tool answered with its result. */
+function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
+	const records: unknown[] = [
+		{type: "user", uuid: `${prefix}-u`, message: {role: "user", content: "Fabricated request"}},
+	];
+	for (const [index, step] of steps.entries()) {
+		const uuid = `${prefix}-a${index}`;
+		if ("text" in step) {
+			records.push({
+				type: "assistant",
+				uuid,
+				message: {role: "assistant", content: [{type: "text", text: step.text}]},
+			});
+			continue;
+		}
+		records.push(
+			{
+				type: "assistant",
+				uuid,
+				message: {
+					role: "assistant",
+					content: [{type: "tool_use", id: step.id, name: step.tool, input: step.input}],
+				},
+			},
+			{
+				type: "user",
+				uuid: `${prefix}-r${index}`,
+				sourceToolAssistantUUID: uuid,
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: step.id, content: step.result ?? "ok"}],
+				},
+			},
+		);
+	}
+	return records;
+}
+
+/** Hello2's last turn (session_01KwfEs1RD2zvBHuES114CNb): the plan file rewritten, then a stopped ExitPlanMode. */
+const HELLO2_LAST_TURN: TurnStep[] = [
+	{
+		tool: "Write",
+		id: "plan-write",
+		input: {
+			file_path: "/Users/x/.claude/plans/this-is-a-test-glistening-pike.md",
+			content: "# Plan\n\nOne\nTwo\nThree\nFour",
+		},
+	},
+	{tool: "ExitPlanMode", id: "plan-exit", input: {plan: "# Plan"}, result: "Fabricated plan stopped"},
+];
+
 describe("collectTurnChanges", () => {
 	it("anchors each editing turn on its last assistant text and skips turns without edits", () => {
 		const {lines, toolResultMap} = processTranscript(EDIT_RECORDS, 0);
@@ -269,13 +322,90 @@ describe("collectTurnChanges", () => {
 					],
 					added: 3,
 					removed: 1,
+					soleVisibleEditToolRow: false,
 				},
 			],
 		]);
 	});
+
+	const editA = (id: string): TurnStep => ({
+		tool: "Edit",
+		id,
+		input: {file_path: "/repo/a.ts", old_string: "old", new_string: "new"},
+	});
+	const anchors = (steps: TurnStep[], options?: Parameters<typeof collectTurnChanges>[2]) => {
+		const {lines, toolResultMap} = processTranscript(turnRecords(steps), 0);
+		return [...collectTurnChanges(lines, toolResultMap, options).values()].map((change) => ({
+			files: change.files.map((file) => file.path),
+			sole: change.soleVisibleEditToolRow,
+		}));
+	};
+
+	it("leaves out a turn whose only edit is one completed Write", () => {
+		expect(anchors([{tool: "Write", id: "w", input: {file_path: "/repo/a.ts", content: "x"}}])).toStrictEqual([]);
+	});
+
+	it("leaves out Hello2's last turn: a plan Write and a standalone ExitPlanMode", () => {
+		expect(anchors(HELLO2_LAST_TURN)).toStrictEqual([]);
+	});
+
+	it("leaves out two same-file Edits in one run, which upstream draws as one bare row", () => {
+		expect(anchors([editA("e1"), editA("e2")])).toStrictEqual([]);
+	});
+
+	it("keeps the card for one file edited in two runs split by prose", () => {
+		expect(anchors([editA("e1"), {text: "Fabricated progress note"}, editA("e2")])).toStrictEqual([
+			{files: ["/repo/a.ts"], sole: false},
+		]);
+	});
+
+	it("keeps the card when the edit's run is not bare", () => {
+		expect([
+			anchors([{tool: "Read", id: "r", input: {file_path: "/repo/a.ts"}}, editA("e1")]),
+			anchors([editA("e1"), {tool: "Bash", id: "b", input: {command: "ls"}}]),
+		]).toStrictEqual([[{files: ["/repo/a.ts"], sole: false}], [{files: ["/repo/a.ts"], sole: false}]]);
+	});
+
+	it("keeps the card for two files", () => {
+		expect(
+			anchors([editA("e1"), {tool: "Write", id: "w", input: {file_path: "/repo/b.ts", content: "x"}}]),
+		).toStrictEqual([{files: ["/repo/a.ts", "/repo/b.ts"], sole: false}]);
+	});
+
+	it("keeps a sole bare edit's card with tools hidden, where no row carries the edit", () => {
+		expect(
+			anchors([{tool: "Write", id: "w", input: {file_path: "/repo/a.ts", content: "x"}}], {showTools: false}),
+		).toStrictEqual([{files: ["/repo/a.ts"], sole: true}]);
+	});
+
+	it("leaves out a turn that is still in progress, but not earlier finished turns", () => {
+		const steps: TurnStep[] = [editA("e1"), {tool: "Bash", id: "b", input: {command: "ls"}}];
+		const {lines, toolResultMap} = processTranscript([...turnRecords(steps, "t1"), ...turnRecords(steps, "t2")], 0);
+		const turns = (turnInProgress: boolean) =>
+			[...collectTurnChanges(lines, toolResultMap, {turnInProgress}).values()].map((change) => change.turnUuid);
+		expect({finished: turns(false), inProgress: turns(true)}).toStrictEqual({
+			finished: ["t1-u", "t2-u"],
+			inProgress: ["t1-u"],
+		});
+	});
 });
 
 describe("SessionChat end-of-turn card", () => {
+	it("draws no card for Hello2's last turn, whose plan Write is a sole bare edit row", () => {
+		const {lines, toolResultMap} = processTranscript(turnRecords(HELLO2_LAST_TURN), 0);
+		const {container} = render(
+			<SettingsProvider>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					shouldScrollToEnd={false}
+				/>
+			</SettingsProvider>,
+		);
+		expect(container.querySelectorAll("[data-turn-changes-card]").length).toBe(0);
+	});
+
 	it("renders the card inside the turn's final text entry", () => {
 		const {lines, toolResultMap} = processTranscript(EDIT_RECORDS, 0);
 		const {container} = render(
@@ -309,6 +439,7 @@ function changesWith(fileCount: number): TurnChanges {
 		files,
 		added: files.reduce((sum, file) => sum + file.added, 0),
 		removed: fileCount,
+		soleVisibleEditToolRow: false,
 	};
 }
 

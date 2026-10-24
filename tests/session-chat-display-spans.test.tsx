@@ -857,6 +857,8 @@ describe("assistant display-span actions", () => {
 							new_string: "example new",
 						},
 					},
+					// A second tool keeps the run from being a sole bare edit row, which draws no card.
+					{type: "tool_use", id: "example-bash-tool", name: "Bash", input: {command: "example check"}},
 				],
 			},
 		};
@@ -865,7 +867,10 @@ describe("assistant display-span actions", () => {
 			uuid: "example-edit-result",
 			message: {
 				role: "user",
-				content: [{type: "tool_result", tool_use_id: "example-edit-tool", content: "example done"}],
+				content: [
+					{type: "tool_result", tool_use_id: "example-edit-tool", content: "example done"},
+					{type: "tool_result", tool_use_id: "example-bash-tool", content: "example checked"},
+				],
 			},
 		};
 		const view = render(
