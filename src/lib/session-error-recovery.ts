@@ -54,13 +54,15 @@ export interface ModelRetry {
  * prompt "Try again" (any composer draft stays put, upstream `nudgeBesideDraft`),
  * Compact session types `/compact`. A not-ready agent queues the prompt like the
  * composer's send. Switch model and retry applies `/model` first and types
- * Try again only once the switch went through.
+ * Try again only once the switch went through. Rewind opens the session's
+ * rewind picker (upstream `onOpenRewindPicker`) under the same gate.
  */
 export function errorRecoveryHandlers(
 	availability: ErrorRecoveryAvailability,
 	send: (prompt: string) => Promise<DeliveryResult>,
 	enqueue: (prompt: string) => void,
 	model?: ModelRetry,
+	openRewindPicker?: () => void,
 ): ApiErrorRecovery | undefined {
 	if (!availability.retryable && !availability.idle) return undefined;
 	const type = async (prompt: string) => {
@@ -86,6 +88,7 @@ export function errorRecoveryHandlers(
 					return true;
 				},
 			}),
+		...(availability.retryable && openRewindPicker !== undefined && {onRewind: openRewindPicker}),
 		...(model?.current !== undefined && {currentModel: model.current}),
 	};
 }

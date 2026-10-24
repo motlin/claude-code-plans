@@ -97,6 +97,37 @@ describe("errorRecoveryHandlers", () => {
 	});
 });
 
+describe("errorRecoveryHandlers rewind", () => {
+	const send = async (): Promise<"sent"> => Promise.resolve("sent");
+
+	it("hands the card the rewind picker opener on a retryable session", () => {
+		const openRewindPicker = vi.fn<() => void>();
+		errorRecoveryHandlers(
+			{retryable: true, idle: true},
+			send,
+			vi.fn<(text: string) => void>(),
+			undefined,
+			openRewindPicker,
+		)?.onRewind?.();
+		expect(openRewindPicker.mock.calls).toStrictEqual([[]]);
+	});
+
+	it("offers no rewind when the session is not retryable, or without an opener", () => {
+		const openRewindPicker = vi.fn<() => void>();
+		expect({
+			closed: errorRecoveryHandlers(
+				{retryable: false, idle: false},
+				send,
+				vi.fn<(text: string) => void>(),
+				undefined,
+				openRewindPicker,
+			),
+			noOpener: errorRecoveryHandlers({retryable: true, idle: true}, send, vi.fn<(text: string) => void>())
+				?.onRewind,
+		}).toStrictEqual({closed: undefined, noOpener: undefined});
+	});
+});
+
 describe("lastEntryIsError", () => {
 	it("is true when the API error is the transcript's last entry, past trailing system records", () => {
 		const {lines} = processTranscript([

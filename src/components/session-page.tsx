@@ -855,8 +855,19 @@ function SessionView({
 					switchTo: async (model) =>
 						switchModelForRetry(sessionId, model, {send: sendHerdrLiveOption, toast}),
 				},
+				// A click is an explicit open, like the composer's /rewind, so a draft doesn't block it.
+				rewindAvailableFromComposer,
 			),
-		[errorRetryable, errorIdle, sendErrorRecoveryPrompt, enqueuePrompt, currentModelId, sessionId, toast],
+		[
+			errorRetryable,
+			errorIdle,
+			sendErrorRecoveryPrompt,
+			enqueuePrompt,
+			currentModelId,
+			sessionId,
+			toast,
+			rewindAvailableFromComposer,
+		],
 	);
 	const sendLivePrompt = useCallback(
 		async (prompt: string) => {

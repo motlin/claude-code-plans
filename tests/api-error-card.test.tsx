@@ -793,6 +793,85 @@ describe("SessionChat error recovery", () => {
 		});
 	});
 
+	function sessionRewindRecovery(openRewindPicker: () => void) {
+		return errorRecoveryHandlers(
+			{retryable: true, idle: true},
+			async () => Promise.resolve("sent" as const),
+			vi.fn<(text: string) => void>(),
+			undefined,
+			openRewindPicker,
+		);
+	}
+
+	it("splits a context-window card into Compact session with More recovery options holding Rewind, which opens the picker", async () => {
+		const openRewindPicker = vi.fn<() => void>();
+		const container = renderWithRecovery(
+			[
+				PROMPT_RECORD,
+				{
+					...OVERLOADED_RECORD,
+					message: {...OVERLOADED_RECORD.message, content: [{type: "text", text: "Prompt is too long"}]},
+					error: "invalid_request",
+					apiErrorStatus: 400,
+				},
+			],
+			sessionRewindRecovery(openRewindPicker)!,
+		);
+		const group = container.querySelector("[data-api-error-actions]");
+		const labels = [...(group?.querySelectorAll("button") ?? [])].map(
+			(button) => button.getAttribute("aria-label") ?? button.textContent,
+		);
+		fireEvent.click(within(group as HTMLElement).getByRole("button", {name: "More recovery options"}));
+		await waitFor(() => {
+			expect(screen.getAllByRole("menu")).toHaveLength(1);
+		});
+		const items = within(screen.getByRole("menu"))
+			.getAllByRole("menuitem")
+			.map((item) => item.textContent);
+		fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", {name: "Rewind"}));
+
+		expect({labels, items, opened: openRewindPicker.mock.calls}).toStrictEqual({
+			labels: ["Compact session", "More recovery options"],
+			items: ["Rewind"],
+			opened: [[]],
+		});
+	});
+
+	it("gives an oversized-image card a primary Rewind that opens the picker", () => {
+		const openRewindPicker = vi.fn<() => void>();
+		const container = renderWithRecovery(
+			[
+				PROMPT_RECORD,
+				{
+					...OVERLOADED_RECORD,
+					message: {
+						...OVERLOADED_RECORD.message,
+						content: [
+							{
+								type: "text",
+								text: "API Error: 400 messages.1.content.0.image.source.base64.data: At least one of the image dimensions exceed max allowed size: 8000 pixels; exceeds the dimension limit",
+							},
+						],
+					},
+					error: "invalid_request",
+					apiErrorStatus: 400,
+				},
+			],
+			sessionRewindRecovery(openRewindPicker)!,
+		);
+		const group = container.querySelector("[data-api-error-actions]");
+		const actions = [...(group?.querySelectorAll("button") ?? [])].map((button) => ({
+			text: button.textContent,
+			variant: button.getAttribute("data-approval-variant"),
+		}));
+		fireEvent.click(within(group as HTMLElement).getByRole("button", {name: "Rewind"}));
+
+		expect({actions, opened: openRewindPicker.mock.calls}).toStrictEqual({
+			actions: [{text: "Rewind", variant: "primary"}],
+			opened: [[]],
+		});
+	});
+
 	it("draws no actions on an error a later prompt superseded", () => {
 		const container = renderWithRecovery(
 			[PROMPT_RECORD, OVERLOADED_RECORD, {...PROMPT_RECORD, uuid: "8d0f0f8e-0000-4000-8000-000000000002"}],
