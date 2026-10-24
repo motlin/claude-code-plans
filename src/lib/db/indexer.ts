@@ -889,8 +889,8 @@ async function indexJsonlFileWithLinks(
 			},
 			cache,
 		);
-		await persistSessionIndexState(db, filePath, project, fileStat, state);
-		return {linkedPlans: Array.from(state.planFilenames), subagentLinks: state.subagentLinks.links};
+		const linkedPlans = await persistSessionIndexState(db, filePath, project, fileStat, state);
+		return {linkedPlans, subagentLinks: state.subagentLinks.links};
 	};
 	return cache === undefined ? parseAndPersist() : cache.exclusive(filePath, parseAndPersist);
 }
@@ -901,7 +901,7 @@ async function persistSessionIndexState(
 	project: string,
 	fileStat: Stats,
 	state: SessionIndexState,
-): Promise<void> {
+): Promise<string[]> {
 	const {sessionId} = state;
 	const {customTitle, aiTitle, bridged} = await state.titleRecords.finish(filePath);
 	const sessionCwd = state.anchoredSessionCwd ?? state.lastSessionCwd;
@@ -909,12 +909,15 @@ async function persistSessionIndexState(
 	// sessions.mtime_ms is the activity time every list sorts and stamps by.
 	const activityAt = state.lastRecordAt ?? fileStat.mtimeMs;
 
-	// Upsert plan links
+	// Upsert plan links, keeping the ones this pass added: a re-parse after an append must not re-announce old links.
+	const newlyLinkedPlans: string[] = [];
 	for (const planFilename of state.planFilenames) {
-		db.insert(schema.planSessions)
+		const {changes} = db
+			.insert(schema.planSessions)
 			.values({planFilename, sessionId, projectId: project})
 			.onConflictDoNothing()
 			.run();
+		if (changes > 0) newlyLinkedPlans.push(planFilename);
 	}
 
 	const existingSession = db.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).get();
@@ -1069,6 +1072,7 @@ async function persistSessionIndexState(
 			},
 		})
 		.run();
+	return newlyLinkedPlans;
 }
 
 /** Foreground Bash calls still waiting on their result, newest last. */

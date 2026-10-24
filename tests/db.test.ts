@@ -502,6 +502,36 @@ describe("indexer", () => {
 		expect(returned).toStrictEqual(inDb);
 	});
 
+	it("indexJsonlFile returns only the plans newly linked by this pass, not ones already linked", async () => {
+		const projectDir = join(testDir, "-Users-craig-projects-app");
+		mkdirSync(projectDir, {recursive: true});
+		const jsonlPath = join(projectDir, "sess-relinked.jsonl");
+		const planLine = (planFilename: string) => ({
+			type: "attachment",
+			...baseFields,
+			sessionId: "sess-relinked",
+			attachment: {type: "plan_mode", planFilePath: `/Users/craig/.claude/plans/${planFilename}`},
+		});
+
+		writeFileSync(jsonlPath, jsonl(planLine("alpha.md")));
+		utimesSync(jsonlPath, 1000, 1000);
+		const first = await indexJsonlFile(db.index, jsonlPath, "-Users-craig-projects-app");
+
+		writeFileSync(jsonlPath, jsonl(planLine("alpha.md"), planLine("beta.md")));
+		utimesSync(jsonlPath, 2000, 2000);
+		const second = await indexJsonlFile(db.index, jsonlPath, "-Users-craig-projects-app");
+
+		writeFileSync(jsonlPath, jsonl(planLine("alpha.md"), planLine("beta.md")));
+		utimesSync(jsonlPath, 3000, 3000);
+		const third = await indexJsonlFile(db.index, jsonlPath, "-Users-craig-projects-app");
+
+		expect({first, second, third}).toStrictEqual({
+			first: {linkedPlans: ["alpha.md"]},
+			second: {linkedPlans: ["beta.md"]},
+			third: {linkedPlans: []},
+		});
+	});
+
 	it("indexJsonlFile returns empty linkedPlans when the JSONL has no plan references", async () => {
 		const projectDir = join(testDir, "-Users-craig-projects-app");
 		mkdirSync(projectDir, {recursive: true});
