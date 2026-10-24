@@ -138,7 +138,7 @@ describe("ApiErrorCard", () => {
 		});
 	});
 
-	it("opens View details on the status and request id, and Copy details copies them then shows Copied for 1200ms", async () => {
+	it("opens View details on the status, request id and message id, and Copy details copies them then shows Copied for 1200ms", async () => {
 		const container = renderRecords([OVERLOADED_RECORD]);
 		const card = container.querySelector("[data-api-error-card]");
 		const trigger = card?.querySelector("button");
@@ -165,7 +165,11 @@ describe("ApiErrorCard", () => {
 			box: "relative flex min-h-[32px] flex-col gap-1.5 rounded-card bg-alpha-1 py-1.5 ps-2 pe-[34px] text-footnote text-secondary",
 			facts: {
 				className: "flex flex-col text-ink-muted break-all select-text",
-				lines: ["Status: 529", "Request ID: req_011CfHarGaksRjzuQwv2aEni"],
+				lines: [
+					"Status: 529",
+					"Request ID: req_011CfHarGaksRjzuQwv2aEni",
+					"Message ID: 69f6c760-e79e-4483-bdfe-5fb492ef4838",
+				],
 			},
 			copy: {label: "Copy details", slot: "absolute top-1 end-1 flex"},
 			rawInPanel: false,
@@ -181,7 +185,11 @@ describe("ApiErrorCard", () => {
 			label: copy?.getAttribute("aria-label"),
 			status: box?.querySelector("[role=status]")?.textContent,
 		}).toStrictEqual({
-			copied: [["Status: 529\nRequest ID: req_011CfHarGaksRjzuQwv2aEni"]],
+			copied: [
+				[
+					"Status: 529\nRequest ID: req_011CfHarGaksRjzuQwv2aEni\nMessage ID: 69f6c760-e79e-4483-bdfe-5fb492ef4838",
+				],
+			],
 			label: "Copied",
 			status: "Copied",
 		});
@@ -189,6 +197,28 @@ describe("ApiErrorCard", () => {
 			vi.advanceTimersByTime(1200);
 		});
 		expect(copy?.getAttribute("aria-label")).toBe("Copy details");
+	});
+
+	it("leaves out the Message ID line, like upstream, when there is no status or request id", () => {
+		const container = renderRecords([
+			{
+				type: "assistant",
+				message: {
+					id: "69f6c760-e79e-4483-bdfe-5fb492ef4838",
+					role: "assistant",
+					content: [{type: "text", text: "API Error: something odd"}],
+				},
+				isApiErrorMessage: true,
+			},
+		]);
+		const card = container.querySelector("[data-api-error-card]");
+		fireEvent.click(card!.querySelector("button")!);
+		const box = card?.querySelector("[data-api-error-details]")?.firstElementChild;
+
+		expect({
+			facts: box?.querySelector(".break-all") ?? null,
+			messageId: box?.textContent.includes("Message ID"),
+		}).toStrictEqual({facts: null, messageId: false});
 	});
 
 	it("keeps the raw text in the details panel for an unclassified error, with no prose outside the card", () => {

@@ -4560,6 +4560,7 @@ function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: stri
 			{...(detailsText !== undefined && {details: detailsText})}
 			{...(line.apiErrorStatus !== undefined && {status: line.apiErrorStatus})}
 			{...(line.requestId !== undefined && {requestId: line.requestId})}
+			{...(line.messageId !== undefined && {messageId: line.messageId})}
 			{...(line.apiErrorCode !== undefined && {code: line.apiErrorCode})}
 		/>
 	);

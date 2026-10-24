@@ -1239,23 +1239,38 @@ describe("message metadata fields", () => {
 		expect(result.lines[1]!).not.toHaveProperty("isApiErrorMessage");
 	});
 
-	it("carries the request id and string error code on API error lines only", () => {
+	it("carries the request id, message id and string error code on API error lines only", () => {
 		const records = [
-			assistantRecord([{type: "text", text: "API Error: 529 Overloaded."}], {
+			{
+				...assistantRecord([{type: "text", text: "API Error: 529 Overloaded."}]),
+				message: {
+					id: "69f6c760-e79e-4483-bdfe-5fb492ef4838",
+					role: "assistant",
+					content: [{type: "text", text: "API Error: 529 Overloaded."}],
+				},
 				isApiErrorMessage: true,
 				apiErrorStatus: 529,
 				requestId: "req_011CfHarGaksRjzuQwv2aEni",
 				error: "server_error",
-			}),
-			assistantRecord([{type: "text", text: "fine"}], {requestId: "req_ok"}),
+			},
+			{
+				...assistantRecord([{type: "text", text: "fine"}], {requestId: "req_ok"}),
+				message: {id: "msg_ok", role: "assistant", content: [{type: "text", text: "fine"}]},
+			},
 		];
 		expect(
 			processTranscript(records).lines.map((line) =>
-				line.type === "assistant" ? {requestId: line.requestId, apiErrorCode: line.apiErrorCode} : null,
+				line.type === "assistant"
+					? {requestId: line.requestId, messageId: line.messageId, apiErrorCode: line.apiErrorCode}
+					: null,
 			),
 		).toStrictEqual([
-			{requestId: "req_011CfHarGaksRjzuQwv2aEni", apiErrorCode: "server_error"},
-			{requestId: undefined, apiErrorCode: undefined},
+			{
+				requestId: "req_011CfHarGaksRjzuQwv2aEni",
+				messageId: "69f6c760-e79e-4483-bdfe-5fb492ef4838",
+				apiErrorCode: "server_error",
+			},
+			{requestId: undefined, messageId: undefined, apiErrorCode: undefined},
 		]);
 	});
 
