@@ -55,6 +55,7 @@ import {createRecursiveWatcher, type RecursiveWatcher} from "./recursive-watch";
 import {gitIndexPath, TrackedFileIndex} from "./git-tracked";
 import {CooperativeQueue} from "./cooperative-queue";
 import {samePrStatus} from "./pr-status";
+import {workflowSessionIdForPath} from "./workflow-runs";
 
 /**
  * TTL covering the gap between the hook fast-path broadcast and this
@@ -92,6 +93,41 @@ interface JsonlThrottleState {
 }
 const jsonlThrottleByPath = new Map<string, JsonlThrottleState>();
 
+/** Leading-plus-trailing throttle per session: a run's agents append to their transcripts many times a second. */
+const WORKFLOW_THROTTLE_MS = 2000;
+const workflowThrottleBySession = new Map<string, JsonlThrottleState>();
+
+/**
+ * Route a watcher event for a session's workflow files (a run file or anything
+ * in a run's transcript directory): broadcast `workflows:changed` for that
+ * session, throttled. True when the path is one, so callers know; the event
+ * still flows on to the regular handlers (agent transcripts are indexed).
+ */
+function handleWorkflowFileEvent(path: string, projectsRoot: string, broadcast: BroadcastFn): boolean {
+	if (!projectsRoot) return false;
+	const sessionId = workflowSessionIdForPath(path, projectsRoot);
+	if (sessionId === null) return false;
+	const state = workflowThrottleBySession.get(sessionId) ?? {lastFired: 0};
+	workflowThrottleBySession.set(sessionId, state);
+	if (state.timer !== undefined) return true;
+	const fire = (): void => {
+		state.lastFired = Date.now();
+		delete state.timer;
+		broadcast(DOMAIN_EVENTS.WORKFLOWS_CHANGED, {sessionId});
+	};
+	const elapsed = Date.now() - state.lastFired;
+	if (elapsed >= WORKFLOW_THROTTLE_MS) fire();
+	else state.timer = setTimeout(fire, WORKFLOW_THROTTLE_MS - elapsed);
+	return true;
+}
+
+function resetWorkflowThrottle(): void {
+	for (const state of workflowThrottleBySession.values()) {
+		if (state.timer !== undefined) clearTimeout(state.timer);
+	}
+	workflowThrottleBySession.clear();
+}
+
 hmrDispose(closeWatcher);
 
 /** Stop watching and drop pending throttled JSONL updates. */
@@ -102,6 +138,7 @@ export async function closeWatcher(): Promise<void> {
 		if (state.timer !== undefined) clearTimeout(state.timer);
 	}
 	jsonlThrottleByPath.clear();
+	resetWorkflowThrottle();
 	if (current) await current.close();
 }
 
@@ -673,6 +710,7 @@ async function handleFileChange(path: string): Promise<void> {
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	await awaitInitialScan();
+	handleWorkflowFileEvent(path, projectsDir, broadcastTyped);
 	const normalizedPath = resolve(path);
 	const gitIndexRoot = fileContentRootByGitIndexPath.get(normalizedPath);
 	if (gitIndexRoot) {
@@ -881,6 +919,8 @@ export const __testing = {
 	handleFileContentUnlink,
 	handleFileChange,
 	handleJobFileEvent,
+	handleWorkflowFileEvent,
+	resetWorkflowThrottle,
 	readIgnoredDirsFromConfig,
 	DEFAULT_IGNORED_DIR_NAMES,
 	/** Override the resolved ignored-dir pattern so `shouldIgnoreWatch` is deterministic in tests. */

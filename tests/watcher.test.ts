@@ -1189,3 +1189,51 @@ describe("createWatcher integration", () => {
 		}
 	});
 });
+
+describe("handleWorkflowFileEvent", () => {
+	const projectsDir = "/home/alice/.claude/projects";
+	const session = join(projectsDir, "-Users-alice-projects-outline", "1ff9ad30-4e13-4af4-8d20-31a37088f09f");
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2000-01-01T00:00:00.000Z"));
+		__testing.resetWorkflowThrottle();
+	});
+
+	afterEach(() => {
+		__testing.resetWorkflowThrottle();
+		vi.useRealTimers();
+	});
+
+	it("broadcasts workflows:changed for the session at most once per throttle window, with a trailing fire", async () => {
+		const events: CapturedBroadcast[] = [];
+		const capture = (type: string, data: Record<string, unknown>): void => {
+			events.push({type, data});
+		};
+		const handled = [
+			__testing.handleWorkflowFileEvent(
+				join(session, "subagents", "workflows", "wf_1", "journal.jsonl"),
+				projectsDir,
+				capture,
+			),
+			__testing.handleWorkflowFileEvent(
+				join(session, "subagents", "workflows", "wf_1", "agent-a1.jsonl"),
+				projectsDir,
+				capture,
+			),
+			__testing.handleWorkflowFileEvent(join(session, "workflows", "wf_1.json"), projectsDir, capture),
+			__testing.handleWorkflowFileEvent(`${session}.jsonl`, projectsDir, capture),
+		];
+		const leading = events.length;
+		await vi.advanceTimersByTimeAsync(2_000);
+
+		expect({handled, leading, events}).toStrictEqual({
+			handled: [true, true, true, false],
+			leading: 1,
+			events: [
+				{type: DOMAIN_EVENTS.WORKFLOWS_CHANGED, data: {sessionId: "1ff9ad30-4e13-4af4-8d20-31a37088f09f"}},
+				{type: DOMAIN_EVENTS.WORKFLOWS_CHANGED, data: {sessionId: "1ff9ad30-4e13-4af4-8d20-31a37088f09f"}},
+			],
+		});
+	});
+});

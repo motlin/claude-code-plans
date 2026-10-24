@@ -138,7 +138,7 @@ function allTags(text: string, name: string): string[] {
  * stopped, blocked and cancelled as failed, and anything else as completed. A missing status
  * (Monitor events) is no finished task.
  */
-function notificationStatus(status: string | null): Exclude<BackgroundTaskStatus, "running"> | null {
+export function notificationStatus(status: string | null): Exclude<BackgroundTaskStatus, "running"> | null {
 	switch (status) {
 		case null:
 			return null;

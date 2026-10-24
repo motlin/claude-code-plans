@@ -8,6 +8,7 @@ import {SessionBucketSchema} from "../session-state";
 import {PrStatusSchema} from "../pr-status";
 import {SessionCostStateSchema} from "../session-cost";
 import {ApiRequestLogSchema} from "../api-request-log";
+import {RuntimeWorkflowProgressEntrySchema, type WorkflowRunStatus} from "../workflow-progress";
 import type {SessionStatusFilter} from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
@@ -353,6 +354,7 @@ export const sessionQueryKeys = {
 	devServers: (id: string) => [...SESSION_QUERY_ROOT, id, "dev-servers"] as const,
 	artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
 	subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
+	workflows: (id: string) => [...SESSION_QUERY_ROOT, id, "workflows"] as const,
 	openIn: (id: string) => [...SESSION_QUERY_ROOT, id, "open-in"] as const,
 };
 
@@ -620,6 +622,32 @@ export const sessionSubagentsQueryOptions = (id: string) =>
 		staleTime: Infinity,
 		gcTime: Infinity,
 	});
+
+const WORKFLOW_RUN_STATUSES = [
+	"running",
+	"completed",
+	"failed",
+	"stopped",
+] as const satisfies readonly WorkflowRunStatus[];
+
+/** One workflow run of a session (src/lib/workflow-runs.ts `WorkflowRun`). */
+const SessionWorkflowRunSchema = z.object({
+	runId: z.string(),
+	taskId: z.string(),
+	toolUseId: z.string(),
+	toolUseIds: z.array(z.string()),
+	workflowName: z.string(),
+	scriptPath: z.string(),
+	transcriptDir: z.string(),
+	description: z.string(),
+	status: z.enum(WORKFLOW_RUN_STATUSES),
+	summary: z.string().nullable(),
+	startedAt: z.number().nullable(),
+	durationMs: z.number().nullable(),
+	totalTokens: z.number().nullable(),
+	progress: z.array(RuntimeWorkflowProgressEntrySchema),
+});
+export const SessionWorkflowRunsResponse = z.array(SessionWorkflowRunSchema);
 
 export const ArchivedMutationResponse = z.object({archived: z.boolean()});
 

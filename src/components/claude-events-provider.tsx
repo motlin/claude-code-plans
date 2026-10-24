@@ -70,6 +70,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SUBAGENT_STOPPED,
 	DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT,
 	DOMAIN_EVENTS.SUBAGENTS_CHANGED,
+	DOMAIN_EVENTS.WORKFLOWS_CHANGED,
 	DOMAIN_EVENTS.SESSION_CWD_CHANGED,
 	DOMAIN_EVENTS.MESSAGE_DISPLAYED,
 	DOMAIN_EVENTS.NOTIFICATION,
@@ -432,6 +433,13 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					const sessionId = data["sessionId"];
 					if (typeof sessionId === "string") {
 						void queryClient.invalidateQueries({queryKey: sessionQueryKeys.subagents(sessionId)});
+					}
+					break;
+				}
+				case DOMAIN_EVENTS.WORKFLOWS_CHANGED: {
+					const sessionId = data["sessionId"];
+					if (typeof sessionId === "string") {
+						void queryClient.invalidateQueries({queryKey: sessionQueryKeys.workflows(sessionId)});
 					}
 					break;
 				}

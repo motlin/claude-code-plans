@@ -66,6 +66,8 @@ export const DOMAIN_EVENTS = {
 	SUBAGENTS_SNAPSHOT: "subagents:snapshot",
 	/** A session's indexed subagents changed in a way the running-tasks count reads (a teammate's command started or ended). */
 	SUBAGENTS_CHANGED: "subagents:changed",
+	/** A session's workflow run files changed: a run file, journal, agent meta or agent transcript. */
+	WORKFLOWS_CHANGED: "workflows:changed",
 	SESSION_CWD_CHANGED: "session:cwd-changed",
 	INSTRUCTIONS_LOADED: "instructions:loaded",
 	CONFIG_CHANGED: "config:changed",

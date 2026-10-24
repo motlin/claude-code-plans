@@ -17,6 +17,7 @@ import type {TerminalAppearance} from "./terminal-theme";
 import type {InterfaceFont} from "./appearance";
 import type {TerminalHostSetting} from "./terminal-host-setting";
 import type {WorkflowAgentEntryStateSchema, WorkflowProgressEntrySchema} from "./workflow-progress";
+import type {WorkflowJournalEventSchema, WorkflowRunFileStatusSchema} from "./workflow-runs";
 import type {McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema} from "./api/customize";
 import type {FileRefStatusSchema} from "./api/file-refs";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
@@ -330,6 +331,20 @@ const workflowAgentEntryStates = {
 	done: "Done",
 	error: "Failed",
 } satisfies Record<z.infer<typeof WorkflowAgentEntryStateSchema>, string>;
+
+/** How src/lib/workflow-runs.ts reads each journal event while a run is live. */
+const workflowJournalEventTypes = {
+	launched: "Ignored: a launch marker",
+	started: "Agent running",
+	result: "Agent done",
+	failed: "Agent failed",
+} satisfies Record<z.infer<typeof WorkflowJournalEventSchema>["type"], string>;
+
+/** How src/lib/workflow-runs.ts maps a run file's `status` (via notificationStatus). */
+const workflowRunFileStatuses = {
+	completed: "Completed",
+	killed: "Stopped",
+} satisfies Record<z.infer<typeof WorkflowRunFileStatusSchema>, string>;
 
 const taskStatusLabels = {
 	pending: "Pending",
@@ -1484,6 +1499,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	TaskStatusSchema: taskStatusLabels,
 	WorkflowProgressEntrySchema: workflowProgressEntryTypes,
 	"WorkflowProgressEntrySchema.<workflow_agent>.state": workflowAgentEntryStates,
+	WorkflowJournalEventSchema: workflowJournalEventTypes,
+	"WorkflowRunFileSchema.status": workflowRunFileStatuses,
 	"SessionRegistryFileSchema.status": sessionRegistryStatusLabels,
 	UnifiedSearchTypeSchema: unifiedSearchTypeLabels,
 	UnifiedSearchDateSchema: unifiedSearchDateLabels,
