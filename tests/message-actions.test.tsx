@@ -630,8 +630,56 @@ describe("UserMessageActions", () => {
 			rewind: hoverTooltip("Rewind to here"),
 			fork: hoverTooltip("Fork from here"),
 		}).toStrictEqual({
-			rewind: ["Rewind to here", "Removes this message and what follows"],
-			fork: ["Fork from here", "Starts a new session, keeps this one"],
+			rewind: ["Rewind to here", "Removes this message and everything after it."],
+			fork: ["Fork from here", "Starts a new session from this point. This one stays as it is."],
+		});
+	});
+
+	it("describes Rewind and Fork with upstream's toolbar detail as aria-description", () => {
+		const {container} = render(
+			withActions(
+				{
+					rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>(),
+					forkFrom: vi.fn<NonNullable<TranscriptActions["forkFrom"]>>(),
+				},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+
+		expect({
+			copy: button(container, "Copy").getAttribute("aria-description"),
+			rewind: button(container, "Rewind to here").getAttribute("aria-description"),
+			fork: button(container, "Fork from here").getAttribute("aria-description"),
+		}).toStrictEqual({
+			copy: null,
+			rewind: "Removes this message and everything after it.",
+			fork: "Starts a new session from this point. This one stays as it is.",
+		});
+	});
+
+	it("keeps focus where it was when a toolbar button is pressed, as upstream's onMouseDown preventDefault", () => {
+		const {container} = render(
+			<>
+				<textarea aria-label="Composer" />
+				{withActions(
+					{
+						rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>(),
+						forkFrom: vi.fn<NonNullable<TranscriptActions["forkFrom"]>>(),
+					},
+					<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+				)}
+			</>,
+		);
+		const composer = container.querySelector("textarea")!;
+		composer.focus();
+
+		const prevented = ["Copy", "Rewind to here", "Fork from here"].map(
+			(label) => !fireEvent.mouseDown(button(container, label)),
+		);
+
+		expect({prevented, focused: document.activeElement === composer}).toStrictEqual({
+			prevented: [true, true, true],
+			focused: true,
 		});
 	});
 
@@ -745,6 +793,17 @@ describe("Rewind while Claude is working", () => {
 		);
 
 		expect(rewindState(container)).toStrictEqual({disabled: false, wrapperTabIndex: -1, description: null});
+	});
+
+	it("swaps Rewind's aria-description for the working reason while disabled, as upstream", () => {
+		const {container} = render(
+			withActions(
+				{rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>(), rewindDisabledReason: REASON},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+
+		expect(button(container, "Rewind to here").getAttribute("aria-description")).toBe(REASON);
 	});
 });
 

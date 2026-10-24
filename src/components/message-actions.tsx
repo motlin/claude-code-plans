@@ -1,5 +1,14 @@
 import {Check, CheckCheck, Copy, Loader2, Pause, Pin, RotateCcw, Split, Volume2, X} from "lucide-react";
-import {createContext, type FocusEvent, type ReactNode, useContext, useEffect, useRef, useState} from "react";
+import {
+	createContext,
+	type FocusEvent,
+	type MouseEvent,
+	type ReactNode,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 
 import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
@@ -92,6 +101,10 @@ function useRovingTabIndex(first: boolean): number | undefined {
 	return first ? 0 : -1;
 }
 
+function preventFocusSteal(event: MouseEvent) {
+	event.preventDefault();
+}
+
 function ActionButton({
 	label,
 	description,
@@ -125,10 +138,14 @@ function ActionButton({
 			<button
 				type="button"
 				aria-label={label}
+				// Upstream's aria-description is the tooltip detail, or the reason while disabled.
+				{...(description === undefined ? {} : {"aria-description": blocked ? disabledReason : description})}
 				{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
 				{...(readAloud ? {"data-read-aloud": ""} : {})}
 				{...(tabIndex === undefined ? {} : {tabIndex})}
 				disabled={onClick === undefined || blocked}
+				// Pressing keeps focus where it was (the composer), as upstream's toolbar buttons do.
+				onMouseDown={preventFocusSteal}
 				onClick={blocked ? undefined : onClick}
 				className={BUTTON_CLASS}
 			>
@@ -218,7 +235,7 @@ function ForkAction({message}: {message: TranscriptMessageRef | undefined}) {
 	return (
 		<ActionButton
 			label="Fork from here"
-			description="Starts a new session, keeps this one"
+			description="Starts a new session from this point. This one stays as it is."
 			disabledReason={forkDisabledReason ?? null}
 			onClick={bound(forkFrom, message)}
 		>
@@ -244,7 +261,7 @@ function RewindAction({message}: {message: TranscriptMessageRef | undefined}) {
 	return (
 		<ActionButton
 			label="Rewind to here"
-			description="Removes this message and what follows"
+			description="Removes this message and everything after it."
 			disabledReason={rewindDisabledReason ?? null}
 			onClick={bound(rewindTo, message)}
 		>
