@@ -16,7 +16,7 @@ import {basename, join} from "node:path";
 import {afterAll, afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {AppFrame} from "../../src/components/app-frame";
 import {ESTIMATED_TURN_HEIGHT_PIXELS} from "../../src/components/session-chat";
-import {preloadFileTypeIcons} from "../../src/components/file-mention-menu";
+import {preloadFileTypeIcons} from "../../src/components/lazy-file-type-icon";
 import {SettingsProvider} from "../../src/components/settings-provider";
 import {ThemeProvider} from "../../src/components/theme-provider";
 import {ToastProvider} from "../../src/components/toast";

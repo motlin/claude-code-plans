@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {preloadFileTypeIcons} from "../src/components/lazy-file-type-icon";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SessionChat} from "../src/components/session-chat";
@@ -32,6 +33,10 @@ class FakeObserver {
 		return [];
 	}
 }
+
+beforeAll(async () => {
+	await preloadFileTypeIcons();
+});
 
 beforeEach(() => {
 	installLocalStorage();
@@ -937,16 +942,43 @@ describe("TurnChangesCard", () => {
 			card: card.classList.contains("text-[13px]/[19px]"),
 			title: screen.getByText("Edited 2 files").className,
 			icon: item?.querySelector("svg")?.getAttribute("class"),
+			iconSize: [item?.querySelector("svg")?.style.width, item?.querySelector("svg")?.style.height],
 			name: within(item!).getByText("file-1.ts").className,
 			stats: within(item!).getByText("+1").parentElement?.parentElement?.className,
 			seeAll: within(card).getByText("See all").className,
 		}).toStrictEqual({
 			card: true,
 			title: "min-w-0 truncate text-primary",
-			icon: "lucide lucide-file-text size-4",
+			icon: "shrink-0",
+			iconSize: ["16px", "16px"],
 			name: "min-w-0 truncate text-primary",
 			stats: "flex shrink-0 items-center gap-0.5 tabular-nums text-[12px]/[15px]",
 			seeAll: "min-w-0 truncate text-primary",
+		});
+	});
+
+	it("draws each multi-file row's own 16px file-type icon, never the generic FileText", () => {
+		const changes = changesWith(2);
+		changes.files = [
+			{path: "/repo/package.json", added: 1, removed: 1},
+			{path: "/repo/README.md", added: 2, removed: 1},
+		];
+		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changes} undoable />);
+		expect({
+			rows: screen.getAllByRole("link").map((link) => {
+				const icon = link.querySelector<SVGSVGElement>("svg[data-file-type-icon]");
+				return {
+					width: icon?.style.width,
+					fill: icon?.querySelector("path")?.getAttribute("fill"),
+				};
+			}),
+			fileText: container.querySelectorAll(".lucide-file-text").length,
+		}).toStrictEqual({
+			rows: [
+				{width: "16px", fill: "var(--fti-json)"},
+				{width: "16px", fill: "var(--fti-markdown)"},
+			],
+			fileText: 0,
 		});
 	});
 

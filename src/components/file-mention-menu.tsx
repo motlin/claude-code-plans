@@ -1,38 +1,11 @@
-import {useLayoutEffect, useRef, useState, useSyncExternalStore} from "react";
+import {useLayoutEffect, useRef, useState} from "react";
 import {Folder} from "lucide-react";
 
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionMenuWidth} from "../lib/file-mentions";
 import {fileMentionOptionId} from "./file-mention-option-id";
+import {type FileTypeIconModule, useFileTypeIcons} from "./lazy-file-type-icon";
 import {Tooltip} from "./ui/tooltip";
-
-type FileTypeIconModule = typeof import("./file-type-icon");
-
-// Keeps the file-type icon set out of the composer's cold load; upstream also draws a placeholder while its icon JSON
-// loads. Rows read the loaded module synchronously instead of suspending, so a late load never hides the open menu.
-let fileTypeIconModule: FileTypeIconModule | undefined;
-let fileTypeIconLoad: Promise<FileTypeIconModule> | undefined;
-const fileTypeIconListeners = new Set<() => void>();
-
-/** Starts loading the mention rows' file-type icons; the composer calls it on mount so the first `@` already has them. */
-export async function preloadFileTypeIcons(): Promise<FileTypeIconModule> {
-	fileTypeIconLoad ??= import("./file-type-icon").then((module) => {
-		fileTypeIconModule = module;
-		for (const listener of fileTypeIconListeners) listener();
-		return module;
-	});
-	return fileTypeIconLoad;
-}
-
-function subscribeFileTypeIcons(listener: () => void): () => void {
-	fileTypeIconListeners.add(listener);
-	void preloadFileTypeIcons();
-	return () => {
-		fileTypeIconListeners.delete(listener);
-	};
-}
-
-const loadedFileTypeIcons = () => fileTypeIconModule;
 
 const POPUP_CLASS =
 	"absolute z-[130] flex max-h-[min(24rem,calc(100svh-2rem))] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 text-body text-primary shadow-[var(--menu-shadow)] select-none";
@@ -69,7 +42,7 @@ export function FileMentionMenu({
 	onAccept: (entry: SessionFilesEntry) => void;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
-	const icons = useSyncExternalStore(subscribeFileTypeIcons, loadedFileTypeIcons, loadedFileTypeIcons);
+	const icons = useFileTypeIcons();
 	// Tied to the entries it was set against, so a new result list drops a stale hover.
 	const [hover, setHover] = useState<{
 		entries: readonly SessionFilesEntry[];

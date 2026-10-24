@@ -2,9 +2,10 @@ import {getSingularPatch} from "@pierre/diffs";
 import type {FileDiffMetadata, GetHoveredLineResult} from "@pierre/diffs";
 import {FileDiff} from "@pierre/diffs/react";
 import type {FileDiffOptions} from "@pierre/diffs/react";
-import {ArrowUpRight, ChevronDown, ChevronRight, FileText, Plus} from "lucide-react";
+import {ArrowUpRight, ChevronDown, ChevronRight, Plus} from "lucide-react";
 import {type ReactNode, useMemo, useState} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
+import {LazyFileTypeIcon} from "../lazy-file-type-icon";
 import {DIFFS_STYLE_OVERRIDES} from "./diffs-config";
 import type {DiffStyle} from "../settings-context";
 import {useResolvedTheme} from "../theme-context";
@@ -117,7 +118,7 @@ export function DiffFileHeader({
 				<span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center text-ink-muted">
 					<Chevron className="size-3.5" />
 				</span>
-				<FileText aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
+				<LazyFileTypeIcon fileName={name} size="xs" className="text-ink-muted" />
 				<span className="flex min-w-0 text-body text-secondary">
 					<span dir="ltr" className="flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap">
 						<span className="max-w-full shrink-0 truncate">{name}</span>

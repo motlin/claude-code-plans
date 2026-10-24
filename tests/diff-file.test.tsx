@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import {cleanup, render, waitFor} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {DiffFile} from "../src/components/changes/diff-file";
+import {preloadFileTypeIcons} from "../src/components/lazy-file-type-icon";
 
 const PATCH = `diff --git a/src/greet.ts b/src/greet.ts
 index 1111111..2222222 100644
@@ -37,6 +38,10 @@ class FakeResizeObserver {
 		return [];
 	}
 }
+
+beforeAll(async () => {
+	await preloadFileTypeIcons();
+});
 
 beforeEach(() => {
 	vi.stubGlobal("ResizeObserver", FakeResizeObserver);
@@ -95,6 +100,30 @@ describe("DiffFile", () => {
 				slot: header?.parentElement?.getAttribute("slot"),
 				text: header?.textContent,
 			}).toEqual({path: "src/greet.ts", slot: "header-custom", text: "greet.tssrc+3−1"});
+		});
+	});
+
+	it("draws upstream's 12px file-type icon for the header's file before the path", async () => {
+		const {container} = render(<DiffFile patch={PATCH} />);
+
+		await waitFor(() => {
+			const header = container.querySelector("[data-diff-file-header]");
+			const icon = header?.querySelector<SVGSVGElement>("svg[data-file-type-icon]");
+			expect({
+				className: icon?.getAttribute("class"),
+				width: icon?.style.width,
+				height: icon?.style.height,
+				fills: [...(icon?.querySelectorAll("path") ?? [])].map((path) => path.getAttribute("fill")),
+				nextClass: icon?.nextElementSibling?.getAttribute("class"),
+				lucide: header?.querySelectorAll(".lucide-file-text").length,
+			}).toEqual({
+				className: "shrink-0 text-ink-muted",
+				width: "12px",
+				height: "12px",
+				fills: ["var(--fti-typescript)", "var(--fti-typescript)"],
+				nextClass: "flex min-w-0 text-body text-secondary",
+				lucide: 0,
+			});
 		});
 	});
 

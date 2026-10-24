@@ -81,7 +81,8 @@ import {
 	ENVIRONMENT_BAR_ROW_CLASS,
 	ENVIRONMENT_PLACE_CLASS,
 } from "./composer-tokens";
-import {FileMentionMenu, preloadFileTypeIcons} from "./file-mention-menu";
+import {FileMentionMenu} from "./file-mention-menu";
+import {preloadFileTypeIcons} from "./lazy-file-type-icon";
 import {QueuedMessageBar} from "./queued-message-bar";
 import {ToastContext} from "./toast-context";
 import {fileMentionOptionId} from "./file-mention-option-id";

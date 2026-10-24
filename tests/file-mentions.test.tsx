@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
-import {preloadFileTypeIcons} from "../src/components/file-mention-menu";
+import {preloadFileTypeIcons} from "../src/components/lazy-file-type-icon";
 import {ToastProvider} from "../src/components/toast";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {

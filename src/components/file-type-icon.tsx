@@ -20,10 +20,7 @@ import {
 	resolveFileTypeIcon,
 } from "../lib/file-type-icons";
 
-/** Upstream `I`: icon box in px. */
-const SIZE_PX = {xs: 12, sm: 16, md: 20, xl: 28} as const;
-
-export type FileTypeIconSize = keyof typeof SIZE_PX;
+import {FILE_TYPE_ICON_SIZE_PX, type FileTypeIconSize} from "./file-type-icon-size";
 
 /** Local stand-ins for upstream's monochrome cds glyphs. */
 const GLYPH_ICONS: Readonly<Record<FileTypeGlyph, LucideIcon>> = {
@@ -83,7 +80,7 @@ export function FileTypeIcon({
 	className?: string;
 	fallback?: ReactNode;
 }): ReactNode {
-	const px = `${SIZE_PX[size]}px`;
+	const px = `${FILE_TYPE_ICON_SIZE_PX[size]}px`;
 	const style = {width: px, height: px};
 	const classes = className ? `shrink-0 ${className}` : "shrink-0";
 	const glyph = fileTypeGlyph(fileName);

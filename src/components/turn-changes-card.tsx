@@ -1,4 +1,4 @@
-import {Code, FileText} from "lucide-react";
+import {Code} from "lucide-react";
 import {type ReactNode, useContext, useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
@@ -6,6 +6,7 @@ import {requestChangesScope} from "../lib/changes-scope-request";
 import {formatCount} from "../lib/pluralize";
 import type {TurnChanges} from "../lib/turn-changes";
 import {turnUndoPrompt} from "../lib/turn-undo-prompt";
+import {LazyFileTypeIcon} from "./lazy-file-type-icon";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {ToastContext} from "./toast-context";
 import {TurnUndoConfirm} from "./turn-undo";
@@ -132,20 +133,10 @@ function UndoButton({
 	);
 }
 
-function RowLabel({
-	icon: Icon,
-	path,
-	folderHint,
-}: {
-	icon: typeof FileText;
-	path: string;
-	folderHint: string | undefined;
-}) {
+function RowLabel({icon, path, folderHint}: {icon: ReactNode; path: string; folderHint: string | undefined}) {
 	return (
 		<span className="relative flex min-w-0 items-center gap-1">
-			<span className="flex shrink-0 text-ink-muted">
-				<Icon aria-hidden="true" className="size-4" />
-			</span>
+			<span className="flex shrink-0 text-ink-muted">{icon}</span>
 			<span className="min-w-0 truncate text-primary">
 				{basename(path)}
 				{folderHint !== undefined && (
@@ -225,7 +216,13 @@ export function TurnChangesCard({
 
 	const [soleFile] = changes.files;
 	if (count === 1 && soleFile !== undefined) {
-		const label = <RowLabel icon={Code} path={soleFile.path} folderHint={undefined} />;
+		const label = (
+			<RowLabel
+				icon={<Code aria-hidden="true" className="size-4" />}
+				path={soleFile.path}
+				folderHint={undefined}
+			/>
+		);
 		return (
 			<div data-turn-changes-card className={CARD_CLASS}>
 				<ul aria-label={title} className="flex w-full min-w-0 flex-col">
@@ -298,7 +295,11 @@ export function TurnChangesCard({
 				{visible.map((file) => (
 					<li key={file.path} className={ITEM_CLASS}>
 						<a href={fileViewerPath(file.path)} title={file.path} className={ROW_CONTROL_CLASS}>
-							<RowLabel icon={FileText} path={file.path} folderHint={hints.get(file.path)} />
+							<RowLabel
+								icon={<LazyFileTypeIcon fileName={file.path} size="sm" />}
+								path={file.path}
+								folderHint={hints.get(file.path)}
+							/>
 						</a>
 						<RowTrailing added={file.added} removed={file.removed} />
 					</li>
