@@ -7,6 +7,7 @@ import {formatCount} from "../lib/pluralize";
 import type {TurnChanges} from "../lib/turn-changes";
 import {turnUndoPrompt} from "../lib/turn-undo-prompt";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
+import {ToastContext} from "./toast-context";
 import {TurnUndoConfirm} from "./turn-undo";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useTurnUndo} from "./use-turn-undo";
@@ -170,24 +171,6 @@ function RowTrailing({added, removed, undo}: {added: number; removed: number; un
 	);
 }
 
-function UndoFeedback({undo}: {undo: ReturnType<typeof useTurnUndo>}) {
-	return (
-		<>
-			{undo.state.kind === "done" && (
-				<p role="status" className="px-2 text-body text-secondary">
-					{undo.state.message}
-				</p>
-			)}
-			{undo.state.kind === "error" && (
-				<p role="alert" className="px-2 text-body text-danger-000">
-					{undo.state.message}
-				</p>
-			)}
-			<TurnUndoConfirm undo={undo} />
-		</>
-	);
-}
-
 /**
  * Upstream's end-of-turn changes card: "Edited N files", up to three file
  * rows (icon, name, stats), then a closing "See all +A −R" row that opens the
@@ -202,7 +185,8 @@ function UndoFeedback({undo}: {undo: ReturnType<typeof useTurnUndo>}) {
  * Undo shows only when `undoable`: upstream offers it on the session's last turn alone,
  * never on an archived session. As upstream, it sends a message asking Claude to undo
  * the turn's files when the session has a live pane. Without one it falls back to the local direct revert behind
- * a confirm, which upstream has no counterpart for.
+ * a confirm, which upstream has no counterpart for (a local adaptation). Its outcome goes to a toast, so the card's
+ * DOM matches upstream's in every state.
  */
 export function TurnChangesCard({
 	sessionId,
@@ -215,7 +199,11 @@ export function TurnChangesCard({
 }) {
 	const host = useOptionalPaneHost();
 	const [expanded, setExpanded] = useTurnExpanded(changes.turnUuid);
-	const undo = useTurnUndo();
+	// Optional: cards rendered outside the app shell (tests, previews) have no toaster.
+	const toast = useContext(ToastContext);
+	const undo = useTurnUndo((outcome) => {
+		toast?.({kind: outcome.kind === "done" ? "success" : "error", message: outcome.message});
+	});
 	const send = useContext(TurnUndoSendContext);
 	const startUndo =
 		send === null
@@ -273,7 +261,7 @@ export function TurnChangesCard({
 						/>
 					</li>
 				</ul>
-				<UndoFeedback undo={undo} />
+				<TurnUndoConfirm undo={undo} />
 			</div>
 		);
 	}
@@ -341,7 +329,7 @@ export function TurnChangesCard({
 					)}
 				</li>
 			</ul>
-			<UndoFeedback undo={undo} />
+			<TurnUndoConfirm undo={undo} />
 		</div>
 	);
 }

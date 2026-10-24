@@ -7,6 +7,7 @@ import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SessionChat} from "../src/components/session-chat";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {TurnChangesCard} from "../src/components/turn-changes-card";
 import {TurnUndoSendContext} from "../src/components/turn-undo-send-context";
 import {fileViewerPath} from "../src/lib/api/file";
@@ -1265,7 +1266,12 @@ describe("TurnChangesCard Undo", () => {
 				reverted: ["/repo/src/file-1.ts", "/repo/src/file-2.ts"],
 			}),
 		]);
-		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />);
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		const {container} = render(
+			<ToastContext.Provider value={toast}>
+				<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />
+			</ToastContext.Provider>,
+		);
 
 		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
 		const dialog = await screen.findByRole("alertdialog");
@@ -1273,15 +1279,22 @@ describe("TurnChangesCard Undo", () => {
 			.getAllByRole("listitem")
 			.map((item) => item.textContent);
 		fireEvent.click(within(dialog).getByRole("button", {name: "Undo changes"}));
-		const status = await screen.findByText("Reverted 2 files");
+		await vi.waitFor(() => {
+			expect(toast).toHaveBeenCalled();
+		});
+		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
 
 		expect({
 			title: within(dialog).getByRole("heading").textContent,
 			listed,
+			toasts: toast.mock.calls,
+			inline: within(card).queryAllByRole("status").concat(within(card).queryAllByRole("alert")),
 			calls,
 		}).toStrictEqual({
 			title: "Undo changes from this turn?",
 			listed: ["file-1.ts", "file-2.ts"],
+			toasts: [[{kind: "success", message: "Reverted 2 files"}]],
+			inline: [],
 			calls: [
 				{
 					url: "/api/sessions/s-1/turn-undo?turn=u-1",
@@ -1295,7 +1308,6 @@ describe("TurnChangesCard Undo", () => {
 				},
 			],
 		});
-		expect(status.textContent).toBe("Reverted 2 files");
 	});
 
 	it("writes nothing when the dialog is cancelled", async () => {
@@ -1322,17 +1334,27 @@ describe("TurnChangesCard Undo", () => {
 				],
 			}),
 		]);
-		render(<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />);
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		const {container} = render(
+			<ToastContext.Provider value={toast}>
+				<TurnChangesCard sessionId="s-1" changes={changesWith(2)} undoable />
+			</ToastContext.Provider>,
+		);
 
 		fireEvent.click(screen.getByRole("button", {name: "Undo"}));
-		const alert = await screen.findByRole("alert");
+		await vi.waitFor(() => {
+			expect(toast).toHaveBeenCalled();
+		});
+		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
 
 		expect({
-			alert: alert.textContent,
+			toasts: toast.mock.calls,
+			inline: within(card).queryAllByRole("status").concat(within(card).queryAllByRole("alert")),
 			dialog: screen.queryByRole("alertdialog"),
 			methods: calls.map((call) => call.method),
 		}).toStrictEqual({
-			alert: "Can't undo: file-1.ts changed since this turn.",
+			toasts: [[{kind: "error", message: "Can't undo: file-1.ts changed since this turn."}]],
+			inline: [],
 			dialog: null,
 			methods: ["GET"],
 		});
