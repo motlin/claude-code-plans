@@ -98,7 +98,7 @@ function promptText(content: string | readonly {type: string; text?: unknown}[])
 }
 
 /** A send the pane refused: the prompt to put back, herdr's message, and whether Try again can resend it. */
-interface SendRejection {
+export interface SendRejection {
 	prompt: string;
 	message: string;
 	nonResendable: boolean;

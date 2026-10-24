@@ -126,6 +126,7 @@ import {notificationsQueryOptions} from "../lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
 import {DockedPlanApproval} from "./docked-plan-approval";
+import {SendRejectedCard} from "./send-rejected-card";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {findPendingPermission, permissionWaitToolUseId, type PermissionDecision} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
@@ -544,6 +545,12 @@ function SessionView({
 				};
 	const refillRejectedPrompt = useCallback((prompt: string) => refillComposer(sessionId, prompt), [sessionId]);
 	const liveHerdrPrompt = useLiveHerdrPrompt(sessionId, endIndex, processed.lines, undefined, refillRejectedPrompt);
+	const {clearRejection} = liveHerdrPrompt;
+	// Try again's resend-if-unchanged rule lands with send-rejected-error-card-refill task 4; until then both buttons clear and focus.
+	const dismissRejection = useCallback(() => {
+		clearRejection();
+		focusComposer(sessionId);
+	}, [clearRejection, sessionId]);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const stopAvailable = canStopResponse({
 		hasLivePane: promptBehavior.hasLivePane,
@@ -964,6 +971,14 @@ function SessionView({
 													key={dockedPlan.toolUseId}
 													pendingPlan={dockedPlan}
 													plan={planApprovalCtx}
+												/>
+											)}
+											{/* Upstream docks a rejected send's session-error card above the composer */}
+											{liveHerdrPrompt.state.rejection !== null && (
+												<SendRejectedCard
+													rejection={liveHerdrPrompt.state.rejection}
+													onRetry={dismissRejection}
+													onDismiss={dismissRejection}
 												/>
 											)}
 											{/* Upstream sets the usage chip between the docked card and the composer */}
