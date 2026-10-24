@@ -328,8 +328,8 @@ export interface ProcessedTranscript {
 	uuidToLine: Map<string, number>;
 	title: string;
 	customTitle: string | undefined;
-	/** The served cuts keyed by the on-chain prompt that replaced each abandoned branch. */
-	cutsByReplacement: ReadonlyMap<string, TranscriptCut>;
+	/** The served cuts keyed by the on-chain prompt that replaced each abandoned branch, in served order. */
+	cutsByReplacement: ReadonlyMap<string, readonly TranscriptCut[]>;
 }
 
 /** The active chain the server computed over the whole file (transcript-chain.ts). */
@@ -1241,13 +1241,20 @@ export function processTranscript(records: unknown[], startLineIndex = 0, chain?
 		uuidToLine,
 		chain?.hidden,
 	);
+	// The served cuts grouped by the prompt that replaced them, keeping served order.
+	const cutsByReplacement = new Map<string, TranscriptCut[]>();
+	for (const cut of chain?.cuts ?? []) {
+		const group = cutsByReplacement.get(cut.replacementUuid);
+		if (group === undefined) cutsByReplacement.set(cut.replacementUuid, [cut]);
+		else group.push(cut);
+	}
 	return {
 		lines: sessionLines,
 		toolResultMap: toolResults,
 		uuidToLine,
 		title,
 		customTitle,
-		cutsByReplacement: new Map(chain?.cuts.map((cut) => [cut.replacementUuid, cut])),
+		cutsByReplacement,
 	};
 }
 

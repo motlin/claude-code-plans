@@ -180,16 +180,35 @@ const records: Record<string, unknown>[] = [
 ];
 const cut = {parentUuid: "a1", replacementUuid: "u3", at: "2026-09-28T10:01:00.000Z", count: 1};
 
-async function renderSessionPage() {
+// A second pull-back onto the same parent: "do chapter 2b" was abandoned too.
+const twoCutRecords: Record<string, unknown>[] = [
+	...records.slice(0, 3),
+	{
+		type: "user",
+		uuid: "u2b",
+		parentUuid: "a1",
+		sessionId: SESSION_ID,
+		timestamp: "2026-09-28T15:41:30.000Z",
+		message: {role: "user", content: "Fabricated prompt: do chapter 2b"},
+	},
+	...records.slice(3),
+];
+const secondCut = {parentUuid: "a1", replacementUuid: "u3", at: "2026-09-28T15:41:30.000Z", count: 1};
+
+async function renderSessionPage(
+	served: {records: Record<string, unknown>[]; hiddenUuids: string[]; cuts: (typeof cut)[]} = {
+		records,
+		hiddenUuids: ["u2"],
+		cuts: [cut],
+	},
+) {
 	const queryClient = newQueryClient();
 	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, detail);
 	queryClient.setQueryData(transcriptQueryOptions(SESSION_ID).queryKey, {
-		records,
+		...served,
 		byteOffset: 0,
 		startIndex: START_INDEX,
 		precedingMessageCount: 0,
-		hiddenUuids: ["u2"],
-		cuts: [cut],
 		chainVersion: "v1",
 	});
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);
@@ -241,7 +260,7 @@ describe("processTranscript with the served active chain", () => {
 				["a1", 449],
 				["u3", 451],
 			],
-			cuts: [["u3", cut]],
+			cuts: [["u3", [cut]]],
 		});
 	});
 
@@ -267,7 +286,39 @@ describe("session page active chain", () => {
 		}).toStrictEqual({chapter3: 1, chapter2: 0, chapter1Index: "448", chapter3Index: "451"});
 	});
 
-	it("shows both prompts in verbose mode, the raw JSONL view", async () => {
+	it("marks the cut with a plain Rewound here marker just before the replacement prompt", async () => {
+		await renderSessionPage();
+
+		const markers = screen.getAllByTestId("rewind-marker");
+		const marker = markers[0];
+		const chapter3 = screen.getByText("Fabricated prompt: do chapter 3");
+		expect({
+			count: markers.length,
+			html: marker?.outerHTML,
+			before:
+				marker === undefined
+					? null
+					: (marker.compareDocumentPosition(chapter3) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+		}).toStrictEqual({
+			count: 1,
+			html: '<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" class="flex flex-col w-full -my-p3"><div data-turn-status-marker="" class="flex min-w-0 me-[52px] px-1 py-0.5"><span class="text-body min-w-0 truncate text-ink-muted">Rewound here</span></div></div>',
+			before: true,
+		});
+	});
+
+	it("adds each cut's time when two cuts share a parent", async () => {
+		await renderSessionPage({records: twoCutRecords, hiddenUuids: ["u2", "u2b"], cuts: [cut, secondCut]});
+
+		expect({
+			labels: screen.getAllByTestId("rewind-marker").map((marker) => marker.textContent),
+			chapter2b: screen.queryAllByText("Fabricated prompt: do chapter 2b").length,
+		}).toStrictEqual({
+			labels: ["Rewound here \u00B7\u00A010:01\u00A0AM", "Rewound here \u00B7\u00A03:41\u00A0PM"],
+			chapter2b: 0,
+		});
+	});
+
+	it("turns the marker into a collapsed disclosure in verbose mode that shows the abandoned branch greyed", async () => {
 		const preset = VERBOSITY_PRESETS.verbose;
 		for (const key of objectKeys(preset)) {
 			const value = preset[key];
@@ -276,11 +327,30 @@ describe("session page active chain", () => {
 		writeStoredValue("verbosity", "verbose");
 		await renderSessionPage();
 
-		expect({
-			chapter3: screen.getAllByText("Fabricated prompt: do chapter 3").length,
-			chapter2: screen.getAllByText("Fabricated prompt: do chapter 2").length,
-			chapter2Index: promptRecordIndex("Fabricated prompt: do chapter 2"),
+		const disclosure = screen.getByRole("button", {name: "Rewound here"});
+		const collapsed = {
+			expanded: disclosure.getAttribute("aria-expanded"),
+			chapter2: screen.queryAllByText("Fabricated prompt: do chapter 2").length,
 			chapter3Index: promptRecordIndex("Fabricated prompt: do chapter 3"),
-		}).toStrictEqual({chapter3: 1, chapter2: 1, chapter2Index: "450", chapter3Index: "451"});
+		};
+		act(() => {
+			disclosure.click();
+		});
+		const chapter2 = screen.getByText("Fabricated prompt: do chapter 2");
+
+		expect({
+			collapsed,
+			expanded: disclosure.getAttribute("aria-expanded"),
+			greyed: chapter2.closest("[data-rewound-away]")?.className,
+			chapter2Index: promptRecordIndex("Fabricated prompt: do chapter 2"),
+			markerBeforeChapter2:
+				(disclosure.compareDocumentPosition(chapter2) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+		}).toStrictEqual({
+			collapsed: {expanded: "false", chapter2: 0, chapter3Index: "451"},
+			expanded: "true",
+			greyed: "opacity-60",
+			chapter2Index: "450",
+			markerBeforeChapter2: true,
+		});
 	});
 });

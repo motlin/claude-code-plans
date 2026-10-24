@@ -389,18 +389,16 @@ function SessionView({
 	// neighbour and resolves links copied before anchors moved to message uuids.
 	// The server computes the active chain over the whole file, so the page only
 	// skips the records it served as hidden and never recomputes the chain.
+	const hiddenUuids = useMemo(() => new Set(transcript.hiddenUuids), [transcript.hiddenUuids]);
 	const chainProcessed = useMemo(
 		() =>
-			processTranscript(transcript.records, transcript.startIndex, {
-				hidden: new Set(transcript.hiddenUuids),
-				cuts: transcript.cuts,
-			}),
-		[transcript.records, transcript.startIndex, transcript.hiddenUuids, transcript.cuts],
+			processTranscript(transcript.records, transcript.startIndex, {hidden: hiddenUuids, cuts: transcript.cuts}),
+		[transcript.records, transcript.startIndex, hiddenUuids, transcript.cuts],
 	);
 	const hasThinking = useMemo(() => sessionHasThinking(chainProcessed.lines), [chainProcessed.lines]);
 	const transcriptView = useTranscriptModeShortcut(sessionId, {hasThinking});
 	const {mode: transcriptMode, flags: transcriptFlags} = transcriptView;
-	// Verbose is the raw JSONL view, abandoned branches included.
+	// Verbose is the raw JSONL view: abandoned branches stay in, behind each cut's marker.
 	const showAbandoned = transcriptMode === "verbose" && transcript.hiddenUuids.length > 0;
 	const processed = useMemo(
 		() => (showAbandoned ? processTranscript(transcript.records, transcript.startIndex) : chainProcessed),
@@ -1213,6 +1211,8 @@ function SessionView({
 															settings.transcriptWidth,
 														])}
 														toolResultMap={processed.toolResultMap}
+														rewindCuts={chainProcessed.cutsByReplacement}
+														rewoundUuids={hiddenUuids}
 														allowedImageRoots={data.imageRoots}
 														subagents={subagents}
 														showThinking={transcriptFlags.showThinking}

@@ -71,6 +71,8 @@ import {ToastContext} from "./toast-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
+import type {TranscriptCut} from "../lib/api/sessions";
+import {rewindLayout, type RewindMarkerPlacement} from "../lib/rewind-layout";
 import type {ToolUseBlock} from "../lib/schemas";
 import {toolBucket, type ToolBucket} from "../lib/tool-runs";
 import {AttachmentBanner, Banner} from "./attachment-banner";
@@ -162,7 +164,14 @@ export interface SessionChatProps {
 	onFocusComposer?: (() => void) | undefined;
 	/** The session page hosts a side chat, so the selection bar offers "Start a side chat". */
 	sideChatAvailable?: boolean;
+	/** The served rewind cuts, keyed by the prompt that replaced each abandoned branch. */
+	rewindCuts?: ReadonlyMap<string, readonly TranscriptCut[]>;
+	/** Uuids of the records on abandoned branches; only Verbose's raw view still receives them. */
+	rewoundUuids?: ReadonlySet<string>;
 }
+
+const NO_REWIND_CUTS: ReadonlyMap<string, readonly TranscriptCut[]> = new Map();
+const NO_REWOUND_UUIDS: ReadonlySet<string> = new Set();
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
 interface SendNowHandlers {
@@ -521,6 +530,8 @@ export const SessionChat = React.memo(function SessionChat({
 	onFocusComposer,
 	errorRecovery,
 	sideChatAvailable = false,
+	rewindCuts = NO_REWIND_CUTS,
+	rewoundUuids = NO_REWOUND_UUIDS,
 }: SessionChatProps) {
 	const sendNowHandlers = useMemo(
 		() => ({sendNow: onSendNow, focusComposer: onFocusComposer}),
@@ -733,6 +744,8 @@ export const SessionChat = React.memo(function SessionChat({
 												measurementSource={measurementSource}
 												turnInProgress={turnInProgress}
 												archived={archived}
+												rewindCuts={rewindCuts}
+												rewoundUuids={rewoundUuids}
 											/>
 											{sessionLive && (
 												<WaitingPickupStatus
@@ -2235,6 +2248,7 @@ function buildSessionListEntries(
 	held: HeldAssistantFooter | null,
 	turnInProgress: boolean,
 	archived: boolean,
+	rewindMarkers: {anchors: readonly number[]; render: (anchor: number) => React.ReactNode},
 ): SessionListEntry[] {
 	const waitingPrompts = recordLines.filter(
 		(line): line is Extract<SessionLine, {type: "queued-prompt"}> => line.type === "queued-prompt",
@@ -2412,8 +2426,25 @@ function buildSessionListEntries(
 		pushIdleRow(slowCommands.take(lastParentRecordAt(lines, index), Date.parse(at)), line.lineIndex - 0.75);
 	};
 
+	let nextRewindMarker = 0;
 	while (i < lines.length) {
 		const line = lineAt(i);
+
+		// A rewind cut's marker row opens the first row at or after its anchor, which Verbose may hold back.
+		for (
+			let anchor = rewindMarkers.anchors[nextRewindMarker];
+			anchor !== undefined && anchor <= line.lineIndex;
+			anchor = rewindMarkers.anchors[++nextRewindMarker]
+		) {
+			entries.push({
+				key: `rewind-${anchor}`,
+				startRecordIndex: anchor - 0.25,
+				isPrompt: false,
+				kind: "marker",
+				opensWithStatus: "marker",
+				element: rewindMarkers.render(anchor),
+			});
+		}
 
 		// The answer to a question draws the slow commands that finished while the parent waited for it.
 		const answeredAt = verbose || !answersQuestion(lines, i) ? undefined : lineTimestamp(line);
@@ -3392,12 +3423,14 @@ function heldImagesCallId(
 }
 
 function SessionLineList({
-	lines,
+	lines: chainLines,
 	shouldScrollToEnd,
 	measurementKey,
 	measurementSource,
 	turnInProgress,
 	archived,
+	rewindCuts,
+	rewoundUuids,
 	...renderProps
 }: LineRenderProps & {
 	lines: SessionLine[];
@@ -3406,16 +3439,42 @@ function SessionLineList({
 	measurementSource: object | undefined;
 	turnInProgress: boolean;
 	archived: boolean;
+	rewindCuts: ReadonlyMap<string, readonly TranscriptCut[]>;
+	rewoundUuids: ReadonlySet<string>;
 }) {
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const [held, setHeld] = useState<HeldAssistantFooter | null>(null);
-	const entries = buildSessionListEntries(
-		lines,
-		renderProps,
-		verbose,
-		verbose ? null : held,
-		turnInProgress,
-		archived,
+	const [openCuts, setOpenCuts] = useState<ReadonlySet<string>>(() => new Set());
+	const rewind = useMemo(
+		() => rewindLayout(chainLines, rewindCuts, rewoundUuids, verbose, openCuts),
+		[chainLines, rewindCuts, rewoundUuids, verbose, openCuts],
+	);
+	const toggleCut = useCallback((replacementUuid: string) => {
+		setOpenCuts((open) => {
+			const next = new Set(open);
+			if (!next.delete(replacementUuid)) next.add(replacementUuid);
+			return next;
+		});
+	}, []);
+	const {lines} = rewind;
+	const renderRewindMarkers = (anchor: number) =>
+		rewind.markersBefore
+			.get(anchor)
+			?.map((placement) => (
+				<RewindMarker
+					key={`${placement.cut.parentUuid}-${placement.cut.at}`}
+					placement={placement}
+					verbose={verbose}
+					expanded={openCuts.has(placement.replacementUuid)}
+					onToggle={toggleCut}
+				/>
+			));
+	const entries = withRewoundRowsGreyed(
+		buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held, turnInProgress, archived, {
+			anchors: [...rewind.markersBefore.keys()].toSorted((a, b) => a - b),
+			render: renderRewindMarkers,
+		}),
+		rewind.greyed,
 	);
 	const heldImagesCall = heldImagesCallId(lines, renderProps, verbose, turnInProgress);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
@@ -4054,6 +4113,73 @@ function CompactedSessionStatus({
 				)}
 			</div>
 		</TurnStatusFrame>
+	);
+}
+
+/**
+ * Upstream's read-only "Rewound here" TurnStatus marker at a rewind cut, with no
+ * Undo link since the CLI can't undo a rewind from the browser. Verbose makes it
+ * a disclosure over the abandoned rows it holds back, drawn greyed when open.
+ */
+function RewindMarker({
+	placement,
+	verbose,
+	expanded,
+	onToggle,
+}: {
+	placement: RewindMarkerPlacement;
+	verbose: boolean;
+	expanded: boolean;
+	onToggle: (replacementUuid: string) => void;
+}) {
+	if (!verbose || !placement.hasRows) {
+		return (
+			<TurnStatusFrame leading={false}>
+				<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" className={TURN_STATUS_CLASS}>
+					<div data-turn-status-marker="" className="flex min-w-0 me-[52px] px-1 py-0.5">
+						<span className="text-body min-w-0 truncate text-ink-muted">{placement.label}</span>
+					</div>
+				</div>
+			</TurnStatusFrame>
+		);
+	}
+	return (
+		<TurnStatusFrame leading={false}>
+			<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" className={TURN_STATUS_CLASS}>
+				<button
+					type="button"
+					aria-expanded={expanded}
+					onClick={() => {
+						onToggle(placement.replacementUuid);
+					}}
+					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
+				>
+					<span className="text-body min-w-0 truncate text-ink-muted group-hover/tool:text-secondary">
+						{placement.label}
+					</span>
+					<span className="shrink-0 text-ink-muted group-hover/tool:text-secondary">
+						<ChevronIcon expanded={expanded} size={14} />
+					</span>
+				</button>
+			</div>
+		</TurnStatusFrame>
+	);
+}
+
+/** Greys the abandoned rows Verbose draws behind an open rewind marker. */
+function withRewoundRowsGreyed(entries: SessionListEntry[], greyed: ReadonlySet<number>): SessionListEntry[] {
+	if (greyed.size === 0) return entries;
+	return entries.map((entry) =>
+		greyed.has(entry.startRecordIndex)
+			? {
+					...entry,
+					element: (
+						<div data-rewound-away="" className="opacity-60">
+							{entry.element}
+						</div>
+					),
+				}
+			: entry,
 	);
 }
 
