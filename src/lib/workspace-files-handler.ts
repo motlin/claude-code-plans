@@ -10,6 +10,7 @@ import {resolveConfiguredFileRoots, resolveFileSearchRoots} from "./config";
 import {getDb} from "./db";
 import * as schema from "./db/schema";
 import {
+	FUZZY_RESULT_CAP,
 	fuzzyFilePaths,
 	gitCheckIgnored,
 	isContainedPath,
@@ -117,10 +118,10 @@ export async function handleSessionFilesRequest(
 	}
 
 	const options = hideIgnoredFlag === "1" ? {ignored: resolvedDependencies.checkIgnored} : {};
-	const mark: (entries: WorkspaceEntry[]) => Promise<MarkedEntry[]> =
-		markIgnoredFlag === "1" && hideIgnoredFlag === "0"
-			? async (entries: WorkspaceEntry[]) => markIgnored(root, entries, resolvedDependencies.checkIgnored)
-			: async (entries: WorkspaceEntry[]) => Promise.resolve(entries);
+	const marking = markIgnoredFlag === "1" && hideIgnoredFlag === "0";
+	const mark: (entries: WorkspaceEntry[]) => Promise<MarkedEntry[]> = marking
+		? async (entries: WorkspaceEntry[]) => markIgnored(root, entries, resolvedDependencies.checkIgnored)
+		: async (entries: WorkspaceEntry[]) => Promise.resolve(entries);
 	try {
 		if (query === "") {
 			const listing = await listDir(root, dir, options);
@@ -135,14 +136,16 @@ export async function handleSessionFilesRequest(
 		const byPath = new Map(
 			walk.entries.map((entry) => [entry.isDirectory ? `${entry.relPath}/` : entry.relPath, entry]),
 		);
-		const matches = fuzzyFilePaths(query, [...byPath.keys()]);
+		// When marking, rank every match before capping so gitignored matches can't crowd tracked ones out.
+		const matches = fuzzyFilePaths(query, [...byPath.keys()], marking ? Infinity : FUZZY_RESULT_CAP);
+		const ranked = rankTrackedFirst(await mark(matches.paths.flatMap((path) => byPath.get(path) ?? [])));
 		return filesResponse({
 			kind: "search",
 			dir,
 			query,
-			results: rankTrackedFirst(await mark(matches.paths.flatMap((path) => byPath.get(path) ?? []))),
+			results: ranked.slice(0, FUZZY_RESULT_CAP),
 			partial: walk.partial,
-			capped: matches.partial,
+			capped: matches.partial || ranked.length > FUZZY_RESULT_CAP,
 		});
 	} catch (error) {
 		if (error instanceof WorkspacePathError) return errorResponse(error.message, error.status);

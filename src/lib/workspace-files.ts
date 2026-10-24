@@ -9,7 +9,7 @@ const LIST_DIR_CAP = 1000;
 /** A workspace walk for fuzzy search stops after this many entries and reports `partial`. */
 const WALK_CAP = 20_000;
 /** Fuzzy search returns at most this many paths. */
-const FUZZY_RESULT_CAP = 50;
+export const FUZZY_RESULT_CAP = 50;
 
 /** The walk lists these directories but never descends into them. */
 const UNWALKED_DIRECTORIES = new Set([".git"]);

@@ -390,6 +390,33 @@ describe("GET /api/sessions/$id/files", () => {
 		});
 	});
 
+	it("keeps a weak tracked match when 50+ stronger gitignored matches fill the result cap", async () => {
+		runGit(root, ["init", "--quiet"]);
+		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
+		write(".gitignore", "ig/\n");
+		mkdirSync(join(root, "ig"));
+		const ignoredNames = Array.from({length: 60}, (_, index) => `skill${String(index).padStart(2, "0")}.md`);
+		for (const name of ignoredNames) write(`ig/${name}`);
+		write("sxkxixlxl.md");
+		insertSession(root);
+
+		const search = await request({q: "skill", markIgnored: "1"});
+
+		expect(search.body).toStrictEqual({
+			kind: "search",
+			dir: "",
+			query: "skill",
+			results: [
+				{name: "sxkxixlxl.md", relPath: "sxkxixlxl.md", isDirectory: false},
+				...ignoredNames
+					.slice(0, 49)
+					.map((name) => ({name, relPath: `ig/${name}`, isDirectory: false, ignored: true})),
+			],
+			partial: false,
+			capped: true,
+		});
+	});
+
 	it("rejects an invalid markIgnored flag", async () => {
 		insertSession(root);
 		expect(await request({markIgnored: "yes"})).toStrictEqual({
