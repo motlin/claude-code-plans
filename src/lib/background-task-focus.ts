@@ -87,18 +87,19 @@ export function setTaskRowsOpen(sessionId: string, taskIds: readonly string[], o
 	notifyView();
 }
 
-export function useFinishedExpanded(sessionId: string): boolean | undefined {
+/** The session's Finished state; undefined when unset or with no session. */
+export function useFinishedExpanded(sessionId: string | undefined): boolean | undefined {
 	return useSyncExternalStore(
 		subscribeView,
-		() => finishedExpanded(sessionId),
+		() => (sessionId === undefined ? undefined : finishedExpanded(sessionId)),
 		() => undefined,
 	);
 }
 
-export function useOpenTaskRows(sessionId: string): ReadonlyMap<string, boolean> {
+export function useOpenTaskRows(sessionId: string | undefined): ReadonlyMap<string, boolean> {
 	return useSyncExternalStore(
 		subscribeView,
-		() => openTaskRows(sessionId),
+		() => (sessionId === undefined ? EMPTY_ROWS : openTaskRows(sessionId)),
 		() => EMPTY_ROWS,
 	);
 }

@@ -1,9 +1,18 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ChevronRight, Trash2} from "lucide-react";
-import {useId, useState} from "react";
+import {type RefObject, useEffect, useId, useRef, useState} from "react";
 
 import {taskOutputQueryOptions} from "../../lib/api/task-output";
+import {
+	type BackgroundTaskFocus,
+	onBackgroundTaskFocusRequest,
+	setFinishedExpanded,
+	setTaskRowsOpen,
+	takePendingBackgroundTaskFocus,
+	useFinishedExpanded,
+	useOpenTaskRows,
+} from "../../lib/background-task-focus";
 import {type BackgroundTask, type BackgroundTaskGroups, backgroundTaskMeta} from "../../lib/background-tasks";
 import {HighlightedCommand} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
@@ -76,23 +85,30 @@ function OutputFile({
  * with the chevron right after it, and the kind/status meta beneath. Expanding
  * reveals labelled, height-capped "Command for" and "Output for" regions.
  */
-function BackgroundTaskCard({task, sessionId}: {task: BackgroundTask; sessionId: string | undefined}) {
-	const [expanded, setExpanded] = useState(false);
+function BackgroundTaskCard({
+	task,
+	sessionId,
+	expanded,
+	onToggle,
+}: {
+	task: BackgroundTask;
+	sessionId: string | undefined;
+	expanded: boolean;
+	onToggle: () => void;
+}) {
 	const detailsId = useId();
 	const title = taskTitle(task);
 	// Upstream renders a failed or stopped task's summary inline on touch, where there is no tooltip.
 	const inlineSummary = task.status === "failed" || task.status === "stopped" ? nonEmpty(task.summary) : undefined;
 	return (
-		<li className="flex flex-col gap-g5 rounded-r6 bg-fill-ghost-hover p-2">
+		<li data-task-id={task.id} className="flex flex-col gap-g5 rounded-r6 bg-fill-ghost-hover p-2">
 			<button
 				type="button"
 				data-background-task=""
 				aria-label={`Background task: ${title}`}
 				aria-expanded={expanded}
 				aria-controls={detailsId}
-				onClick={() => {
-					setExpanded((value) => !value);
-				}}
+				onClick={onToggle}
 				className="flex w-full min-w-0 cursor-pointer flex-col text-left"
 			>
 				<span className="flex min-w-0 items-center gap-0.5 text-footnote text-ink-muted">
@@ -134,14 +150,107 @@ function BackgroundTaskCard({task, sessionId}: {task: BackgroundTask; sessionId:
 	);
 }
 
-function TaskCards({tasks, sessionId}: {tasks: readonly BackgroundTask[]; sessionId: string | undefined}) {
+function TaskCards({
+	tasks,
+	sessionId,
+	openRows,
+	setRowOpen,
+}: {
+	tasks: readonly BackgroundTask[];
+	sessionId: string | undefined;
+	openRows: ReadonlyMap<string, boolean>;
+	setRowOpen: (taskId: string, open: boolean) => void;
+}) {
 	return (
 		<ul className="flex flex-col gap-1.5">
-			{tasks.map((task) => (
-				<BackgroundTaskCard key={task.id} task={task} sessionId={sessionId} />
-			))}
+			{tasks.map((task) => {
+				const expanded = openRows.get(task.id) === true;
+				return (
+					<BackgroundTaskCard
+						key={task.id}
+						task={task}
+						sessionId={sessionId}
+						expanded={expanded}
+						onToggle={() => {
+							setRowOpen(task.id, !expanded);
+						}}
+					/>
+				);
+			})}
 		</ul>
 	);
+}
+
+/**
+ * Finished-open and per-row open state: the session's in-memory store (kept
+ * across pane remounts until reload, like upstream), or component state when
+ * there is no session.
+ */
+function usePaneViewState(sessionId: string | undefined) {
+	const sessionFinished = useFinishedExpanded(sessionId);
+	const sessionRows = useOpenTaskRows(sessionId);
+	const [localFinished, setLocalFinished] = useState<boolean | undefined>(undefined);
+	const [localRows, setLocalRows] = useState<ReadonlyMap<string, boolean>>(new Map());
+	if (sessionId === undefined) {
+		return {
+			finishedExpanded: localFinished,
+			setFinished: setLocalFinished,
+			openRows: localRows,
+			setRowOpen: (taskId: string, open: boolean) => {
+				setLocalRows((rows) => new Map(rows).set(taskId, open));
+			},
+		};
+	}
+	return {
+		finishedExpanded: sessionFinished,
+		setFinished: (open: boolean) => {
+			setFinishedExpanded(sessionId, open);
+		},
+		openRows: sessionRows,
+		setRowOpen: (taskId: string, open: boolean) => {
+			setTaskRowsOpen(sessionId, [taskId], open);
+		},
+	};
+}
+
+/**
+ * Upstream's tasks-pane focus: a requested task (and, when finished, the
+ * Finished section) opens, then after the commit, in a frame, the row scrolls
+ * to the top of the pane. Keyboard focus stays where it was.
+ */
+function useTaskFocusRequests(
+	sessionId: string | undefined,
+	finished: readonly BackgroundTask[],
+	rootRef: RefObject<HTMLDivElement | null>,
+) {
+	const finishedRef = useRef(finished);
+	finishedRef.current = finished;
+	const [scrollTarget, setScrollTarget] = useState<{taskId: string} | null>(null);
+
+	useEffect(() => {
+		if (sessionId === undefined) return undefined;
+		const handle = ({taskId}: BackgroundTaskFocus) => {
+			if (taskId === undefined) return;
+			setTaskRowsOpen(sessionId, [taskId], true);
+			if (finishedRef.current.some((task) => task.id === taskId)) setFinishedExpanded(sessionId, true);
+			setScrollTarget({taskId});
+		};
+		const pending = takePendingBackgroundTaskFocus(sessionId);
+		if (pending !== null) handle(pending);
+		return onBackgroundTaskFocusRequest(sessionId, handle);
+	}, [sessionId]);
+
+	useEffect(() => {
+		if (scrollTarget === null) return undefined;
+		const frame = requestAnimationFrame(() => {
+			rootRef.current
+				?.querySelector(`[data-task-id="${CSS.escape(scrollTarget.taskId)}"]`)
+				?.scrollIntoView({block: "start"});
+		});
+		return () => {
+			cancelAnimationFrame(frame);
+		};
+	}, [scrollTarget, rootRef]);
 }
 
 /**
@@ -160,20 +269,29 @@ export function BackgroundTasksList({
 	/** The session's subagents, linked to their tree/Gantt page. */
 	subagents?: {sessionId: string; count: number};
 }) {
-	const [finishedOpen, setFinishedOpen] = useState(false);
 	const [clearedIds, setClearedIds] = useState<ReadonlySet<string>>(new Set());
 	const finished = groups.finished.filter((task) => !clearedIds.has(task.id));
 	const subagentCount = subagents?.count ?? 0;
+	const {finishedExpanded, setFinished, openRows, setRowOpen} = usePaneViewState(sessionId);
+	// Upstream: the section's own state, else open while it holds an open row.
+	const finishedOpen = finishedExpanded ?? finished.some((task) => openRows.get(task.id) === true);
+	const rootRef = useRef<HTMLDivElement>(null);
+	useTaskFocusRequests(sessionId, finished, rootRef);
 
 	if (groups.running.length === 0 && finished.length === 0 && subagentCount === 0) {
 		return <p className="px-3 py-6 text-center text-body text-ink-muted">{EMPTY_COPY}</p>;
 	}
 	return (
-		<div className="flex flex-col gap-4 px-3 py-2">
+		<div ref={rootRef} className="flex flex-col gap-4 px-3 py-2">
 			{groups.running.length > 0 && (
 				<section className="flex flex-col gap-1.5">
 					<h3 className={SECTION_HEADING}>{groups.running.length} running</h3>
-					<TaskCards tasks={groups.running} sessionId={sessionId} />
+					<TaskCards
+						tasks={groups.running}
+						sessionId={sessionId}
+						openRows={openRows}
+						setRowOpen={setRowOpen}
+					/>
 				</section>
 			)}
 			{finished.length > 0 && (
@@ -184,7 +302,7 @@ export function BackgroundTasksList({
 								type="button"
 								aria-expanded={finishedOpen}
 								onClick={() => {
-									setFinishedOpen((open) => !open);
+									setFinished(!finishedOpen);
 								}}
 								className="flex cursor-pointer items-center gap-0.5 hover:text-primary"
 							>
@@ -208,7 +326,9 @@ export function BackgroundTasksList({
 							</button>
 						</Tooltip>
 					</div>
-					{finishedOpen && <TaskCards tasks={finished} sessionId={sessionId} />}
+					{finishedOpen && (
+						<TaskCards tasks={finished} sessionId={sessionId} openRows={openRows} setRowOpen={setRowOpen} />
+					)}
 				</section>
 			)}
 			{subagents !== undefined && subagentCount > 0 && (

@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksList} from "../src/components/panes/background-tasks-pane";
 import type {BackgroundTask, BackgroundTaskGroups} from "../src/lib/background-tasks";
+import {requestBackgroundTaskFocus, setTaskRowsOpen} from "../src/lib/background-task-focus";
 
 afterEach(() => {
 	cleanup();
@@ -235,6 +236,11 @@ describe("BackgroundTasksList touch summary", () => {
 });
 
 describe("BackgroundTasksList output file", () => {
+	// Open rows outlive the pane per session, so collapse this suite's cards between tests.
+	afterEach(() => {
+		setTaskRowsOpen(SESSION_ID, ["bfab1lint", "afab1review"], false);
+	});
+
 	it("fetches a task's output file only once its card expands, and shows it in the Output region", async () => {
 		const fetchMock = stubFetch({status: "ok", output: "\u001b[32m0 problems\u001b[0m\n", truncated: false});
 		render(withQueryClient(<BackgroundTasksList groups={LINT_GROUPS} sessionId={SESSION_ID} />));
@@ -290,5 +296,121 @@ describe("BackgroundTasksList output file", () => {
 			urls: fetchedUrls(fetchMock),
 			text: screen.getByRole("region", {name: "Output for Review the fabricated diff"}).textContent,
 		}).toStrictEqual({urls: [], text: "The fabricated diff looks good."});
+	});
+});
+
+describe("BackgroundTasksList focus requests", () => {
+	let session = 0;
+	function nextSession(): string {
+		session += 1;
+		return `5e5510a0-0000-4000-8000-0000000f0c${String(session).padStart(2, "0")}`;
+	}
+
+	function stubFrames() {
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+			callback(0);
+			return 0;
+		});
+		vi.stubGlobal("cancelAnimationFrame", () => undefined);
+		return vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => undefined);
+	}
+
+	function expandedCards() {
+		return [...document.querySelectorAll('button[data-background-task][aria-expanded="true"]')].map((button) =>
+			button.getAttribute("aria-label"),
+		);
+	}
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("opens Finished, expands and scrolls to a task requested before the pane mounts, without moving focus", () => {
+		const scroll = stubFrames();
+		const sessionId = nextSession();
+		requestBackgroundTaskFocus(sessionId, {taskId: "bfab1build", finished: true});
+
+		render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
+
+		expect({
+			finished: screen.getByRole("button", {name: "Finished 1"}).getAttribute("aria-expanded"),
+			card: screen
+				.getByRole("button", {name: "Background task: Build the fabricated app"})
+				.getAttribute("aria-expanded"),
+			scrollCalls: scroll.mock.calls,
+			scrolled: scroll.mock.contexts.map((element) => (element as Element).getAttribute("data-task-id")),
+			active: document.activeElement === document.body,
+		}).toStrictEqual({
+			finished: "true",
+			card: "true",
+			scrollCalls: [[{block: "start"}]],
+			scrolled: ["bfab1build"],
+			active: true,
+		});
+	});
+
+	it("adds a task requested after mount to the open rows, keeping the earlier one open", () => {
+		stubFrames();
+		const sessionId = nextSession();
+		requestBackgroundTaskFocus(sessionId, {taskId: "bfab1build", finished: true});
+		render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
+
+		act(() => {
+			requestBackgroundTaskFocus(sessionId, {taskId: "bfab1serve", finished: false});
+		});
+
+		expect(expandedCards()).toStrictEqual([
+			"Background task: Serve the fabricated app",
+			"Background task: Build the fabricated app",
+		]);
+	});
+
+	it("re-opens a Finished section the user collapsed", () => {
+		stubFrames();
+		const sessionId = nextSession();
+		requestBackgroundTaskFocus(sessionId, {taskId: "bfab1build", finished: true});
+		render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
+		fireEvent.click(screen.getByRole("button", {name: "Finished 1"}));
+		const collapsed = screen.getByRole("button", {name: "Finished 1"}).getAttribute("aria-expanded");
+
+		act(() => {
+			requestBackgroundTaskFocus(sessionId, {taskId: "bfab1build", finished: true});
+		});
+
+		expect({
+			collapsed,
+			reopened: screen.getByRole("button", {name: "Finished 1"}).getAttribute("aria-expanded"),
+		}).toStrictEqual({collapsed: "false", reopened: "true"});
+	});
+
+	it("keeps Finished and the expanded rows across a remount in the same session", () => {
+		stubFrames();
+		const sessionId = nextSession();
+		const first = render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
+		fireEvent.click(screen.getByRole("button", {name: "Finished 1"}));
+		fireEvent.click(screen.getByRole("button", {name: "Background task: Build the fabricated app"}));
+		first.unmount();
+
+		render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
+
+		expect({
+			finished: screen.getByRole("button", {name: "Finished 1"}).getAttribute("aria-expanded"),
+			expanded: expandedCards(),
+		}).toStrictEqual({finished: "true", expanded: ["Background task: Build the fabricated app"]});
+	});
+
+	it("ignores a request for a task with no row", () => {
+		const scroll = stubFrames();
+		const sessionId = nextSession();
+		render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
+
+		act(() => {
+			requestBackgroundTaskFocus(sessionId, {taskId: "missing", finished: false});
+		});
+
+		expect({scrollCalls: scroll.mock.calls, expanded: expandedCards()}).toStrictEqual({
+			scrollCalls: [],
+			expanded: [],
+		});
 	});
 });

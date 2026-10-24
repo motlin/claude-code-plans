@@ -584,7 +584,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 						</div>
 					</div>
 					<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
-						<div className="h-full overflow-y-auto [scrollbar-gutter:stable_both-edges]">
+						<div className="h-full scroll-py-2.5 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
 							{definition.render({moveHandle, controls})}
 						</div>
 					</div>

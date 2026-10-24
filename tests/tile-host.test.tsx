@@ -151,6 +151,18 @@ describe("TileHost", () => {
 		});
 	});
 
+	it("scrolls pane bodies in upstream's scroller with 10px scroll padding for scrollIntoView", () => {
+		renderHost("session-a");
+		openTestPane();
+
+		expect(screen.getByText("Test pane body").parentElement?.className.split(" ")).toStrictEqual([
+			"h-full",
+			"scroll-py-2.5",
+			"overflow-y-auto",
+			"[scrollbar-gutter:stable_both-edges]",
+		]);
+	});
+
 	it("puts a pane's header actions after Move, before Expand and Close", () => {
 		unregister();
 		unregister = registerPane("plan", {
