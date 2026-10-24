@@ -60,13 +60,37 @@ describe("transcript link styles", () => {
 		});
 	});
 
-	it("colours file-path refs with the same accent", () => {
-		expect(ruleDeclarations(globalsCss, ".prose-link")).toStrictEqual({
-			display: "inline-block",
-			"border-radius": "3px",
-			color: "var(--upstream-accent)",
-			cursor: "pointer",
+	it("draws file-path refs as upstream's prose-link: inline, wrapping, underlined at 40% going solid on hover and focus", () => {
+		expect({
+			rest: ruleDeclarations(globalsCss, ".prose-link"),
+			active: ruleDeclarations(globalsCss, ".prose-link:is(:hover, :focus-visible)"),
+			focus: ruleDeclarations(globalsCss, ".prose-link:focus-visible"),
+			busy: ruleDeclarations(globalsCss, '.prose-link[aria-busy="true"]'),
+		}).toStrictEqual({
+			rest: {
+				display: "inline",
+				"-webkit-box-decoration-break": "clone",
+				"box-decoration-break": "clone",
+				"border-radius": "3px",
+				color: "var(--upstream-accent)",
+				cursor: "pointer",
+				"--_text-link-line": "color-mix(in srgb, currentColor, transparent 60%)",
+				"text-decoration-line": "underline",
+				"text-decoration-color": "var(--_text-link-line)",
+				"text-underline-offset": "3px",
+				"transition-property": "color, text-decoration-color, box-shadow",
+				"transition-duration": "60ms",
+				"transition-timing-function": "cubic-bezier(0.165, 0.84, 0.44, 1)",
+			},
+			active: {"--_text-link-line": "currentColor"},
+			focus: {
+				outline: "2px solid transparent",
+				"outline-offset": "2px",
+				"box-shadow": "var(--focus-shadow)",
+			},
+			busy: {cursor: "progress", opacity: "0.6"},
 		});
+		expect(() => ruleDeclarations(globalsCss, ".prose-link:hover")).toThrow("selector not found");
 	});
 
 	it("draws GitHub PR links as accent-muted chips", () => {

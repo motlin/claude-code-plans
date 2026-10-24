@@ -733,19 +733,36 @@ html[data-interface-font="dyslexic"] {
 }
 
 /* Upstream `prose-link`: a transcript file ref in link blue and the prose
-   font, without the inline-code chip. */
+   font, without the inline-code chip. Inline with cloned box decoration so a
+   long path wraps across lines and every fragment keeps its radius and focus
+   ring; the underline is always drawn, 40% ink at rest and solid on hover and
+   keyboard focus. */
 .prose-link {
-	display: inline-block;
+	display: inline;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
 	border-radius: 3px;
 	color: var(--upstream-accent);
 	cursor: pointer;
+	--_text-link-line: color-mix(in srgb, currentColor, transparent 60%);
+	text-decoration-line: underline;
+	text-decoration-color: var(--_text-link-line);
+	text-underline-offset: 3px;
+	transition-property: color, text-decoration-color, box-shadow;
+	transition-duration: 60ms;
+	transition-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1);
 }
-.prose-link:hover {
-	text-decoration: underline;
+.prose-link:is(:hover, :focus-visible) {
+	--_text-link-line: currentColor;
 }
 .prose-link:focus-visible {
-	outline: 2px solid var(--color-accent-100);
-	outline-offset: 1px;
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	box-shadow: var(--focus-shadow);
+}
+.prose-link[aria-busy="true"] {
+	cursor: progress;
+	opacity: 0.6;
 }
 
 /* Upstream `cds-text-link cds-text-link-underline`: an accent link underlined
