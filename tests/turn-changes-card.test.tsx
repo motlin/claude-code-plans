@@ -529,31 +529,99 @@ function fileRowTexts(): string[] {
 }
 
 describe("TurnChangesCard", () => {
-	it("caps the list at four rows and expands with Show N more", () => {
-		render(<TurnChangesCard sessionId="test-session" changes={changesWith(6)} undoable />);
-		const before = fileRowTexts();
-		const more = screen.getByRole("button", {name: "Show 2 more"});
-		const expandedBefore = more.getAttribute("aria-expanded");
-		fireEvent.click(more);
+	it("shows three rows, then a See all toggle that opens the Changes pane and expands, and Show less collapses", () => {
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
+		);
+		const unregister = registerPane("changes", {
+			title: "Changes",
+			render: () => <div data-testid="changes-pane">Changes pane</div>,
+		});
+		const requests: unknown[] = [];
+		const listener = (event: Event) => requests.push((event as CustomEvent).detail);
+		window.addEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
+		const changes = {...changesWith(5), turnUuid: "u-toggle"};
+		const tree = (
+			<SettingsProvider>
+				<TileHost sessionId="toggle-session" onExpandWithoutPane={() => {}}>
+					<TurnChangesCard sessionId="toggle-session" changes={changes} undoable />
+				</TileHost>
+			</SettingsProvider>
+		);
+		try {
+			const {unmount} = render(tree);
+			const items = () =>
+				within(screen.getByRole("list", {name: "Edited 5 files"}))
+					.getAllByRole("listitem")
+					.map((item) => item.textContent);
+			const toggle = () => screen.getByRole("button", {name: /^(See all|Show less)/});
+			const before = {items: items(), expanded: toggle().getAttribute("aria-expanded")};
+			act(() => {
+				fireEvent.click(toggle());
+			});
+			const afterOpen = {
+				items: items(),
+				expanded: toggle().getAttribute("aria-expanded"),
+				opened: screen.queryByTestId("changes-pane")?.textContent,
+				requests: [...requests],
+			};
+			unmount();
+			render(tree);
+			const remounted = items();
+			act(() => {
+				fireEvent.click(toggle());
+			});
+
+			expect({
+				before,
+				afterOpen,
+				remounted,
+				afterCollapse: {items: items(), expanded: toggle().getAttribute("aria-expanded"), requests},
+			}).toStrictEqual({
+				before: {
+					items: ["file-1.ts+1\u22121", "file-2.ts+2\u22121", "file-3.ts+3\u22121", "See all+15\u22125"],
+					expanded: "false",
+				},
+				afterOpen: {
+					items: [
+						"file-1.ts+1\u22121",
+						"file-2.ts+2\u22121",
+						"file-3.ts+3\u22121",
+						"file-4.ts+4\u22121",
+						"file-5.ts+5\u22121",
+						"Show less+15\u22125",
+					],
+					expanded: "true",
+					opened: "Changes pane",
+					requests: [{sessionId: "toggle-session", scope: "turn:u-toggle"}],
+				},
+				remounted: [
+					"file-1.ts+1\u22121",
+					"file-2.ts+2\u22121",
+					"file-3.ts+3\u22121",
+					"file-4.ts+4\u22121",
+					"file-5.ts+5\u22121",
+					"Show less+15\u22125",
+				],
+				afterCollapse: {
+					items: ["file-1.ts+1\u22121", "file-2.ts+2\u22121", "file-3.ts+3\u22121", "See all+15\u22125"],
+					expanded: "false",
+					requests: [{sessionId: "toggle-session", scope: "turn:u-toggle"}],
+				},
+			});
+		} finally {
+			window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
+			unregister();
+		}
+	});
+
+	it("keeps the closing See all a plain row, with no toggle, at three files", () => {
+		render(<TurnChangesCard sessionId="test-session" changes={changesWith(3)} undoable />);
 
 		expect({
-			before,
-			expandedBefore,
-			after: fileRowTexts(),
-			moreAfter: screen.queryByRole("button", {name: /Show \d+ more/}),
-		}).toStrictEqual({
-			before: ["file-1.ts+1−1", "file-2.ts+2−1", "file-3.ts+3−1", "file-4.ts+4−1"],
-			expandedBefore: "false",
-			after: [
-				"file-1.ts+1−1",
-				"file-2.ts+2−1",
-				"file-3.ts+3−1",
-				"file-4.ts+4−1",
-				"file-5.ts+5−1",
-				"file-6.ts+6−1",
-			],
-			moreAfter: null,
-		});
+			rows: fileRowTexts(),
+			toggles: screen.queryAllByRole("button", {expanded: false}).length,
+		}).toStrictEqual({rows: ["file-1.ts+1\u22121", "file-2.ts+2\u22121", "file-3.ts+3\u22121"], toggles: 0});
 	});
 
 	it("draws a single file as upstream's outlined card with no header: the row, then Undo and the stats", () => {

@@ -11,8 +11,26 @@ import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useTurnUndo} from "./use-turn-undo";
 import {Tooltip} from "./ui/tooltip";
 
-/** Upstream shows four file rows before "Show N more". */
-const VISIBLE_FILE_LIMIT = 4;
+/** Upstream shows three file rows before its "See all" / "Show less" toggle. */
+const VISIBLE_FILE_LIMIT = 3;
+
+/**
+ * Upstream's row store keeps each turn card's expanded state under `turn-edits:<id>`, so it survives the card
+ * remounting (scrolling, re-rendering the transcript) for the life of the page.
+ */
+const expandedTurns = new Map<string, boolean>();
+
+function useTurnExpanded(turnUuid: string): [boolean, (expanded: boolean) => void] {
+	const key = `turn-edits:${turnUuid}`;
+	const [expanded, setExpanded] = useState(() => expandedTurns.get(key) ?? false);
+	return [
+		expanded,
+		(next) => {
+			expandedTurns.set(key, next);
+			setExpanded(next);
+		},
+	];
+}
 
 function basename(path: string): string {
 	return path.slice(path.lastIndexOf("/") + 1) || path;
@@ -26,9 +44,6 @@ function Stats({added, removed, className = ""}: {added: number; removed: number
 		</span>
 	);
 }
-
-const ROW_CLASS =
-	"-mx-1 flex min-h-7 w-full min-w-0 items-center gap-2 rounded-r5 px-1 py-0.5 text-left transition-colors hover:bg-fill-ghost-hover";
 
 /** Upstream's summary card: 4px top margin, 4px 8px padding, 10px radius, 13/19 control text, inset ring. */
 const CARD_CLASS =
@@ -124,9 +139,11 @@ function UndoFeedback({undo}: {undo: ReturnType<typeof useTurnUndo>}) {
 }
 
 /**
- * Upstream's end-of-turn changes card: "Edited N files +A −R", up to four
- * file rows (icon, name, stats, chevron) and "Show N more". The header opens
- * the Changes pane scoped to this turn; a file row opens the file viewer.
+ * Upstream's end-of-turn changes card: "Edited N files", up to three file
+ * rows (icon, name, stats), then a closing "See all +A −R" row that opens the
+ * Changes pane scoped to this turn. With more than three files that row is a
+ * toggle: "See all" opens the pane and expands, "Show less" collapses. A file
+ * row opens the file viewer.
  * A one-file turn is a lone row in an outlined card with no header (79a0ad58
  * "settings.json +1 −1", its row 44px below the Denied row): a code glyph and
  * the name open the Changes pane ("View this turn's changes"), the stats and a
@@ -147,7 +164,7 @@ export function TurnChangesCard({
 	undoable: boolean;
 }) {
 	const host = useOptionalPaneHost();
-	const [showAll, setShowAll] = useState(false);
+	const [expanded, setExpanded] = useTurnExpanded(changes.turnUuid);
 	const undo = useTurnUndo();
 	const send = useContext(TurnUndoSendContext);
 	const startUndo =
@@ -158,8 +175,8 @@ export function TurnChangesCard({
 				};
 	const count = changes.files.length;
 	const title = `Edited ${count} ${count === 1 ? "file" : "files"}`;
-	const visible = showAll ? changes.files : changes.files.slice(0, VISIBLE_FILE_LIMIT);
-	const hidden = count - visible.length;
+	const toggles = count > VISIBLE_FILE_LIMIT;
+	const visible = toggles && !expanded ? changes.files.slice(0, VISIBLE_FILE_LIMIT) : changes.files;
 	const openChanges =
 		host === null
 			? undefined
@@ -214,7 +231,7 @@ export function TurnChangesCard({
 	const seeAllContent = (
 		<>
 			<span className="relative flex min-w-0 items-center">
-				<span className="min-w-0 truncate text-primary">See all</span>
+				<span className="min-w-0 truncate text-primary">{toggles && expanded ? "Show less" : "See all"}</span>
 			</span>
 			<span className="relative flex shrink-0">
 				<Stats added={changes.added} removed={changes.removed} className={STAT_TEXT} />
@@ -247,22 +264,20 @@ export function TurnChangesCard({
 						<RowTrailing added={file.added} removed={file.removed} />
 					</li>
 				))}
-				{hidden > 0 && (
-					<li className="flex min-w-0">
+				<li className={ITEM_CLASS}>
+					{toggles ? (
 						<button
 							type="button"
-							aria-expanded={false}
+							aria-expanded={expanded}
 							onClick={() => {
-								setShowAll(true);
+								if (!expanded) openChanges?.();
+								setExpanded(!expanded);
 							}}
-							className={`${ROW_CLASS} cursor-pointer text-secondary`}
+							className={`${ROW_CONTROL_CLASS} ${SEE_ALL_CLASS} cursor-pointer`}
 						>
-							Show {hidden} more
+							{seeAllContent}
 						</button>
-					</li>
-				)}
-				<li className={ITEM_CLASS}>
-					{openChanges === undefined ? (
+					) : openChanges === undefined ? (
 						<div className={`${SEE_ALL_CLASS} min-h-7`}>{seeAllContent}</div>
 					) : (
 						<button
