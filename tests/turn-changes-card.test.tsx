@@ -13,7 +13,6 @@ import {fileViewerPath} from "../src/lib/api/file";
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../src/lib/changes-scope-request";
 import {loadChangesScope} from "../src/lib/pane-layout";
 import {processTranscript} from "../src/lib/transcript";
-import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 import {aggregateTurnEdits, collectTurnChanges, isScratchpadPath, type TurnChanges} from "../src/lib/turn-changes";
 import {installLocalStorage} from "./fake-storage";
 
@@ -525,10 +524,14 @@ function fileRowNames(): string[] {
 	return screen.getAllByRole("link").map((link) => link.textContent);
 }
 
+function fileRowTexts(): string[] {
+	return screen.getAllByRole("link").map((link) => link.closest("li")?.textContent ?? "");
+}
+
 describe("TurnChangesCard", () => {
 	it("caps the list at four rows and expands with Show N more", () => {
 		render(<TurnChangesCard sessionId="test-session" changes={changesWith(6)} undoable />);
-		const before = fileRowNames();
+		const before = fileRowTexts();
 		const more = screen.getByRole("button", {name: "Show 2 more"});
 		const expandedBefore = more.getAttribute("aria-expanded");
 		fireEvent.click(more);
@@ -536,7 +539,7 @@ describe("TurnChangesCard", () => {
 		expect({
 			before,
 			expandedBefore,
-			after: fileRowNames(),
+			after: fileRowTexts(),
 			moreAfter: screen.queryByRole("button", {name: /Show \d+ more/}),
 		}).toStrictEqual({
 			before: ["file-1.ts+1−1", "file-2.ts+2−1", "file-3.ts+3−1", "file-4.ts+4−1"],
@@ -553,48 +556,98 @@ describe("TurnChangesCard", () => {
 		});
 	});
 
-	it("draws a single file as upstream's outlined card with no header, its row 44px below the previous row", () => {
-		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(1)} undoable />);
-		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
-		const item = screen.getByRole("listitem");
-		const undo = within(card).getByRole("button", {name: "Undo"});
-		const classes = (element: Element, names: string[]) => names.filter((name) => element.classList.contains(name));
+	it("draws a single file as upstream's outlined card with no header: the row, then Undo and the stats", () => {
+		render(<TurnChangesCard sessionId="test-session" changes={changesWith(1)} undoable />);
 		expect({
 			header: screen.queryByText(/^Edited/),
 			list: screen.getByRole("list").getAttribute("aria-label"),
-			rows: [item.textContent],
+			rows: screen.getAllByRole("listitem").map((item) => item.textContent),
 			links: fileRowNames(),
 			more: screen.queryByRole("button", {name: /Show \d+ more/}),
-			card: classes(card, [
-				"mt-2",
-				"mt-5",
-				"mt-4",
-				"mb-[11px]",
-				"mb-[7px]",
-				"px-2",
-				"py-1",
-				"rounded-r6",
-				"shadow-[inset_0_0_0_1px_var(--color-border)]",
-			]),
-			item: classes(item, ["-mx-1", "px-1", "gap-1"]),
-			icon: Array.from(item.querySelectorAll("svg.lucide"), (icon) => classes(icon, ["lucide-code", "size-4"])),
-			trailing: Array.from(item.children, (child) => child.tagName === "SPAN" && child.textContent),
-			chevron: item.querySelector(":scope > span > span.text-secondary > svg") !== null,
-			undoHidden: ["sr-only", "group-hover/card:not-sr-only", "focus-visible:not-sr-only"].some((name) =>
-				undo.classList.contains(name),
+			icons: Array.from(screen.getByRole("listitem").querySelectorAll("svg.lucide"), (icon) =>
+				icon.getAttribute("class"),
 			),
 		}).toStrictEqual({
 			header: null,
 			list: "Edited 1 file",
-			rows: ["file-1.ts+1\u22121Undo"],
+			rows: ["file-1.tsUndo+1\u22121"],
 			links: ["file-1.ts"],
 			more: null,
-			card: ["mt-4", "mb-[7px]", "px-2", "py-1", "rounded-r6", "shadow-[inset_0_0_0_1px_var(--color-border)]"],
-			item: ["-mx-1", "px-1", "gap-1"],
-			icon: [["lucide-code", "size-4"]],
-			trailing: [false, "+1\u22121", "Undo"],
-			chevron: true,
-			undoHidden: false,
+			icons: ["lucide lucide-code size-4"],
+		});
+	});
+
+	it("builds both card forms from upstream's shell, row and trailing classes", () => {
+		const CARD = [
+			"mt-1",
+			"flex",
+			"w-full",
+			"select-text",
+			"flex-col",
+			"gap-1",
+			"rounded-r7",
+			"px-2",
+			"py-1",
+			"text-[13px]/[19px]",
+			"shadow-[inset_0_0_0_1px_var(--color-border)]",
+		];
+		const ITEM = ["relative", "-mx-1", "flex", "min-w-0", "items-center", "gap-2", "px-2"];
+		const CONTROL = [
+			"flex",
+			"min-h-7",
+			"min-w-0",
+			"grow",
+			"items-center",
+			"before:absolute",
+			"before:inset-0",
+			"before:rounded-r5",
+			"before:content-['']",
+			"text-start",
+			"hover:before:bg-fill-ghost-hover",
+			"focus-visible:before:shadow-focus",
+			"focus-visible:outline-hidden",
+		];
+		const TRAILING = ["pointer-events-none", "relative", "flex", "shrink-0", "items-center", "gap-1"];
+		const shape = (files: number) => {
+			const {container, unmount} = render(
+				<TurnChangesCard sessionId="test-session" changes={changesWith(files)} undoable />,
+			);
+			const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
+			const [item] = within(card).getAllByRole("listitem");
+			const control = within(item!).getByRole("link");
+			const trailing = item!.lastElementChild!;
+			const result = {
+				card: card.className.split(" "),
+				item: item!.className.split(" "),
+				control: control.className.split(" "),
+				trailing: trailing.className.split(" "),
+				trailingParts: Array.from(trailing.children, (child) => [child.className, child.textContent]),
+				chevrons: card.querySelectorAll(".lucide-chevron-right, [data-chevron]").length,
+			};
+			unmount();
+			return result;
+		};
+
+		expect({single: shape(1), multi: shape(2)}).toStrictEqual({
+			single: {
+				card: CARD,
+				item: ITEM,
+				control: CONTROL,
+				trailing: TRAILING,
+				trailingParts: [
+					["pointer-events-auto flex items-center gap-1", "Undo"],
+					["flex items-center gap-2.5", "+1\u22121"],
+				],
+				chevrons: 0,
+			},
+			multi: {
+				card: CARD,
+				item: ITEM,
+				control: CONTROL,
+				trailing: TRAILING,
+				trailingParts: [["flex items-center gap-2.5", "+1\u22121"]],
+				chevrons: 0,
+			},
 		});
 	});
 
@@ -625,25 +678,6 @@ describe("TurnChangesCard", () => {
 		}
 	});
 
-	it("reveals each row's hover-only chevron on touch", () => {
-		render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
-		const chevrons = screen.getAllByRole("link").map((link) => link.querySelector("svg:last-of-type"));
-
-		expect(chevrons.map((chevron) => chevron?.getAttribute("class")?.includes(TOUCH_REVEAL))).toStrictEqual([
-			true,
-			true,
-		]);
-	});
-
-	it("keeps the multi-file header and its 8px top margin", () => {
-		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
-		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
-		expect({
-			header: screen.getByText("Edited 2 files").textContent,
-			spacing: ["mt-2", "mt-5", "mb-[11px]"].filter((name) => card.classList.contains(name)),
-		}).toStrictEqual({header: "Edited 2 files", spacing: ["mt-2"]});
-	});
-
 	it("uses upstream's U+2212 minus in the row stats and the closing See all totals", () => {
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
@@ -651,41 +685,25 @@ describe("TurnChangesCard", () => {
 		);
 	});
 
-	it("draws upstream's summary card: inset ring, 10px radius, 13/19 rows with 16px icons and 12/15 git stats", () => {
+	it("draws upstream's summary card: 13/19 text on the card, 16px icons and 12/15 git stats", () => {
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
-		const [row] = screen.getAllByRole("link");
-		const pick = (element: Element | null | undefined, names: string[]) =>
-			names.filter((name) => element?.classList.contains(name) === true);
+		const [item] = screen.getAllByRole("listitem");
 
 		expect({
-			card: pick(card, [
-				"rounded-r7",
-				"px-2",
-				"py-1.5",
-				"gap-1",
-				"select-text",
-				"shadow-[inset_0_0_0_1px_var(--color-border)]",
-			]),
-			title: pick(screen.getByText("Edited 2 files"), ["text-[13px]/[19px]", "text-primary"]),
-			icon: pick(row?.querySelector("svg"), ["size-4"]),
-			name: pick(within(row!).getByText("file-1.ts"), ["text-[13px]/[19px]"]),
-			stats: pick(within(row!).getByText("+1").parentElement, ["text-[12px]/[15px]"]),
+			card: card.classList.contains("text-[13px]/[19px]"),
+			title: screen.getByText("Edited 2 files").className,
+			icon: item?.querySelector("svg")?.getAttribute("class"),
+			name: within(item!).getByText("file-1.ts").className,
+			stats: within(item!).getByText("+1").parentElement?.className,
 			seeAll: within(card).getByText("See all").className,
 		}).toStrictEqual({
-			card: [
-				"rounded-r7",
-				"px-2",
-				"py-1.5",
-				"gap-1",
-				"select-text",
-				"shadow-[inset_0_0_0_1px_var(--color-border)]",
-			],
-			title: ["text-[13px]/[19px]", "text-primary"],
-			icon: ["size-4"],
-			name: ["text-[13px]/[19px]"],
-			stats: ["text-[12px]/[15px]"],
-			seeAll: "text-[13px]/[19px] text-primary",
+			card: true,
+			title: "min-w-0 truncate text-primary",
+			icon: "lucide lucide-file-text size-4",
+			name: "min-w-0 truncate text-primary",
+			stats: "flex shrink-0 items-center gap-0.5 tabular-nums text-[12px]/[15px]",
+			seeAll: "text-primary",
 		});
 	});
 

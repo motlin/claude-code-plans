@@ -1,13 +1,11 @@
 import {ChevronRight, Code, FileText} from "lucide-react";
-import {useContext, useState} from "react";
+import {type ReactNode, useContext, useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
-import {TOUCH_REVEAL} from "../lib/touch-reveal";
 import type {TurnChanges} from "../lib/turn-changes";
 import {turnUndoPrompt} from "../lib/turn-undo-prompt";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
-import {ChevronIcon} from "./tool-renderers/shared";
 import {TurnUndoConfirm} from "./turn-undo";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useTurnUndo} from "./use-turn-undo";
@@ -22,7 +20,7 @@ function basename(path: string): string {
 
 function Stats({added, removed, className = ""}: {added: number; removed: number; className?: string}) {
 	return (
-		<span className={`flex shrink-0 gap-g1 tabular-nums ${className}`}>
+		<span className={`flex shrink-0 items-center gap-0.5 tabular-nums ${className}`}>
 			<span className="text-diff-added">+{added}</span>
 			<span className="text-diff-removed">−{removed}</span>
 		</span>
@@ -30,11 +28,18 @@ function Stats({added, removed, className = ""}: {added: number; removed: number
 }
 
 const ROW_CLASS =
-	"group/row -mx-1 flex min-h-7 w-full min-w-0 items-center gap-2 rounded-r5 px-1 py-0.5 text-left transition-colors hover:bg-fill-ghost-hover";
+	"-mx-1 flex min-h-7 w-full min-w-0 items-center gap-2 rounded-r5 px-1 py-0.5 text-left transition-colors hover:bg-fill-ghost-hover";
 
-/** Upstream's summary-card control text: 13/19 rows over 12/15 git stats. */
-const CONTROL_TEXT = "text-[13px]/[19px]";
+/** Upstream's summary card: 4px top margin, 4px 8px padding, 10px radius, 13/19 control text, inset ring. */
+const CARD_CLASS =
+	"mt-1 flex w-full select-text flex-col gap-1 rounded-r7 px-2 py-1 text-[13px]/[19px] shadow-[inset_0_0_0_1px_var(--color-border)]";
+/** Upstream's 12/15 git stats. */
 const STAT_TEXT = "text-[12px]/[15px]";
+/** Upstream's file row: the control's `::before` fills the whole `<li>`, Undo and stats included, on hover. */
+const ITEM_CLASS = "relative -mx-1 flex min-w-0 items-center gap-2 px-2";
+const ROW_CONTROL_CLASS =
+	"flex min-h-7 min-w-0 grow items-center before:absolute before:inset-0 before:rounded-r5 before:content-[''] text-start hover:before:bg-fill-ghost-hover focus-visible:before:shadow-focus focus-visible:outline-hidden";
+const TRAILING_CLASS = "pointer-events-none relative flex shrink-0 items-center gap-1";
 
 /** Upstream's cds ghost Button (size base) with `text-muted-as-secondary hover:text-secondary text-footnote`. */
 const UNDO_CLASS =
@@ -75,21 +80,26 @@ function UndoButton({
 	);
 }
 
-/** Upstream's lone changes row: a 16px code glyph and the name, its stats and chevron outside the button. */
-const LONE_ROW_CLASS =
-	"flex min-h-7 min-w-0 grow items-center gap-1.5 rounded-r4 py-0.5 text-left transition-colors hover:bg-fill-ghost-hover";
-
-function FileRowContent({path, added, removed}: {path: string; added: number; removed: number}) {
+function RowLabel({icon: Icon, path}: {icon: typeof FileText; path: string}) {
 	return (
-		<>
-			<FileText aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
-			<span className={`min-w-0 truncate ${CONTROL_TEXT} text-primary`}>{basename(path)}</span>
-			<Stats added={added} removed={removed} className={STAT_TEXT} />
-			<ChevronRight
-				aria-hidden="true"
-				className={`ml-auto size-3.5 shrink-0 text-ink-muted opacity-0 group-hover/row:opacity-100 ${TOUCH_REVEAL}`}
-			/>
-		</>
+		<span className="relative flex min-w-0 items-center gap-1">
+			<span className="flex shrink-0 text-ink-muted">
+				<Icon aria-hidden="true" className="size-4" />
+			</span>
+			<span className="min-w-0 truncate text-primary">{basename(path)}</span>
+		</span>
+	);
+}
+
+/** The row's right side: upstream's pass-through group holding Undo (when offered) and the stats. */
+function RowTrailing({added, removed, undo}: {added: number; removed: number; undo?: ReactNode}) {
+	return (
+		<span className={TRAILING_CLASS}>
+			{undo !== undefined && <span className="pointer-events-auto flex items-center gap-1">{undo}</span>}
+			<span className="flex items-center gap-2.5">
+				<Stats added={added} removed={removed} className={STAT_TEXT} />
+			</span>
+		</span>
 	);
 }
 
@@ -158,47 +168,40 @@ export function TurnChangesCard({
 
 	const [soleFile] = changes.files;
 	if (count === 1 && soleFile !== undefined) {
-		const name = (
-			<>
-				<Code aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
-				<span className="min-w-0 truncate text-body text-primary">{basename(soleFile.path)}</span>
-			</>
-		);
+		const label = <RowLabel icon={Code} path={soleFile.path} />;
 		return (
-			<div
-				data-turn-changes-card
-				className="group/card mt-4 mb-[7px] flex w-full select-text flex-col gap-1 rounded-r6 px-2 py-1 shadow-[inset_0_0_0_1px_var(--color-border)]"
-			>
-				<ul aria-label={title} className="flex flex-col">
-					<li className="relative -mx-1 flex min-w-0 items-center gap-1 px-1">
+			<div data-turn-changes-card className={CARD_CLASS}>
+				<ul aria-label={title} className="flex w-full min-w-0 flex-col">
+					<li className={ITEM_CLASS}>
 						{openChanges === undefined ? (
-							<a href={fileViewerPath(soleFile.path)} title={soleFile.path} className={LONE_ROW_CLASS}>
-								{name}
+							<a href={fileViewerPath(soleFile.path)} title={soleFile.path} className={ROW_CONTROL_CLASS}>
+								{label}
 							</a>
 						) : (
-							<Tooltip content="View this turn's changes" className="min-w-0 grow">
+							// Unpositioned (portalled tip) so the control's ::before spans the whole <li>.
+							<Tooltip content="View this turn's changes" portal className="static! min-w-0 grow">
 								<button
 									type="button"
 									onClick={openChanges}
-									className={`${LONE_ROW_CLASS} cursor-pointer`}
+									className={`${ROW_CONTROL_CLASS} cursor-pointer`}
 								>
-									{name}
+									{label}
 								</button>
 							</Tooltip>
 						)}
-						<span className="pointer-events-none flex shrink-0 items-center gap-1">
-							<Stats added={soleFile.added} removed={soleFile.removed} />
-							<span className="text-secondary">
-								<ChevronIcon expanded={false} />
-							</span>
-						</span>
-						{undoable && (
-							<UndoButton
-								sendsPrompt={send !== null}
-								busy={undo.state.kind === "busy"}
-								onUndo={startUndo}
-							/>
-						)}
+						<RowTrailing
+							added={soleFile.added}
+							removed={soleFile.removed}
+							undo={
+								undoable ? (
+									<UndoButton
+										sendsPrompt={send !== null}
+										busy={undo.state.kind === "busy"}
+										onUndo={startUndo}
+									/>
+								) : undefined
+							}
+						/>
 					</li>
 				</ul>
 				<UndoFeedback undo={undo} />
@@ -206,10 +209,10 @@ export function TurnChangesCard({
 		);
 	}
 
-	const headerContent = <span className={`min-w-0 truncate ${CONTROL_TEXT} text-primary`}>{title}</span>;
+	const headerContent = <span className="min-w-0 truncate text-primary">{title}</span>;
 	const seeAllContent = (
 		<>
-			<span className={`${CONTROL_TEXT} text-primary`}>See all</span>
+			<span className="text-primary">See all</span>
 			<Stats added={changes.added} removed={changes.removed} className={STAT_TEXT} />
 		</>
 	);
@@ -217,10 +220,7 @@ export function TurnChangesCard({
 	// Upstream's summary card: an inset-ringed 10px card of 13/19 rows closing on "See all +A −R".
 	// Undo is a local extra beside the header.
 	return (
-		<div
-			data-turn-changes-card
-			className="mt-2 flex w-full select-text flex-col gap-1 rounded-r7 px-2 py-1.5 shadow-[inset_0_0_0_1px_var(--color-border)]"
-		>
+		<div data-turn-changes-card className={CARD_CLASS}>
 			<div className="flex min-w-0 items-center gap-1">
 				{openChanges === undefined ? (
 					<div className="flex min-h-7 min-w-0 flex-1 items-center gap-2">{headerContent}</div>
@@ -240,12 +240,13 @@ export function TurnChangesCard({
 				)}
 			</div>
 			<UndoFeedback undo={undo} />
-			<ul aria-label={title} className="flex flex-col">
+			<ul aria-label={title} className="flex w-full min-w-0 flex-col">
 				{visible.map((file) => (
-					<li key={file.path} className="flex min-w-0">
-						<a href={fileViewerPath(file.path)} title={file.path} className={ROW_CLASS}>
-							<FileRowContent {...file} />
+					<li key={file.path} className={ITEM_CLASS}>
+						<a href={fileViewerPath(file.path)} title={file.path} className={ROW_CONTROL_CLASS}>
+							<RowLabel icon={FileText} path={file.path} />
 						</a>
+						<RowTrailing added={file.added} removed={file.removed} />
 					</li>
 				))}
 				{hidden > 0 && (
@@ -256,7 +257,7 @@ export function TurnChangesCard({
 							onClick={() => {
 								setShowAll(true);
 							}}
-							className={`${ROW_CLASS} cursor-pointer ${CONTROL_TEXT} text-secondary`}
+							className={`${ROW_CLASS} cursor-pointer text-secondary`}
 						>
 							Show {hidden} more
 						</button>
