@@ -62,6 +62,7 @@ import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
 import type {ToolUseBlock} from "../lib/schemas";
+import {toolBucket, type ToolBucket} from "../lib/tool-runs";
 import {AttachmentBanner, Banner, Pre} from "./attachment-banner";
 import {
 	stripCommandTags,
@@ -1618,14 +1619,31 @@ function isAssistantProseBlock(block: SessionContentBlock): boolean {
 	return narrationProse(block) !== null;
 }
 
-/** Prominent question cards split tool runs so summaries cannot reorder their answers. */
-function isGroupableToolOnlyAssistantLine(line: SessionLine): boolean {
+function toolBucketOf(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, ToolResultInfo>): ToolBucket {
+	const info = toolResultMap.get(block.id);
+	return toolBucket({
+		name: block.name,
+		input: block.input,
+		result: info?.result,
+		isError: info?.isError,
+		pending: info === undefined,
+	});
+}
+
+/**
+ * A tool-only line that may join a tool run. A standalone call (upstream's `toolBucket`) is
+ * always its own run, so its line never groups and draws as a lone row or card.
+ */
+function isGroupableToolOnlyAssistantLine(
+	line: SessionLine,
+	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+): boolean {
 	if (line.type !== "assistant") return false;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return false;
 	return content.every(
 		(b) =>
-			(b.type === "tool_use" && !PROMINENT_TOOLS.has(b.name)) ||
+			(b.type === "tool_use" && toolBucketOf(b, toolResultMap) === "default") ||
 			(b.type === "text" && !isAssistantProseBlock(b)) ||
 			(b.type === "thinking" && b.thinking.trim() === ""),
 	);
@@ -2121,7 +2139,7 @@ function buildSessionListEntries(
 		if (line.type !== "user" || classifyUserContent(line) !== "stop-hook" || !renderProps.showTools) return false;
 		for (let next = index + 1; next < lines.length; next++) {
 			if (skipSet.has(next) || !isLineVisible(lineAt(next), renderProps, verbose)) continue;
-			return isGroupableToolOnlyAssistantLine(lineAt(next));
+			return isGroupableToolOnlyAssistantLine(lineAt(next), renderProps.toolResultMap);
 		}
 		return false;
 	};
@@ -2269,7 +2287,7 @@ function buildSessionListEntries(
 			const following = lines[j];
 			const leadsRun =
 				following !== undefined &&
-				isGroupableToolOnlyAssistantLine(following) &&
+				isGroupableToolOnlyAssistantLine(following, renderProps.toolResultMap) &&
 				renderProps.showTools &&
 				// Stop-hook feedback belongs to no assistant span; it leads whichever run it re-prompted.
 				(notice.kind === "hook" || sameSpan(line, following)) &&
@@ -2297,7 +2315,7 @@ function buildSessionListEntries(
 		pushIdleCommands(i);
 
 		// Group consecutive tool-only assistant lines
-		if (isGroupableToolOnlyAssistantLine(line) && renderProps.showTools) {
+		if (isGroupableToolOnlyAssistantLine(line, renderProps.toolResultMap) && renderProps.showTools) {
 			const groupStart = i;
 			const groupIndices: number[] = [i];
 			const notices = leadingNotices;
@@ -2323,7 +2341,7 @@ function buildSessionListEntries(
 					continue;
 				}
 				if (
-					isGroupableToolOnlyAssistantLine(nextLine) &&
+					isGroupableToolOnlyAssistantLine(nextLine, renderProps.toolResultMap) &&
 					sameSpan(line, nextLine) &&
 					!hoistedCompletions.has(j)
 				) {
@@ -4526,8 +4544,8 @@ function readRangeLabel(call: ClientToolCall): string | null {
 }
 
 /**
- * Tools drawn in full rather than collapsed into a summary row. Their renderer
- * owns the card shell -- upstream draws a card once per body, so the wrapper
+ * Tools drawn in full rather than collapsed into a summary row; `toolBucket` owns run
+ * splitting, this set only picks the renderer. Their renderer owns the card shell -- upstream draws a card once per body, so the wrapper
  * here stays a bare positioning context for the DebugLink.
  */
 const PROMINENT_TOOLS = new Set(["AskUserQuestion"]);
