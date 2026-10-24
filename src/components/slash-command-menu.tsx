@@ -2,7 +2,6 @@ import {useLayoutEffect, useMemo, useRef, useState} from "react";
 
 import {
 	highlightMatches,
-	isCustomCommand,
 	matchingAlias,
 	slashCommandLabel,
 	type SlashCommand,
@@ -218,7 +217,7 @@ export function SlashCommandMenu({
 					const alias = matchingAlias(command, query);
 					return (
 						<div
-							key={command.name}
+							key={command.shadowsHost === true ? `${command.name}:cli` : command.name}
 							id={slashCommandOptionId(id, index)}
 							role="menuitem"
 							tabIndex={-1}
@@ -246,8 +245,10 @@ export function SlashCommandMenu({
 									/>
 								</span>
 							)}
-							{isCustomCommand(command.source) && (
-								<span className="ml-auto shrink-0 pl-2 text-caption text-muted">Custom command</span>
+							{command.shadowsHost === true && (
+								<span className="ms-auto shrink-0 ps-2 text-caption text-ink-muted">
+									Custom command
+								</span>
 							)}
 							{query !== "" && command.pluginName !== undefined && (
 								<span className="ms-auto shrink-0 ps-2 text-caption text-ink-muted">

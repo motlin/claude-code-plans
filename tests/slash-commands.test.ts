@@ -111,7 +111,35 @@ describe("mergeSlashCommands", () => {
 		expect(merged).toStrictEqual([
 			{name: "model", description: "Built-in model", source: "builtin"},
 			{name: "deploy", description: "Personal deploy", source: "personal-skill"},
+			{name: "model", description: "Shadowed model", source: "personal-skill", shadowsHost: true},
 			{name: "tools:lint", description: "Lint", source: "plugin-skill"},
+		]);
+	});
+});
+
+describe("mergeSlashCommands with built-in collisions", () => {
+	it("keeps the first non-built-in entry that shares a built-in's name or alias, after it, marked shadowsHost", () => {
+		const merged = mergeSlashCommands([
+			[
+				{name: "review", description: "Built-in review", source: "builtin"},
+				{name: "config", description: "Built-in config", source: "builtin", aliases: ["settings"]},
+			],
+			[
+				{name: "review", description: "Skill review", source: "personal-skill"},
+				{name: "tab-color", description: "Color the tab", source: "personal-skill"},
+			],
+			[
+				{name: "review", description: "Command review", source: "personal-command"},
+				{name: "settings", description: "My settings", source: "personal-command"},
+			],
+		]);
+
+		expect(merged).toStrictEqual([
+			{name: "review", description: "Built-in review", source: "builtin"},
+			{name: "config", description: "Built-in config", source: "builtin", aliases: ["settings"]},
+			{name: "review", description: "Skill review", source: "personal-skill", shadowsHost: true},
+			{name: "tab-color", description: "Color the tab", source: "personal-skill"},
+			{name: "settings", description: "My settings", source: "personal-command", shadowsHost: true},
 		]);
 	});
 });
@@ -158,7 +186,7 @@ describe("listSlashCommands", () => {
 			"---\ndescription: Write my standup\nargument-hint: [date]\n---\nBody",
 		);
 		write(join(claudeDir, "commands", "release.md"), "---\ndescription: Shadowed\n---\n");
-		write(join(claudeDir, "commands", "model.md"), "---\ndescription: Shadowed built-in\n---\n");
+		write(join(claudeDir, "commands", "model.md"), "---\ndescription: My model command\n---\n");
 		write(join(claudeDir, "commands", "notes.txt"), "not a command");
 		write(join(cwd, ".claude", "commands", "triage.md"), "Triage the open issues\n\nMore");
 		write(join(cwd, ".claude", "commands", "standup.md"), "---\ndescription: Shadowed\n---\n");
@@ -196,6 +224,7 @@ describe("listSlashCommands", () => {
 				argumentHint: "[env]",
 			},
 			{name: "release", description: "Cut a release", source: "project-skill"},
+			{name: "model", description: "My model command", source: "personal-command", shadowsHost: true},
 			{
 				name: "standup",
 				description: "Write my standup",

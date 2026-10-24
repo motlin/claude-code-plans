@@ -68,12 +68,12 @@ describe("Composer slash commands", () => {
 			rows: [
 				{name: "model", highlighted: true},
 				{name: "plan", highlighted: false},
-				{name: "standupCustom command", highlighted: false},
+				{name: "standup", highlighted: false},
 			],
 		});
 	});
 
-	it("filters over name and description with bold match spans and tags custom commands", () => {
+	it("filters over name and description with bold match spans", () => {
 		const {textarea} = setup();
 
 		fireEvent.change(textarea, {target: {value: "/st"}});
@@ -81,8 +81,45 @@ describe("Composer slash commands", () => {
 		const bold = [...menu.querySelectorAll(".font-semibold")].map((el) => el.textContent);
 
 		expect({rows: rows(), bold}).toStrictEqual({
-			rows: [{name: "standupCustom command", highlighted: true}],
+			rows: [{name: "standup", highlighted: true}],
 			bold: ["st"],
+		});
+	});
+
+	it("tags only a custom command that collides with a built-in, as a second muted Custom command row", () => {
+		const builtinReview: SlashCommand = {name: "review", description: "Review a pull request", source: "builtin"};
+		const customReview: SlashCommand = {
+			name: "review",
+			description: "My own review flow",
+			source: "personal-command",
+			shadowsHost: true,
+		};
+		const tabColor: SlashCommand = {name: "tab-color", description: "Color the tab", source: "personal-command"};
+		const {textarea, onSend} = setup(undefined, [builtinReview, customReview, tabColor]);
+
+		fireEvent.change(textarea, {target: {value: "/"}});
+		const menuRows = rows();
+		const subtitles = screen
+			.getAllByRole("menuitem")
+			.map((row) => row.querySelector(".ms-auto")?.outerHTML ?? null);
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		const tooltip = screen.getByRole("tooltip").textContent;
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({menuRows, subtitles, tooltip, prompt: textarea.value, sent: onSend.mock.calls}).toStrictEqual({
+			menuRows: [
+				{name: "review", highlighted: true},
+				{name: "reviewCustom command", highlighted: false},
+				{name: "tab-color", highlighted: false},
+			],
+			subtitles: [
+				null,
+				'<span class="ms-auto shrink-0 ps-2 text-caption text-ink-muted">Custom command</span>',
+				null,
+			],
+			tooltip: "My own review flow",
+			prompt: "/review ",
+			sent: [],
 		});
 	});
 
@@ -100,7 +137,7 @@ describe("Composer slash commands", () => {
 		expect({settingsSuffix, sRows, coRows}).toStrictEqual({
 			settingsSuffix:
 				'<span class="min-w-0 truncate text-ink-muted">(<span class="font-semibold text-primary">settings</span>)</span>',
-			sRows: ["standupCustom command", "config(settings)", "usage(stats)", "model", "plan"],
+			sRows: ["standup", "config(settings)", "usage(stats)", "model", "plan"],
 			coRows: ["config", "usage(cost)"],
 		});
 	});
@@ -248,22 +285,22 @@ describe("Composer slash commands", () => {
 			top: [
 				{name: "model", highlighted: true},
 				{name: "plan", highlighted: false},
-				{name: "standupCustom command", highlighted: false},
+				{name: "standup", highlighted: false},
 			],
 			down: [
 				{name: "model", highlighted: false},
 				{name: "plan", highlighted: true},
-				{name: "standupCustom command", highlighted: false},
+				{name: "standup", highlighted: false},
 			],
 			bottom: [
 				{name: "model", highlighted: false},
 				{name: "plan", highlighted: false},
-				{name: "standupCustom command", highlighted: true},
+				{name: "standup", highlighted: true},
 			],
 			up: [
 				{name: "model", highlighted: false},
 				{name: "plan", highlighted: true},
-				{name: "standupCustom command", highlighted: false},
+				{name: "standup", highlighted: false},
 			],
 		});
 	});
@@ -379,7 +416,7 @@ describe("Composer slash commands", () => {
 			reopened: [
 				{name: "model", highlighted: true},
 				{name: "plan", highlighted: false},
-				{name: "standupCustom command", highlighted: false},
+				{name: "standup", highlighted: false},
 			],
 		});
 	});
@@ -747,7 +784,7 @@ describe("Composer slash commands", () => {
 				rows: [
 					{name: "model", highlighted: true},
 					{name: "plan", highlighted: false},
-					{name: "standupCustom command", highlighted: false},
+					{name: "standup", highlighted: false},
 				],
 			});
 		});

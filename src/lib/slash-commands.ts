@@ -24,6 +24,12 @@ export interface SlashCommand {
 	aliases?: readonly string[] | undefined;
 	/** The plugin a plugin skill or command comes from; upstream labels the row by the bare name and names the plugin beside it. */
 	pluginName?: string | undefined;
+	/**
+	 * A user, project or plugin entry whose name or alias collides with a built-in. Upstream lists it as a
+	 * second row tagged "Custom command" and routes it with `slashRouting:"cli"`; locally both rows insert
+	 * the same `/name` and the CLI decides.
+	 */
+	shadowsHost?: true | undefined;
 }
 
 /** One row of the "/" popup, mirroring upstream's `SlashCommandMenuPopupBody` item types. */
@@ -328,17 +334,30 @@ export function isKnownSlashCommand(name: string, slashCommands: readonly SlashC
 	);
 }
 
-/** User-authored commands carry upstream's muted "Custom command" tag. */
-export function isCustomCommand(source: SlashCommandSource): boolean {
-	return source === "personal-command" || source === "project-command";
-}
-
-/** Flattens groups given in precedence order; the first entry for a name wins. */
+/**
+ * Flattens groups given in precedence order; the first entry for a name wins, except that the first
+ * non-built-in entry colliding with a built-in's name or alias is also kept, marked `shadowsHost`.
+ */
 export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[]): SlashCommand[] {
+	const builtinNames = new Set(
+		groups
+			.flat()
+			.flatMap((command) => (command.source === "builtin" ? [command.name, ...(command.aliases ?? [])] : [])),
+	);
 	const seen = new Set<string>();
+	const seenShadows = new Set<string>();
 	const merged: SlashCommand[] = [];
 	for (const group of groups) {
 		for (const command of group) {
+			const collides =
+				command.source !== "builtin" &&
+				[command.name, ...(command.aliases ?? [])].some((name) => builtinNames.has(name));
+			if (collides) {
+				if (seenShadows.has(command.name)) continue;
+				seenShadows.add(command.name);
+				merged.push({...command, shadowsHost: true});
+				continue;
+			}
 			if (seen.has(command.name)) continue;
 			seen.add(command.name);
 			merged.push(command);

@@ -10,6 +10,7 @@ const SlashCommandSchema: z.ZodType<SlashCommand> = z.strictObject({
 	argumentHint: z.string().optional(),
 	aliases: z.array(z.string().min(1)).optional(),
 	pluginName: z.string().min(1).optional(),
+	shadowsHost: z.literal(true).optional(),
 });
 
 export const SlashCommandListResponse = z.array(SlashCommandSchema);
