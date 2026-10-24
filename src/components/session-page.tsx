@@ -159,6 +159,7 @@ import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {getSessionPromptBehavior} from "./session-prompt-behavior";
 import {sessionAnswerRoute} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
+import {errorRecoveryAvailability, errorRecoveryHandlers, lastEntryIsError} from "../lib/session-error-recovery";
 import {TerminalWritesTipProvider} from "./terminal-writes-tip";
 
 /** The deferred pane renderers, prompt cards and side chat panel, warmed once the session page goes idle so their first show is instant. */
@@ -737,6 +738,26 @@ function SessionView({
 		[removeQueuedPrompt, sessionId],
 	);
 	const {send: composerSend} = composerSendPlan(composerGate, {busy: paneBusy, queued: queuedPrompts.length});
+	const errorRecoveryAvailable = errorRecoveryAvailability({
+		hasLivePane: promptBehavior.hasLivePane,
+		writesEnabled: herdr.writesEnabled,
+		paneStatus: workingMarkerState.status,
+		pendingCard:
+			pendingPermission !== null ||
+			inlineQuestion !== null ||
+			hookQuestionCardShown ||
+			inlinePlanId !== null ||
+			dockedPlan !== null,
+		isPending: liveHerdrPrompt.state.isPending,
+		isLastEntry: lastEntryIsError(processed.lines),
+	});
+	const {retryable: errorRetryable, idle: errorIdle} = errorRecoveryAvailable;
+	const sendErrorRecoveryPrompt = liveHerdrPrompt.send;
+	const errorRecovery = useMemo(
+		() =>
+			errorRecoveryHandlers({retryable: errorRetryable, idle: errorIdle}, sendErrorRecoveryPrompt, enqueuePrompt),
+		[errorRetryable, errorIdle, sendErrorRecoveryPrompt, enqueuePrompt],
+	);
 	const sendLivePrompt = useCallback(
 		async (prompt: string) => {
 			switch (composerSend.kind) {
@@ -1191,6 +1212,7 @@ function SessionView({
 														}
 														summary={aiSummary}
 														{...(slashCommands === undefined ? {} : {slashCommands})}
+														{...(errorRecovery !== undefined && {errorRecovery})}
 													/>
 												</TurnUndoSendContext.Provider>
 											</TranscriptActionsProvider>

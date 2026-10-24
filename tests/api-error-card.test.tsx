@@ -2,9 +2,10 @@
 
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {ApiErrorCard} from "../src/components/api-error-card";
+import {ApiErrorCard, type ApiErrorRecovery} from "../src/components/api-error-card";
 import {preloadErrorRecoveryActions} from "../src/components/error-recovery-actions-entry";
 import {SessionChat} from "../src/components/session-chat";
+import {errorRecoveryHandlers} from "../src/lib/session-error-recovery";
 import {processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-context", () => ({
@@ -563,5 +564,84 @@ describe("ApiErrorCard recovery actions", () => {
 				"flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
 			],
 		});
+	});
+});
+
+describe("SessionChat error recovery", () => {
+	beforeAll(async () => {
+		await preloadErrorRecoveryActions();
+	});
+
+	const PROMPT_RECORD = {
+		type: "user",
+		uuid: "8d0f0f8e-0000-4000-8000-000000000001",
+		timestamp: "2026-09-22T01:08:40.000Z",
+		message: {role: "user", content: "hello"},
+	};
+
+	function renderWithRecovery(records: unknown[], recovery: ApiErrorRecovery): HTMLElement {
+		const {lines, toolResultMap} = processTranscript(records);
+		return render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				showCompactSummaries={true}
+				showTranscriptOnly={true}
+				shouldScrollToEnd={false}
+				transcriptMode="normal"
+				errorRecovery={recovery}
+			/>,
+		).container;
+	}
+
+	it("gives the last-entry 529 card the session's Try again, which types exactly Try again", async () => {
+		const send = vi.fn<(text: string) => Promise<"sent" | "not-ready" | "failed">>(async () =>
+			Promise.resolve("sent"),
+		);
+		const recovery = errorRecoveryHandlers({retryable: true, idle: true}, send, vi.fn<(text: string) => void>());
+		const container = renderWithRecovery([PROMPT_RECORD, OVERLOADED_RECORD], recovery!);
+		const retry = [...container.querySelectorAll("[data-api-error-actions] button")].find(
+			(button) => button.textContent === "Try again",
+		);
+		fireEvent.click(retry!);
+		await Promise.resolve();
+
+		expect(send.mock.calls).toStrictEqual([["Try again"]]);
+	});
+
+	it("types exactly /compact from a context-window card's Compact session", async () => {
+		const send = vi.fn<(text: string) => Promise<"sent" | "not-ready" | "failed">>(async () =>
+			Promise.resolve("sent"),
+		);
+		const recovery = errorRecoveryHandlers({retryable: true, idle: true}, send, vi.fn<(text: string) => void>());
+		const container = renderWithRecovery(
+			[
+				PROMPT_RECORD,
+				{
+					...OVERLOADED_RECORD,
+					message: {...OVERLOADED_RECORD.message, content: [{type: "text", text: "Prompt is too long"}]},
+					error: "invalid_request",
+					apiErrorStatus: 400,
+				},
+			],
+			recovery!,
+		);
+		const compact = [...container.querySelectorAll("[data-api-error-actions] button")].find(
+			(button) => button.textContent === "Compact session",
+		);
+		fireEvent.click(compact!);
+		await Promise.resolve();
+
+		expect(send.mock.calls).toStrictEqual([["/compact"]]);
+	});
+
+	it("draws no actions on an error a later prompt superseded", () => {
+		const container = renderWithRecovery(
+			[PROMPT_RECORD, OVERLOADED_RECORD, {...PROMPT_RECORD, uuid: "8d0f0f8e-0000-4000-8000-000000000002"}],
+			{onRetry: vi.fn<() => void>()},
+		);
+
+		expect(container.querySelectorAll("[data-api-error-actions]").length).toBe(0);
 	});
 });

@@ -17,7 +17,7 @@ import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
-import {ApiErrorCard, ApiErrorMarker} from "./api-error-card";
+import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {ErrorCardShell} from "./error-card-shell";
 import {ShimmerText} from "./shimmer-text";
 import {ProseMarkdown} from "./file-refs";
@@ -128,6 +128,8 @@ export interface SessionChatProps {
 	showTranscriptOnly?: boolean;
 	/** This session's transcript view; Verbose pre-expands every tool group and row. */
 	transcriptMode?: TranscriptMode;
+	/** The live session's recovery handlers for the last API error card, when it is the transcript's last entry. */
+	errorRecovery?: ApiErrorRecovery;
 	initialScrollKey?: string;
 	/** Stable raw transcript payload identity; changed content makes retained geometry unsafe. */
 	measurementSource?: object;
@@ -484,6 +486,7 @@ export const SessionChat = React.memo(function SessionChat({
 	archived = false,
 	onSendNow,
 	onFocusComposer,
+	errorRecovery,
 }: SessionChatProps) {
 	const sendNowHandlers = useMemo(
 		() => ({sendNow: onSendNow, focusComposer: onFocusComposer}),
@@ -514,6 +517,7 @@ export const SessionChat = React.memo(function SessionChat({
 	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines, toolResultMap), [lines, toolResultMap]);
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
 	const fullErrorLine = useMemo(() => lastErrorLine(lines), [lines]);
+	const lastError = useMemo(() => ({line: fullErrorLine, recovery: errorRecovery}), [fullErrorLine, errorRecovery]);
 	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
 	const waitingIds = useMemo(() => queuedEntryIds(listedLines), [listedLines]);
 
@@ -659,7 +663,7 @@ export const SessionChat = React.memo(function SessionChat({
 						<AgentNameContext.Provider value={resolveAgentName}>
 							<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
 								<CompactBoundaryContext.Provider value={compactBoundaries}>
-									<LastErrorLineContext.Provider value={fullErrorLine}>
+									<LastErrorLineContext.Provider value={lastError}>
 										<div
 											ref={containerRef}
 											className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
@@ -3879,9 +3883,13 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
  * The one error line drawn as the full card: upstream's `G_e` keeps the card
  * for the last error item of the last entry and collapses every other error
  * to its marker. The last entry ends at the latest prompt, so an error before
- * that prompt has no full card.
+ * that prompt has no full card. It carries the live session's recovery
+ * handlers for that card.
  */
-const LastErrorLineContext = createContext<SessionLine | null>(null);
+const LastErrorLineContext = createContext<{line: SessionLine | null; recovery: ApiErrorRecovery | undefined}>({
+	line: null,
+	recovery: undefined,
+});
 
 function isErrorLine(line: SessionLine): boolean {
 	return line.type === "assistant" && (line.isApiErrorMessage === true || line.stopReason === "refusal");
@@ -4583,7 +4591,9 @@ function UsageLimitCardView({card}: {card: UsageLimitCard}) {
 
 /** The API error card for an assistant turn flagged as an API error message, or its marker when a later error or prompt supersedes it. */
 function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: string}) {
-	const Form = useContext(LastErrorLineContext) === line ? ApiErrorCard : ApiErrorMarker;
+	const lastError = useContext(LastErrorLineContext);
+	const full = lastError.line === line;
+	const Form = full ? ApiErrorCard : ApiErrorMarker;
 	const details = line.errorDetails;
 	const detailsText =
 		details === undefined ? undefined : typeof details === "string" ? details : JSON.stringify(details, null, 2);
@@ -4596,6 +4606,7 @@ function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: stri
 			{...(line.messageId !== undefined && {messageId: line.messageId})}
 			{...(line.apiErrorCode !== undefined && {code: line.apiErrorCode})}
 			{...(line.stopReason !== undefined && {stopReason: line.stopReason})}
+			{...(full && lastError.recovery !== undefined && {recovery: lastError.recovery})}
 		/>
 	);
 }

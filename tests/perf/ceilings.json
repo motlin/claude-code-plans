@@ -61,17 +61,17 @@
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 595580,
+		"ceiling": 601727,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Deferring the session's pending-prompt cards (permission, inline and docked plan approval, send-rejected) and the side chat panel (both warmed when the session page goes idle), on top of the shared composer and Keyboard shortcuts deferrals, took session cold JS from 610260 gzip / 1845288 raw at 81d3f336 to 595580 gzip / 1792670 raw. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"reason": "The API error card series (classifier, ApiErrorCard, refusal and marker forms, recovery decision and the herdr Try again / Compact session wiring, a11965a3..this) drew upstream's error card in the transcript, which the session route renders statically, taking session cold JS from 595580 gzip / 1792670 raw at 85c9e2c1 to 601727 gzip / 1811166 raw; the recovery buttons and menus themselves stay deferred. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1792670,
+		"ceiling": 1811166,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Deferring the session's pending-prompt cards (permission, inline and docked plan approval, send-rejected) and the side chat panel (both warmed when the session page goes idle), on top of the shared composer and Keyboard shortcuts deferrals, took session cold JS from 610260 gzip / 1845288 raw at 81d3f336 to 595580 gzip / 1792670 raw. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"reason": "The API error card series (classifier, ApiErrorCard, refusal and marker forms, recovery decision and the herdr Try again / Compact session wiring, a11965a3..this) drew upstream's error card in the transcript, which the session route renders statically, taking session cold JS from 595580 gzip / 1792670 raw at 85c9e2c1 to 601727 gzip / 1811166 raw; the recovery buttons and menus themselves stay deferred. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"client.coldHome.default.commitsToRows": {
