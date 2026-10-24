@@ -169,16 +169,19 @@ describe("session live input", () => {
 			void result.current.send("Continue Alice's test");
 		});
 		expect(result.current.state).toStrictEqual({
+			phase: "sending",
 			isPending: true,
 			prompt: "Continue Alice's test",
 			rejection: null,
 		});
 
-		act(() => {
+		await act(async () => {
 			if (!finishPost) throw new Error("Expected fabricated prompt request");
 			finishPost();
+			await Promise.resolve();
 		});
 		expect(result.current.state).toStrictEqual({
+			phase: "sent",
 			isPending: true,
 			prompt: "Continue Alice's test",
 			rejection: null,
@@ -199,7 +202,7 @@ describe("session live input", () => {
 			).lines,
 		});
 		await waitFor(() => {
-			expect(result.current.state).toStrictEqual({isPending: false, prompt: "", rejection: null});
+			expect(result.current.state).toStrictEqual({phase: "idle", isPending: false, prompt: "", rejection: null});
 		});
 	});
 
@@ -214,6 +217,7 @@ describe("session live input", () => {
 		});
 
 		expect(result.current.state).toStrictEqual({
+			phase: "idle",
 			isPending: false,
 			prompt: "",
 			rejection: {

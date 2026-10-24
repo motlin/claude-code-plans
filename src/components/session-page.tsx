@@ -16,6 +16,7 @@ import {ChapterChips} from "./chapter-chips";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {Composer} from "./composer";
+import {SendingUserRow} from "./pending-user-row";
 import {StreamingMessage} from "./streaming-message";
 import {HeldSteerTurns, OptimisticWaitingTurn} from "./waiting-user-turn";
 import {SessionHookContext} from "./session-hook-context";
@@ -1158,7 +1159,10 @@ function SessionView({
 								/>
 							)}
 
-							{liveHerdrPrompt.state.prompt !== "" && (
+							{liveHerdrPrompt.state.phase === "sending" && (
+								<SendingUserRow prompt={liveHerdrPrompt.state.prompt} />
+							)}
+							{liveHerdrPrompt.state.phase === "sent" && (
 								<OptimisticWaitingTurn
 									prompt={liveHerdrPrompt.state.prompt}
 									onSendNow={

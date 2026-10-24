@@ -6,8 +6,8 @@ import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {HerdrRequestError} from "../src/lib/api/herdr";
 import {type SessionLine, processTranscript} from "../src/lib/transcript";
 
-const PENDING = {isPending: true, prompt: "Fix Alice's test", rejection: null};
-const CLEARED = {isPending: false, prompt: "", rejection: null};
+const PENDING = {phase: "sent", isPending: true, prompt: "Fix Alice's test", rejection: null};
+const CLEARED = {phase: "idle", isPending: false, prompt: "", rejection: null};
 
 const assistantRecord = (text: string) => ({
 	type: "assistant",
@@ -128,6 +128,38 @@ describe("useLiveHerdrPrompt clears only on its own echo", () => {
 	});
 });
 
+describe("useLiveHerdrPrompt tracks the send phase", () => {
+	it("is sending while the POST is in flight, sent once it resolves, idle once the transcript echoes it", async () => {
+		let resolvePost: () => void = () => {};
+		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>(
+			async () =>
+				new Promise<void>((resolve) => {
+					resolvePost = resolve;
+				}),
+		);
+		const hook = renderHook(({count, current}) => useLiveHerdrPrompt("session-alice", count, current, postPrompt), {
+			initialProps: {count: 100, current: [] as SessionLine[]},
+		});
+		let sending: Promise<unknown> = Promise.resolve();
+		act(() => {
+			sending = hook.result.current.send("Fix Alice's test");
+		});
+		const inFlight = hook.result.current.state;
+		await act(async () => {
+			resolvePost();
+			await sending;
+		});
+		const posted = hook.result.current.state;
+		hook.rerender({count: 101, current: linesOf([userRecord("Fix Alice's test")], 100)});
+
+		expect({inFlight, posted, echoed: hook.result.current.state}).toStrictEqual({
+			inFlight: {phase: "sending", isPending: true, prompt: "Fix Alice's test", rejection: null},
+			posted: PENDING,
+			echoed: CLEARED,
+		});
+	});
+});
+
 describe("useLiveHerdrPrompt records a rejected send", () => {
 	const rejectingHook = (error: Error) => {
 		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>().mockRejectedValue(error);
@@ -145,7 +177,12 @@ describe("useLiveHerdrPrompt records a rejected send", () => {
 
 		expect({result, state: hook.result.current.state, refills: onRejected.mock.calls}).toStrictEqual({
 			result: "failed",
-			state: {isPending: false, prompt: "", rejection: {prompt: "hi", message: "boom", nonResendable: false}},
+			state: {
+				phase: "idle",
+				isPending: false,
+				prompt: "",
+				rejection: {prompt: "hi", message: "boom", nonResendable: false},
+			},
 			refills: [["hi"]],
 		});
 	});

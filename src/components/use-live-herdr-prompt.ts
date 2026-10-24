@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useRef, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {markFailedSend, readFailedSend} from "../hooks/use-composer-draft";
 import {type DeliveryResult} from "../hooks/use-composer-queue";
 import {isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
@@ -17,7 +17,8 @@ export function useLiveHerdrPrompt(
 	/** Hands a rejected prompt back, as upstream's composer catch refills the composer. */
 	onRejected?: (prompt: string) => void,
 ) {
-	const [state, setState] = useState<LiveHerdrPromptState>(EMPTY_LIVE_HERDR_PROMPT_STATE);
+	const [stored, setState] = useState<StoredLiveHerdrPromptState>(EMPTY_LIVE_HERDR_PROMPT_STATE);
+	const state = useMemo<LiveHerdrPromptState>(() => ({...stored, isPending: stored.phase !== "idle"}), [stored]);
 	const pendingRecordCountRef = useRef<number | null>(null);
 	const onRejectedRef = useRef(onRejected);
 	onRejectedRef.current = onRejected;
@@ -30,7 +31,7 @@ export function useLiveHerdrPrompt(
 			failedSend === null
 				? EMPTY_LIVE_HERDR_PROMPT_STATE
 				: {
-						isPending: false,
+						phase: "idle",
 						prompt: "",
 						rejection: {prompt: failedSend, message: SEND_FAILED_MESSAGE, nonResendable: false},
 					},
@@ -40,21 +41,24 @@ export function useLiveHerdrPrompt(
 	useEffect(() => {
 		const pendingRecordCount = pendingRecordCountRef.current;
 		if (pendingRecordCount === null) return;
-		const prompt = state.prompt.trim();
+		const prompt = stored.prompt.trim();
 		const echoed = lines.some(
 			(line) => line.lineIndex >= pendingRecordCount && echoedPromptText(line)?.trim() === prompt,
 		);
 		if (!echoed) return;
 		pendingRecordCountRef.current = null;
 		setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
-	}, [lines, state.prompt]);
+	}, [lines, stored.prompt]);
 
 	const send = useCallback(
 		async (prompt: string, options: {midTurn?: true} = {}): Promise<DeliveryResult> => {
 			pendingRecordCountRef.current = transcriptRecordCount;
-			setState({isPending: true, prompt, rejection: null});
+			setState({phase: "sending", prompt, rejection: null});
 			try {
 				await postPrompt(sessionId, prompt, options);
+				setState((current) =>
+					current.phase === "sending" && current.prompt === prompt ? {...current, phase: "sent"} : current,
+				);
 				return "sent";
 			} catch (error) {
 				pendingRecordCountRef.current = null;
@@ -65,7 +69,7 @@ export function useLiveHerdrPrompt(
 				// Upstream `local_send_rejected`: the bubble goes, the card and the refilled composer take over.
 				// Attachments are composed into the text locally, so every rejected prompt can be resent.
 				setState({
-					isPending: false,
+					phase: "idle",
 					prompt: "",
 					rejection: {
 						prompt,
@@ -119,14 +123,25 @@ export interface SendRejection {
 	nonResendable: boolean;
 }
 
-interface LiveHerdrPromptState {
-	isPending: boolean;
+/**
+ * Where the live-pane prompt is: `sending` while the POST is in flight (upstream's
+ * `deliveryStatus:"sending"` row), `sent` once herdr typed it and the transcript has yet to echo it.
+ */
+type LiveHerdrPromptPhase = "idle" | "sending" | "sent";
+
+interface StoredLiveHerdrPromptState {
+	phase: LiveHerdrPromptPhase;
 	prompt: string;
 	rejection: SendRejection | null;
 }
 
-const EMPTY_LIVE_HERDR_PROMPT_STATE: LiveHerdrPromptState = {
-	isPending: false,
+interface LiveHerdrPromptState extends StoredLiveHerdrPromptState {
+	/** The pane has a prompt of ours on the way: sending or sent. */
+	isPending: boolean;
+}
+
+const EMPTY_LIVE_HERDR_PROMPT_STATE: StoredLiveHerdrPromptState = {
+	phase: "idle",
 	prompt: "",
 	rejection: null,
 };
