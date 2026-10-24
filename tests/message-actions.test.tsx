@@ -543,6 +543,29 @@ describe("UserMessageActions", () => {
 		}).toStrictEqual({infoTip: true, icon: true, margin: true});
 	});
 
+	it("spaces the receipt as upstream: its -4px margins overlap the time's 6px pe and Copy by 4px in a gapless bar", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		);
+		const spacing = (element: Element) =>
+			(element.getAttribute("class") ?? "").split(" ").filter((c) => /^-?(?:[pm][xyseltrb]?|gap|size)-/.test(c));
+		const items = Array.from(bar(container).querySelectorAll("button, time")).map((element) => [
+			element.tagName === "TIME" ? "time" : (element.getAttribute("aria-label") ?? ""),
+			spacing(element),
+		]);
+
+		expect({bar: spacing(bar(container)), items}).toStrictEqual({
+			bar: ["gap-0"],
+			items: [
+				["time", ["pe-[6px]"]],
+				["Read by Claude", ["p-1", "-m-1"]],
+				["Copy", ["size-6"]],
+				["Rewind to here", ["size-6"]],
+				["Fork from here", ["size-6"]],
+			],
+		});
+	});
+
 	it("keeps the bar shown while a popup inside it is open", () => {
 		const {container} = render(
 			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
