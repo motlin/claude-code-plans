@@ -6,7 +6,12 @@ import {Composer} from "../src/components/composer";
 import {preloadFileTypeIcons} from "../src/components/file-mention-menu";
 import {ToastProvider} from "../src/components/toast";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
-import {FILE_MENTION_DEBOUNCE_MS, fileMentionTrigger, insertFileMention} from "../src/lib/file-mentions";
+import {
+	FILE_MENTION_DEBOUNCE_MS,
+	fileMentionTrigger,
+	insertFileMention,
+	isMentionSuppressed,
+} from "../src/lib/file-mentions";
 
 describe("fileMentionTrigger", () => {
 	it("triggers on @ at the start of the text or after whitespace", () => {
@@ -40,6 +45,26 @@ describe("fileMentionTrigger", () => {
 		expect(fileMentionTrigger("see @src/index.ts now", 8)).toStrictEqual({
 			start: 4,
 			query: "src",
+		});
+	});
+});
+
+describe("isMentionSuppressed", () => {
+	it("suppresses while the token extends the dismissed one, but a bare @ only exactly", () => {
+		expect({
+			extended: isMentionSuppressed("@skill", "@skills"),
+			same: isMentionSuppressed("@skill", "@skill"),
+			shortened: isMentionSuppressed("@skill", "@skil"),
+			bare: isMentionSuppressed("@", "@"),
+			bareExtended: isMentionSuppressed("@", "@a"),
+			none: isMentionSuppressed(null, "@a"),
+		}).toStrictEqual({
+			extended: true,
+			same: true,
+			shortened: false,
+			bare: true,
+			bareExtended: false,
+			none: false,
 		});
 	});
 });
@@ -493,14 +518,32 @@ describe("Composer @ file mentions", () => {
 		expect(textarea.value).toBe("@src/c/index.ts ");
 	});
 
-	it("closes on Escape until the token changes", async () => {
-		responses.set(searchUrl("ind"), search("ind", ["src/index.ts"]));
+	it("stays closed after Escape while the token extends the dismissed one, and reopens when it shrinks", async () => {
+		responses.set(searchUrl("sk"), search("sk", ["skills/a.md"]));
+		responses.set(searchUrl("ski"), search("ski", ["skills/a.md"]));
+		responses.set(searchUrl("s"), search("s", ["skills/a.md"]));
 		const {textarea} = setup();
 
-		await type(textarea, "@ind");
+		await type(textarea, "@sk");
 		fireEvent.keyDown(textarea, {key: "Escape"});
+		const afterEscape = screen.queryByRole("listbox");
+		await type(textarea, "@ski");
+		const afterExtend = screen.queryByRole("listbox");
+		await type(textarea, "@s");
+		const afterShrink = screen.getAllByRole("option").map((row) => row.textContent);
+		await type(textarea, "@sk");
 
-		expect(screen.queryByRole("listbox")).toBeNull();
+		expect({
+			afterEscape,
+			afterExtend,
+			afterShrink,
+			afterRetype: screen.getAllByRole("option").map((row) => row.textContent),
+		}).toStrictEqual({
+			afterEscape: null,
+			afterExtend: null,
+			afterShrink: ["a.mdskills"],
+			afterRetype: ["a.mdskills"],
+		});
 	});
 
 	it("does not open for an @ inside an email address", async () => {

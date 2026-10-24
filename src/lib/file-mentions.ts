@@ -33,6 +33,16 @@ export function fileMentionTrigger(text: string, caret: number): FileMentionTrig
 	return {start: caret - query.length - 1, query};
 }
 
+/**
+ * Whether an Escape-dismissed mention still suppresses `token` (`@` plus query):
+ * upstream keeps the menu closed while the token extends the dismissed one, but a
+ * dismissed bare `@` only suppresses an exact `@`.
+ */
+export function isMentionSuppressed(suppressed: string | null, token: string): boolean {
+	if (suppressed === null) return false;
+	return suppressed === "@" ? token === "@" : token.startsWith(suppressed);
+}
+
 /** `@path`, quoted when the path holds whitespace (the CLI reads `@"a b.ts"`). */
 function mentionToken(relPath: string): string {
 	return /\s/.test(relPath) ? `@"${relPath}"` : `@${relPath}`;

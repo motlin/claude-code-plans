@@ -34,7 +34,7 @@ import {
 } from "../lib/context-attach";
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import type {SessionFilesEntry} from "../lib/api/session-files";
-import {fileMentionTrigger, insertFileMention} from "../lib/file-mentions";
+import {fileMentionTrigger, insertFileMention, isMentionSuppressed} from "../lib/file-mentions";
 import {
 	type AcceptedMention,
 	mentionAt,
@@ -610,9 +610,14 @@ export function Composer({
 		mentionSessionId === undefined || slashOpen || mentionEndingAt(mentions, caret) !== undefined
 			? null
 			: fileMentionTrigger(prompt, caret);
-	const mentionKey = trigger === null ? null : `${trigger.start}\0${prompt}`;
-	const [dismissedMention, setDismissedMention] = useState<string | null>(null);
-	const mention = mentionKey === dismissedMention ? null : trigger;
+	// Esc suppresses the trigger at `start` while its token extends the dismissed one, as upstream does.
+	const [dismissedMention, setDismissedMention] = useState<{start: number; token: string} | null>(null);
+	const mentionSuppressed =
+		trigger !== null &&
+		trigger.start === dismissedMention?.start &&
+		isMentionSuppressed(dismissedMention.token, `@${trigger.query}`);
+	if (dismissedMention !== null && !mentionSuppressed) setDismissedMention(null);
+	const mention = mentionSuppressed ? null : trigger;
 	const suggestions = useFileMentionSuggestions(mentionSessionId, mention?.query ?? null);
 	useEffect(() => {
 		if (mentionSessionId !== undefined) void preloadFileTypeIcons();
@@ -668,7 +673,7 @@ export function Composer({
 			const entry = mentionEntries[mentionHighlighted];
 			if (entry !== undefined) acceptFileMention(entry);
 		} else if (e.key === "Escape") {
-			setDismissedMention(mentionKey);
+			setDismissedMention({start: mention.start, token: `@${mention.query}`});
 			e.stopPropagation();
 		} else {
 			return false;
