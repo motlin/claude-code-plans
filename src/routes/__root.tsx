@@ -22,7 +22,7 @@ import {getShellChinLabels} from "../lib/shell-chin-store";
 import {ChunkPrefetch} from "../components/chunk-prefetch";
 import {DeferredCommandPalette} from "../components/command-palette-entry";
 import {DeferredSettingsDialog} from "../components/settings/settings-dialog-entry";
-import {KeyboardShortcutsDialog} from "../components/keyboard-shortcuts-dialog";
+import {DeferredKeyboardShortcutsDialog} from "../components/keyboard-shortcuts-dialog-entry";
 import {RecentsSwitcher} from "../components/recents-switcher";
 import {NewSessionShortcut} from "../components/new-session-shortcut";
 import {ForkNavigator} from "../components/fork-navigator";
@@ -199,7 +199,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 				)}
 			</AppFrame>
 			<DeferredCommandPalette {...commandPalette} />
-			<KeyboardShortcutsDialog />
+			<DeferredKeyboardShortcutsDialog />
 			<RecentsSwitcher />
 			<NewSessionShortcut />
 			<ForkNavigator />

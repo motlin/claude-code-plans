@@ -2,7 +2,7 @@
 
 import {act, cleanup, fireEvent, render, renderHook, screen, waitFor, within} from "@testing-library/react";
 import {useState} from "react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer, type ComposerQueueView} from "../src/components/composer";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
@@ -19,6 +19,12 @@ import {
 	steeredPrompts,
 } from "../src/lib/composer-queue";
 import type {SlashCommand} from "../src/lib/slash-commands";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await preloadComposerSurfaces();
+});
 
 vi.mock("../src/components/session-chat", () => ({
 	SessionChat: () => null,

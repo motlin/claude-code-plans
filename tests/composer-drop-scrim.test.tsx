@@ -3,7 +3,8 @@
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {ComposerDropScrim, useFileDropTarget} from "../src/components/composer-drop-scrim";
+import {useFileDropTarget} from "../src/components/composer-drop-scrim";
+import {ComposerDropScrim} from "../src/components/composer-drop-scrim-overlay";
 
 const onFileDrop = vi.fn<(files: readonly File[]) => void>();
 

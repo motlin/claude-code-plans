@@ -2,7 +2,7 @@
 
 import {render} from "@testing-library/react";
 import {describe, expect, it} from "vite-plus/test";
-import {SearchResultCard} from "../src/routes/search";
+import {SearchResultCard} from "../src/components/search-view";
 import type {UnifiedSearchItem} from "../src/lib/api/search";
 
 const NOW = Date.parse("2026-08-10T12:00:00.000Z");

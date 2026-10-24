@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
 import {Composer} from "../src/components/composer";
@@ -11,6 +11,12 @@ import type {SessionDiffResponse} from "../src/lib/api/session-diff";
 import {registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {clearDiffComments, getDiffComments, openDiffCommentDraft} from "../src/lib/diff-comments";
 import {installLocalStorage} from "./fake-storage";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await preloadComposerSurfaces();
+});
 
 vi.mock("../src/lib/hmr-persist", () => ({
 	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),

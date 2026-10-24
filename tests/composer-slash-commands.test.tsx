@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {SlashCommandMenu} from "../src/components/slash-command-menu";
 import {ToastProvider} from "../src/components/toast";
@@ -10,6 +10,12 @@ import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {SlashCommand} from "../src/lib/slash-commands";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await preloadComposerSurfaces();
+});
 
 afterEach(() => {
 	cleanup();

@@ -34,6 +34,12 @@ import {type Interaction, measureInteraction} from "./harness/measure-interactio
 import {createRenderCensus} from "./harness/render-census";
 import {metricIds} from "./perf-ids";
 import {ratchet} from "./ratchet";
+import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await preloadComposerSurfaces();
+});
 
 /**
  * Client lab benchmark for typing in the composer (measurement plan §2.4 L11): the per-keystroke census. The app

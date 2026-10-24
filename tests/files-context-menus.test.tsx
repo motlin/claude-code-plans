@@ -7,7 +7,7 @@ import {join} from "node:path";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {type ComponentProps, type ReactNode, useReducer} from "react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Composer} from "../src/components/composer";
 import {FileTabsStrip} from "../src/components/files/file-tabs-strip";
@@ -29,6 +29,12 @@ import {
 import {type FileTabsAction, type FileTabsState, fileTabsReducer} from "../src/lib/file-tabs";
 import {handleRevealInFinder} from "../src/lib/open-in-finder";
 import {installLocalStorage} from "./fake-storage";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await preloadComposerSurfaces();
+});
 
 vi.mock("../src/lib/clipboard", () => ({
 	writeClipboardText: vi.fn<typeof writeClipboardText>(async () => Promise.resolve(true)),

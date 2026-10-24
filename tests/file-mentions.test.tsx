@@ -13,6 +13,12 @@ import {
 	insertFileMention,
 	isMentionSuppressed,
 } from "../src/lib/file-mentions";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await preloadComposerSurfaces();
+});
 
 describe("fileMentionTrigger", () => {
 	it("triggers on @ at the start of the text or after whitespace", () => {

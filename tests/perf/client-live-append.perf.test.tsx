@@ -31,6 +31,9 @@ import {installFixedResizeObserver} from "./harness/fixed-resize-observer";
 import {type InteractionMeasurement, measureInteraction} from "./harness/measure-interaction";
 import {metricIds} from "./perf-ids";
 import {ratchet} from "./ratchet";
+import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
+import {loadSessionPromptCards} from "../../src/components/session-prompt-cards-entry";
+import {preloadSideChatPanel} from "../../src/components/side-chat";
 
 /**
  * Client lab benchmark for live SSE traffic while a session is open (measurement plan §2.4 L7–L10). The app frame and
@@ -165,6 +168,8 @@ function lastChainedRecord(file: string): Record<string, unknown> {
 }
 
 beforeAll(async () => {
+	// Census the steady state: the page warms these deferred chunks on mount or idle, long before a live event.
+	await Promise.all([preloadComposerSurfaces(), loadSessionPromptCards(), preloadSideChatPanel()]);
 	vi.setSystemTime(FIXED_NOW);
 	root = mkdtempSync(join(tmpdir(), "perf-client-live-append-"));
 	const home = join(root, "home");

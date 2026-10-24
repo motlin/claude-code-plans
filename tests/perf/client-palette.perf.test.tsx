@@ -27,6 +27,7 @@ import {useCommandPalette} from "../../src/hooks/use-command-palette";
 import type {AppDb} from "../../src/lib/db/connection";
 import {sessions} from "../../src/lib/db/schema";
 import {Route as RootRoute} from "../../src/routes/__root";
+import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
 import {Route as HomeRoute} from "../../src/routes/index";
 import {generateTranscript, PERF_SHAPES, seedFixtureDb} from "./fixtures/generate-transcript";
 import {installFakeEventSource} from "./harness/fake-event-source";
@@ -109,6 +110,8 @@ async function handlerFor(module: string): Promise<ApiHandler> {
 }
 
 beforeAll(async () => {
+	// Census the steady state: the composer warms its deferred surfaces on mount, long before a first keystroke.
+	await preloadComposerSurfaces();
 	vi.setSystemTime(FIXED_NOW);
 	root = mkdtempSync(join(tmpdir(), "perf-client-palette-"));
 	const home = join(root, "home");

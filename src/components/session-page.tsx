@@ -35,7 +35,6 @@ import {
 	type AskUserQuestionContextValue,
 } from "./ask-user-question-context";
 import type {PlanApprovalContextValue} from "./plan-approval-context";
-import {InlinePlanApproval} from "./inline-plan-approval";
 import {SessionFileRefs} from "./file-refs";
 import type {JumpTargetWindow} from "./jump-target-context";
 import {LegacyMessageLinkNotice} from "./legacy-message-link-notice";
@@ -56,7 +55,6 @@ import {FilesPaneShortcut} from "./panes/files-pane-shortcut";
 import {useExtractedSessionFiles} from "./panes/session-file-sources";
 import {TerminalPaneShortcut} from "./panes/terminal-pane-shortcut";
 import {preloadTerminalPane, useRegisterTerminalPane} from "./panes/terminal-pane-entry";
-import {PermissionCard} from "./permission-card";
 import {BranchStrip} from "./branch-strip";
 import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-loader";
 import {Tooltip} from "./ui/tooltip";
@@ -73,7 +71,7 @@ import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
 import {WorkingMarker} from "./working-marker";
 import {useWorkingMarkerState} from "./use-working-marker-state";
-import {SideChat} from "./side-chat";
+import {preloadSideChatPanel, SideChat} from "./side-chat";
 import {handleBtwPrompt} from "./btw-prompt";
 import {useSideChatShortcut} from "./use-side-chat-shortcut";
 import {useToast} from "./toast-context";
@@ -128,8 +126,13 @@ import {
 import {notificationsQueryOptions} from "../lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
-import {DockedPlanApproval} from "./docked-plan-approval";
-import {SendRejectedCard} from "./send-rejected-card";
+import {
+	DeferredDockedPlanApproval,
+	DeferredInlinePlanApproval,
+	DeferredPermissionCard,
+	DeferredSendRejectedCard,
+	loadSessionPromptCards,
+} from "./session-prompt-cards-entry";
 import {useSendRejectionActions} from "./use-send-rejection-actions";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {findPendingPermission, permissionWaitToolUseId, type PermissionDecision} from "../lib/permission-card";
@@ -157,8 +160,15 @@ import {sessionAnswerRoute} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
 import {TerminalWritesTipProvider} from "./terminal-writes-tip";
 
-/** The deferred pane renderers, warmed once the session page goes idle so their first show skips the loading row. */
-const SESSION_PANE_CHUNKS = [preloadFilesPane, preloadLinksPane, preloadTerminalPane, preloadBackgroundTasksPane];
+/** The deferred pane renderers, prompt cards and side chat panel, warmed once the session page goes idle so their first show is instant. */
+const SESSION_PANE_CHUNKS = [
+	preloadFilesPane,
+	preloadLinksPane,
+	preloadTerminalPane,
+	preloadBackgroundTasksPane,
+	loadSessionPromptCards,
+	preloadSideChatPanel,
+];
 
 function SessionChrome({children}: {children: React.ReactNode}) {
 	return <div className="h-full overflow-auto">{children}</div>;
@@ -1033,7 +1043,7 @@ function SessionView({
 												!hookQuestion && <WaitingForInputNotice />}
 											{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
 											{dockedPlan !== null && (
-												<DockedPlanApproval
+												<DeferredDockedPlanApproval
 													key={dockedPlan.toolUseId}
 													pendingPlan={dockedPlan}
 													plan={planApprovalCtx}
@@ -1041,7 +1051,7 @@ function SessionView({
 											)}
 											{/* Upstream docks a rejected send's session-error card above the composer */}
 											{liveHerdrPrompt.state.rejection !== null && (
-												<SendRejectedCard
+												<DeferredSendRejectedCard
 													rejection={liveHerdrPrompt.state.rejection}
 													onRetry={retryRejection}
 													onDismiss={dismissRejection}
@@ -1194,7 +1204,7 @@ function SessionView({
 										sessionId={sessionId}
 										running={runningBackgroundLaunches}
 									>
-										<PermissionCard
+										<DeferredPermissionCard
 											key={pendingPermission.notificationId}
 											enterKey={pendingPermission.notificationId}
 											title={pendingPermission.title}
@@ -1216,7 +1226,7 @@ function SessionView({
 							)}
 							{/* Upstream draws a pending plan's approval as its own sticky card after the transcript */}
 							{inlinePlanId !== null && (
-								<InlinePlanApproval
+								<DeferredInlinePlanApproval
 									key={inlinePlanId}
 									toolUseId={inlinePlanId}
 									plan={planApprovalCtx}

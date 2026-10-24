@@ -71,7 +71,6 @@ import {
 import {nearestCommand} from "../lib/command-suggest";
 import {ComposerCommandNotice} from "./composer-command-notice";
 import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
-import {AttachedContextChips} from "./attached-context-chips";
 import {ErrorCardShell} from "./error-card-shell";
 import type {ChinMenu} from "./composer-launch-menus";
 import {
@@ -81,19 +80,17 @@ import {
 	ENVIRONMENT_BAR_ROW_CLASS,
 	ENVIRONMENT_PLACE_CLASS,
 } from "./composer-tokens";
-import {FileMentionMenu} from "./file-mention-menu";
 import {preloadFileTypeIcons} from "./lazy-file-type-icon";
-import {QueuedMessageBar} from "./queued-message-bar";
 import {ToastContext} from "./toast-context";
 import {fileMentionOptionId} from "./file-mention-option-id";
-import {SlashCommandMenu} from "./slash-command-menu";
+import {preloadComposerSurfaces, useComposerSurfaces} from "./composer-surfaces-entry";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
-import {ComposerDropScrim, useFileDropTarget} from "./composer-drop-scrim";
+import {useFileDropTarget} from "./composer-drop-scrim";
 import {ComposerSkillChip} from "./composer-skill-chip";
 import {type MentionChipActions, paintMentions} from "./composer-mention-chip";
 
@@ -721,6 +718,11 @@ export function Composer({
 	useEffect(() => {
 		if (mentionSessionId !== undefined) void preloadFileTypeIcons();
 	}, [mentionSessionId]);
+	const {AttachedContextChips, ComposerDropScrim, FileMentionMenu, QueuedMessageBar, SlashCommandMenu} =
+		useComposerSurfaces();
+	useEffect(() => {
+		preloadComposerSurfaces().catch(() => {});
+	}, []);
 	const mentionEntries = suggestions?.entries ?? [];
 	const mentionOpen = mention !== null && mentionEntries.length > 0;
 	const [mentionHighlight, setMentionHighlight] = useState<{

@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {
@@ -15,6 +15,14 @@ import {
 import {SessionPage} from "../src/components/session-page";
 import {ToastProvider} from "../src/components/toast";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+import {preloadSideChatPanel} from "../src/components/side-chat";
+import {loadSessionPromptCards} from "../src/components/session-prompt-cards-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await Promise.all([preloadComposerSurfaces(), preloadSideChatPanel(), loadSessionPromptCards()]);
+});
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
 vi.mock("../src/components/session-chat", () => ({

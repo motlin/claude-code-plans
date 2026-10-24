@@ -12,7 +12,8 @@ import {
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import type {UnifiedSearchItem} from "../src/lib/api/search";
-import {SearchView, validateSearchParameters} from "../src/routes/search";
+import {SearchView} from "../src/components/search-view";
+import {validateSearchParameters} from "../src/routes/search";
 
 function item(id: string, title: string, overrides: Partial<UnifiedSearchItem> = {}) {
 	return {

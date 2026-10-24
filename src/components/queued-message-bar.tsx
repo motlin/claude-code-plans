@@ -15,7 +15,7 @@ function keepComposerFocus(event: MouseEvent) {
 	event.preventDefault();
 }
 
-interface QueuedMessageBarProps {
+export interface QueuedMessageBarProps {
 	/** Keys the remembered expansion, like upstream's per-session queue store. */
 	sessionId: string;
 	items: readonly QueuedPrompt[];

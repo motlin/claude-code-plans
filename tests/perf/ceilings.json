@@ -47,31 +47,31 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 418509,
+		"ceiling": 407901,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 414105 as the upstream task-event rows landed (run rows, keeps-pin opener, combined group step); upstream's task-notification status normalisation and summary-noun task-type table tipped home gzip to 418509. Ceiling set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Deferring the composer's on-demand surfaces (slash and @ menus, drop scrim, context chips, queued-message band; warmed on composer mount), the Keyboard shortcuts dialog (warmed on idle and ⌘/Ctrl), and moving the /search page body out of its route file so the entry no longer carries file-search-results took home cold JS from 418904 gzip / 1278605 raw at 81d3f336 to 407901 gzip / 1241011 raw. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1278605,
+		"ceiling": 1241011,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 1265272 (the composer's did-you-mean command-name set) as the approaching usage band landed: the per-window threshold-and-reset dismissal store and the weekly/session approaching headlines tipped home raw to 1278605 (gzip 418904 stays inside its band). Ceiling set to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-23"
+		"reason": "Deferring the composer's on-demand surfaces (slash and @ menus, drop scrim, context chips, queued-message band; warmed on composer mount), the Keyboard shortcuts dialog (warmed on idle and ⌘/Ctrl), and moving the /search page body out of its route file so the entry no longer carries file-search-results took home cold JS from 418904 gzip / 1278605 raw at 81d3f336 to 407901 gzip / 1241011 raw. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 607387,
+		"ceiling": 595580,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 601238 / 1817919 as the turn card took upstream's edit counting and run model; the sole-bare-edit-row gate (src/lib/tool-runs.ts bucket and same-target tests in the transcript chunk) tipped session to 607387 / 1837021. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Deferring the session's pending-prompt cards (permission, inline and docked plan approval, send-rejected) and the side chat panel (both warmed when the session page goes idle), on top of the shared composer and Keyboard shortcuts deferrals, took session cold JS from 610260 gzip / 1845288 raw at 81d3f336 to 595580 gzip / 1792670 raw. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1837021,
+		"ceiling": 1792670,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 601238 / 1817919 as the turn card took upstream's edit counting and run model; the sole-bare-edit-row gate (src/lib/tool-runs.ts bucket and same-target tests in the transcript chunk) tipped session to 607387 / 1837021. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Deferring the session's pending-prompt cards (permission, inline and docked plan approval, send-rejected) and the side chat panel (both warmed when the session page goes idle), on top of the shared composer and Keyboard shortcuts deferrals, took session cold JS from 610260 gzip / 1845288 raw at 81d3f336 to 595580 gzip / 1792670 raw. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"client.coldHome.default.commitsToRows": {

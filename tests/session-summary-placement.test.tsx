@@ -4,7 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import type {ReactNode} from "react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
 import {SessionPage} from "../src/components/session-page";
@@ -27,6 +27,14 @@ import type {PaneKind} from "../src/lib/pane-layout";
 import type {Subagent} from "../src/lib/subagents";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+import {preloadSideChatPanel} from "../src/components/side-chat";
+import {loadSessionPromptCards} from "../src/components/session-prompt-cards-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await Promise.all([preloadComposerSurfaces(), preloadSideChatPanel(), loadSessionPromptCards()]);
+});
 
 vi.mock(import("../src/lib/hmr-persist"), async (importOriginal) => ({
 	...(await importOriginal()),

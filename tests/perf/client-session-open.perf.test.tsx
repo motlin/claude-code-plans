@@ -33,6 +33,14 @@ import {installFixedResizeObserver} from "./harness/fixed-resize-observer";
 import {type InteractionMeasurement, measureInteraction} from "./harness/measure-interaction";
 import {metricIds} from "./perf-ids";
 import {ratchet} from "./ratchet";
+import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
+import {preloadSideChatPanel} from "../../src/components/side-chat";
+import {loadSessionPromptCards} from "../../src/components/session-prompt-cards-entry";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await Promise.all([preloadComposerSurfaces(), preloadSideChatPanel(), loadSessionPromptCards()]);
+});
 
 /**
  * Client lab benchmark for opening a session and switching to another from the sidebar (measurement plan §2.4

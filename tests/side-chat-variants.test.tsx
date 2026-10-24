@@ -1,16 +1,21 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => vi.fn<() => Promise<void>>(),
 }));
 
 import {TileHost} from "../src/components/panes/tile-host";
-import {SideChat} from "../src/components/side-chat";
+import {SideChat, preloadSideChatPanel} from "../src/components/side-chat";
 import {ToastProvider} from "../src/components/toast";
 import {askSideChat, getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await preloadSideChatPanel();
+});
 
 const SESSION_ID = "session-side-chat-variants";
 

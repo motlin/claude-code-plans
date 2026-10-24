@@ -2,20 +2,25 @@
 
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import type {useNavigate} from "@tanstack/react-router";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 const navigate = vi.fn<ReturnType<typeof useNavigate>>();
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => navigate,
 }));
 
-import {SideChat} from "../src/components/side-chat";
+import {SideChat, preloadSideChatPanel} from "../src/components/side-chat";
 import {handleBtwPrompt} from "../src/components/btw-prompt";
 import {useSideChatShortcut} from "../src/components/use-side-chat-shortcut";
 import {ToastProvider} from "../src/components/toast";
 import type {ToastOptions} from "../src/components/toast-context";
 import {parseBtwCommand, sideChatBranchTitle} from "../src/lib/side-chat";
 import {askSideChat, getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
+
+// The deferred chunks these tests render, loaded up front as the page warms them before first use.
+beforeAll(async () => {
+	await preloadSideChatPanel();
+});
 
 const SESSION_ID = "session-side-chat-100";
 
