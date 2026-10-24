@@ -1,4 +1,4 @@
-import {ChevronRight, Code, FileText} from "lucide-react";
+import {Code, FileText} from "lucide-react";
 import {type ReactNode, useContext, useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
@@ -39,6 +39,8 @@ const STAT_TEXT = "text-[12px]/[15px]";
 const ITEM_CLASS = "relative -mx-1 flex min-w-0 items-center gap-2 px-2";
 const ROW_CONTROL_CLASS =
 	"flex min-h-7 min-w-0 grow items-center before:absolute before:inset-0 before:rounded-r5 before:content-[''] text-start hover:before:bg-fill-ghost-hover focus-visible:before:shadow-focus focus-visible:outline-hidden";
+/** The closing "See all" row: label at the start, the turn's totals at the end. */
+const SEE_ALL_CLASS = "flex min-w-0 grow items-center justify-between gap-2";
 const TRAILING_CLASS = "pointer-events-none relative flex shrink-0 items-center gap-1";
 
 /** Upstream's cds ghost Button (size base) with `text-muted-as-secondary hover:text-secondary text-footnote`. */
@@ -209,27 +211,23 @@ export function TurnChangesCard({
 		);
 	}
 
-	const headerContent = <span className="min-w-0 truncate text-primary">{title}</span>;
 	const seeAllContent = (
 		<>
-			<span className="text-primary">See all</span>
-			<Stats added={changes.added} removed={changes.removed} className={STAT_TEXT} />
+			<span className="relative flex min-w-0 items-center">
+				<span className="min-w-0 truncate text-primary">See all</span>
+			</span>
+			<span className="relative flex shrink-0">
+				<Stats added={changes.added} removed={changes.removed} className={STAT_TEXT} />
+			</span>
 		</>
 	);
 
-	// Upstream's summary card: an inset-ringed 10px card of 13/19 rows closing on "See all +A −R".
-	// Undo is a local extra beside the header.
+	// Upstream's summary card: a static "Edited N files" header with Undo flush to the card edge, a 1px divider,
+	// then the file rows closing on a "See all +A −R" row inside the list.
 	return (
 		<div data-turn-changes-card className={CARD_CLASS}>
-			<div className="flex min-w-0 items-center gap-1">
-				{openChanges === undefined ? (
-					<div className="flex min-h-7 min-w-0 flex-1 items-center gap-2">{headerContent}</div>
-				) : (
-					<button type="button" onClick={openChanges} className={`${ROW_CLASS} flex-1 cursor-pointer`}>
-						{headerContent}
-						<ChevronRight aria-hidden="true" className="ml-auto size-3.5 shrink-0 text-ink-muted" />
-					</button>
-				)}
+			<div className="flex h-6 min-w-0 items-center justify-between gap-2 px-1">
+				<span className="min-w-0 truncate text-primary">{title}</span>
 				{undoable && (
 					<UndoButton
 						sendsPrompt={send !== null}
@@ -239,7 +237,7 @@ export function TurnChangesCard({
 					/>
 				)}
 			</div>
-			<UndoFeedback undo={undo} />
+			<div aria-hidden="true" className="-mx-[7px] h-px shrink-0 bg-alpha-2" />
 			<ul aria-label={title} className="flex w-full min-w-0 flex-col">
 				{visible.map((file) => (
 					<li key={file.path} className={ITEM_CLASS}>
@@ -263,14 +261,21 @@ export function TurnChangesCard({
 						</button>
 					</li>
 				)}
+				<li className={ITEM_CLASS}>
+					{openChanges === undefined ? (
+						<div className={`${SEE_ALL_CLASS} min-h-7`}>{seeAllContent}</div>
+					) : (
+						<button
+							type="button"
+							onClick={openChanges}
+							className={`${ROW_CONTROL_CLASS} ${SEE_ALL_CLASS} cursor-pointer`}
+						>
+							{seeAllContent}
+						</button>
+					)}
+				</li>
 			</ul>
-			{openChanges === undefined ? (
-				<div className="flex min-h-7 min-w-0 items-center gap-2">{seeAllContent}</div>
-			) : (
-				<button type="button" onClick={openChanges} className={`${ROW_CLASS} cursor-pointer`}>
-					{seeAllContent}
-				</button>
-			)}
+			<UndoFeedback undo={undo} />
 		</div>
 	);
 }

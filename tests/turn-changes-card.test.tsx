@@ -703,7 +703,7 @@ describe("TurnChangesCard", () => {
 			icon: "lucide lucide-file-text size-4",
 			name: "min-w-0 truncate text-primary",
 			stats: "flex shrink-0 items-center gap-0.5 tabular-nums text-[12px]/[15px]",
-			seeAll: "text-primary",
+			seeAll: "min-w-0 truncate text-primary",
 		});
 	});
 
@@ -720,7 +720,7 @@ describe("TurnChangesCard", () => {
 		]);
 	});
 
-	it("opens the Changes pane scoped to the turn from the header", () => {
+	it("opens the Changes pane scoped to the turn from the See all row", () => {
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
 			DOMRect.fromRect({x: 0, y: 0, width: 1200, height: 800}),
 		);
@@ -742,9 +742,8 @@ describe("TurnChangesCard", () => {
 			const before = screen.queryByTestId("changes-pane");
 			const card = screen.getByRole("list", {name: "Edited 2 files"}).parentElement!;
 			act(() => {
-				fireEvent.click(within(card).getByRole("button", {name: /^Edited 2 files/}));
+				fireEvent.click(within(card).getByRole("button", {name: /^See all/}));
 			});
-			const seeAll = within(card.parentElement!).getByRole("button", {name: /^See all/});
 
 			expect({
 				before,
@@ -757,10 +756,6 @@ describe("TurnChangesCard", () => {
 				scope: "turn:u-1",
 				requests: [{sessionId: "turn-card-session", scope: "turn:u-1"}],
 			});
-			act(() => {
-				fireEvent.click(seeAll);
-			});
-			expect(requests).toHaveLength(2);
 		} finally {
 			window.removeEventListener(CHANGES_SCOPE_REQUEST_EVENT, listener);
 			unregister();
@@ -793,6 +788,48 @@ describe("TurnChangesCard", () => {
 		} finally {
 			unregister();
 		}
+	});
+
+	it("draws upstream's static multi-file header, a 1px divider, and See all as the list's last row", () => {
+		render(
+			<SettingsProvider>
+				<TileHost sessionId="turn-card-header" onExpandWithoutPane={() => {}}>
+					<TurnChangesCard sessionId="turn-card-header" changes={changesWith(2)} undoable />
+				</TileHost>
+			</SettingsProvider>,
+		);
+		const list = screen.getByRole("list", {name: "Edited 2 files"});
+		const card = list.parentElement!;
+		const [header, divider] = Array.from(card.children) as HTMLElement[];
+		const items = within(list).getAllByRole("listitem");
+		const seeAllItem = items.at(-1)!;
+
+		expect({
+			header: header!.className,
+			headerTag: header!.tagName,
+			headerButtons: within(header!)
+				.getAllByRole("button")
+				.map((button) => button.textContent),
+			title: within(header!).getByText("Edited 2 files").className,
+			divider: [divider!.className, divider!.getAttribute("aria-hidden"), divider!.childNodes.length],
+			items: items.map((item) => item.textContent),
+			seeAllLabel: within(seeAllItem).getByText("See all").className,
+			seeAllButton: within(seeAllItem).getByRole("button").textContent,
+			buttonsOutsideList: within(card)
+				.getAllByRole("button")
+				.filter((button) => !list.contains(button))
+				.map((button) => button.textContent),
+		}).toStrictEqual({
+			header: "flex h-6 min-w-0 items-center justify-between gap-2 px-1",
+			headerTag: "DIV",
+			headerButtons: ["Undo"],
+			title: "min-w-0 truncate text-primary",
+			divider: ["-mx-[7px] h-px shrink-0 bg-alpha-2", "true", 0],
+			items: ["file-1.ts+1\u22121", "file-2.ts+2\u22121", "See all+3\u22122"],
+			seeAllLabel: "min-w-0 truncate text-primary",
+			seeAllButton: "See all+3\u22122",
+			buttonsOutsideList: ["Undo"],
+		});
 	});
 
 	it("renders a static header outside a pane host", () => {
