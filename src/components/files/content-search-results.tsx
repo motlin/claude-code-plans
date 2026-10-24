@@ -11,7 +11,7 @@ import {
 	groupContentSearchResults,
 	type MarkedText,
 } from "../../lib/files-content-search";
-import {getFileIcon} from "../file-icon";
+import {FileTypeIcon} from "../file-type-icon";
 
 const QUERY_DEBOUNCE_MS = 120;
 
@@ -143,7 +143,6 @@ export function ContentSearchResults({
 			className="min-h-0 flex-1 overflow-y-auto px-1 py-1.25 outline-none"
 		>
 			{results?.groups.map((group) => {
-				const Icon = getFileIcon(fileName(group.relPath));
 				const dir = parentDir(group.relPath);
 				return (
 					<div key={group.path} role="group" aria-label={group.relPath} className="pb-1">
@@ -156,7 +155,7 @@ export function ContentSearchResults({
 							onDoubleClick={() => onOpenFile?.(group.relPath, {pin: true})}
 							className="flex h-6 w-full min-w-0 cursor-pointer items-baseline gap-1 rounded-r5 border-0 bg-transparent pr-2 pl-2 text-left text-body outline-none select-none hover:bg-fill-ghost-hover"
 						>
-							<Icon aria-hidden="true" className="size-3 shrink-0 self-center text-ink-muted" />
+							<FileTypeIcon fileName={group.relPath} size="xs" className="self-center text-ink-muted" />
 							<span className="truncate text-primary">{fileName(group.relPath)}</span>
 							{dir !== "" && <span className="min-w-0 truncate text-footnote text-ink-muted">{dir}</span>}
 						</button>

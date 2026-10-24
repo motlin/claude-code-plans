@@ -4,7 +4,7 @@ import {type KeyboardEvent, useId} from "react";
 import type {AttachContextHandler} from "../../lib/context-attach";
 import type {FileTabsAction, FileTabsState} from "../../lib/file-tabs";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
-import {getFileIcon} from "../file-icon";
+import {FileTypeIcon} from "../file-type-icon";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {TabMenuItems} from "./file-context-menu";
@@ -56,7 +56,6 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 			{state.tabs.map((tab) => {
 				const name = baseName(tab.path);
 				const active = tab.path === state.active;
-				const Icon = getFileIcon(name);
 				const folder = folderOf(tab.path, cwd);
 				return (
 					<ContextMenu key={tab.path}>
@@ -88,7 +87,7 @@ export function FileTabsStrip({state, dispatch, cwd, onAttachContext, onRevealIn
 									}}
 									className={`flex h-5 min-w-0 flex-1 cursor-pointer items-center gap-1 rounded-r5 pr-[22px] pl-1.5 text-left text-pane outline-none transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${active ? "bg-fill-control" : "bg-transparent hover:bg-fill-ghost-hover"} ${tab.preview ? "italic" : ""}`}
 								>
-									<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
+									<FileTypeIcon fileName={name} size="xs" className="text-ink-muted" />
 									<span className="max-w-[140px] truncate">{name}</span>
 									{tab.preview && <span className="sr-only">, preview</span>}
 								</button>

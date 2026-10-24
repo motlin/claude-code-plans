@@ -477,6 +477,28 @@ describe("Files pane tabs", () => {
 			closeRadius: true,
 		});
 	});
+	it("draws upstream's 12px file-type icon in each tab", () => {
+		render(
+			<FileTabsStrip
+				state={{tabs: [{path: "/w/README.md", preview: false}], active: "/w/README.md"}}
+				dispatch={() => {}}
+			/>,
+		);
+		const svg = screen.getByRole("tab").querySelector("svg");
+
+		expect({
+			fileTypeIcon: svg?.hasAttribute("data-file-type-icon"),
+			width: svg?.style.width,
+			className: svg?.getAttribute("class"),
+			fill: svg?.querySelector("path")?.getAttribute("fill"),
+		}).toStrictEqual({
+			fileTypeIcon: true,
+			width: "12px",
+			className: "shrink-0 text-ink-muted",
+			fill: "var(--fti-markdown)",
+		});
+	});
+
 	it("reveals an inactive tab's hover-only close button on touch", () => {
 		render(
 			<FileTabsStrip

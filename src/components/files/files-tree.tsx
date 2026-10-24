@@ -17,7 +17,7 @@ import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {type SessionFilesResponse, sessionFilesQueryOptions} from "../../lib/api/session-files";
 import type {AttachContextHandler} from "../../lib/context-attach";
 import {parseContentSearchQuery} from "../../lib/files-content-search";
-import {getFileIcon} from "../file-icon";
+import {FileTypeIcon} from "../file-type-icon";
 import {useSettings} from "../settings-context";
 import {
 	FILES_TREE_MAX_WIDTH,
@@ -393,7 +393,6 @@ export function FilesTree({
 							<div role="none" style={{height: entries.length * ROW_HEIGHT, position: "relative"}}>
 								{entries.slice(firstRow, lastRow).map((entry, offset) => {
 									const index = firstRow + offset;
-									const Icon = entry.isDirectory ? Folder : getFileIcon(entry.name);
 									const dirSuffix = isSearch ? parentDir(entry.relPath) : "";
 									return (
 										<ContextMenu key={entry.relPath} disabled={cwd === undefined}>
@@ -430,10 +429,18 @@ export function FilesTree({
 														}}
 														className="flex min-w-0 flex-1 cursor-pointer items-baseline gap-1 border-0 bg-transparent pr-2 text-left outline-none"
 													>
-														<Icon
-															aria-hidden="true"
-															className="size-3 shrink-0 self-center text-ink-muted"
-														/>
+														{entry.isDirectory ? (
+															<Folder
+																aria-hidden="true"
+																className="size-3 shrink-0 self-center text-ink-muted"
+															/>
+														) : (
+															<FileTypeIcon
+																fileName={entry.name}
+																size="xs"
+																className="self-center text-ink-muted"
+															/>
+														)}
 														<span data-tree-name className="truncate text-primary">
 															{entry.name}
 														</span>

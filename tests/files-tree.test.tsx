@@ -377,7 +377,7 @@ describe("FilesTree density", () => {
 
 		const [row, next] = screen.getAllByRole("treeitem");
 		if (row === undefined || next === undefined) throw new Error("Expected two tree rows");
-		const iconClasses = row.querySelector("svg")?.getAttribute("class")?.split(" ") ?? [];
+		const icon = row.querySelector("svg");
 		const rowClasses = row.className.split(" ");
 		const goUp = screen.getByRole("button", {name: "Go up to project files"});
 		const goUpClasses = goUp.className.split(" ");
@@ -387,7 +387,12 @@ describe("FilesTree density", () => {
 			rowText: rowClasses.includes("text-pane"),
 			rowHeight: rowClasses.includes("h-[19px]") && rowClasses.includes("rounded-r3"),
 			pitch: Number.parseFloat(next.style.top) - Number.parseFloat(row.style.top),
-			icon: iconClasses.includes("size-3"),
+			icon: {
+				fileTypeIcon: icon?.hasAttribute("data-file-type-icon"),
+				width: icon?.style.width,
+				className: icon?.getAttribute("class"),
+				fill: icon?.querySelector("path")?.getAttribute("fill"),
+			},
 			nameGap: row.querySelector("[data-tree-primary]")?.className.split(" ").includes("gap-1"),
 			goUpFullWidth: goUpClasses.includes("w-full"),
 			goUpText: goUpClasses.includes("text-pane"),
@@ -403,7 +408,12 @@ describe("FilesTree density", () => {
 			rowText: true,
 			rowHeight: true,
 			pitch: 24,
-			icon: true,
+			icon: {
+				fileTypeIcon: true,
+				width: "12px",
+				className: "shrink-0 self-center text-ink-muted",
+				fill: "var(--fti-typescript)",
+			},
 			nameGap: true,
 			goUpFullWidth: true,
 			goUpText: true,

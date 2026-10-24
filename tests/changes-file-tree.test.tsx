@@ -56,6 +56,16 @@ afterEach(() => {
 	cleanup();
 });
 
+function fileIcon(element: Element | null | undefined) {
+	const svg = element?.querySelector("svg");
+	return {
+		fileTypeIcon: svg?.hasAttribute("data-file-type-icon") ?? false,
+		width: svg?.style.width,
+		className: svg?.getAttribute("class"),
+		fill: svg?.querySelector("path")?.getAttribute("fill"),
+	};
+}
+
 describe("ChangedFilesSidebar", () => {
 	it("renders compacted directories and ± counts with no status letters", () => {
 		renderSidebar();
@@ -100,6 +110,23 @@ describe("ChangedFilesSidebar", () => {
 			"Build files",
 			"push.yml.github/workflows+3−1",
 		]);
+	});
+
+	it("draws upstream's 12px file-type icon on file rows and none on folder rows", () => {
+		renderSidebar();
+
+		expect({
+			file: fileIcon(screen.getByRole("treeitem", {name: /^app\.ts/})),
+			folder: screen.getByRole("treeitem", {name: /^src$/}).querySelector("[data-file-type-icon]"),
+		}).toStrictEqual({
+			file: {
+				fileTypeIcon: true,
+				width: "12px",
+				className: "shrink-0 text-ink-muted",
+				fill: "var(--fti-typescript)",
+			},
+			folder: null,
+		});
 	});
 
 	it("marks the active file with aria-current and selects files on click", () => {

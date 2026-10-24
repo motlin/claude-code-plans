@@ -4,7 +4,7 @@ import {type KeyboardEvent, type MouseEvent, useState} from "react";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {formatRelativeTimeFromIso} from "../../lib/relative-time";
 import {changedFileKindLabels} from "../../lib/schema-choices";
-import {getFileIcon} from "../file-icon";
+import {FileTypeIcon} from "../file-type-icon";
 import {
 	buildChangedFileTree,
 	type ChangedFileInput,
@@ -97,7 +97,6 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 				</div>
 			);
 		}
-		const Icon = getFileIcon(node.name);
 		return (
 			<button
 				key={`${sectionKey}:${node.path}`}
@@ -118,7 +117,7 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 				className={ROW_CLASS}
 				style={{paddingLeft}}
 			>
-				<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
+				<FileTypeIcon fileName={node.name} size="xs" className="text-ink-muted" />
 				<span className="flex min-w-0 flex-1 items-baseline gap-1">
 					<span className={flat ? "shrink-0 truncate" : "min-w-0 truncate"}>{node.name}</span>
 					{flat && node.dir !== "" && (

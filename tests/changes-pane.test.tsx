@@ -388,6 +388,24 @@ describe("ChangesPaneView file list", () => {
 			});
 		});
 
+		it("draws upstream's 12px file-type icon on each result", () => {
+			renderPane([GREET_FILE]);
+			openGoToFile();
+			const svg = screen.getByRole("option").querySelector("svg");
+
+			expect({
+				fileTypeIcon: svg?.hasAttribute("data-file-type-icon"),
+				width: svg?.style.width,
+				className: svg?.getAttribute("class"),
+				fill: svg?.querySelector("path")?.getAttribute("fill"),
+			}).toStrictEqual({
+				fileTypeIcon: true,
+				width: "12px",
+				className: "shrink-0 text-ink-muted",
+				fill: "var(--fti-typescript)",
+			});
+		});
+
 		it("shows No matching files when nothing matches", () => {
 			renderPane([GREET_FILE]);
 			fireEvent.change(openGoToFile(), {target: {value: "zzz"}});

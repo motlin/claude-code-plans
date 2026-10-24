@@ -1,9 +1,27 @@
 import {useState} from "react";
 import {Link} from "@tanstack/react-router";
-import {ChevronRight, Folder} from "lucide-react";
+import {ChevronRight, File, FileCode, FileJson, FileText, Folder} from "lucide-react";
 import type {FileTreeNodeData as FileTreeNode} from "../lib/api/plugins";
 import {toPluginFileSlug} from "../lib/md-slug";
-import {getFileIcon} from "./file-icon";
+
+/** The plugin tree keeps upstream's "classic" folder-tree look: monochrome glyphs, not file-type icons. */
+function getFileIcon(name: string) {
+	switch (name.split(".").pop()?.toLowerCase()) {
+		case "md":
+			return FileText;
+		case "ts":
+		case "tsx":
+		case "js":
+		case "jsx":
+		case "py":
+		case "sh":
+			return FileCode;
+		case "json":
+			return FileJson;
+		default:
+			return File;
+	}
+}
 
 function getName(node: FileTreeNode) {
 	const i = node.path.lastIndexOf("/");

@@ -3,7 +3,7 @@ import {type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState} 
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {type MatchRange, goToFileFooter, searchPaths} from "../../lib/fuzzy-path";
-import {getFileIcon} from "../file-icon";
+import {FileTypeIcon} from "../file-type-icon";
 import {Tooltip} from "../ui/tooltip";
 import {DiffCounts} from "./changes-file-tree";
 
@@ -166,7 +166,6 @@ export function GoToFile({
 								const name = result.path.slice(slash + 1);
 								const dir = slash === -1 ? "" : result.path.slice(0, slash);
 								const file = byPath.get(result.path);
-								const Icon = getFileIcon(name);
 								const selected = result === active;
 								return (
 									// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
@@ -187,7 +186,7 @@ export function GoToFile({
 										}}
 										className="flex h-6 shrink-0 cursor-default items-center gap-1.5 rounded-r5 px-2 text-body select-none aria-selected:bg-fill-ghost-hover"
 									>
-										<Icon aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
+										<FileTypeIcon fileName={name} size="xs" className="text-ink-muted" />
 										<span className="flex min-w-0 flex-1 items-baseline gap-1.5">
 											<span className="shrink-0 truncate text-secondary">
 												<Highlighted text={name} offset={slash + 1} ranges={result.ranges} />

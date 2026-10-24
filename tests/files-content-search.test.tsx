@@ -296,6 +296,24 @@ describe("FilesTree content search", () => {
 		).toBe(true);
 	});
 
+	it("draws upstream's 12px file-type icon on each matched file row", async () => {
+		renderTree();
+		fireEvent.change(filterInput(), {target: {value: "?needle"}});
+		const svg = (await screen.findByText("a.ts")).closest("[data-content-file]")?.querySelector("svg");
+
+		expect({
+			fileTypeIcon: svg?.hasAttribute("data-file-type-icon"),
+			width: svg?.style.width,
+			className: svg?.getAttribute("class"),
+			fill: svg?.querySelector("path")?.getAttribute("fill"),
+		}).toStrictEqual({
+			fileTypeIcon: true,
+			width: "12px",
+			className: "shrink-0 self-center text-ink-muted",
+			fill: "var(--fti-typescript)",
+		});
+	});
+
 	it("prompts for a query after a bare ?", async () => {
 		renderTree();
 		fireEvent.change(filterInput(), {target: {value: "?"}});
