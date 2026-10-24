@@ -20,6 +20,8 @@ export interface ApiErrorCardProps {
 	messageId?: string;
 	/** The record's string `error` code. */
 	code?: string;
+	/** The assistant message's `stop_reason`; `refusal` is a safeguards flag. */
+	stopReason?: string;
 }
 
 function numericStatus(status: number | string | undefined): number | undefined {
@@ -143,11 +145,12 @@ function ErrorDetails({
  * verdict hides the raw body and keeps View details only for a status or
  * request id.
  */
-export function ApiErrorCard({text, details, status, requestId, messageId, code}: ApiErrorCardProps) {
+export function ApiErrorCard({text, details, status, requestId, messageId, code, stopReason}: ApiErrorCardProps) {
 	const numeric = numericStatus(status);
 	const category = classifyApiError({
 		text,
 		...(code !== undefined && {code}),
+		...(stopReason !== undefined && {stopReason}),
 		...(numeric !== undefined && {status: numeric}),
 	});
 	const copy = errorCopy(category, {canRewind: false, canRetry: false, hasComposer: false});

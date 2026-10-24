@@ -1701,7 +1701,7 @@ function isStandaloneToolOnlyAssistantLine(
 
 /** The bucket of each call on a line of only tool calls and hidden blocks, else null. */
 function toolOnlyBuckets(line: SessionLine, toolResultMap: ReadonlyMap<string, ToolResultInfo>): ToolBucket[] | null {
-	if (line.type !== "assistant") return null;
+	if (line.type !== "assistant" || line.stopReason === "refusal") return null;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return null;
 	const buckets: ToolBucket[] = [];
@@ -3458,6 +3458,7 @@ function hasAssistantVisibleContent(line: SessionLine, showThinking: boolean, sh
 	if (line.type !== "assistant") return true;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return false;
+	if (line.stopReason === "refusal") return true;
 
 	const hasText = content.some(isAssistantProseBlock);
 	const hasThinking =
@@ -4435,13 +4436,17 @@ function AssistantEntry({
 		return null;
 	}
 
-	const hasVisibleNonToolContent = content.some(
-		(b) =>
-			isAssistantProseBlock(b) ||
-			(b.type === "thinking" && showThinking && typeof b.thinking === "string" && b.thinking.trim() !== "") ||
-			b.type === "image" ||
-			b.type === "document",
-	);
+	// Upstream draws a safeguards refusal as the Message flagged card, even when its content is only empty thinking.
+	const refused = line.stopReason === "refusal";
+	const hasVisibleNonToolContent =
+		refused ||
+		content.some(
+			(b) =>
+				isAssistantProseBlock(b) ||
+				(b.type === "thinking" && showThinking && typeof b.thinking === "string" && b.thinking.trim() !== "") ||
+				b.type === "image" ||
+				b.type === "document",
+		);
 	const hasToolUse = toolCalls.length > 0;
 
 	// No visible content at all -- hide the entry entirely
@@ -4498,6 +4503,7 @@ function AssistantEntry({
 					/>
 				),
 			)}
+			{refused && line.isApiErrorMessage !== true && <ApiErrorCardForLine line={line} text="" />}
 			{requestDisclosure}
 		</div>
 	);
@@ -4562,6 +4568,7 @@ function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: stri
 			{...(line.requestId !== undefined && {requestId: line.requestId})}
 			{...(line.messageId !== undefined && {messageId: line.messageId})}
 			{...(line.apiErrorCode !== undefined && {code: line.apiErrorCode})}
+			{...(line.stopReason !== undefined && {stopReason: line.stopReason})}
 		/>
 	);
 }

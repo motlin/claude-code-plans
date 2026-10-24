@@ -1344,6 +1344,21 @@ describe("message metadata fields", () => {
 		expect(result.lines[1]!).not.toHaveProperty("stopReason");
 	});
 
+	it("keeps stop_reason refusal on a safeguards-flagged assistant line", () => {
+		const records = [
+			assistantRecord([{type: "thinking", thinking: "", signature: "CAQS"}], {
+				requestId: "req_011CgGLji7Z5kBsT1veSwPzU",
+				message: {
+					role: "assistant",
+					content: [{type: "thinking", thinking: "", signature: "CAQS"}],
+					stop_reason: "refusal",
+				},
+			}),
+		];
+		const line = processTranscript(records).lines[0];
+		expect(line !== undefined && "stopReason" in line ? line.stopReason : null).toBe("refusal");
+	});
+
 	it("carries usage and attribution fields on assistant lines", () => {
 		const records = [
 			assistantRecord([{type: "text", text: "hi"}], {

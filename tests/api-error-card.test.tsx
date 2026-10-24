@@ -244,4 +244,49 @@ describe("ApiErrorCard", () => {
 			prose: 0,
 		});
 	});
+	it("draws a safeguards refusal whose content is only empty thinking as upstream's Message flagged card", () => {
+		const container = renderRecords([
+			{
+				type: "assistant",
+				uuid: "bd5450a5-7772-459c-890a-5b8e3d6a7c10",
+				timestamp: "2026-10-22T00:41:12.000Z",
+				message: {
+					role: "assistant",
+					model: "claude-opus-5-5",
+					stop_reason: "refusal",
+					content: [{type: "thinking", thinking: "", signature: "CAQS2wUKEAgTGAI4AUIIdGhpbmtpbmc"}],
+				},
+				requestId: "req_011CgGLji7Z5kBsT1veSwPzU",
+			},
+			{
+				type: "user",
+				uuid: "2694a1ca-c69d-4610-834f-d8812cfaab62",
+				timestamp: "2026-10-22T00:41:12.100Z",
+				message: {
+					role: "user",
+					content:
+						"Your response above was stopped by a safety classifier — this is not a tool or API error. The rest of it was withheld, and tool calls in it that had not finished did not run. Do not produce that content again, even reworded.",
+				},
+				isMeta: true,
+				turnCompanion: true,
+				refusedMessageId: "msg_011CgEjAfQLavHt3wo5wEY1e",
+			},
+		]);
+		const cards = [...container.querySelectorAll("[data-api-error-card]")];
+		const [header, hintRow] = [...(cards[0]?.children ?? [])];
+
+		expect({
+			cards: cards.length,
+			headline: header?.textContent,
+			hint: hintRow?.textContent,
+			learnMore: hintRow?.querySelector("a")?.getAttribute("href"),
+			companion: container.textContent.includes("stopped by a safety classifier"),
+		}).toStrictEqual({
+			cards: 1,
+			headline: "Message flagged",
+			hint: "Claude’s safeguards flagged this message. This sometimes happens in safe, normal sessions. Switch models to continue. Learn more",
+			learnMore: "https://www.anthropic.com/legal/aup",
+			companion: false,
+		});
+	});
 });

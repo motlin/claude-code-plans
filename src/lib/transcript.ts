@@ -101,7 +101,8 @@ const MessageLineSchema = z.object({
 	/** The rate-limit window of a synthetic usage-limit message. */
 	usageLimit: UsageLimitSchema.optional(),
 	errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-	stopReason: z.literal("max_tokens").optional(),
+	/** `max_tokens` (truncated) or `refusal` (Claude's safeguards stopped the response). */
+	stopReason: z.enum(["max_tokens", "refusal"]).optional(),
 	usage: z.record(z.string(), JsonValueSchema).optional(),
 	attributionSkill: z.string().optional(),
 	attributionPlugin: z.string().optional(),
@@ -1130,7 +1131,8 @@ function processRecordBatch(
 					isUsingOverage: limitInfo.isUsingOverage,
 				};
 			}
-			if (record.message.stop_reason === "max_tokens") processedLine.stopReason = "max_tokens";
+			const stopReason = record.message.stop_reason;
+			if (stopReason === "max_tokens" || stopReason === "refusal") processedLine.stopReason = stopReason;
 			if (record.message.usage !== undefined) processedLine.usage = record.message.usage;
 			if (typeof record.perTurnEffort === "string") {
 				processedLine.perTurnEffort = record.perTurnEffort;

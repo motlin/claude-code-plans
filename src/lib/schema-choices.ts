@@ -776,6 +776,12 @@ const messageLineTypeLabels = {
 	assistant: "Assistant",
 } satisfies Record<MessageProcessedLine["type"], string>;
 
+/** Handled in src/lib/turn-metadata.ts (max_tokens) and src/components/session-chat.tsx (refusal). */
+const messageLineStopReasonLabels = {
+	max_tokens: "Truncated at max tokens",
+	refusal: "Message flagged",
+} satisfies Record<NonNullable<MessageProcessedLine["stopReason"]>, string>;
+
 /** Exhaustive handler: switch in src/components/attachment-banner.tsx. */
 const attachmentVariants = {
 	plan_mode: true,
@@ -1497,6 +1503,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"GitOperationSchema.pr.action": gitPrActionLabels,
 	RenderedLineSchema: renderedLineVariants,
 	"RenderedLineSchema.<assistant|user>.type": messageLineTypeLabels,
+	"RenderedLineSchema.<assistant|user>.stopReason": messageLineStopReasonLabels,
 	"RenderedLineSchema.<system>.subtype": systemSubtypeLabels,
 	"JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
 	"AttachmentPayloadSchema.<instructions>.reason": contextRefreshReasonChoices,
