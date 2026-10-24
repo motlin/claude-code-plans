@@ -214,6 +214,21 @@ describe("scripts/server.sh", () => {
 		}
 	}, 30_000);
 
+	it("start gives up on a server that does not listen within START_TIMEOUT_SECONDS", () => {
+		const result = spawnSync("bash", [script, "start"], {
+			cwd: projectRoot,
+			encoding: "utf8",
+			env: {...env, START_TIMEOUT_SECONDS: "1", FAKE_SERVER_LISTEN_DELAY_MS: "5000"},
+		});
+		run("stop");
+
+		expect({status: result.status, stdout: result.stdout, stderr: result.stderr}).toStrictEqual({
+			status: 1,
+			stdout: `No server running (port ${PORT})\n`,
+			stderr: `Server failed to listen on port ${PORT} within 1s; see ${join(runDir, "server.log")}\n`,
+		});
+	}, 30_000);
+
 	it("stop terminates the server and is a no-op when nothing is running", () => {
 		run("start");
 		run("stop");

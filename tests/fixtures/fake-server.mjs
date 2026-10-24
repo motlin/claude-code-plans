@@ -13,4 +13,8 @@ const port = Number(process.env["PORT"] ?? 7581);
 const server = createServer((_req, res) => {
 	res.end("ok");
 });
-server.listen(port);
+// Stands in for a production server whose startup is slow on a loaded machine.
+const listenDelayMs = Number(process.env["FAKE_SERVER_LISTEN_DELAY_MS"] ?? 0);
+setTimeout(() => {
+	server.listen(port);
+}, listenDelayMs);

@@ -15,6 +15,7 @@
 #   PROJECT_DIR   only matched processes with this cwd are managed
 #   LOG_FILE      server stdout/stderr log
 #   STOP_GRACE_SECONDS  how long stop waits after SIGTERM before force killing (default 10)
+#   START_TIMEOUT_SECONDS  how long start waits for the server to answer HTTP (default 20)
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -28,6 +29,7 @@ SERVER_TITLE=${SERVER_TITLE:-claude-code-browser-server}
 SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|\\.output/server/index\\.mjs"}
 LOG_FILE=${LOG_FILE:-"${XDG_CACHE_HOME:-$HOME/.cache}/claude-code-plans/server.log"}
 STOP_GRACE_SECONDS=${STOP_GRACE_SECONDS:-10}
+START_TIMEOUT_SECONDS=${START_TIMEOUT_SECONDS:-20}
 
 # PIDs listening on the port, including wildcard and IPv6 bindings.
 port_pids() {
@@ -128,8 +130,10 @@ start_server() {
         # that would leave an orphan when killed.
         PORT="$PORT" nohup bash -c "exec $SERVER_CMD" >>"$LOG_FILE" 2>&1 &
     )
-    local i pid
-    for i in $(seq 1 100); do
+    # A wall-clock deadline rather than an iteration count: on a loaded machine
+    # each port check and curl can take seconds of their own.
+    local pid deadline=$((SECONDS + START_TIMEOUT_SECONDS))
+    while [ "$SECONDS" -lt "$deadline" ]; do
         pid=$(port_pids | head -n 1 || true)
         if [ -n "$pid" ] && curl -sI -o /dev/null --max-time 5 "http://localhost:$PORT/"; then
             echo "Server pid $pid listening on port $PORT (log: $LOG_FILE)"
@@ -137,7 +141,7 @@ start_server() {
         fi
         sleep 0.2
     done
-    echo "Server failed to listen on port $PORT within 20s; see $LOG_FILE" >&2
+    echo "Server failed to listen on port $PORT within ${START_TIMEOUT_SECONDS}s; see $LOG_FILE" >&2
     return 1
 }
 

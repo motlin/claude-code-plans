@@ -113,6 +113,9 @@ beforeAll(async () => {
 		// that the script then ends with "Force killing". A server held open by a leaked handle never exits, so a
 		// long grace period still fails it, just later.
 		STOP_GRACE_SECONDS: "45",
+		// Likewise startup: under the full parallel suite the built server can take longer than the default 20s to
+		// answer its first request, so start would give up on a healthy server.
+		START_TIMEOUT_SECONDS: "60",
 	};
 });
 
@@ -128,7 +131,18 @@ describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built serv
 		expect(appDir).not.toBe(projectRoot);
 		expect(run("status")).toBe(`No server running (port ${PORT})\n`);
 
-		const started = run("start");
+		let started: string;
+		try {
+			started = run("start");
+		} catch (error) {
+			// afterAll removes runDir, so surface the server's own log while it still exists.
+			throw new Error(
+				`${String(error)}\n--- server.log ---\n${readFileSync(join(runDir, "server.log"), "utf8")}`,
+				{
+					cause: error,
+				},
+			);
+		}
 		const pid = Number(/^Server pid (\d+) listening/m.exec(started)?.[1]);
 		expect(isAlive(pid)).toBe(true);
 
@@ -152,5 +166,5 @@ describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built serv
 		} finally {
 			stream.destroy();
 		}
-	}, 90_000);
+	}, 150_000);
 });
