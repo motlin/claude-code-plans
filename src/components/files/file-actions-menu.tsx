@@ -41,8 +41,8 @@ function baseName(path: string): string {
 	return path.slice(path.lastIndexOf("/") + 1) || path;
 }
 
-/** Upstream `we`: one success toast for every Copy row. */
-function useCopyToClipboard(): (text: string) => void {
+/** Upstream `we`: one success toast for every Copy row. The failure toast is a local extra. */
+export function useCopyToClipboard(): (text: string) => void {
 	const toast = useToast();
 	return (text) => {
 		void writeClipboardText(text).then((copied) => {
@@ -53,6 +53,53 @@ function useCopyToClipboard(): (text: string) => void {
 			);
 		});
 	};
+}
+
+interface CopySubmenuProps {
+	/** Absolute path of the file or folder. */
+	path: string;
+	cwd: string | undefined;
+	/** Offer Absolute path; file tabs, like claude.ai/code, don't. */
+	absolutePath?: boolean;
+}
+
+/** Upstream `Xu`: Copy ▸ {Absolute path, Relative path (hidden outside the cwd), Filename}. */
+export function CopySubmenu({path, cwd, absolutePath = true}: CopySubmenuProps) {
+	const copy = useCopyToClipboard();
+	const relPath = relativeToCwd(path, cwd);
+	return (
+		<MenuSub>
+			<MenuSubTrigger>Copy</MenuSubTrigger>
+			{/* Upstream's Xu passes sideOffset -4: the popup's edge sits on the Copy row's edge. */}
+			<MenuSubContent sideOffset={-4}>
+				{absolutePath && (
+					<MenuItem
+						onSelect={() => {
+							copy(path);
+						}}
+					>
+						Absolute path
+					</MenuItem>
+				)}
+				{relPath !== null && (
+					<MenuItem
+						onSelect={() => {
+							copy(relPath);
+						}}
+					>
+						Relative path
+					</MenuItem>
+				)}
+				<MenuItem
+					onSelect={() => {
+						copy(baseName(path));
+					}}
+				>
+					Filename
+				</MenuItem>
+			</MenuSubContent>
+		</MenuSub>
+	);
 }
 
 type FileActionsSurface = "transcript" | "composer" | "attachment" | "file_browser";
@@ -91,7 +138,6 @@ export function FileActionsMenuItems({
 	onOpenInFilesPane,
 	onOpenInDefaultApp,
 }: FileActionsMenuItemsProps) {
-	const copy = useCopyToClipboard();
 	const toast = useToast();
 	const relPath = relativeToCwd(path, cwd);
 	const showEditor = isDirectory || isEditableText(path);
@@ -112,35 +158,7 @@ export function FileActionsMenuItems({
 					Attach as context
 				</MenuItem>
 			)}
-			<MenuSub>
-				<MenuSubTrigger>Copy</MenuSubTrigger>
-				{/* Upstream's Xu passes sideOffset -4: the popup's edge sits on the Copy row's edge. */}
-				<MenuSubContent sideOffset={-4}>
-					<MenuItem
-						onSelect={() => {
-							copy(path);
-						}}
-					>
-						Absolute path
-					</MenuItem>
-					{relPath !== null && (
-						<MenuItem
-							onSelect={() => {
-								copy(relPath);
-							}}
-						>
-							Relative path
-						</MenuItem>
-					)}
-					<MenuItem
-						onSelect={() => {
-							copy(baseName(path));
-						}}
-					>
-						Filename
-					</MenuItem>
-				</MenuSubContent>
-			</MenuSub>
+			<CopySubmenu path={path} cwd={cwd} />
 			{!gone && (
 				<>
 					<MenuSeparator />

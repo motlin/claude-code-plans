@@ -253,8 +253,10 @@ describe("tree row context menu", () => {
 		const rows = await waitFor(() => menuRows());
 		const copyRows = openSubmenu("Copy");
 		clickItem("Absolute path");
-		await waitFor(() => {
-			expect(writeClipboardText).toHaveBeenCalled();
+		const toast = await waitFor(() => {
+			const message = document.querySelector("[data-toast-message]");
+			if (message === null) throw new Error("no toast");
+			return message.textContent;
 		});
 
 		fireEvent.contextMenu(screen.getByText("README.md"), {clientX: 10, clientY: 10});
@@ -265,11 +267,13 @@ describe("tree row context menu", () => {
 			rows,
 			copyRows,
 			copied: vi.mocked(writeClipboardText).mock.calls,
+			toast,
 			attached: onAttachContext.mock.calls,
 		}).toStrictEqual({
 			rows: ["Attach as context", "Copy"],
 			copyRows: ["Absolute path", "Relative path", "Filename"],
 			copied: [[`${CWD}/README.md`]],
+			toast: "Copied to clipboard.",
 			attached: [[{kind: "file", path: "README.md"}]],
 		});
 	});
@@ -325,8 +329,10 @@ describe("tab context menu", () => {
 		const loaded = await openTabMenu(/agent\.ts/);
 		const copyRows = openSubmenu("Copy");
 		clickItem("Filename");
-		await waitFor(() => {
-			expect(writeClipboardText).toHaveBeenCalled();
+		const toast = await waitFor(() => {
+			const message = document.querySelector("[data-toast-message]");
+			if (message === null) throw new Error("no toast");
+			return message.textContent;
 		});
 		const unreadable = await openTabMenu(/README\.md/);
 		clickItem("Reveal in file tree");
@@ -336,6 +342,7 @@ describe("tab context menu", () => {
 			copyRows,
 			unreadable,
 			copied: vi.mocked(writeClipboardText).mock.calls,
+			toast,
 			revealed: onRevealInTree.mock.calls,
 		}).toStrictEqual({
 			loaded: [
@@ -355,6 +362,7 @@ describe("tab context menu", () => {
 			copyRows: ["Relative path", "Filename"],
 			unreadable: ["Attach as context", "Copy", "─", "Reveal in file tree", "─", "Close file"],
 			copied: [["agent.ts"]],
+			toast: "Copied to clipboard.",
 			revealed: [[README]],
 		});
 	});
@@ -454,6 +462,20 @@ describe("viewer context menu", () => {
 			revealBody: JSON.stringify({path: AGENT}),
 			copied: [[AGENT_SOURCE]],
 		});
+	});
+
+	it("hides Copy ▸ Relative path for a file outside the cwd, as upstream's Xu does", async () => {
+		render(wrap(<FileView path={AGENT} cwd="/w" onAttachContext={() => {}} />));
+		const viewer = await waitFor(() => {
+			const element = document.querySelector<HTMLElement>("[data-file-viewer]");
+			if (!element?.querySelector("#L1")) throw new Error("not loaded");
+			return element;
+		});
+
+		fireEvent.contextMenu(viewer, {clientX: 10, clientY: 10});
+		await waitFor(() => menuRows());
+
+		expect(openSubmenu("Copy")).toStrictEqual(["Absolute path", "Filename"]);
 	});
 
 	it("attaches the selected lines from the menu", async () => {

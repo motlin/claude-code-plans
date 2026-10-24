@@ -1,12 +1,11 @@
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 
 import {fileContentUrl, fileViewQueryOptions, revealFileInFinder} from "../../lib/api/file";
-import {writeClipboardText} from "../../lib/clipboard";
 import type {AttachContextHandler, ContextAttachment} from "../../lib/context-attach";
 import type {FileTabsAction} from "../../lib/file-tabs";
 import {requestFindInFile} from "../../lib/find-in-file-request";
 import {useToast} from "../toast-context";
-import {vscodeFileUrl} from "./file-actions-menu";
+import {CopySubmenu, useCopyToClipboard, vscodeFileUrl} from "./file-actions-menu";
 import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
 import {mentionPath, relativeToCwd} from "./mention-path";
 
@@ -15,23 +14,6 @@ import {mentionPath, relativeToCwd} from "./mention-path";
  * open-file tabs and the viewer share "Attach as context" and Copy ▸, and each
  * surface adds its own actions below them.
  */
-
-function baseName(path: string): string {
-	return path.slice(path.lastIndexOf("/") + 1) || path;
-}
-
-function useCopyText(): (text: string, what: string) => void {
-	const toast = useToast();
-	return (text, what) => {
-		void writeClipboardText(text).then((copied) => {
-			toast(
-				copied
-					? {kind: "success", message: `${what} copied to clipboard.`}
-					: {kind: "error", message: `Couldn’t copy the ${what.toLowerCase()}.`},
-			);
-		});
-	};
-}
 
 interface SharedItemsProps {
 	/** Absolute path of the file or folder. */
@@ -48,8 +30,6 @@ interface SharedItemsProps {
 
 /** Attach as context · Copy ▸ {Absolute path?, Relative path, Filename}. */
 function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut, absolutePath = true}: SharedItemsProps) {
-	const copy = useCopyText();
-	const relPath = relativeToCwd(path, cwd);
 	return (
 		<>
 			{onAttachContext !== undefined && (
@@ -62,36 +42,7 @@ function SharedItems({path, cwd, attachment, onAttachContext, attachShortcut, ab
 					Attach as context
 				</MenuItem>
 			)}
-			<MenuSub>
-				<MenuSubTrigger>Copy</MenuSubTrigger>
-				{/* Upstream's Xu passes sideOffset -4: the popup's edge sits on the Copy row's edge. */}
-				<MenuSubContent sideOffset={-4}>
-					{absolutePath && (
-						<MenuItem
-							onSelect={() => {
-								copy(path, "Path");
-							}}
-						>
-							Absolute path
-						</MenuItem>
-					)}
-					<MenuItem
-						disabled={relPath === null}
-						onSelect={() => {
-							if (relPath !== null) copy(relPath, "Path");
-						}}
-					>
-						Relative path
-					</MenuItem>
-					<MenuItem
-						onSelect={() => {
-							copy(baseName(path), "Filename");
-						}}
-					>
-						Filename
-					</MenuItem>
-				</MenuSubContent>
-			</MenuSub>
+			<CopySubmenu path={path} cwd={cwd} absolutePath={absolutePath} />
 		</>
 	);
 }
@@ -116,12 +67,12 @@ export function TreeRowMenuItems({path, cwd, isDirectory, onAttachContext}: Tree
 }
 
 function CopyContentsItem({content}: {content: string | undefined}) {
-	const copy = useCopyText();
+	const copy = useCopyToClipboard();
 	return (
 		<MenuItem
 			disabled={content === undefined}
 			onSelect={() => {
-				if (content !== undefined) copy(content, "File contents");
+				if (content !== undefined) copy(content);
 			}}
 		>
 			Copy file contents
