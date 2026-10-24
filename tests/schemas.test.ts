@@ -21,6 +21,7 @@ import {
 	parseJsonlRecord,
 	TaskFileSchema,
 	SessionRegistryFileSchema,
+	ClaudeSettingsSchema,
 } from "../src/lib/schemas";
 import {
 	BashInputSchema,
@@ -3380,5 +3381,14 @@ describe("ContentBlockSchema tool input validation", () => {
 		const block = {type: "text", text: "hello"};
 		const result = ContentBlockSchema.safeParse(block);
 		expect(result.success).toBe(true);
+	});
+});
+
+describe("ClaudeSettingsSchema fast mode", () => {
+	it("accepts fastMode and fastModePerSessionOptIn", () => {
+		expect(ClaudeSettingsSchema.parse({fastMode: true, fastModePerSessionOptIn: true})).toStrictEqual({
+			fastMode: true,
+			fastModePerSessionOptIn: true,
+		});
 	});
 });

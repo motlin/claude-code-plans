@@ -203,6 +203,20 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		type: "boolean",
 		section: "Advanced",
 	},
+	{
+		key: "fastMode",
+		label: "Fast mode",
+		description: "Faster responses on models that support it, billed at fast-mode rates",
+		type: "boolean",
+		section: "General",
+	},
+	{
+		key: "fastModePerSessionOptIn",
+		label: "Fast mode per session",
+		description: "Start each session with fast mode off instead of keeping it on",
+		type: "boolean",
+		section: "General",
+	},
 ];
 
 export const SECTIONS_ORDER = ["General", "Data", "Updates", "MCP", "Permissions", "Advanced"];

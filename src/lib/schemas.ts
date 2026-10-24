@@ -2548,6 +2548,9 @@ export const ClaudeSettingsSchema = z
 		remoteControlAtStartup: z.boolean().optional(),
 		agentPushNotifEnabled: z.boolean().optional(),
 		switchModelsOnFlag: z.boolean().optional(),
+		fastMode: z.boolean().optional(),
+		/** Fast mode does not persist across sessions: each one starts off. */
+		fastModePerSessionOptIn: z.boolean().optional(),
 		autoMode: z
 			.object({
 				// Permission-rule strings; "$defaults" stands in for the built-in list.
