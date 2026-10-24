@@ -16,20 +16,29 @@ export interface MenuSwitchProps {
 	disabled?: boolean | undefined;
 	/** Display-only switches (the row does something else on click). */
 	readOnly?: boolean | undefined;
-	"aria-label": string;
+	/** Upstream's cds size: `xs` in the folder menu, `sm` on the Model menu's Fast row; both draw 25.2x14 here. */
+	size?: "xs" | "sm" | undefined;
+	/** Omitted only for a decorative switch inside an `aria-hidden` wrapper. */
+	"aria-label"?: string | undefined;
 }
 
-export function MenuSwitch({checked, disabled = false, readOnly = false, "aria-label": ariaLabel}: MenuSwitchProps) {
+export function MenuSwitch({
+	checked,
+	disabled = false,
+	readOnly = false,
+	size = "xs",
+	"aria-label": ariaLabel,
+}: MenuSwitchProps) {
 	const state = checked ? {"data-checked": ""} : {"data-unchecked": ""};
 	return (
 		<span
 			role="switch"
 			tabIndex={-1}
 			aria-checked={checked}
-			aria-label={ariaLabel}
+			{...(ariaLabel === undefined ? {} : {"aria-label": ariaLabel})}
 			{...(disabled ? {"aria-disabled": true, "data-disabled": ""} : {})}
 			{...(readOnly ? {"aria-readonly": true} : {})}
-			data-size="xs"
+			data-size={size}
 			{...state}
 			className={TRACK_CLASS}
 		>

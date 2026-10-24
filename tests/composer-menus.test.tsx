@@ -504,6 +504,185 @@ describe("Composer model menu", () => {
 	});
 });
 
+describe("Composer model menu Fast mode section", () => {
+	async function flushMenu() {
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+	}
+
+	const SWITCH_CLASS =
+		"relative inline-flex h-[14px] w-[25.2px] shrink-0 rounded-full p-[2px] bg-[var(--menu-switch-track)] hover:bg-[var(--menu-switch-track-hover)] data-[checked]:bg-accent-100 data-[disabled]:opacity-40 forced-colors:border forced-colors:border-solid forced-colors:border-[CanvasText] forced-colors:p-px forced-colors:data-[checked]:border-[Highlight] forced-colors:data-[checked]:!bg-[Highlight]";
+
+	function fastRow(menu: HTMLElement) {
+		return within(menu).getByRole("menuitemcheckbox", {name: "Enable fast mode"});
+	}
+
+	function describeNode(element: Element | null | undefined): unknown {
+		if (element === null || element === undefined) return null;
+		return {
+			tag: element.tagName.toLowerCase(),
+			attrs: Object.fromEntries(
+				Array.from(element.attributes)
+					.filter((attribute) => !["id", "style", "data-base-ui-click-trigger"].includes(attribute.name))
+					.map((attribute) => [attribute.name, attribute.value]),
+			),
+			children: Array.from(element.children).map(describeNode),
+		};
+	}
+
+	it("ends the menu with a separator, upstream's Fast mode header and an unchecked switch row on Opus", async () => {
+		renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const row = fastRow(menu);
+		const header = row.previousElementSibling;
+		const separator = header?.previousElementSibling;
+		const trailing = row.lastElementChild;
+
+		expect({
+			separator: separator?.getAttribute("role"),
+			header: {
+				role: header?.getAttribute("role"),
+				className: header?.className,
+				text: header?.textContent,
+			},
+			last: row.nextElementSibling,
+			row: {
+				checked: row.getAttribute("aria-checked"),
+				label: row.firstElementChild?.textContent,
+				trailingClass: trailing?.className,
+			},
+			wrapper: describeNode(trailing?.firstElementChild),
+			switchClass: row.querySelector("[data-size]")?.className,
+		}).toStrictEqual({
+			separator: "separator",
+			header: {
+				role: "presentation",
+				className: "px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]",
+				text: "Fast mode",
+			},
+			last: null,
+			row: {
+				checked: "false",
+				label: "Enable fast mode",
+				trailingClass: "ms-3 flex shrink-0 items-center gap-1.5",
+			},
+			wrapper: {
+				tag: "div",
+				attrs: {"aria-hidden": "true", class: "pointer-events-none inline-flex items-center"},
+				children: [
+					{
+						tag: "span",
+						attrs: {inert: "", class: "inline-flex"},
+						children: [
+							{
+								tag: "span",
+								attrs: {
+									role: "switch",
+									tabindex: "-1",
+									"aria-checked": "false",
+									"data-size": "sm",
+									"data-unchecked": "",
+									class: SWITCH_CLASS,
+								},
+								children: [
+									{
+										tag: "span",
+										attrs: {
+											"aria-hidden": "true",
+											"data-unchecked": "",
+											class: expect.stringContaining("data-[checked]:translate-x-[11.2px]"),
+										},
+										children: [],
+									},
+								],
+							},
+						],
+					},
+				],
+			},
+			switchClass: SWITCH_CLASS,
+		});
+	});
+
+	it("toggles on a click with the menu kept open, and launches the next fork in fast mode", async () => {
+		const onSend = renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		fireEvent.click(fastRow(menu));
+		await flushMenu();
+		const after = {
+			open: screen.queryByRole("menu") !== null,
+			checked: fastRow(menu).getAttribute("aria-checked"),
+			switchChecked: fastRow(menu).querySelector("[role=switch]")?.getAttribute("aria-checked"),
+		};
+		fireEvent.keyDown(menu, {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Ivan's test");
+
+		expect({after, calls: onSend.mock.calls}).toStrictEqual({
+			after: {open: true, checked: "true", switchChecked: "true"},
+			calls: [["Continue Ivan's test", {fastMode: true}]],
+		});
+	});
+
+	it("wraps ↑ from the first row to the Fast row, and Enter then Space toggle it with the menu open", async () => {
+		const onSend = renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		fireEvent.keyDown(menu, {key: "ArrowDown"});
+		await flushMenu();
+		const first = menu.querySelector("[data-highlighted]")?.textContent;
+		fireEvent.keyDown(menu, {key: "ArrowUp"});
+		await flushMenu();
+		const highlighted = menu.querySelector("[data-highlighted]")?.textContent;
+		fireEvent.keyDown(fastRow(menu), {key: "Enter"});
+		fireEvent.keyUp(fastRow(menu), {key: "Enter"});
+		await flushMenu();
+		const afterEnter = fastRow(menu).getAttribute("aria-checked");
+		fireEvent.keyDown(fastRow(menu), {key: " "});
+		fireEvent.keyUp(fastRow(menu), {key: " "});
+		await flushMenu();
+		const afterSpace = fastRow(menu).getAttribute("aria-checked");
+		const open = screen.queryByRole("menu") !== null;
+		fireEvent.keyDown(menu, {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Judy's test");
+
+		expect({first, highlighted, afterEnter, afterSpace, open, calls: onSend.mock.calls}).toStrictEqual({
+			first: "Opus 5.5",
+			highlighted: "Enable fast mode",
+			afterEnter: "true",
+			afterSpace: "false",
+			open: true,
+			calls: [["Continue Judy's test", {fastMode: false}]],
+		});
+	});
+
+	it("has no separator, header or row on a model without fast mode", async () => {
+		renderComposer({chin: {...CHIN, model: "Sonnet 5.5", modelId: "claude-sonnet-5-5"}});
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			rows: within(menu).queryAllByRole("menuitemcheckbox").length,
+			header: within(menu).queryByText("Fast mode"),
+			separators: within(menu).getAllByRole("separator").length,
+		}).toStrictEqual({rows: 0, header: null, separators: 2});
+	});
+});
+
 describe("Composer effort submenu", () => {
 	async function openEffortMenu() {
 		openEffort();

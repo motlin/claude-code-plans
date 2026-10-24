@@ -7,6 +7,7 @@ import {
 	EFFORT_LEVELS,
 	type EffortLevel,
 	EffortLevelSchema,
+	fastModeSupported,
 	type LaunchPermissionMode,
 	LaunchPermissionModeSchema,
 	MORE_MODELS,
@@ -20,6 +21,7 @@ import {ConfirmDialog} from "./confirm-dialog";
 import {CHIN_TRIGGER_CLASS, EFFORT_LABEL_CLASS} from "./composer-tokens";
 import {
 	Menu,
+	MenuCheckboxSwitchItem,
 	MenuContent,
 	MenuLabel,
 	MenuRadioGroup,
@@ -181,6 +183,8 @@ export function ModelMenu({
 	currentEffort,
 	onSelect,
 	onSelectEffort,
+	fastMode,
+	onFastModeChange,
 	surface,
 }: ControlledMenuProps & {
 	/** Upstream's new-session bar pins a "Model · this session" header; session chins have none. */
@@ -192,6 +196,8 @@ export function ModelMenu({
 	currentEffort: string;
 	onSelect: (model: string) => void;
 	onSelectEffort: (effort: EffortLevel) => void;
+	fastMode: boolean;
+	onFastModeChange: (on: boolean) => void;
 }) {
 	/** Upstream's checked row shows its ✓ in place of its digit; the others keep their position's digit. */
 	const primary = primaryModelMenuValue(current);
@@ -327,6 +333,21 @@ export function ModelMenu({
 						</MenuRadioGroup>
 					</MenuSubContent>
 				</MenuSub>
+				{/* Upstream's Fast mode block, only on models whose catalog entry offers the toggle. */}
+				{current !== undefined && fastModeSupported(current) && (
+					<>
+						<MenuSeparator />
+						<div
+							role="presentation"
+							className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]"
+						>
+							Fast mode
+						</div>
+						<MenuCheckboxSwitchItem decorative checked={fastMode} onCheckedChange={onFastModeChange}>
+							Enable fast mode
+						</MenuCheckboxSwitchItem>
+					</>
+				)}
 			</MenuContent>
 		</Menu>
 	);

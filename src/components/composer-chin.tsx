@@ -274,6 +274,10 @@ export const ComposerChin = memo(function ComposerChin({
 					currentEffort={currentEffort}
 					onSelect={selectModel}
 					onSelectEffort={selectEffort}
+					fastMode={launchOptions.fastMode === true}
+					onFastModeChange={(fastMode) => {
+						onLaunchOptionsChange({...launchOptions, fastMode});
+					}}
 				/>
 				<UsageRing usage={state.usage} />
 			</div>

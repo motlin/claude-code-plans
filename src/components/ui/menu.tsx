@@ -560,6 +560,11 @@ export interface MenuCheckboxSwitchItemProps extends Omit<
 	checked: boolean;
 	/** Close the menu on pick. Defaults to upstream's keepOpen. */
 	closeOnClick?: boolean;
+	/**
+	 * Upstream's Fast mode row: the sm switch sits in an `aria-hidden` `pointer-events-none` wrapper, so it is
+	 * purely decorative and the row's `aria-checked` alone carries the state.
+	 */
+	decorative?: boolean;
 }
 
 /**
@@ -571,6 +576,7 @@ export function MenuCheckboxSwitchItem({
 	icon,
 	checked,
 	closeOnClick = false,
+	decorative = false,
 	...props
 }: MenuCheckboxSwitchItemProps) {
 	const sizing = useMenuSizing();
@@ -586,9 +592,24 @@ export function MenuCheckboxSwitchItem({
 			<span data-menu-item-title="" className={LABEL_CLASS}>
 				{children}
 			</span>
-			<span inert className={sizing.switchTrailing}>
-				<MenuSwitch checked={checked} disabled={props.disabled} readOnly aria-label={`${children} enabled`} />
-			</span>
+			{decorative ? (
+				<span className={sizing.switchTrailing}>
+					<div aria-hidden="true" className="pointer-events-none inline-flex items-center">
+						<span inert className="inline-flex">
+							<MenuSwitch checked={checked} disabled={props.disabled} size="sm" />
+						</span>
+					</div>
+				</span>
+			) : (
+				<span inert className={sizing.switchTrailing}>
+					<MenuSwitch
+						checked={checked}
+						disabled={props.disabled}
+						readOnly
+						aria-label={`${children} enabled`}
+					/>
+				</span>
+			)}
 		</BaseMenu.CheckboxItem>
 	);
 }
