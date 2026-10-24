@@ -2,7 +2,7 @@ import {mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, w
 import {homedir, tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {SessionWorkflowRunsResponse} from "../src/lib/api/sessions";
+import {SessionWorkflowRunsResponse} from "../src/lib/api/session-workflow-runs";
 import {
 	WorkflowAgentMetaSchema,
 	WorkflowJournalEventSchema,

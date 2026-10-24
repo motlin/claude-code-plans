@@ -1,6 +1,6 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
-import {SessionWorkflowRunsResponse} from "../../lib/api/sessions";
+import {SessionWorkflowRunsResponse} from "../../lib/api/session-workflow-runs";
 
 /** The session's workflow runs: launch, status, timing and per-agent progress. */
 export const Route = createFileRoute("/api/sessions/$id/workflows")({

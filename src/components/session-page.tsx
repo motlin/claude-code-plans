@@ -149,12 +149,14 @@ import {
 	sessionDetailQueryOptions,
 	sessionResourcesQueryOptions,
 	sessionSubagentsQueryOptions,
+	sessionWorkflowRunsQueryOptions,
 	transcriptEndIndex,
 	transcriptQueryOptions,
 	useRequestSummary,
 } from "../lib/api/sessions";
 import type {SessionDetailData, SessionSubagentsData, TranscriptData} from "../lib/api/sessions";
 import {countMessageRecords} from "../lib/message-count";
+import {linesHaveWorkflowCall} from "../lib/workflow-name";
 import {getSubagentLifecycleKey, extractPendingSubagents, type ActiveSubagent} from "../lib/subagents";
 import {processTranscript} from "../lib/transcript";
 import {backgroundTasksFacts, extractBackgroundTasks} from "../lib/background-tasks";
@@ -420,6 +422,10 @@ function SessionView({
 	);
 	// `uuidToLine` is the set of messages the window holds, which is how a jump
 	// decides whether to scroll or to page history in first.
+	// Workflow cards are an enhancement over the plain rows, so the transcript never waits on (or fails with)
+	// them, and a session that never launched a workflow never fetches them.
+	const hasWorkflowCall = useMemo(() => linesHaveWorkflowCall(processed.lines), [processed.lines]);
+	const workflowRuns = useQuery({...sessionWorkflowRunsQueryOptions(sessionId), enabled: hasWorkflowCall}).data;
 	const requestMessageJump = usePendingMessageJump(sessionId, transcript.startIndex, processed.uuidToLine);
 	useRegisterChangesPane(sessionId);
 	// A whole-session inventory costs a full pass over the JSONL, so only an open
@@ -1325,6 +1331,7 @@ function SessionView({
 														rewoundUuids={hiddenUuids}
 														allowedImageRoots={data.imageRoots}
 														subagents={subagents}
+														{...(workflowRuns === undefined ? null : {workflowRuns})}
 														showThinking={transcriptFlags.showThinking}
 														showTools={transcriptFlags.showTools}
 														showPassedHooks={transcriptFlags.showPassedHooks}

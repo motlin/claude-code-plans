@@ -106,11 +106,16 @@ const ELAPSED_UNITS = [
 
 type ElapsedUnit = (typeof ELAPSED_UNITS)[number]["unit"];
 
-function formatUnit(value: number, unit: ElapsedUnit): string {
+function formatUnit(value: number, unit: ElapsedUnit, pad = false): string {
 	try {
-		return new Intl.NumberFormat("en", {style: "unit", unit, unitDisplay: "narrow"}).format(value);
+		return new Intl.NumberFormat("en", {
+			style: "unit",
+			unit,
+			unitDisplay: "narrow",
+			minimumIntegerDigits: pad ? 2 : 1,
+		}).format(value);
 	} catch {
-		return `${value}${unit[0]}`;
+		return `${String(value).padStart(pad ? 2 : 1, "0")}${unit[0]}`;
 	}
 }
 
@@ -129,6 +134,24 @@ export function formatElapsed(totalSeconds: number): string {
 		if (value > 0) parts.push(formatUnit(value, unit));
 	}
 	return parts.join(" ");
+}
+
+/**
+ * Upstream's `nW` with `padTrailingUnits`, the workflow card's timer: up to
+ * three consecutive units from the largest non-zero one, zeros kept, every
+ * unit after the first except days two digits wide ("1m 05s", "1h 00m 00s").
+ */
+export function formatPaddedElapsed(totalSeconds: number): string {
+	const start = ELAPSED_UNITS.findIndex(({seconds}) => totalSeconds >= seconds);
+	if (start === -1) return formatUnit(0, "second");
+	let remaining = totalSeconds;
+	return ELAPSED_UNITS.slice(start, start + 3)
+		.map(({unit, seconds}, i) => {
+			const value = Math.floor(remaining / seconds);
+			remaining -= value * seconds;
+			return formatUnit(value, unit, i > 0 && unit !== "day");
+		})
+		.join(" ");
 }
 
 const THINKING_STAT = "Thinking";

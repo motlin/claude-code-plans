@@ -1,4 +1,4 @@
-import {workflowName} from "../src/lib/workflow-name";
+import {linesHaveWorkflowCall, workflowCallName, workflowName} from "../src/lib/workflow-name";
 
 describe("workflowName", () => {
 	it("follows upstream's input.name → script meta.name → scriptPath basename order", () => {
@@ -36,5 +36,37 @@ describe("workflowName", () => {
 			nothing: undefined,
 			emptyScriptPath: undefined,
 		});
+	});
+});
+
+describe("workflowCallName", () => {
+	it("reads only a raw tool input's string fields", () => {
+		expect({
+			scriptPath: workflowCallName({scriptPath: "/x/wf.js", args: {dir: "/d"}}),
+			nonString: workflowCallName({name: 7, script: "const meta = {name: 'meta-name'}"}),
+			none: workflowCallName({args: []}),
+		}).toStrictEqual({scriptPath: "wf", nonString: "meta-name", none: undefined});
+	});
+});
+
+describe("linesHaveWorkflowCall", () => {
+	it("finds a Workflow tool_use in an assistant line only", () => {
+		const call = (name: string) => ({
+			type: "assistant",
+			message: {
+				content: [
+					{type: "text", text: "hi"},
+					{type: "tool_use", id: "t", name, input: {}},
+				],
+			},
+		});
+		expect({
+			workflow: linesHaveWorkflowCall([{type: "user", message: {content: "x"}}, call("Workflow")]),
+			bash: linesHaveWorkflowCall([call("Bash")]),
+			userEcho: linesHaveWorkflowCall([
+				{type: "user", message: {content: [{type: "tool_use", name: "Workflow"}]}},
+			]),
+			empty: linesHaveWorkflowCall([]),
+		}).toStrictEqual({workflow: true, bash: false, userEcho: false, empty: false});
 	});
 });

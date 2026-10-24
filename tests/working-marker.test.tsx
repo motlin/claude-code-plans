@@ -8,6 +8,7 @@ import {type WorkingMarkerSignals} from "../src/components/use-working-marker-st
 import {useWorkingMarkerState} from "../src/components/use-working-marker-state";
 import {
 	formatElapsed,
+	formatPaddedElapsed,
 	markerEventsFromRecords,
 	tailMarkerQuiet,
 	toolActivityLabel,
@@ -195,6 +196,20 @@ describe("formatElapsed", () => {
 			"1h",
 			"1h 2m 5s",
 			"1d 1h 1m",
+		]);
+	});
+});
+
+describe("formatPaddedElapsed", () => {
+	it("pads trailing units to two digits and keeps zero units, as upstream's nW with padTrailingUnits does", () => {
+		expect([0, 13, 60, 65, 3600, 3725, 90061].map(formatPaddedElapsed)).toStrictEqual([
+			"0s",
+			"13s",
+			"1m 00s",
+			"1m 05s",
+			"1h 00m 00s",
+			"1h 02m 05s",
+			"1d 01h 01m",
 		]);
 	});
 });

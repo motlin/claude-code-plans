@@ -71,7 +71,8 @@ import {ToastContext} from "./toast-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
-import type {TranscriptCut} from "../lib/api/sessions";
+import type {SessionWorkflowRun, TranscriptCut} from "../lib/api/sessions";
+import {workflowCallName} from "../lib/workflow-name";
 import {rewindLayout, type RewindMarkerPlacement} from "../lib/rewind-layout";
 import type {ToolUseBlock} from "../lib/schemas";
 import {toolBucket, type ToolBucket} from "../lib/tool-runs";
@@ -168,10 +169,22 @@ export interface SessionChatProps {
 	rewindCuts?: ReadonlyMap<string, readonly TranscriptCut[]>;
 	/** Uuids of the records on abandoned branches; only Verbose's raw view still receives them. */
 	rewoundUuids?: ReadonlySet<string>;
+	/** The session's workflow runs, whose starting or running launches draw as workflow cards. */
+	workflowRuns?: readonly SessionWorkflowRun[];
 }
 
 const NO_REWIND_CUTS: ReadonlyMap<string, readonly TranscriptCut[]> = new Map();
 const NO_REWOUND_UUIDS: ReadonlySet<string> = new Set();
+const NO_WORKFLOW_RUNS: readonly SessionWorkflowRun[] = [];
+
+/** Workflow runs are rare, so the card and its progress model load only when a transcript draws one. */
+const WorkflowCard = React.lazy(async () => {
+	const {WorkflowCard: Card} = await import("./tool-renderers/workflow-card");
+	return {default: Card};
+});
+
+/** Each workflow run keyed by its latest launch's tool_use id; earlier launches of a resumed run have settled. */
+const WorkflowRunsContext = createContext<ReadonlyMap<string, SessionWorkflowRun>>(new Map());
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
 interface SendNowHandlers {
@@ -532,6 +545,7 @@ export const SessionChat = React.memo(function SessionChat({
 	sideChatAvailable = false,
 	rewindCuts = NO_REWIND_CUTS,
 	rewoundUuids = NO_REWOUND_UUIDS,
+	workflowRuns = NO_WORKFLOW_RUNS,
 }: SessionChatProps) {
 	const sendNowHandlers = useMemo(
 		() => ({sendNow: onSendNow, focusComposer: onFocusComposer}),
@@ -560,6 +574,10 @@ export const SessionChat = React.memo(function SessionChat({
 		[launchedAgents, subagentLookup],
 	);
 	const backgroundOutcomes = useMemo(() => backgroundLaunchOutcomes(lines, toolResultMap), [lines, toolResultMap]);
+	const workflowRunsByLaunch = useMemo(
+		() => new Map(workflowRuns.map((run) => [run.toolUseId, run] as const)),
+		[workflowRuns],
+	);
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
 	const fullErrorLine = useMemo(() => lastErrorLine(lines), [lines]);
 	const lastError = useMemo(() => ({line: fullErrorLine, recovery: errorRecovery}), [fullErrorLine, errorRecovery]);
@@ -708,59 +726,61 @@ export const SessionChat = React.memo(function SessionChat({
 					<PermissionWaitContext.Provider value={permissionWaitToolUseId}>
 						<AgentNameContext.Provider value={resolveAgentName}>
 							<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
-								<CompactBoundaryContext.Provider value={compactBoundaries}>
-									<LastErrorLineContext.Provider value={lastError}>
-										<div
-											ref={containerRef}
-											className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
-										>
-											{summary !== null && summary !== "" && (
-												<p
-													data-testid="session-summary-row"
-													title={summary}
-													className="mb-4 truncate text-sm text-t6"
-												>
-													{summary}
-												</p>
-											)}
-											<SessionLineList
-												key={sessionId}
-												lines={listedLines}
-												sessionId={sessionId}
-												toolResultMap={toolResultMap}
-												allowedImageRoots={allowedImageRoots}
-												subagentLookup={subagentLookup}
-												isSubagentSession={isSubagentSession}
-												showThinking={showThinking}
-												showTools={showTools}
-												showPassedHooks={showPassedHooks}
-												showHookWarnings={showHookWarnings}
-												showHookErrors={showHookErrors}
-												showSystemBanners={showSystemBanners}
-												showCompactSummaries={showCompactSummaries}
-												showTranscriptOnly={showTranscriptOnly}
-												shouldScrollToEnd={shouldScrollToEnd}
-												measurementKey={measurementKey}
-												measurementSource={measurementSource}
-												turnInProgress={turnInProgress}
-												archived={archived}
-												rewindCuts={rewindCuts}
-												rewoundUuids={rewoundUuids}
-											/>
-											{sessionLive && (
-												<WaitingPickupStatus
-													key={`pickup-${sessionId}`}
-													waitingIds={waitingIds}
+								<WorkflowRunsContext.Provider value={workflowRunsByLaunch}>
+									<CompactBoundaryContext.Provider value={compactBoundaries}>
+										<LastErrorLineContext.Provider value={lastError}>
+											<div
+												ref={containerRef}
+												className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+											>
+												{summary !== null && summary !== "" && (
+													<p
+														data-testid="session-summary-row"
+														title={summary}
+														className="mb-4 truncate text-sm text-t6"
+													>
+														{summary}
+													</p>
+												)}
+												<SessionLineList
+													key={sessionId}
+													lines={listedLines}
+													sessionId={sessionId}
+													toolResultMap={toolResultMap}
+													allowedImageRoots={allowedImageRoots}
+													subagentLookup={subagentLookup}
+													isSubagentSession={isSubagentSession}
+													showThinking={showThinking}
+													showTools={showTools}
+													showPassedHooks={showPassedHooks}
+													showHookWarnings={showHookWarnings}
+													showHookErrors={showHookErrors}
+													showSystemBanners={showSystemBanners}
+													showCompactSummaries={showCompactSummaries}
+													showTranscriptOnly={showTranscriptOnly}
+													shouldScrollToEnd={shouldScrollToEnd}
+													measurementKey={measurementKey}
+													measurementSource={measurementSource}
+													turnInProgress={turnInProgress}
+													archived={archived}
+													rewindCuts={rewindCuts}
+													rewoundUuids={rewoundUuids}
 												/>
-											)}
-											<TranscriptSelectionBar
-												sessionId={sessionId}
-												containerRef={containerRef}
-												sideChatAvailable={sideChatAvailable}
-											/>
-										</div>
-									</LastErrorLineContext.Provider>
-								</CompactBoundaryContext.Provider>
+												{sessionLive && (
+													<WaitingPickupStatus
+														key={`pickup-${sessionId}`}
+														waitingIds={waitingIds}
+													/>
+												)}
+												<TranscriptSelectionBar
+													sessionId={sessionId}
+													containerRef={containerRef}
+													sideChatAvailable={sideChatAvailable}
+												/>
+											</div>
+										</LastErrorLineContext.Provider>
+									</CompactBoundaryContext.Provider>
+								</WorkflowRunsContext.Provider>
 							</BackgroundOutcomeContext.Provider>
 						</AgentNameContext.Provider>
 					</PermissionWaitContext.Provider>
@@ -4984,7 +5004,7 @@ function ToolCallSection({
 	return (
 		<>
 			{backgroundCalls.length === 1 && notices.length === 0 && loneBackgroundCall !== undefined && (
-				<ToolCallRow call={loneBackgroundCall} sessionId={sessionId} leading={leading} />
+				<LoneToolCall call={loneBackgroundCall} sessionId={sessionId} leading={leading} />
 			)}
 			{(backgroundCalls.length > 1 || notices.length > 0) && (
 				<ToolCallSummary calls={backgroundCalls} sessionId={sessionId} notices={notices} leading={leading} />
@@ -5199,6 +5219,42 @@ function RowMedia({
 /** Whether a key event came from a control nested in the row (a thumbnail), not the row itself. */
 function fromNestedControl(event: React.KeyboardEvent): boolean {
 	return event.target !== event.currentTarget;
+}
+
+/**
+ * A tool call alone in its row. A Workflow call that is starting (no launch
+ * result yet) or whose run is still running draws upstream's workflow card
+ * (`S1` -> `Vme`); every other call, and a settled workflow, is a row.
+ */
+function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; sessionId: string; leading: boolean}) {
+	const run = useContext(WorkflowRunsContext).get(call.id);
+	const permissionWaitId = useContext(PermissionWaitContext);
+	const backgroundTasks = useBackgroundTasksOpener();
+	const isWorkflow = call.name === "Workflow" && call.isError !== true && permissionWaitId !== call.id;
+	const preLaunch = isWorkflow && run === undefined && isPendingToolCall(call);
+	if (!preLaunch && !(isWorkflow && run?.status === "running")) {
+		return <ToolCallRow call={call} sessionId={sessionId} leading={leading} />;
+	}
+	const name = workflowCallName(call.input) ?? run?.workflowName ?? run?.description ?? "";
+	const onOpen =
+		backgroundTasks === null
+			? undefined
+			: () => {
+					backgroundTasks.open(run === undefined ? undefined : {taskId: run.taskId});
+				};
+	return (
+		<div data-tool-anchor={call.id} className="contents">
+			<Suspense fallback={null}>
+				<WorkflowCard
+					name={name}
+					preLaunch={preLaunch}
+					startedAt={run?.startedAt ?? undefined}
+					progress={run?.progress ?? []}
+					onOpen={onOpen}
+				/>
+			</Suspense>
+		</div>
+	);
 }
 
 function ToolCallRow({

@@ -30,3 +30,38 @@ export function workflowName(input: WorkflowInput): string | undefined {
 	if (input.scriptPath) return stripExtension(pathBasename(input.scriptPath));
 	return undefined;
 }
+
+/** `workflowName` for a tool call's raw input, reading only its string fields. */
+export function workflowCallName(input: Readonly<Record<string, unknown>>): string | undefined {
+	const field = (key: string) => (typeof input[key] === "string" ? input[key] : undefined);
+	const name = field("name");
+	const script = field("script");
+	const scriptPath = field("scriptPath");
+	return workflowName({
+		...(name === undefined ? null : {name}),
+		...(script === undefined ? null : {script}),
+		...(scriptPath === undefined ? null : {scriptPath}),
+	});
+}
+
+/** Whether any assistant line calls the Workflow tool, so the page only fetches workflow runs when it can draw one. */
+export function linesHaveWorkflowCall(
+	lines: ReadonlyArray<{type: string; message?: {content?: unknown} | undefined}>,
+): boolean {
+	return lines.some((line) => {
+		if (line.type !== "assistant") return false;
+		const content = line.message?.content;
+		return (
+			Array.isArray(content) &&
+			content.some(
+				(block: unknown) =>
+					typeof block === "object" &&
+					block !== null &&
+					"type" in block &&
+					block.type === "tool_use" &&
+					"name" in block &&
+					block.name === "Workflow",
+			)
+		);
+	});
+}
