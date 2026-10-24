@@ -158,10 +158,8 @@ describe("Composer @ file mentions", () => {
 		await type(textarea, "@");
 
 		expect({
-			listbox: screen.getByRole("listbox", {name: "Mention suggestions"}).className,
 			rows: rows(),
 		}).toStrictEqual({
-			listbox: expect.stringContaining("w-[560px]"),
 			rows: [
 				{text: ".llm", selected: true, muted: false},
 				{text: "node_modules", selected: false, muted: false},
@@ -240,6 +238,34 @@ describe("Composer @ file mentions", () => {
 			count: options.length,
 			first: [...(options[0]?.querySelectorAll(":scope > span > span") ?? [])].map((span) => span.textContent),
 		}).toStrictEqual({count: 15, first: ["file-0.ts", "src/lib"]});
+	});
+
+	it("sizes the popup 420px without dirnames and 560px when any row has one", async () => {
+		responses.set(
+			TOP_URL,
+			listing([
+				{relPath: "a.ts", isDirectory: false},
+				{relPath: "b", isDirectory: true},
+			]),
+		);
+		responses.set(searchUrl("a"), search("a", ["src/a.ts"]));
+		const {textarea} = setup();
+
+		await type(textarea, "@");
+		const top = screen.getByRole("listbox", {name: "Mention suggestions"});
+		const narrow = {width: top.style.width, clamped: top.className.split(" ").includes("max-w-[calc(100vw-2rem)]")};
+
+		await type(textarea, "@a");
+		const wide = screen.getByRole("listbox", {name: "Mention suggestions"});
+		expect({
+			narrow,
+			wide: {width: wide.style.width, clamped: wide.className.split(" ").includes("max-w-[calc(100vw-2rem)]")},
+			fixedWidth: wide.className.split(" ").includes("w-[560px]"),
+		}).toStrictEqual({
+			narrow: {width: "420px", clamped: true},
+			wide: {width: "560px", clamped: true},
+			fixedWidth: false,
+		});
 	});
 
 	it("uses upstream's default-density popup and row metrics", async () => {

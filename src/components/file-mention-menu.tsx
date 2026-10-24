@@ -5,7 +5,7 @@ import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionOptionId} from "./file-mention-option-id";
 
 const POPUP_CLASS =
-	"absolute bottom-full left-0 z-[130] mb-2 flex max-h-[min(24rem,calc(100svh-2rem))] w-[560px] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 text-body text-primary shadow-[var(--menu-shadow)] select-none";
+	"absolute bottom-full left-0 z-[130] mb-2 flex max-h-[min(24rem,calc(100svh-2rem))] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 text-body text-primary shadow-[var(--menu-shadow)] select-none";
 
 const ROW_CLASS =
 	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-left text-[13px]/[19px] text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
@@ -19,8 +19,8 @@ function EntryIcon({entry}: {entry: SessionFilesEntry}) {
 }
 
 /**
- * The claude.ai/code "@" popup: a 560px "Mention suggestions" listbox above the
- * composer, one row per path (icon, basename, dirname caption). Keyboard focus
+ * The claude.ai/code "@" popup: a "Mention suggestions" listbox above the
+ * composer, 560px wide when any row has a dirname caption and 420px otherwise, one row per path (icon, basename, dirname caption). Keyboard focus
  * stays in the editor, which drives `highlighted` and `onAccept`.
  */
 export function FileMentionMenu({
@@ -50,6 +50,7 @@ export function FileMentionMenu({
 			role="listbox"
 			aria-label="Mention suggestions"
 			className={POPUP_CLASS}
+			style={{width: entries.some((entry) => entry.relPath.includes("/")) ? 560 : 420}}
 			onMouseDown={(e) => {
 				e.preventDefault();
 			}}
