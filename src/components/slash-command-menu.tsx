@@ -1,4 +1,4 @@
-import {useLayoutEffect, useRef, useState} from "react";
+import {useLayoutEffect, useMemo, useRef, useState} from "react";
 
 import {
 	highlightMatches,
@@ -6,6 +6,7 @@ import {
 	matchingAlias,
 	slashCommandLabel,
 	type SlashCommand,
+	type SlashMenuItem,
 } from "../lib/slash-commands";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {DENSITY_CLASSES} from "./ui/menu-internals";
@@ -29,9 +30,19 @@ const TOOLTIP_DETAIL_CLASS = "block break-words text-[11px]/[14px] text-[var(--t
 const VIRTUALIZE_AT = 30;
 const OVERSCAN = 8;
 const SCROLL_PADDING = 28;
-/* Compact rows are a fixed `h-6`; the scroller's `p-1` gutter sits above row 0. */
+/* Compact rows are a fixed `h-6`; the scroller's `p-1` gutter sits above item 0. */
 const ROW_HEIGHT = 24;
 const GUTTER = 4;
+/* A section header is 15px of text plus `py-1`; a separator is 1px plus `my-1`. */
+const ITEM_HEIGHT: Record<SlashMenuItem["type"], number> = {
+	command: ROW_HEIGHT,
+	"section-header": 23,
+	separator: 9,
+};
+
+/* Upstream's `section-header` and `separator` rows at compact density. */
+const SECTION_HEADER_CLASS = "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted";
+const SEPARATOR_CLASS = "mx-2 my-1 h-px bg-border";
 /* The popup's `max-h-96`, used until the scroller has a measured height. */
 const FALLBACK_VIEWPORT_HEIGHT = 384;
 
@@ -40,17 +51,29 @@ interface RowWindow {
 	end: number;
 }
 
-/* The rows intersecting the viewport plus the overscan on each side, as an exclusive range. */
-function rowWindow(count: number, scrollTop: number, viewportHeight: number): RowWindow {
-	const first = Math.floor(Math.max(0, scrollTop - GUTTER) / ROW_HEIGHT);
-	const last = Math.ceil(Math.max(0, scrollTop + viewportHeight - GUTTER) / ROW_HEIGHT);
+/* Each item's top offset below the gutter, plus the total height as the last entry. */
+function itemOffsets(items: readonly SlashMenuItem[]): number[] {
+	const offsets = [0];
+	for (const item of items) offsets.push((offsets.at(-1) ?? 0) + ITEM_HEIGHT[item.type]);
+	return offsets;
+}
+
+/* The items intersecting the viewport plus the overscan on each side, as an exclusive range. */
+function rowWindow(offsets: readonly number[], scrollTop: number, viewportHeight: number): RowWindow {
+	const count = offsets.length - 1;
+	const top = scrollTop - GUTTER;
+	const bottom = scrollTop + viewportHeight - GUTTER;
+	let first = 0;
+	while (first < count && (offsets[first + 1] ?? 0) <= top) first++;
+	let last = first;
+	while (last < count && (offsets[last] ?? 0) < bottom) last++;
 	return {start: Math.max(0, first - OVERSCAN), end: Math.min(count, last + OVERSCAN)};
 }
 
 /* `scrollToIndex(index, {align: "auto"})` with the scroll padding: only scrolls when the row is within the padding of an edge. */
-function scrollTopFor(index: number, scrollTop: number, viewportHeight: number): number {
-	const rowTop = GUTTER + index * ROW_HEIGHT;
-	const rowBottom = rowTop + ROW_HEIGHT;
+function scrollTopFor(offsets: readonly number[], index: number, scrollTop: number, viewportHeight: number): number {
+	const rowTop = GUTTER + (offsets[index] ?? 0);
+	const rowBottom = GUTTER + (offsets[index + 1] ?? 0);
 	if (rowBottom >= scrollTop + viewportHeight - SCROLL_PADDING) return rowBottom - viewportHeight + SCROLL_PADDING;
 	if (rowTop <= scrollTop + SCROLL_PADDING) return Math.max(0, rowTop - SCROLL_PADDING);
 	return scrollTop;
@@ -84,14 +107,14 @@ function Highlighted({
  */
 export function SlashCommandMenu({
 	id,
-	commands,
+	items,
 	query,
 	highlighted,
 	onHighlight,
 	onAccept,
 }: {
 	id: string;
-	commands: readonly SlashCommand[];
+	items: readonly SlashMenuItem[];
 	query: string;
 	highlighted: number;
 	onHighlight: (index: number) => void;
@@ -105,15 +128,15 @@ export function SlashCommandMenu({
 	const [scrollTop, setScrollTop] = useState(0);
 	/* Upstream scrolls the active row into view only on keyboard navigation, never under a hovering pointer. */
 	const hoverHighlightRef = useRef(false);
-	const virtualized = commands.length >= VIRTUALIZE_AT;
+	const virtualized = items.length >= VIRTUALIZE_AT;
+	const offsets = useMemo(() => itemOffsets(items), [items]);
 	const viewportHeight = () => {
 		const height = scrollerRef.current?.clientHeight ?? 0;
 		return height > 0 ? height : FALLBACK_VIEWPORT_HEIGHT;
 	};
-	const range = virtualized
-		? rowWindow(commands.length, scrollTop, viewportHeight())
-		: {start: 0, end: commands.length};
-	const active = commands[highlighted];
+	const range = virtualized ? rowWindow(offsets, scrollTop, viewportHeight()) : {start: 0, end: items.length};
+	const activeItem = items[highlighted];
+	const active = activeItem?.type === "command" ? activeItem.command : undefined;
 	const activeDetail = active?.pluginName === undefined ? undefined : `${active.pluginName} plugin`;
 
 	/* Writes the tip's position straight to the DOM, like upstream's floating positioner, so following the row adds no React commit. */
@@ -135,14 +158,14 @@ export function SlashCommandMenu({
 		const hovered = hoverHighlightRef.current;
 		hoverHighlightRef.current = false;
 		if (!hovered && virtualized && scroller && highlighted >= 0) {
-			const next = scrollTopFor(highlighted, scroller.scrollTop, viewportHeight());
+			const next = scrollTopFor(offsets, highlighted, scroller.scrollTop, viewportHeight());
 			if (next !== scroller.scrollTop) scroller.scrollTop = next;
 			setScrollTop(scroller.scrollTop);
 		} else if (!hovered) {
 			scroller?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
 		}
 		placeTooltip();
-	}, [highlighted, commands, virtualized]);
+	}, [highlighted, items, offsets, virtualized]);
 
 	/* A row mounted by a scroll may be the highlighted one, so the tip follows each window change. */
 	useLayoutEffect(placeTooltip, [range.start, range.end]);
@@ -167,9 +190,20 @@ export function SlashCommandMenu({
 					placeTooltip();
 				}}
 			>
-				{virtualized && <div aria-hidden style={{height: range.start * ROW_HEIGHT}} className="shrink-0" />}
-				{commands.slice(range.start, range.end).map((command, offset) => {
+				{virtualized && <div aria-hidden style={{height: offsets[range.start]}} className="shrink-0" />}
+				{items.slice(range.start, range.end).map((item, offset) => {
 					const index = range.start + offset;
+					/* Upstream draws headers and separators as plain divs: no role, not focusable. */
+					if (item.type === "section-header") {
+						return (
+							<div key={`header:${index}`} className={SECTION_HEADER_CLASS}>
+								{item.label}
+							</div>
+						);
+					}
+					if (item.type === "separator")
+						return <div key={`separator:${index}`} className={SEPARATOR_CLASS} />;
+					const {command} = item;
 					const alias = matchingAlias(command, query);
 					return (
 						<div
@@ -215,7 +249,7 @@ export function SlashCommandMenu({
 				{virtualized && (
 					<div
 						aria-hidden
-						style={{height: (commands.length - range.end) * ROW_HEIGHT}}
+						style={{height: (offsets.at(-1) ?? 0) - (offsets[range.end] ?? 0)}}
 						className="shrink-0"
 					/>
 				)}

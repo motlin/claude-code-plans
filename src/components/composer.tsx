@@ -58,9 +58,13 @@ import {
 	PRIMARY_MODELS,
 } from "../lib/launch-options";
 import {
+	clampSlashHighlight,
 	filterSlashCommands,
+	firstSlashHighlight,
 	isKnownSlashCommand,
 	type SlashCommand,
+	type SlashMenuItem,
+	stepSlashHighlight,
 	skillChipArgumentHint,
 	slashTrigger,
 } from "../lib/slash-commands";
@@ -167,6 +171,8 @@ interface ComposerProps {
 	environment?: ReactNode;
 	/** Entries for the "/" autocomplete popup (`GET /api/commands`). */
 	slashCommands?: readonly SlashCommand[] | undefined;
+	/** Upstream's explanatory section header drawn above the "/" rows, e.g. when the command list didn't load. */
+	slashMenuHeader?: string | undefined;
 	/** Settings allow launching in Bypass permissions mode. */
 	bypassPermissionsAllowed?: boolean | undefined;
 	/** An idle live pane: chin picks steer it instead of becoming launch flags. */
@@ -478,6 +484,7 @@ export function Composer({
 	chin,
 	environment,
 	slashCommands = NO_COMMANDS,
+	slashMenuHeader,
 	bypassPermissionsAllowed = false,
 	live,
 	mentionSessionId,
@@ -612,9 +619,19 @@ export function Composer({
 	});
 	const matches = slash === null || slashDismissed ? [] : filterSlashCommands(slashCommands, slash.query);
 	const slashOpen = matches.length > 0;
+	const slashItems: SlashMenuItem[] = [
+		...(slashMenuHeader === undefined ? [] : [{type: "section-header" as const, label: slashMenuHeader}]),
+		...matches.map((command) => ({type: "command" as const, command})),
+	];
 	// A mid-line slash opens with nothing highlighted (-1), as upstream's `startsUnselected` does.
 	const highlighted =
-		highlight.key === slashKey ? Math.min(highlight.index, matches.length - 1) : slash?.atStart === true ? 0 : -1;
+		highlight.key === slashKey
+			? clampSlashHighlight(slashItems, highlight.index)
+			: slash?.atStart === true
+				? firstSlashHighlight(slashItems)
+				: -1;
+	const highlightedItem = slashItems[highlighted];
+	const highlightedCommand = highlightedItem?.type === "command" ? highlightedItem.command : undefined;
 	// In memory only: upstream doesn't restore the chip from a saved draft either.
 	const [acceptedChip, setAcceptedChip] = useState<AcceptedSkillChip | null>(null);
 	const chip =
@@ -767,15 +784,9 @@ export function Composer({
 		if (!slashOpen) return false;
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
 		if (move !== 0) {
-			const index =
-				highlighted === -1
-					? move === 1
-						? 0
-						: matches.length - 1
-					: Math.max(0, Math.min(matches.length - 1, highlighted + move));
-			setHighlight({key: slashKey, index});
+			setHighlight({key: slashKey, index: stepSlashHighlight(slashItems, highlighted, move)});
 		} else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
-			const command = matches[highlighted];
+			const command = highlightedCommand;
 			// Nothing highlighted: upstream closes the menu and lets the key through (Enter sends).
 			if (command === undefined) {
 				setSlashDismissed(true);
@@ -1233,7 +1244,7 @@ export function Composer({
 					{slashOpen && (
 						<SlashCommandMenu
 							id={slashMenuId}
-							commands={matches}
+							items={slashItems}
 							query={query ?? ""}
 							highlighted={highlighted}
 							onHighlight={(index) => {

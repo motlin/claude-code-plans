@@ -4,6 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {SlashCommandMenu} from "../src/components/slash-command-menu";
 import {ToastProvider} from "../src/components/toast";
 import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
@@ -555,6 +556,130 @@ describe("Composer slash commands", () => {
 				"text-[13px]/[19px]",
 				"w-full",
 			]),
+		});
+	});
+
+	describe("section headers and separators", () => {
+		const HEADER = "Some commands didn’t load. Type / again to retry.";
+		const HEADED: SlashCommand[] = [
+			{name: "model", description: "Set the model for this session", source: "builtin"},
+			{name: "effort", description: "Set the effort level for this session", source: "builtin"},
+		];
+
+		function setupHeaded() {
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={vi.fn<(prompt: string) => void>()}
+					slashCommands={HEADED}
+					slashMenuHeader={HEADER}
+				/>,
+			);
+			return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		}
+
+		function activeRow(textarea: HTMLTextAreaElement): string | null | undefined {
+			const id = textarea.getAttribute("aria-activedescendant");
+			return id === null ? null : document.getElementById(id)?.textContent;
+		}
+
+		it("draws upstream's section header first as a plain, unfocusable div that the keyboard skips", () => {
+			const textarea = setupHeaded();
+			fireEvent.change(textarea, {target: {value: "/"}});
+			const header = screen.getByRole("menu", {name: "Slash commands"}).firstElementChild;
+			const opened = {rows: rows(), active: activeRow(textarea)};
+			fireEvent.keyDown(textarea, {key: "ArrowDown"});
+			const down = {rows: rows(), active: activeRow(textarea)};
+			fireEvent.keyDown(textarea, {key: "ArrowUp"});
+			fireEvent.keyDown(textarea, {key: "ArrowUp"});
+			const up = {rows: rows(), active: activeRow(textarea)};
+
+			expect({
+				header: {
+					tag: header?.tagName,
+					className: header?.className,
+					role: header?.getAttribute("role"),
+					tabIndex: header?.getAttribute("tabindex"),
+					text: header?.textContent,
+				},
+				opened,
+				down,
+				up,
+			}).toStrictEqual({
+				header: {
+					tag: "DIV",
+					className: "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted",
+					role: null,
+					tabIndex: null,
+					text: HEADER,
+				},
+				opened: {
+					rows: [
+						{name: "model", highlighted: true},
+						{name: "effort", highlighted: false},
+					],
+					active: "model",
+				},
+				down: {
+					rows: [
+						{name: "model", highlighted: false},
+						{name: "effort", highlighted: true},
+					],
+					active: "effort",
+				},
+				up: {
+					rows: [
+						{name: "model", highlighted: true},
+						{name: "effort", highlighted: false},
+					],
+					active: "model",
+				},
+			});
+		});
+
+		it("never lands an unselected mid-line menu on the header", () => {
+			const textarea = setupHeaded();
+			fireEvent.change(textarea, {target: {value: "hi /set"}});
+			const unselected = activeRow(textarea);
+			fireEvent.keyDown(textarea, {key: "ArrowDown"});
+			const down = activeRow(textarea);
+			fireEvent.change(textarea, {target: {value: "hi /se"}});
+			fireEvent.keyDown(textarea, {key: "ArrowUp"});
+
+			expect({unselected, down, up: activeRow(textarea)}).toStrictEqual({
+				unselected: null,
+				down: "model",
+				up: "effort",
+			});
+		});
+
+		it("draws a separator item as upstream's 1px hairline between rows", () => {
+			render(
+				<SlashCommandMenu
+					id="menu"
+					items={[
+						{type: "command", command: HEADED[0]!},
+						{type: "separator"},
+						{type: "command", command: HEADED[1]!},
+					]}
+					query=""
+					highlighted={0}
+					onHighlight={vi.fn<(index: number) => void>()}
+					onAccept={vi.fn<(command: SlashCommand) => void>()}
+				/>,
+			);
+			const children = [...screen.getByRole("menu", {name: "Slash commands"}).children].map((child) => ({
+				className: child.className,
+				role: child.getAttribute("role"),
+				text: child.textContent,
+			}));
+
+			expect(children.map((child) => (child.role === "menuitem" ? child.text : child))).toStrictEqual([
+				"model",
+				{className: "mx-2 my-1 h-px bg-border", role: null, text: ""},
+				"effort",
+			]);
 		});
 	});
 

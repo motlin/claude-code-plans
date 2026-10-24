@@ -26,6 +26,41 @@ export interface SlashCommand {
 	pluginName?: string | undefined;
 }
 
+/** One row of the "/" popup, mirroring upstream's `SlashCommandMenuPopupBody` item types. */
+export type SlashMenuItem =
+	| {type: "command"; command: SlashCommand}
+	| {type: "section-header"; label: string}
+	| {type: "separator"};
+
+/** Upstream's `bB`: ↑/↓ skip headers and separators. */
+function isSelectableSlashItem(item: SlashMenuItem): item is {type: "command"; command: SlashCommand} {
+	return item.type === "command";
+}
+
+/**
+ * The highlight after ↑/↓ (`move` ±1) from `current`, skipping unselectable items and
+ * clamping at both ends; from nothing highlighted (-1), ↓ picks the first row and ↑ the last.
+ */
+export function stepSlashHighlight(items: readonly SlashMenuItem[], current: number, move: 1 | -1): number {
+	const selectable = items.flatMap((item, index) => (isSelectableSlashItem(item) ? [index] : []));
+	if (current === -1) return (move === 1 ? selectable[0] : selectable.at(-1)) ?? -1;
+	const next =
+		move === 1 ? selectable.find((index) => index > current) : selectable.findLast((index) => index < current);
+	return next ?? current;
+}
+
+/** The first selectable item, or -1 when none is. */
+export function firstSlashHighlight(items: readonly SlashMenuItem[]): number {
+	return stepSlashHighlight(items, -1, 1);
+}
+
+/** Keeps a remembered highlight on a selectable item after the list shrinks. */
+export function clampSlashHighlight(items: readonly SlashMenuItem[], index: number): number {
+	if (index === -1) return -1;
+	const selectable = items.flatMap((item, i) => (isSelectableSlashItem(item) ? [i] : []));
+	return selectable.find((i) => i >= index) ?? selectable.at(-1) ?? -1;
+}
+
 /** The row label: a plugin entry's name without its `plugin:` namespace, as upstream shows plugin skills. */
 export function slashCommandLabel(command: SlashCommand): string {
 	const prefix = command.pluginName === undefined ? undefined : `${command.pluginName}:`;
