@@ -427,6 +427,57 @@ describe("Composer @ file mentions", () => {
 		});
 	});
 
+	it("shows the row's full path as a 200ms tooltip 8px to its right, with a ZWSP after every slash", async () => {
+		responses.set(
+			TOP_URL,
+			listing([
+				{relPath: "src/lib", isDirectory: true},
+				{relPath: "README.md", isDirectory: false},
+			]),
+		);
+		const {textarea} = setup();
+
+		await type(textarea, "@");
+		const [dir, file] = screen.getAllByRole("option");
+		if (dir === undefined || file === undefined) throw new Error("missing rows");
+		const tip = () => {
+			const tooltip = screen.queryByRole("tooltip");
+			return tooltip === null
+				? null
+				: {
+						text: tooltip.textContent,
+						side: tooltip.dataset["side"],
+						classes: ["max-w-[360px]", "ml-2", "max-w-[320px]", "ml-1"].filter((c) =>
+							tooltip.className.split(" ").includes(c),
+						),
+					};
+		};
+
+		fireEvent.pointerEnter(dir);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(150);
+		});
+		const at150 = tip();
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(50);
+		});
+		const at200 = tip();
+		fireEvent.pointerLeave(dir);
+		const afterLeave = tip();
+		fireEvent.pointerEnter(file);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(200);
+		});
+		const topLevel = tip();
+
+		expect({at150, at200, afterLeave, topLevel}).toStrictEqual({
+			at150: null,
+			at200: {text: "src/​lib/​", side: "right", classes: ["max-w-[360px]", "ml-2"]},
+			afterLeave: null,
+			topLevel: {text: "README.md", side: "right", classes: ["ml-2"]},
+		});
+	});
+
 	it("accepts the clicked row", async () => {
 		responses.set(searchUrl("ind"), search("ind", ["src/a/index.ts", "src/b/index.ts", "src/c/index.ts"]));
 		const {textarea} = setup();

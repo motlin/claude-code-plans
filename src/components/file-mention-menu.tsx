@@ -3,6 +3,7 @@ import {Folder} from "lucide-react";
 
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionOptionId} from "./file-mention-option-id";
+import {Tooltip} from "./ui/tooltip";
 
 type FileTypeIconModule = typeof import("./file-type-icon");
 
@@ -37,6 +38,11 @@ const POPUP_CLASS =
 
 const ROW_CLASS =
 	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-left text-[13px]/[19px] text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
+
+/** Upstream's row tooltip text: the full path (directories keep their trailing `/`) with a ZWSP after every `/`. */
+function mentionTooltip(entry: SessionFilesEntry): string {
+	return `${entry.relPath}${entry.isDirectory ? "/" : ""}`.replaceAll("/", "/\u200B");
+}
 
 function EntryIcon({entry, icons}: {entry: SessionFilesEntry; icons: FileTypeIconModule | undefined}) {
 	if (entry.isDirectory) return <Folder aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />;
@@ -91,42 +97,53 @@ export function FileMentionMenu({
 				const slash = entry.relPath.lastIndexOf("/");
 				const dirname = slash === -1 ? "" : entry.relPath.slice(0, slash);
 				return (
-					<button
+					<Tooltip
 						key={entry.relPath}
-						type="button"
-						tabIndex={-1}
-						id={fileMentionOptionId(id, index)}
-						role="option"
-						data-option-index={index}
-						aria-selected={index === shown}
-						data-highlighted={index === shown ? "" : undefined}
-						className={ROW_CLASS}
-						onMouseEnter={() => {
-							setHover({entries, index});
-						}}
-						onMouseDown={(e) => {
-							e.preventDefault();
-							onAccept(entry);
-						}}
+						content={mentionTooltip(entry)}
+						side="right"
+						delay={200}
+						sideOffset={8}
+						multiline={dirname !== ""}
+						maxWidth={dirname === "" ? undefined : "max-w-[360px]"}
+						portal
+						className="w-full min-w-0"
 					>
-						<EntryIcon entry={entry} icons={icons} />
-						<span className="flex min-w-0 flex-1 items-baseline gap-1.5 text-start">
-							<span
-								className={
-									dirname === ""
-										? "truncate text-primary"
-										: "truncate text-primary max-w-full shrink-0"
-								}
-							>
-								<bdi>{entry.name}</bdi>
-							</span>
-							{dirname !== "" && (
-								<span className="truncate text-[11px]/[17px] text-ink-muted">
-									<bdi>{dirname}</bdi>
+						<button
+							type="button"
+							tabIndex={-1}
+							id={fileMentionOptionId(id, index)}
+							role="option"
+							data-option-index={index}
+							aria-selected={index === shown}
+							data-highlighted={index === shown ? "" : undefined}
+							className={ROW_CLASS}
+							onMouseEnter={() => {
+								setHover({entries, index});
+							}}
+							onMouseDown={(e) => {
+								e.preventDefault();
+								onAccept(entry);
+							}}
+						>
+							<EntryIcon entry={entry} icons={icons} />
+							<span className="flex min-w-0 flex-1 items-baseline gap-1.5 text-start">
+								<span
+									className={
+										dirname === ""
+											? "truncate text-primary"
+											: "truncate text-primary max-w-full shrink-0"
+									}
+								>
+									<bdi>{entry.name}</bdi>
 								</span>
-							)}
-						</span>
-					</button>
+								{dirname !== "" && (
+									<span className="truncate text-[11px]/[17px] text-ink-muted">
+										<bdi>{dirname}</bdi>
+									</span>
+								)}
+							</span>
+						</button>
+					</Tooltip>
 				);
 			})}
 		</div>

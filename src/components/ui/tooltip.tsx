@@ -74,6 +74,11 @@ const STACKED_DETAIL_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 whitespace-normal text-balance",
 ).replace("py-[3px]", "py-1.5");
 
+/** The side classes' 4px gap widened to upstream's `sideOffset 8` (the @ mention row path tip). */
+function widenOffset(sideClass: string): string {
+	return sideClass.replace(/\b(m[lrtb])-1\b/, "$1-2");
+}
+
 /** How far inside the viewport's top and bottom a cursor-tracking tooltip stays. */
 const TRACK_CURSOR_INSET_PX = 8;
 
@@ -115,6 +120,9 @@ export function Tooltip({
 	trackCursor,
 	suppressAfterPopup = false,
 	portal = false,
+	delay = OPEN_DELAY_MS,
+	sideOffset = 4,
+	maxWidth,
 	className,
 	children,
 }: {
@@ -162,6 +170,12 @@ export function Tooltip({
 	 * scroller such as a menu row (upstream's Max effort row tooltip, side right).
 	 */
 	portal?: boolean;
+	/** The hover open delay; upstream's @ mention rows use 200ms. */
+	delay?: number;
+	/** The gap from the anchor; 8 for upstream's @ mention row tip. */
+	sideOffset?: 4 | 8;
+	/** Overrides the box's max width, e.g. `max-w-[360px]` for a multiline @ mention path. */
+	maxWidth?: string | undefined;
 	className?: string;
 	children: ReactElement<{"aria-describedby"?: string}>;
 }) {
@@ -241,9 +255,10 @@ export function Tooltip({
 	}, [open, suppressAfterPopup]);
 
 	const placedSide = placement?.side ?? side;
-	const sideClass = (align === "start" || trackedTop !== undefined ? START_SIDE_CLASS : SIDE_CLASS)[placedSide];
+	const baseSideClass = (align === "start" || trackedTop !== undefined ? START_SIDE_CLASS : SIDE_CLASS)[placedSide];
+	const sideClass = sideOffset === 8 ? widenOffset(baseSideClass) : baseSideClass;
 
-	function show(delay = OPEN_DELAY_MS) {
+	function show(openDelay = delay) {
 		clearTimeout(timer.current);
 		const anchor = anchorRef.current;
 		if (suppressed.current) return;
@@ -257,8 +272,8 @@ export function Tooltip({
 			}
 			setOpen(true);
 		};
-		if (delay === 0) reveal();
-		else timer.current = setTimeout(reveal, delay);
+		if (openDelay === 0) reveal();
+		else timer.current = setTimeout(reveal, openDelay);
 	}
 
 	function trackPointer(event: PointerEvent<HTMLSpanElement>) {
@@ -292,7 +307,7 @@ export function Tooltip({
 		</>
 	);
 	const stackedDetail = stacked && detail !== undefined;
-	const tooltipClass =
+	const variantClass =
 		variant === "reason"
 			? REASON_TOOLTIP_CLASS
 			: stackedDetail
@@ -304,6 +319,7 @@ export function Tooltip({
 							: TOOLTIP_CLASS
 						: ACTION_ROWS_TOOLTIP_CLASS
 					: STACKED_TOOLTIP_CLASS;
+	const tooltipClass = maxWidth === undefined ? variantClass : variantClass.replace(/max-w-\[[^\]]+\]/, maxWidth);
 
 	const tipElement = (
 		<span
@@ -355,7 +371,7 @@ export function Tooltip({
 			onPointerMove={trackCursor === "y" ? trackPointer : undefined}
 			onPointerLeave={leave}
 			onFocus={() => {
-				show(variant === "reason" ? 0 : OPEN_DELAY_MS);
+				show(variant === "reason" ? 0 : delay);
 			}}
 			onBlur={leave}
 			onClick={closeOnClick ? hide : undefined}
