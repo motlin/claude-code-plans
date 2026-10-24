@@ -313,6 +313,141 @@ describe("transcript context menus", () => {
 	});
 });
 
+const MAC_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
+
+/** Selects `start`..`end` of the first text node under `element`, as a drag would. */
+function selectText(element: Element, start: number, end: number): Selection {
+	const node = element.firstChild;
+	if (node === null) throw new Error("no text node");
+	const range = document.createRange();
+	range.setStart(node, start);
+	range.setEnd(node, end);
+	const selection = window.getSelection();
+	if (selection === null) throw new Error("no selection");
+	selection.removeAllRanges();
+	selection.addRange(range);
+	return selection;
+}
+
+function menuItem(menu: HTMLElement, title: string): Element {
+	const item = [...menu.querySelectorAll('[role="menuitem"]')].find(
+		(row) => row.querySelector("[data-menu-item-title]")?.textContent === title,
+	);
+	if (item === undefined) throw new Error(`no item ${title}`);
+	return item;
+}
+
+describe("transcript context menu with a text selection", () => {
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_USER_AGENT);
+	});
+
+	afterEach(() => {
+		window.getSelection()?.removeAllRanges();
+		vi.restoreAllMocks();
+	});
+
+	it("leads with Copy ⌘C and offers Attach selection as context ⇧⌘L", () => {
+		const container = renderChat();
+		const paragraph = find(container, "strong", "details").parentElement;
+		if (paragraph === null) throw new Error("no paragraph");
+		selectText(paragraph, 0, 3);
+		const menu = openMenuOn(find(container, "strong", "details"));
+		const keys = (title: string) => {
+			const item = menuItem(menu, title);
+			return {
+				aria: item.getAttribute("aria-keyshortcuts"),
+				caps: item.querySelector('[data-cds="Shortcut"]')?.textContent,
+			};
+		};
+
+		expect({
+			rows: menuRows(menu),
+			copy: keys("Copy"),
+			attach: keys("Attach selection as context"),
+		}).toStrictEqual({
+			rows: [
+				"Copy",
+				"---",
+				"Copy message",
+				"Copy message as Markdown",
+				"Read aloud",
+				"---",
+				"Attach selection as context",
+				"Pin as chapter",
+				"---",
+				"Fork from here / Starts a new session, keeps this one",
+			],
+			copy: {aria: "Meta+c", caps: "⌘CommandC"},
+			attach: {aria: "Shift+Meta+l", caps: "⇧Shift⌘CommandL"},
+		});
+	});
+
+	it("copies the raw selection text", async () => {
+		const container = renderChat();
+		const paragraph = find(container, "strong", "details").parentElement;
+		if (paragraph === null) throw new Error("no paragraph");
+		selectText(paragraph, 0, 4);
+		clickItem(openMenuOn(find(container, "strong", "details")), "Copy");
+		await vi.waitFor(() => {
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
+
+		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([["Run "]]);
+	});
+
+	it("attaches the trimmed selection as an Excerpt and clears the selection", () => {
+		const unregister = registerComposer("test-session", {
+			insertText: vi.fn<ComposerHandle["insertText"]>(),
+			focus: vi.fn<ComposerHandle["focus"]>(),
+		});
+		const container = renderChat();
+		const bubbleText = find(container, ".user-message-bubble p");
+		const selection = selectText(bubbleText, 6, 15);
+		clickItem(openMenuOn(bubbleText), "Attach selection as context");
+		const chips = getContextChips("test-session").map(({id: _id, ...chip}) => chip);
+		unregister();
+
+		expect({chips, selected: selection.toString()}).toStrictEqual({
+			chips: [{kind: "excerpt", text: "run the"}],
+			selected: "",
+		});
+	});
+
+	it("keeps Attach message as context, after Copy, for a selection under two characters", () => {
+		const container = renderChat();
+		const bubbleText = find(container, ".user-message-bubble p");
+		selectText(bubbleText, 6, 8);
+		const menu = openMenuOn(bubbleText);
+
+		expect(menuRows(menu).slice(0, 6)).toStrictEqual([
+			"Copy",
+			"---",
+			"Copy message",
+			"Copy message as Markdown",
+			"---",
+			"Attach message as context",
+		]);
+	});
+
+	it("ignores a blank selection and a selection in another turn", () => {
+		const container = renderChat();
+		const bubbleText = find(container, ".user-message-bubble p");
+		selectText(bubbleText, 6, 15);
+		const elsewhere = menuRows(openMenuOn(find(container, "strong", "details")));
+		cleanup();
+		const again = renderChat();
+		const bubble = find(again, ".user-message-bubble p");
+		selectText(bubble, 6, 7);
+		const blank = menuRows(openMenuOn(bubble));
+
+		expect({elsewhere: elsewhere.slice(0, 2), blank: blank.slice(0, 2)}).toStrictEqual({
+			elsewhere: ["Copy message", "Copy message as Markdown"],
+			blank: ["Copy message", "Copy message as Markdown"],
+		});
+	});
+});
+
 describe("transcript context menu on a coarse pointer under 640px", () => {
 	function stubCoarsePhone() {
 		vi.stubGlobal(

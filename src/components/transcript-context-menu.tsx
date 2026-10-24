@@ -25,6 +25,7 @@ const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
  * link), tool rows (Pin and Fork only) and user bubbles (adds Rewind). A file
  * ref opens only the shared file actions menu, as on desktop, or, without an
  * absolute path, the prose menu led by Copy path (upstream's browser `jb`).
+ * A text selection in the turn adds Copy and attaches as an Excerpt.
  */
 
 type TranscriptMenuTarget =
@@ -51,6 +52,24 @@ function resolveMenuTarget(element: Element | null, fallback: "prose" | "tool"):
 	const code = element.closest("code:not(pre code)");
 	if (code !== null) return {kind: "code", text: code.textContent};
 	return {kind: fallback};
+}
+
+/** Upstream's `a7`: the shortest trimmed selection that attaches as an Excerpt. */
+const MIN_EXCERPT_LENGTH = 2;
+
+/**
+ * Upstream `ux`'s `selectionText`: the document selection when it reaches into
+ * `turn`, or null when there is none or it is blank.
+ */
+function snapshotSelection(turn: Element): string | null {
+	const selection = turn.ownerDocument.getSelection();
+	if (selection === null || selection.isCollapsed) return null;
+	const text = selection.toString();
+	if (text.trim() === "") return null;
+	for (let index = 0; index < selection.rangeCount; index++) {
+		if (selection.getRangeAt(index).intersectsNode(turn)) return text;
+	}
+	return null;
 }
 
 /** Upstream `Kn`'s `beforeOpen`: the longest a file menu waits on its "is this path gone?" check. */
@@ -93,6 +112,7 @@ export function TranscriptMessageMenu({
 }: TranscriptMessageMenuProps) {
 	const readAloud = useReadAloud(markdown);
 	const [target, setTarget] = useState<TranscriptMenuTarget>({kind: "prose"});
+	const [selectionText, setSelectionText] = useState<string | null>(null);
 	const [keyboardArticle, setKeyboardArticle] = useState<HTMLElement | null>(null);
 	const closingMenu = useRef<Element | null>(null);
 	const queryClient = useContext(QueryClientContext);
@@ -136,6 +156,7 @@ export function TranscriptMessageMenu({
 						fallback,
 					);
 					setTarget(nextTarget);
+					setSelectionText(snapshotSelection(event.currentTarget));
 					setGone(false);
 					goneCheck.current = null;
 					if (nextTarget.kind === "file" && queryClient !== undefined) {
@@ -181,6 +202,7 @@ export function TranscriptMessageMenu({
 				<TranscriptMenuItems
 					speaker={speaker}
 					target={target}
+					selectionText={selectionText}
 					markdown={markdown}
 					message={uuid === undefined ? undefined : {sessionId, uuid}}
 					sessionId={sessionId}
@@ -211,6 +233,7 @@ function actionProps(
 function TranscriptMenuItems({
 	speaker,
 	target,
+	selectionText,
 	markdown,
 	message,
 	sessionId,
@@ -219,6 +242,8 @@ function TranscriptMenuItems({
 }: {
 	speaker: Speaker;
 	target: TranscriptMenuTarget;
+	/** The text selected in this turn when the menu opened, or null. */
+	selectionText: string | null;
 	markdown: string;
 	message: TranscriptMessageRef | undefined;
 	sessionId: string;
@@ -265,8 +290,22 @@ function TranscriptMenuItems({
 		);
 	}
 
+	const excerpt = selectionText?.trim() ?? "";
 	return (
 		<>
+			{selectionText !== null && (
+				<>
+					<MenuItem
+						shortcut="cmd+c"
+						onSelect={() => {
+							copy(selectionText);
+						}}
+					>
+						Copy
+					</MenuItem>
+					<MenuSeparator />
+				</>
+			)}
 			{target.kind === "filePath" && (
 				<>
 					<MenuItem
@@ -326,9 +365,21 @@ function TranscriptMenuItems({
 				</MenuItem>
 			)}
 			<MenuSeparator />
-			<MenuItem onSelect={() => attachContext(sessionId, {kind: "message", text: markdown})}>
-				Attach message as context
-			</MenuItem>
+			{excerpt.length >= MIN_EXCERPT_LENGTH ? (
+				<MenuItem
+					shortcut="shift+cmd+l"
+					onSelect={() => {
+						window.getSelection()?.removeAllRanges();
+						attachContext(sessionId, {kind: "excerpt", text: excerpt});
+					}}
+				>
+					Attach selection as context
+				</MenuItem>
+			) : (
+				<MenuItem onSelect={() => attachContext(sessionId, {kind: "message", text: markdown})}>
+					Attach message as context
+				</MenuItem>
+			)}
 			{speaker === "assistant" ? (
 				<>
 					{pin}
