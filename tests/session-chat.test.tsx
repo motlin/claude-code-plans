@@ -2321,7 +2321,7 @@ describe("SessionChat usage-limit card", () => {
 			rawText: showsRawText(html),
 			apiErrorHeader: html.includes("API Error"),
 		}).toStrictEqual({
-			shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7 select-text",
+			shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 			header: "flex items-center gap-3 bg-alpha-1 px-3 py-2 contain-inline-size",
 			body: "flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
 			icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",

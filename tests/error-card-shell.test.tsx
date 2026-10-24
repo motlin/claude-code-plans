@@ -50,7 +50,7 @@ describe("ErrorCardShell", () => {
 				text: hintRow?.textContent,
 			},
 		}).toStrictEqual({
-			root: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7 select-text",
+			root: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 			childCount: 3,
 			alert: {tag: "SPAN", className: "sr-only", role: "alert", text: `${HEADLINE} ${HINT}`},
 			header: "flex items-center gap-3 bg-alpha-1 px-3 py-2 contain-inline-size",

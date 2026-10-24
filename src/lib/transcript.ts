@@ -92,6 +92,10 @@ const MessageLineSchema = z.object({
 	/** The `api-request` this line's run of records came from; only the run's first line carries it. */
 	requestRef: z.string().optional(),
 	apiErrorStatus: z.union([z.number(), z.string()]).optional(),
+	/** An API error line's `requestId`, for the error card's details. */
+	requestId: z.string().optional(),
+	/** An API error line's string `error` code, e.g. `server_error`, for classifying it. */
+	apiErrorCode: z.string().optional(),
 	/** The rate-limit window of a synthetic usage-limit message. */
 	usageLimit: UsageLimitSchema.optional(),
 	errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
@@ -1102,7 +1106,11 @@ function processRecordBatch(
 			}
 		}
 		if (record.type === "assistant") {
-			if (record.isApiErrorMessage === true) processedLine.isApiErrorMessage = true;
+			if (record.isApiErrorMessage === true) {
+				processedLine.isApiErrorMessage = true;
+				if (record.requestId !== undefined) processedLine.requestId = record.requestId;
+				if (typeof record.error === "string") processedLine.apiErrorCode = record.error;
+			}
 			if (record.requestRef !== undefined && record.requestRef !== lastRequestRef) {
 				processedLine.requestRef = record.requestRef;
 			}

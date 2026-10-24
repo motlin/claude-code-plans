@@ -1239,6 +1239,26 @@ describe("message metadata fields", () => {
 		expect(result.lines[1]!).not.toHaveProperty("isApiErrorMessage");
 	});
 
+	it("carries the request id and string error code on API error lines only", () => {
+		const records = [
+			assistantRecord([{type: "text", text: "API Error: 529 Overloaded."}], {
+				isApiErrorMessage: true,
+				apiErrorStatus: 529,
+				requestId: "req_011CfHarGaksRjzuQwv2aEni",
+				error: "server_error",
+			}),
+			assistantRecord([{type: "text", text: "fine"}], {requestId: "req_ok"}),
+		];
+		expect(
+			processTranscript(records).lines.map((line) =>
+				line.type === "assistant" ? {requestId: line.requestId, apiErrorCode: line.apiErrorCode} : null,
+			),
+		).toStrictEqual([
+			{requestId: "req_011CfHarGaksRjzuQwv2aEni", apiErrorCode: "server_error"},
+			{requestId: undefined, apiErrorCode: undefined},
+		]);
+	});
+
 	it("carries the usage-limit window from apiErrorParams, falling back to quotaLimits", () => {
 		const info = {
 			status: "rejected",

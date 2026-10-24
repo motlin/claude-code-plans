@@ -15,6 +15,10 @@ interface ErrorCardShellProps {
 	onDismiss?: () => void;
 	/** Data attributes for the card root, so callers can tag it. */
 	data?: Record<`data-${string}`, string>;
+	/** Appends upstream's " Learn more" link to the hint. */
+	learnMoreUrl?: string;
+	/** Rows after the hint row, e.g. the View details disclosure. */
+	children?: ReactNode;
 }
 
 const ICON_CLASS = "size-4 shrink-0 text-danger-000";
@@ -37,11 +41,20 @@ function CardIcon({icon}: {icon: ErrorCardIcon}): ReactNode {
  * minimum and the hint wraps inside it. The card has no tab stop; the Dismiss
  * press keeps focus where it was (upstream prevents the mouse-down focus steal).
  */
-export function ErrorCardShell({headline, hint, icon, announce, onDismiss, data}: ErrorCardShellProps) {
+export function ErrorCardShell({
+	headline,
+	hint,
+	icon,
+	announce,
+	onDismiss,
+	data,
+	learnMoreUrl,
+	children,
+}: ErrorCardShellProps) {
 	return (
 		<div
 			{...data}
-			className="card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7 select-text"
+			className="card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text"
 		>
 			{announce === "alert" && (
 				<span className="sr-only" role="alert">
@@ -68,8 +81,24 @@ export function ErrorCardShell({headline, hint, icon, announce, onDismiss, data}
 				)}
 			</div>
 			<div className="flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size">
-				<span className="text-body text-secondary whitespace-pre-line break-words">{hint}</span>
+				<span className="text-body text-secondary whitespace-pre-line break-words">
+					{hint}
+					{learnMoreUrl !== undefined && (
+						<>
+							{" "}
+							<a
+								href={learnMoreUrl}
+								target="_blank"
+								rel="noreferrer"
+								className="underline hover:text-primary"
+							>
+								Learn more
+							</a>
+						</>
+					)}
+				</span>
 			</div>
+			{children}
 		</div>
 	);
 }

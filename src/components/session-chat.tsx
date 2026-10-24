@@ -14,9 +14,10 @@ import React, {
 	type ReactNode,
 } from "react";
 import {flushSync} from "react-dom";
-import {AlertTriangle, Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
+import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {isWithdrawnQuestion, type AskedCall} from "../lib/ask-user-question";
+import {ApiErrorCard} from "./api-error-card";
 import {ErrorCardShell} from "./error-card-shell";
 import {ShimmerText} from "./shimmer-text";
 import {ProseMarkdown} from "./file-refs";
@@ -46,7 +47,7 @@ import type {SlowCommand} from "../lib/slow-commands";
 import {useSubagentOpener} from "./subagent-opener-context";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
-import {ChevronIcon, CollapsibleSection, CopyButton, DiffStatPill, TerminalOutput} from "./tool-renderers/shared";
+import {ChevronIcon, CopyButton, DiffStatPill, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
@@ -68,7 +69,7 @@ import {hmrPersist} from "../lib/hmr-persist";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
 import type {ToolUseBlock} from "../lib/schemas";
 import {toolBucket, type ToolBucket} from "../lib/tool-runs";
-import {AttachmentBanner, Banner, Pre} from "./attachment-banner";
+import {AttachmentBanner, Banner} from "./attachment-banner";
 import {
 	stripCommandTags,
 	stripHarnessTags,
@@ -4469,37 +4470,34 @@ function AssistantEntry({
 		);
 	}
 
-	// Upstream draws a usage-limit error as its card alone; the raw limit text is not shown.
-	const limitCard =
-		line.isApiErrorMessage === true
-			? usageLimitCard(
-					line.usageLimit,
-					content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n"),
-					Date.now(),
-				)
-			: null;
+	// Upstream draws an API error as its card alone; the raw text lives in the card's details.
+	const errorText = content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n");
+	const limitCard = line.isApiErrorMessage === true ? usageLimitCard(line.usageLimit, errorText, Date.now()) : null;
 
 	// Mixed content: render each block in original order
 	return (
 		<div className="flex flex-col gap-[var(--chat-item-gap)] min-w-0 select-text">
 			{attributionRow}
-			{limitCard === null ? (
-				line.isApiErrorMessage === true && <ApiErrorCallout line={line} />
-			) : (
-				<UsageLimitCardView card={limitCard} />
+			{line.isApiErrorMessage === true &&
+				(limitCard === null ? (
+					<ApiErrorCardForLine line={line} text={errorText} />
+				) : (
+					<UsageLimitCardView card={limitCard} />
+				))}
+			{(line.isApiErrorMessage === true ? content.filter((block) => block.type !== "text") : content).map(
+				(block, i) => (
+					<ContentBlock
+						key={i}
+						block={block}
+						blockIndex={i}
+						line={line}
+						sessionId={sessionId}
+						showThinking={showThinking}
+						showTools={showTools}
+						toolCalls={toolCalls}
+					/>
+				),
 			)}
-			{(limitCard === null ? content : content.filter((block) => block.type !== "text")).map((block, i) => (
-				<ContentBlock
-					key={i}
-					block={block}
-					blockIndex={i}
-					line={line}
-					sessionId={sessionId}
-					showThinking={showThinking}
-					showTools={showTools}
-					toolCalls={toolCalls}
-				/>
-			))}
 			{requestDisclosure}
 		</div>
 	);
@@ -4551,25 +4549,19 @@ function UsageLimitCardView({card}: {card: UsageLimitCard}) {
 	);
 }
 
-/** Error callout for assistant turns flagged as API error messages. */
-function ApiErrorCallout({line}: {line: MessageSessionLine}) {
+/** The API error card for an assistant turn flagged as an API error message. */
+function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: string}) {
 	const details = line.errorDetails;
 	const detailsText =
 		details === undefined ? undefined : typeof details === "string" ? details : JSON.stringify(details, null, 2);
 	return (
-		<div className="border-l-2 border-danger-000 bg-danger-000/10 rounded-r px-3 py-2">
-			<div className="flex items-center gap-1.5 text-xs text-danger-000">
-				<AlertTriangle className="h-3.5 w-3.5" />
-				API Error{line.apiErrorStatus === undefined ? "" : ` ${line.apiErrorStatus}`}
-			</div>
-			{detailsText !== undefined && (
-				<div className="mt-1">
-					<CollapsibleSection label="Details">
-						<Pre>{detailsText}</Pre>
-					</CollapsibleSection>
-				</div>
-			)}
-		</div>
+		<ApiErrorCard
+			text={text}
+			{...(detailsText !== undefined && {details: detailsText})}
+			{...(line.apiErrorStatus !== undefined && {status: line.apiErrorStatus})}
+			{...(line.requestId !== undefined && {requestId: line.requestId})}
+			{...(line.apiErrorCode !== undefined && {code: line.apiErrorCode})}
+		/>
 	);
 }
 

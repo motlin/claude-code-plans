@@ -945,7 +945,7 @@ describe("Composer host commands", () => {
 			sends: [],
 			text: "/permissions plan",
 			slot: "mb-1.5",
-			shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7 select-text",
+			shell: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 			alert: `Couldn’t complete that ${ARGS_BODY}`,
 			headline: "Couldn’t complete that",
 			hint: ARGS_BODY,
