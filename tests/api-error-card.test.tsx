@@ -565,6 +565,89 @@ describe("ApiErrorCard recovery actions", () => {
 			],
 		});
 	});
+
+	it("wraps the action group right-aligned under View details at phone width, like upstream's flex-wrap justify-end row", () => {
+		const {container} = render(
+			<div style={{width: "390px"}}>
+				<ApiErrorCard
+					{...OVERLOADED_PROPS}
+					recovery={{
+						onRetry: vi.fn<() => void>(),
+						onRetryWithModel: vi.fn<(model: string) => Promise<boolean>>(),
+						currentModel: "claude-opus-5-5",
+					}}
+				/>
+			</div>,
+		);
+		const card = container.querySelector("[data-api-error-card]");
+		const group = actionGroup(card);
+
+		expect({
+			card: card?.className.split(" "),
+			row: group?.parentElement?.className.split(" "),
+			group: group?.className.split(" "),
+		}).toStrictEqual({
+			card: [
+				"card-outline-layer",
+				"flex",
+				"w-fit",
+				"min-w-[min(480px,100%)]",
+				"max-w-full",
+				"flex-col",
+				"overflow-clip",
+				"rounded-card",
+				"select-text",
+			],
+			row: [
+				"flex",
+				"min-w-0",
+				"max-w-full",
+				"flex-wrap",
+				"items-center",
+				"gap-x-3",
+				"gap-y-2",
+				"px-3",
+				"pb-3",
+				"pt-2",
+			],
+			group: ["ms-auto", "flex", "min-w-0", "max-w-full", "flex-wrap", "items-center", "justify-end", "gap-2"],
+		});
+	});
+
+	it("tabs from View details through the secondary model trigger to the primary Try again, each with the focus ring", () => {
+		const {container} = render(
+			<ApiErrorCard
+				{...OVERLOADED_PROPS}
+				recovery={{
+					onRetry: vi.fn<() => void>(),
+					onRetryWithModel: vi.fn<(model: string) => Promise<boolean>>(),
+					currentModel: "claude-opus-5-5",
+				}}
+			/>,
+		);
+		const card = container.querySelector("[data-api-error-card]");
+		// Sequential focus follows DOM order when nothing sets a positive tabindex.
+		const order = [...(card?.querySelectorAll<HTMLElement>("button, a[href], [tabindex]") ?? [])]
+			.filter((element) => element.tabIndex >= 0)
+			.map((element) => ({text: element.textContent, tabIndex: element.tabIndex}));
+		const focusRing = [...(actionGroup(card)?.querySelectorAll("button") ?? [])].map((button) => ({
+			text: button.textContent,
+			ring: button.className.split(" ").includes("focus-visible:shadow-focus"),
+			outline: button.className.split(" ").includes("focus-visible:outline-hidden"),
+		}));
+
+		expect({order, focusRing}).toStrictEqual({
+			order: [
+				{text: "View details", tabIndex: 0},
+				{text: "Opus 5.5", tabIndex: 0},
+				{text: "Try again", tabIndex: 0},
+			],
+			focusRing: [
+				{text: "Opus 5.5", ring: true, outline: true},
+				{text: "Try again", ring: true, outline: true},
+			],
+		});
+	});
 });
 
 describe("SessionChat error recovery", () => {
