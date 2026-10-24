@@ -387,13 +387,25 @@ function SessionView({
 	// Keyed off the window's startIndex so every line carries its session-absolute
 	// JSONL record index, which locates a row whose record was collapsed into a
 	// neighbour and resolves links copied before anchors moved to message uuids.
-	const processed = useMemo(
-		() => processTranscript(transcript.records, transcript.startIndex),
-		[transcript.records, transcript.startIndex],
+	// The server computes the active chain over the whole file, so the page only
+	// skips the records it served as hidden and never recomputes the chain.
+	const chainProcessed = useMemo(
+		() =>
+			processTranscript(transcript.records, transcript.startIndex, {
+				hidden: new Set(transcript.hiddenUuids),
+				cuts: transcript.cuts,
+			}),
+		[transcript.records, transcript.startIndex, transcript.hiddenUuids, transcript.cuts],
 	);
-	const hasThinking = useMemo(() => sessionHasThinking(processed.lines), [processed.lines]);
+	const hasThinking = useMemo(() => sessionHasThinking(chainProcessed.lines), [chainProcessed.lines]);
 	const transcriptView = useTranscriptModeShortcut(sessionId, {hasThinking});
 	const {mode: transcriptMode, flags: transcriptFlags} = transcriptView;
+	// Verbose is the raw JSONL view, abandoned branches included.
+	const showAbandoned = transcriptMode === "verbose" && transcript.hiddenUuids.length > 0;
+	const processed = useMemo(
+		() => (showAbandoned ? processTranscript(transcript.records, transcript.startIndex) : chainProcessed),
+		[showAbandoned, chainProcessed, transcript.records, transcript.startIndex],
+	);
 	// `uuidToLine` is the set of messages the window holds, which is how a jump
 	// decides whether to scroll or to page history in first.
 	const requestMessageJump = usePendingMessageJump(sessionId, transcript.startIndex, processed.uuidToLine);

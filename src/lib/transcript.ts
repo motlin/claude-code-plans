@@ -10,6 +10,7 @@
 
 import {z} from "zod";
 import type {ToolResultInfo} from "./sessions";
+import type {TranscriptCut} from "./api/sessions";
 import {toolResultMetaFrom} from "./tool-labels";
 import {formatModelName} from "./model-name";
 import {isRecord} from "./narrow";
@@ -327,6 +328,15 @@ export interface ProcessedTranscript {
 	uuidToLine: Map<string, number>;
 	title: string;
 	customTitle: string | undefined;
+	/** The served cuts keyed by the on-chain prompt that replaced each abandoned branch. */
+	cutsByReplacement: ReadonlyMap<string, TranscriptCut>;
+}
+
+/** The active chain the server computed over the whole file (transcript-chain.ts). */
+export interface ServedChain {
+	/** Records on abandoned branches; they render nothing but keep their raw index. */
+	hidden: ReadonlySet<string>;
+	cuts: readonly TranscriptCut[];
 }
 
 interface IncrementalResult {
@@ -729,6 +739,7 @@ function processRecordBatch(
 	records: unknown[],
 	startLineIndex: number,
 	uuidToLine?: Map<string, number>,
+	hidden?: ReadonlySet<string>,
 ): {
 	sessionLines: ProcessedLine[];
 	toolResults: Map<string, ToolResultInfo>;
@@ -762,6 +773,8 @@ function processRecordBatch(
 	for (let i = 0; i < records.length; i++) {
 		const obj = records[i];
 		const lineIndex = startLineIndex + i;
+		if (hidden !== undefined && isRecord(obj) && typeof obj["uuid"] === "string" && hidden.has(obj["uuid"]))
+			continue;
 
 		const parsed = JsonlRecordSchema.safeParse(obj);
 		let invalidToolInputIds: string[] | undefined;
@@ -1216,16 +1229,25 @@ function processRecordBatch(
  *   `startIndex` to keep every `lineIndex` session-absolute. Message anchors
  *   are built from `lineIndex`, and an anchor has to survive the window
  *   boundary moving as the session grows.
+ * @param chain - The served active chain. Hidden records are skipped, not
+ *   removed, so the visible rows keep their raw index. Omit it to render the
+ *   raw file.
  */
-export function processTranscript(records: unknown[], startLineIndex = 0): ProcessedTranscript {
+export function processTranscript(records: unknown[], startLineIndex = 0, chain?: ServedChain): ProcessedTranscript {
 	const uuidToLine = new Map<string, number>();
-	const {sessionLines, toolResults, title, customTitle} = processRecordBatch(records, startLineIndex, uuidToLine);
+	const {sessionLines, toolResults, title, customTitle} = processRecordBatch(
+		records,
+		startLineIndex,
+		uuidToLine,
+		chain?.hidden,
+	);
 	return {
 		lines: sessionLines,
 		toolResultMap: toolResults,
 		uuidToLine,
 		title,
 		customTitle,
+		cutsByReplacement: new Map(chain?.cuts.map((cut) => [cut.replacementUuid, cut])),
 	};
 }
 
