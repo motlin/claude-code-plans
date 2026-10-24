@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {ResetCountdown} from "../src/components/reset-countdown";
 import {UsageLimitBand, UsagePaceBand} from "../src/components/usage-pace-banner";
 import {
 	approachingLimit,
@@ -298,16 +299,75 @@ describe("usage limit reached", () => {
 		]);
 	});
 
-	it("draws the band as 'Weekly limit reached · Get more usage to keep working · Resets …' with no dismiss", () => {
-		render(<UsageLimitBand headline="Weekly limit reached" resetText="Resets Tue, Oct 20, 4:00 AM" />);
-		const band = screen.getByRole("status");
+	it("draws the exceeded band in danger ink with the reset countdown and no dismiss", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(Date.UTC(2026, 9, 20, 16, 0));
+		try {
+			render(<UsageLimitBand headline="Weekly limit reached" resetsAt={Date.UTC(2026, 9, 20, 18, 0) / 1000} />);
+			const band = screen.getByRole("status");
+			const headline = screen.getByText("Weekly limit reached");
+			const detail = screen.getByText("Resets at 6:00 PM");
+			expect({
+				text: band.textContent,
+				icon: band.firstElementChild?.firstElementChild?.getAttribute("class"),
+				headline: headline.className,
+				detail: detail.parentElement?.className,
+				dismiss: screen.queryByRole("button", {name: "Dismiss"}),
+			}).toStrictEqual({
+				text: "Weekly limit reachedResets at 6:00 PM",
+				icon: "lucide lucide-gauge size-4 text-danger-000",
+				headline: "min-w-0 text-danger-000",
+				detail: "min-w-0 text-ink-muted",
+				dismiss: null,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
 
-		expect({
-			text: band.textContent,
-			dismiss: screen.queryByRole("button", {name: "Dismiss"}),
-		}).toStrictEqual({
-			text: "Weekly limit reached· Get more usage to keep working · Resets Tue, Oct 20, 4:00 AM",
-			dismiss: null,
+describe("ResetCountdown", () => {
+	const NOW = Date.UTC(2026, 9, 20, 16, 0);
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(NOW);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	function countdown(secondsAhead: number) {
+		render(<ResetCountdown resetsAt={NOW / 1000 + secondsAhead} />);
+		return screen.getByTestId("reset-countdown");
+	}
+
+	it("shows the absolute reset an hour or more ahead", () => {
+		const node = countdown(2 * HOUR);
+		expect({text: node.textContent, live: node.getAttribute("aria-live"), className: node.className}).toStrictEqual(
+			{
+				text: "Resets at 6:00 PM",
+				live: "off",
+				className: "tabular-nums",
+			},
+		);
+	});
+
+	it("counts minutes under an hour", () => {
+		expect(countdown(37 * 60).textContent).toBe("Resets in 37 min");
+	});
+
+	it("counts minutes and two-digit seconds under ten minutes, ticking every second", () => {
+		const node = countdown(9 * 60 + 5);
+		expect(node.textContent).toBe("Resets in 9:05");
+		act(() => {
+			vi.advanceTimersByTime(5000);
 		});
+		expect(node.textContent).toBe("Resets in 9:00");
+	});
+
+	it("reads 'Resetting…' once the reset arrives", () => {
+		expect(countdown(0).textContent).toBe("Resetting\u2026");
 	});
 });
