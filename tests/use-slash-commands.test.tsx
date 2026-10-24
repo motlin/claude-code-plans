@@ -117,6 +117,32 @@ describe("useSlashCommands", () => {
 		});
 	});
 
+	it("shows upstream's not-running header over the built-ins when the session directory is unknown", () => {
+		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(LOADED)));
+		vi.stubGlobal("fetch", fetchMock);
+		function DisabledHarness() {
+			const slash = useSlashCommands(undefined, false);
+			return <Composer variant="session" draftKey="session-alice" onSend={() => {}} {...slash} />;
+		}
+		render(
+			<QueryClientProvider client={new QueryClient()}>
+				<DisabledHarness />
+			</QueryClientProvider>,
+		);
+
+		fireEvent.change(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"}), {
+			target: {value: "/"},
+		});
+
+		expect({fetches: fetchMock.mock.calls.length, menu: menuState()}).toStrictEqual({
+			fetches: 0,
+			menu: {
+				header: "More commands available once the session is running",
+				labels: BUILTIN_SLASH_COMMANDS.map((command) => command.name),
+			},
+		});
+	});
+
 	it("passes the loaded list through without a header", async () => {
 		vi.stubGlobal(
 			"fetch",
