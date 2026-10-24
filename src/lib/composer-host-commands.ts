@@ -24,7 +24,38 @@ const PERMISSION_LOCKED = "The permission mode can’t be changed for this sessi
 const MODEL_COMMAND = /^\/model(?:[\s:,.]+(.*))?$/is;
 const COMMAND_NAME = /^\/([^\s/]+)(?:\s+([\s\S]*))?$/;
 const SINGLE_WORD = /^[A-Za-z][A-Za-z0-9]*$/;
-const PERMISSION_NAMES = new Set(["permissions", "allowed-tools"]);
+const PERMISSION_NAMES = ["permissions", "allowed-tools"];
+
+/** How a sent host command is shaped: bare, with text after it, or spanning lines. */
+export interface CommandShape {
+	kind: "run" | "trailing_args" | "extra_lines";
+	/** The command name as typed, lowercased. */
+	name: string;
+}
+
+/**
+ * Upstream's `KQ`: matches trimmed `text` against `/name` for one of `names`
+ * (case-insensitive). Extra lines win over trailing arguments.
+ */
+export function parseCommandShape(names: readonly string[], text: string): CommandShape | null {
+	const alternatives = names.map((name) => name.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")).join("|");
+	const match = new RegExp(`^\\/(${alternatives})(?=\\s|$)([\\s\\S]*)$`, "i").exec(text.trim());
+	if (!match?.[1]) return null;
+	const name = match[1].toLowerCase();
+	const rest = match[2] ?? "";
+	if (/[\r\n]/.test(rest)) return {kind: "extra_lines", name};
+	return {kind: rest.trim() ? "trailing_args" : "run", name};
+}
+
+/** Upstream's rejectTrailingArguments body (`cgTRRpTLBX`). */
+export function trailingArgsBody(name: string): string {
+	return `/${name} doesn’t take arguments here. Remove the text after the command, then send it again.`;
+}
+
+/** Upstream's rejectExtraLines body (`hH0Sho9AXl`). */
+export function extraLinesBody(name: string): string {
+	return `/${name} only works on a single line. Remove the extra lines, then send it again.`;
+}
 
 /**
  * Upstream's host interception for `/model`, `/effort` and `/permissions`
@@ -39,23 +70,13 @@ export function parseHostCommand(text: string, ctx: HostCommandContext): HostCom
 	const match = COMMAND_NAME.exec(trimmed);
 	if (!match?.[1]) return null;
 	const name = match[1].toLowerCase();
-	const arg = match[2]?.trim() ?? "";
-	if (name === "effort") return parseEffort(arg, name, ctx);
-	if (!PERMISSION_NAMES.has(name)) return null;
-	if (trimmed.includes("\n")) {
-		return {
-			kind: "band",
-			text: `/${name} only works on a single line. Remove the extra lines, then send it again.`,
-		};
-	}
+	if (name === "effort") return parseEffort(match[2]?.trim() ?? "", name, ctx);
+	const shape = parseCommandShape(PERMISSION_NAMES, trimmed);
+	if (!shape) return null;
+	if (shape.kind === "extra_lines") return {kind: "band", text: extraLinesBody(shape.name)};
 	if (!ctx.menusAvailable) return {kind: "refuse", toast: PERMISSION_LOCKED};
-	if (arg) {
-		return {
-			kind: "band",
-			text: `/${name} doesn’t take arguments here. Remove the text after the command, then send it again.`,
-		};
-	}
-	return {kind: "open", menu: "mode", name};
+	if (shape.kind === "trailing_args") return {kind: "band", text: trailingArgsBody(shape.name)};
+	return {kind: "open", menu: "mode", name: shape.name};
 }
 
 function parseModel(arg: string, ctx: HostCommandContext): HostCommand {

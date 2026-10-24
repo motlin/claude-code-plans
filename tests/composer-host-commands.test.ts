@@ -1,5 +1,11 @@
 import {describe, expect, it} from "vite-plus/test";
-import {type HostCommandContext, parseHostCommand} from "../src/lib/composer-host-commands";
+import {
+	extraLinesBody,
+	type HostCommandContext,
+	parseCommandShape,
+	parseHostCommand,
+	trailingArgsBody,
+} from "../src/lib/composer-host-commands";
 import {EFFORT_LEVELS, MORE_MODELS, PRIMARY_MODELS} from "../src/lib/launch-options";
 
 const ctx: HostCommandContext = {
@@ -68,5 +74,35 @@ describe("parseHostCommand", () => {
 
 	it("leaves /effort to the CLI when the model has no effort levels", () => {
 		expect(parseHostCommand("/effort", {...ctx, effortLevels: []})).toBeNull();
+	});
+});
+
+describe("parseCommandShape", () => {
+	const names = ["permissions", "allowed-tools"];
+
+	it.each([
+		["/permissions", {kind: "run", name: "permissions"}],
+		["  /permissions  ", {kind: "run", name: "permissions"}],
+		["/permissions plan", {kind: "trailing_args", name: "permissions"}],
+		["/permissions\nx", {kind: "extra_lines", name: "permissions"}],
+		["/permissions\rx", {kind: "extra_lines", name: "permissions"}],
+		["/permissions plan\nx", {kind: "extra_lines", name: "permissions"}],
+		["/PERMISSIONS", {kind: "run", name: "permissions"}],
+		["/Allowed-Tools x", {kind: "trailing_args", name: "allowed-tools"}],
+	])("%j", (text, expected) => {
+		expect(parseCommandShape(names, text)).toStrictEqual(expected);
+	});
+
+	it.each(["/permissionsx", "permissions", "/status", "x /permissions"])("%j is not one of the names", (text) => {
+		expect(parseCommandShape(names, text)).toBeNull();
+	});
+});
+
+describe("band bodies", () => {
+	it("match upstream's literal strings", () => {
+		expect([trailingArgsBody("permissions"), extraLinesBody("permissions")]).toStrictEqual([
+			"/permissions doesn\u2019t take arguments here. Remove the text after the command, then send it again.",
+			"/permissions only works on a single line. Remove the extra lines, then send it again.",
+		]);
 	});
 });
