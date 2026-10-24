@@ -221,7 +221,13 @@ function TokenWarning() {
 			{backgroundTasks === null ? (
 				"tasks pane"
 			) : (
-				<button type="button" className="inline cursor-pointer underline" onClick={backgroundTasks.open}>
+				<button
+					type="button"
+					className="inline cursor-pointer underline"
+					onClick={() => {
+						backgroundTasks.open();
+					}}
+				>
 					tasks pane
 				</button>
 			)}

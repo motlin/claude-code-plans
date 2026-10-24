@@ -3,7 +3,10 @@
 import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
-import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
+import {
+	type BackgroundTasksOpener,
+	BackgroundTasksOpenerProvider,
+} from "../src/components/background-tasks-opener-context";
 import {processTranscript} from "../src/lib/transcript";
 
 vi.mock("../src/components/settings-context", () => ({
@@ -218,7 +221,7 @@ describe("an in-flight call's row", () => {
 	});
 
 	it("offers 'View live output' on a background command whose task still runs, opening the Background tasks pane", () => {
-		const opened = vi.fn<() => void>();
+		const opened = vi.fn<BackgroundTasksOpener["open"]>();
 		const {lines, toolResultMap} = processTranscript([
 			{type: "user", uuid: "user-1", message: {role: "user", content: "Benchmark it"}},
 			{
@@ -313,7 +316,7 @@ describe("an in-flight call's row", () => {
 			},
 		]);
 		const {container} = render(
-			<BackgroundTasksOpenerProvider value={{open: vi.fn<() => void>(), running}}>
+			<BackgroundTasksOpenerProvider value={{open: vi.fn<BackgroundTasksOpener["open"]>(), running}}>
 				<SessionChat
 					sessionId="test-session"
 					lines={lines}

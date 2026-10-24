@@ -1108,7 +1108,10 @@ function SessionView({
 									sessionFiles={resources?.files ?? windowFiles}
 								>
 									<SessionSubagentOpener sessionId={sessionId}>
-										<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
+										<SessionBackgroundTasksOpener
+											sessionId={sessionId}
+											running={runningBackgroundLaunches}
+										>
 											<TranscriptActionsProvider
 												sessionId={sessionId}
 												lines={processed.lines}
@@ -1166,7 +1169,10 @@ function SessionView({
 							{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
 							{pendingPermission && (
 								<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4 empty:hidden`}>
-									<SessionBackgroundTasksOpener running={runningBackgroundLaunches}>
+									<SessionBackgroundTasksOpener
+										sessionId={sessionId}
+										running={runningBackgroundLaunches}
+									>
 										<PermissionCard
 											key={pendingPermission.notificationId}
 											enterKey={pendingPermission.notificationId}
