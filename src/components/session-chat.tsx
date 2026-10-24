@@ -112,6 +112,7 @@ import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT} from "../lib/jump-to-messa
 import {asRecord, isKeyOf} from "../lib/narrow";
 import {toolMarkActivity} from "../lib/working-mark-activity";
 import {WorkingMark} from "./working-mark";
+import {StepScreenshotStrip} from "./step-screenshot-strip";
 
 function getSourceSessionId(line: SessionLine, fallbackSessionId: string): string {
 	return "sessionId" in line && line.sessionId !== undefined ? line.sessionId : fallbackSessionId;
@@ -4986,17 +4987,76 @@ function TurnStatusFrame({leading, children}: {leading: boolean; children: React
 /** Class of the status wrapper a TurnStatusFrame pads back. */
 const TURN_STATUS_CLASS = "flex flex-col w-full -my-p3";
 
+/** Upstream's row media slot (`data-cds-row-media`), trailing the row's label and chevron. */
+const ROW_MEDIA_CLASS = "order-last ms-auto inline-flex h-[1lh] shrink-0 items-center overflow-visible";
+
+/**
+ * A screenshot's caption: the step label its row shows, verb then subject
+ * ("Read input-debug.png"), as upstream joins `[title ?? displayName, subject]`.
+ */
+function screenshotCaption(call: ClientToolCall): string {
+	const label = toolLabel(call);
+	if (label.doneLabel !== undefined) return label.doneLabel;
+	const subject = FILE_PARAM_TOOLS.has(call.name)
+		? (call.param.split("/").pop() ?? call.param)
+		: (label.meta ?? call.param);
+	return [label.verb, subject].filter((part) => part !== "").join(" ");
+}
+
+/** Where a step's screenshots sit in its group's strip, so its own strip keeps group-wide numbering. */
+interface StepShotsPlacement {
+	from: number;
+	total: number;
+}
+
+/** The row media slot holding a strip of a step's or group's screenshots. */
+function RowMedia({
+	calls,
+	from = 0,
+	total,
+	step = false,
+}: {
+	calls: readonly ClientToolCall[];
+	from?: number;
+	total?: number;
+	/** A step row inside an expanded group: hides when empty and lazy-loads its images. */
+	step?: boolean;
+}) {
+	const shots = calls.flatMap((call) => call.outputImages ?? []);
+	if (shots.length === 0) return null;
+	const captions = calls.flatMap((call) => (call.outputImages ?? []).map(() => screenshotCaption(call)));
+	return (
+		<span data-cds-row-media="" title="" className={step ? `${ROW_MEDIA_CLASS} empty:hidden` : ROW_MEDIA_CLASS}>
+			<StepScreenshotStrip
+				shots={shots}
+				captions={captions}
+				from={from}
+				total={total ?? from + shots.length}
+				lazy={step}
+			/>
+		</span>
+	);
+}
+
+/** Whether a key event came from a control nested in the row (a thumbnail), not the row itself. */
+function fromNestedControl(event: React.KeyboardEvent): boolean {
+	return event.target !== event.currentTarget;
+}
+
 function ToolCallRow({
 	call,
 	sessionId,
 	nested = false,
 	leading = false,
+	shots,
 }: {
 	call: ClientToolCall;
 	sessionId: string;
 	nested?: boolean;
 	/** The row is the first thing drawn in the transcript row that opens a reply. */
 	leading?: boolean;
+	/** A grouped step's place in its group's screenshot strip; omitted outside a group. */
+	shots?: StepShotsPlacement | undefined;
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`row:${call.id}`);
 	const bodyId = useId();
@@ -5291,6 +5351,10 @@ function ToolCallRow({
 		);
 	}
 
+	// A grouped step shows its own screenshots, numbered group-wide, until it expands to its body.
+	const media =
+		shots === undefined || expanded ? null : <RowMedia calls={[call]} from={shots.from} total={shots.total} step />;
+
 	if (!expandable) {
 		return (
 			<div data-tool-row="" className="flex flex-col w-full">
@@ -5299,6 +5363,7 @@ function ToolCallRow({
 					className="relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left"
 				>
 					{rowLabel}
+					{media}
 				</div>
 				{body}
 				{announcer}
@@ -5322,6 +5387,7 @@ function ToolCallRow({
 				data-state={busyAgent ? "busy" : undefined}
 				onClick={toggleExpanded}
 				onKeyDown={(e) => {
+					if (fromNestedControl(e)) return;
 					if (e.key === "Enter" || e.key === " ") {
 						e.preventDefault();
 						toggleExpanded();
@@ -5333,6 +5399,7 @@ function ToolCallRow({
 				<span className={chevronClass}>
 					<ChevronIcon expanded={expanded} size={12} />
 				</span>
+				{media}
 			</div>
 			{expanded && (
 				<div id={bodyId} className="flow-root">
@@ -5418,45 +5485,69 @@ function ToolCallSummary({
 				.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
 				.join(", ");
 
+	// Each step's place in the group's screenshot strip, which collapsed groups show at the row's end.
+	const shotPlacements = useMemo(() => {
+		const total = calls.reduce((sum, call) => sum + (call.outputImages?.length ?? 0), 0);
+		let from = 0;
+		return calls.map((call) => {
+			const placement = {from, total};
+			from += call.outputImages?.length ?? 0;
+			return placement;
+		});
+	}, [calls]);
+	const hasGroupMedia = !expanded && (shotPlacements[0]?.total ?? 0) > 0;
+
+	const toggle = (
+		<button
+			type="button"
+			aria-expanded={expanded}
+			aria-controls={bodyId}
+			aria-labelledby={busy ? `${statusId}-label ${statusId}-busy` : `${statusId}-label`}
+			onClick={toggleExpanded}
+			className={`relative group/tool flex max-w-full items-center ${hasGroupMedia ? "min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+		>
+			<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
+				{busy ? (
+					// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
+					<>
+						<WorkingMark
+							activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
+							className="me-1.5"
+						/>
+						<ShimmerText id={`${statusId}-label`} className="text-body truncate min-w-0">
+							{runningText}
+						</ShimmerText>
+						<RunningElapsed startedAt={pendingCall.startedAt} />
+						<span id={`${statusId}-busy`} className="sr-only">
+							running
+						</span>
+					</>
+				) : (
+					<span id={`${statusId}-label`} className="text-body truncate min-w-0">
+						<SummarySpans segments={summary.segments} />
+					</span>
+				)}
+			</span>
+			{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
+			<span className={`shrink-0 ${ink}`}>
+				<ChevronIcon expanded={expanded} size={12} />
+			</span>
+		</button>
+	);
+
 	const status = (
 		<div data-tool-row="" data-turn-status="" className={TURN_STATUS_CLASS}>
 			{(calls.length > 0 || notices.length > 0) && (
 				<>
-					<button
-						type="button"
-						aria-expanded={expanded}
-						aria-controls={bodyId}
-						aria-labelledby={busy ? `${statusId}-label ${statusId}-busy` : `${statusId}-label`}
-						onClick={toggleExpanded}
-						className={`relative group/tool flex max-w-full items-center ${summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
-					>
-						<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
-							{busy ? (
-								// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
-								<>
-									<WorkingMark
-										activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
-										className="me-1.5"
-									/>
-									<ShimmerText id={`${statusId}-label`} className="text-body truncate min-w-0">
-										{runningText}
-									</ShimmerText>
-									<RunningElapsed startedAt={pendingCall.startedAt} />
-									<span id={`${statusId}-busy`} className="sr-only">
-										running
-									</span>
-								</>
-							) : (
-								<span id={`${statusId}-label`} className="text-body truncate min-w-0">
-									<SummarySpans segments={summary.segments} />
-								</span>
-							)}
-						</span>
-						{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
-						<span className={`shrink-0 ${ink}`}>
-							<ChevronIcon expanded={expanded} size={12} />
-						</span>
-					</button>
+					{hasGroupMedia ? (
+						// The thumbnails are buttons of their own, so they sit beside the toggle in the row, as upstream's do.
+						<div className={`flex items-center gap-g1 ${summaryLayout}`}>
+							{toggle}
+							<RowMedia calls={calls} />
+						</div>
+					) : (
+						toggle
+					)}
 					{expanded && (
 						<div id={bodyId} className="flow-root">
 							{/* Upstream separates the grouped rows with hairline dividers and
@@ -5472,7 +5563,13 @@ function ToolCallSummary({
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}
 								{calls.map((call, i) => (
-									<ToolCallRow key={i} call={call} sessionId={sessionId} nested />
+									<ToolCallRow
+										key={i}
+										call={call}
+										sessionId={sessionId}
+										nested
+										shots={shotPlacements[i]}
+									/>
 								))}
 								{trailingPeers.map((notice) => (
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />

@@ -93,7 +93,7 @@ function renderRecords(records: unknown[], subagents: Subagent[] = []): HTMLElem
 function groupLabels(records: unknown[]): (string | null)[] {
 	const container = renderRecords(records);
 	return Array.from(
-		container.querySelectorAll("[data-turn-status] > button > span:first-child"),
+		container.querySelectorAll("[data-turn-status] button[aria-expanded] > span:first-child"),
 		(label) => label.textContent,
 	);
 }
