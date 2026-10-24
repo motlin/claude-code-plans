@@ -20,6 +20,7 @@ import {useMainScrollRestoration} from "../src/hooks/use-main-scroll-restoration
 import * as measurements from "../src/lib/transcript-measurements";
 import {processTranscript} from "../src/lib/transcript";
 import type {SessionLine} from "../src/lib/sessions";
+import {entryIndex, transcriptRows, transcriptSpacerHeight} from "./dom-walk";
 
 vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
@@ -59,17 +60,15 @@ const restorationWindows: string[][] = [];
 const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!;
 
 function mountedRows(): HTMLElement[] {
-	return [...document.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")];
+	return transcriptRows(document);
 }
 function spacerHeight(position: "before" | "after"): number {
-	return Number.parseFloat(
-		document.querySelector<HTMLElement>(`[data-transcript-spacer="${position}"]`)?.style.height ?? "0",
-	);
+	return transcriptSpacerHeight(document, position);
 }
 function contentHeight(): number {
 	return (
 		spacerHeight("before") +
-		mountedRows().reduce((sum, row) => sum + rowHeight(Number(row.dataset["transcriptEntryIndex"])), 0) +
+		mountedRows().reduce((sum, row) => sum + rowHeight(entryIndex(row)), 0) +
 		spacerHeight("after") +
 		footerExtent
 	);
@@ -81,14 +80,12 @@ function rowTop(row: HTMLElement): number {
 	let top = spacerHeight("before");
 	for (const current of mountedRows()) {
 		if (current === row) return top - clampedPosition();
-		top += rowHeight(Number(current.dataset["transcriptEntryIndex"]));
+		top += rowHeight(entryIndex(current));
 	}
 	throw new Error("Expected a mounted transcript row.");
 }
 function visibleAnchor() {
-	const row = mountedRows().find(
-		(candidate) => rowTop(candidate) + rowHeight(Number(candidate.dataset["transcriptEntryIndex"])) > 0,
-	);
+	const row = mountedRows().find((candidate) => rowTop(candidate) + rowHeight(entryIndex(candidate)) > 0);
 	if (!row) throw new Error("Expected a visible transcript row.");
 	return {record: row.dataset["perfLine"], top: rowTop(row)};
 }
@@ -144,11 +141,11 @@ function installGeometry() {
 		},
 	});
 	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-		if (this.matches("main")) return new DOMRect(0, 0, 800, viewportHeight);
-		if (this.matches("[data-testid=virtualized-transcript]"))
+		if (this.localName === "main") return new DOMRect(0, 0, 800, viewportHeight);
+		if (this.getAttribute("data-testid") === "virtualized-transcript")
 			return new DOMRect(0, -clampedPosition(), listWidth, contentHeight());
-		if (this instanceof HTMLElement && this.dataset["transcriptEntryIndex"] !== undefined) {
-			return new DOMRect(0, rowTop(this), 800, rowHeight(Number(this.dataset["transcriptEntryIndex"])));
+		if (this instanceof HTMLElement && this.hasAttribute("data-transcript-entry-index")) {
+			return new DOMRect(0, rowTop(this), 800, rowHeight(entryIndex(this)));
 		}
 		return new DOMRect();
 	});
@@ -595,9 +592,7 @@ function tailDistance(main: HTMLElement) {
 	return contentHeight() - main.clientHeight - main.scrollTop;
 }
 function shrinkAboveAnchor(pixels: number) {
-	const row = mountedRows().find(
-		(candidate) => rowTop(candidate) + rowHeight(Number(candidate.dataset["transcriptEntryIndex"])) <= 0,
-	);
+	const row = mountedRows().find((candidate) => rowTop(candidate) + rowHeight(entryIndex(candidate)) <= 0);
 	if (!row) throw new Error("Expected a mounted row entirely above the visible anchor.");
 	const index = Number(row.dataset["transcriptEntryIndex"]);
 	rowAdjustments.set(index, (rowAdjustments.get(index) ?? 0) - pixels);
@@ -679,9 +674,7 @@ it.each([false, true])(
 			fireEvent.scroll(main);
 		});
 		await settleTail(main);
-		const anchor = mountedRows().find(
-			(row) => rowTop(row) <= 0 && rowTop(row) + rowHeight(Number(row.dataset["transcriptEntryIndex"])) > 0,
-		)!;
+		const anchor = mountedRows().find((row) => rowTop(row) <= 0 && rowTop(row) + rowHeight(entryIndex(row)) > 0)!;
 		const before = {
 			index: Number(anchor.dataset["transcriptEntryIndex"]),
 			top: rowTop(anchor),

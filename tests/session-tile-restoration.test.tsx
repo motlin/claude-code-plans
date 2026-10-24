@@ -23,6 +23,7 @@ import {TileHost} from "../src/components/panes/tile-host";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
 import type {SessionLine} from "../src/lib/sessions";
+import {ancestorWith, entryIndex, transcriptRows, transcriptSpacerHeight} from "./dom-walk";
 
 vi.mock("../src/components/sidebar/index", () => ({Sidebar: () => null}));
 vi.mock("../src/components/settings-context", () => ({
@@ -70,18 +71,16 @@ let unregister = () => {};
 const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!;
 
 function mountedRows(host: Element): HTMLElement[] {
-	return [...host.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")];
+	return transcriptRows(host);
 }
 function spacerHeight(host: Element, position: "before" | "after"): number {
-	return Number.parseFloat(
-		host.querySelector<HTMLElement>(`[data-transcript-spacer="${position}"]`)?.style.height ?? "0",
-	);
+	return transcriptSpacerHeight(host, position);
 }
 function contentHeight(host: Element): number {
-	if (host.closest("[hidden]")) return 0;
+	if (ancestorWith(host, "hidden")) return 0;
 	return (
 		spacerHeight(host, "before") +
-		mountedRows(host).reduce((sum, row) => sum + rowHeight(Number(row.dataset["transcriptEntryIndex"]), host), 0) +
+		mountedRows(host).reduce((sum, row) => sum + rowHeight(entryIndex(row), host), 0) +
 		spacerHeight(host, "after") +
 		footerExtent
 	);
@@ -90,18 +89,16 @@ function clampedPosition(host: Element): number {
 	return Math.min(positions.get(host) ?? 0, Math.max(0, contentHeight(host) - viewportHeight));
 }
 function rowTop(row: HTMLElement): number {
-	const host = row.closest("[data-session-scrollport]")!;
+	const host = ancestorWith(row, "data-session-scrollport")!;
 	let top = spacerHeight(host, "before");
 	for (const current of mountedRows(host)) {
 		if (current === row) return top - clampedPosition(host);
-		top += rowHeight(Number(current.dataset["transcriptEntryIndex"]), host);
+		top += rowHeight(entryIndex(current), host);
 	}
 	throw new Error("Expected a mounted transcript row.");
 }
 function visibleAnchor(host: Element) {
-	const row = mountedRows(host).find(
-		(candidate) => rowTop(candidate) + rowHeight(Number(candidate.dataset["transcriptEntryIndex"]), host) > 0,
-	);
+	const row = mountedRows(host).find((candidate) => rowTop(candidate) + rowHeight(entryIndex(candidate), host) > 0);
 	if (!row) throw new Error("Expected a visible transcript row.");
 	return {record: row.dataset["perfLine"], top: rowTop(row)};
 }
@@ -184,7 +181,7 @@ function installGeometry() {
 	Object.defineProperty(Element.prototype, "scrollTop", {
 		configurable: true,
 		get() {
-			return this.closest("[hidden]") ? 0 : clampedPosition(this);
+			return ancestorWith(this, "hidden") ? 0 : clampedPosition(this);
 		},
 		set(value: number) {
 			const applied = Math.min(Math.max(0, value), Math.max(0, contentHeight(this) - viewportHeight));
@@ -195,25 +192,21 @@ function installGeometry() {
 				phase,
 				requested: value,
 				applied,
-				estimatedBefore: Number(mountedRows(this)[0]?.dataset["transcriptEntryIndex"] ?? 0) * 320,
+				estimatedBefore: Number(mountedRows(this)[0]?.getAttribute("data-transcript-entry-index") ?? 0) * 320,
 				actualBefore: spacerHeight(this, "before"),
 			});
 		},
 	});
 	vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-		if (this.closest("[hidden]")) return new DOMRect();
-		const host = this.closest("[data-session-scrollport]") ?? this;
+		if (ancestorWith(this, "hidden")) return new DOMRect();
+		const host = ancestorWith(this, "data-session-scrollport") ?? this;
 		if (!hostWidths.has(host)) hostWidths.set(host, listWidth);
-		if (this.matches("main,[data-session-scrollport]")) return new DOMRect(0, 0, 800, viewportHeight);
-		if (this.matches("[data-testid=virtualized-transcript]"))
+		if (this.localName === "main" || this.hasAttribute("data-session-scrollport"))
+			return new DOMRect(0, 0, 800, viewportHeight);
+		if (this.getAttribute("data-testid") === "virtualized-transcript")
 			return new DOMRect(0, -clampedPosition(host), hostWidths.get(host), contentHeight(host));
-		if (this instanceof HTMLElement && this.dataset["transcriptEntryIndex"] !== undefined) {
-			return new DOMRect(
-				0,
-				rowTop(this),
-				hostWidths.get(host),
-				rowHeight(Number(this.dataset["transcriptEntryIndex"]), host),
-			);
+		if (this instanceof HTMLElement && this.hasAttribute("data-transcript-entry-index")) {
+			return new DOMRect(0, rowTop(this), hostWidths.get(host), rowHeight(entryIndex(this), host));
 		}
 		return new DOMRect();
 	});
@@ -225,7 +218,7 @@ function settleMeasurements(main: HTMLElement) {
 		const before = JSON.stringify({
 			height: contentHeight(main),
 			top: main.scrollTop,
-			rows: mountedRows(main).map((row) => row.dataset["transcriptEntryIndex"]),
+			rows: mountedRows(main).map((row) => row.getAttribute("data-transcript-entry-index")),
 		});
 		act(() => {
 			fireEvent.scroll(main);
@@ -246,7 +239,7 @@ function settleMeasurements(main: HTMLElement) {
 		const after = JSON.stringify({
 			height: contentHeight(main),
 			top: main.scrollTop,
-			rows: mountedRows(main).map((row) => row.dataset["transcriptEntryIndex"]),
+			rows: mountedRows(main).map((row) => row.getAttribute("data-transcript-entry-index")),
 		});
 		if (before === after) return;
 	}
@@ -373,7 +366,7 @@ async function renderShell(strict: boolean, routeId = LOCAL_ID, fresh = false, r
 		return result;
 	});
 	vi.spyOn(Element.prototype, "clientHeight", "get").mockImplementation(function (this: Element) {
-		return this.matches("[data-session-scrollport]") && !this.closest("[hidden]") ? viewportHeight : 0;
+		return this.hasAttribute("data-session-scrollport") && !ancestorWith(this, "hidden") ? viewportHeight : 0;
 	});
 	vi.spyOn(Element.prototype, "scrollHeight", "get").mockImplementation(function (this: Element) {
 		return contentHeight(this);
