@@ -84,10 +84,11 @@ export function appendAttachment(prompt: string, snippet: string): string {
 /**
  * What the composer's chip strip holds: ⇧⌘L / "Attach as context" files,
  * folders, selections and terminal output, plus uploaded images (⌘U, drop,
- * paste), and transcript messages attached from their
- * context menu, which send as a fenced excerpt like terminal output.
+ * paste), transcript messages attached from their
+ * context menu, which send as a fenced excerpt like terminal output, and
+ * transcript text selections, which send as upstream's "Excerpt" snippet.
  */
-export const ContextAttachmentKindSchema = z.enum(["file", "selection", "terminal", "image", "message"]);
+export const ContextAttachmentKindSchema = z.enum(["file", "selection", "terminal", "image", "message", "excerpt"]);
 export type ContextAttachmentKind = z.infer<typeof ContextAttachmentKindSchema>;
 
 export interface ContextAttachment {
@@ -119,10 +120,21 @@ export interface ContextChip extends ContextAttachment {
 }
 
 /**
+ * Upstream's unlabeled snippet wire format (codec `w(e)`): an attach marker,
+ * then every line of the text quoted, splitting on CR, LF, CRLF, U+2028 and U+2029.
+ */
+function formatExcerpt(text: string): string {
+	const quoted = text.split(/\r\n?|[\n\u2028\u2029]/).map((line) => `> ${line}`);
+	return `<!-- attach -->\n${quoted.join("\n")}`;
+}
+
+/**
  * `@path#La-b` plus a fenced excerpt; terminal output is just the fenced text.
- * An image is its saved path, which the CLI attaches.
+ * An image is its saved path, which the CLI attaches. A transcript excerpt is
+ * upstream's `<!-- attach -->` quote block.
  */
 export function formatContextAttachment({kind, path, range, text, language}: ContextAttachment): string {
+	if (kind === "excerpt") return formatExcerpt(text ?? "");
 	if (kind === "image" && path !== undefined) return path;
 	if (kind === "terminal" || path === undefined) return formatFencedExcerpt(text ?? "");
 	return formatAttachContext({path, range, text, language});
@@ -131,6 +143,7 @@ export function formatContextAttachment({kind, path, range, text, language}: Con
 export function contextChipLabel({kind, path, range, name: displayName}: ContextAttachment): string {
 	if (displayName !== undefined) return displayName;
 	if (kind === "message") return "Message";
+	if (kind === "excerpt") return "Excerpt";
 	if (kind === "terminal" || path === undefined) return "Terminal output";
 	const trimmed = path.endsWith("/") ? path.slice(0, -1) : path;
 	const name = `${trimmed.slice(trimmed.lastIndexOf("/") + 1) || trimmed}${path.endsWith("/") ? "/" : ""}`;

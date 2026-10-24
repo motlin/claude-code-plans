@@ -118,6 +118,29 @@ describe("context attachments", () => {
 		]).toStrictEqual(["greet.ts", "lib/", "greet.ts:4", "greet.ts:2-5", "README.md", "Terminal output"]);
 	});
 
+	it("formats an excerpt as upstream's attach marker and quote, splitting on CR, LF and U+2028/9", () => {
+		expect({
+			twoLines: formatContextAttachment({kind: "excerpt", text: "a\nb"}),
+			separators: formatContextAttachment({kind: "excerpt", text: "a\r\nb\rc\u2028d\u2029e"}),
+			emptyLine: formatContextAttachment({kind: "excerpt", text: "a\n\nb"}),
+			label: contextChipLabel({kind: "excerpt", text: "Hermit crabs"}),
+			composed: composePrompt(
+				"hi",
+				[
+					{kind: "excerpt", text: "x"},
+					{kind: "excerpt", text: "y"},
+				],
+				[],
+			),
+		}).toStrictEqual({
+			twoLines: "<!-- attach -->\n> a\n> b",
+			separators: "<!-- attach -->\n> a\n> b\n> c\n> d\n> e",
+			emptyLine: "<!-- attach -->\n> a\n> \n> b",
+			label: "Excerpt",
+			composed: "<!-- attach -->\n> x\n\n<!-- attach -->\n> y\n\nhi",
+		});
+	});
+
 	it("serializes context, then review comments, then the prompt", () => {
 		const context = [
 			{kind: "file", path: "src/alice.ts"},
@@ -270,13 +293,14 @@ describe("attachContext", () => {
 			options: ContextAttachmentKindSchema.options,
 			registry: schemaChoiceRegistry["ContextAttachmentKindSchema"],
 		}).toStrictEqual({
-			options: ["file", "selection", "terminal", "image", "message"],
+			options: ["file", "selection", "terminal", "image", "message", "excerpt"],
 			registry: {
 				file: "File",
 				selection: "Selection",
 				terminal: "Terminal output",
 				image: "Image",
 				message: "Message",
+				excerpt: "Excerpt",
 			},
 		});
 	});

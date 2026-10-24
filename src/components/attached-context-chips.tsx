@@ -43,6 +43,7 @@ const CONTEXT_CHIP_ICON = {
 	terminal: SquareTerminal,
 	image: ImageIcon,
 	message: MessageSquareText,
+	excerpt: TextQuote,
 } satisfies Record<ContextChip["kind"], unknown>;
 
 /**
@@ -362,7 +363,8 @@ interface TextPreview {
  */
 function textPreviewOf(chip: ContextChip): TextPreview | null {
 	if (chip.text === undefined) return null;
-	if (chip.kind === "message") return {title: "Excerpt", text: chip.text, variant: "excerpt"};
+	if (chip.kind === "message" || chip.kind === "excerpt")
+		return {title: "Excerpt", text: chip.text, variant: "excerpt"};
 	if (chip.kind === "selection" || chip.kind === "terminal") {
 		return {title: contextChipLabel(chip), text: chip.text, variant: "file"};
 	}
