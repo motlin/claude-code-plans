@@ -451,6 +451,8 @@ export interface ComposerDefaults {
 	effortLevel: string | null;
 	defaultMode: string | null;
 	bypassPermissionsAllowed: boolean;
+	/** A fresh session starts in fast mode (`sessionFastMode` with no turns). */
+	fastMode: boolean;
 }
 
 export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObject({
@@ -458,6 +460,7 @@ export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObj
 	effortLevel: z.string().nullable(),
 	defaultMode: z.string().nullable(),
 	bypassPermissionsAllowed: z.boolean(),
+	fastMode: z.boolean(),
 });
 
 export async function getComposerDefaults(readSettings: () => Promise<unknown>): Promise<ComposerDefaults> {
@@ -472,10 +475,11 @@ export async function getComposerDefaults(readSettings: () => Promise<unknown>):
 					defaultMode: parsed.data.permissions?.defaultMode,
 					skipDangerousModePermissionPrompt: parsed.data.skipDangerousModePermissionPrompt,
 				}),
+				fastMode: sessionFastMode([], parsed.data),
 			};
 		}
 	} catch {
 		// Missing or unreadable settings.json leaves the defaults unset.
 	}
-	return {model: null, effortLevel: null, defaultMode: null, bypassPermissionsAllowed: false};
+	return {model: null, effortLevel: null, defaultMode: null, bypassPermissionsAllowed: false, fastMode: false};
 }

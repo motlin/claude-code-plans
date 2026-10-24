@@ -105,6 +105,7 @@ async function renderApp(
 	initialPath = "/",
 	settingsModel: string | null = "claude-opus-4-8[1m]",
 	seed: (queryClient: QueryClient) => void = () => {},
+	fastMode = false,
 ) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	seed(queryClient);
@@ -118,6 +119,7 @@ async function renderApp(
 		effortLevel: "medium",
 		defaultMode: "plan",
 		bypassPermissionsAllowed: false,
+		fastMode,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -350,6 +352,36 @@ describe("HomeComposer", () => {
 
 	it("names the CLI's default model when settings.json sets none", async () => {
 		await renderApp("/", null);
+
+		const trigger = await screen.findByRole("button", {name: /^Model:/});
+		expect({label: trigger.getAttribute("aria-label"), text: trigger.textContent}).toStrictEqual({
+			label: "Model: Opus 5.5 Medium",
+			text: "Opus 5.5 Medium",
+		});
+	});
+
+	it("shows the Fast word and a checked Fast mode row when settings start new sessions fast", async () => {
+		await renderApp("/", null, () => {}, true);
+
+		const trigger = await screen.findByRole("button", {name: /^Model:/});
+		expect({label: trigger.getAttribute("aria-label"), text: trigger.textContent}).toStrictEqual({
+			label: "Model: Opus 5.5 Fast Medium",
+			text: "Opus 5.5 Fast Medium",
+		});
+		fireEvent.keyDown(document.activeElement ?? document.body, {
+			key: "I",
+			code: "KeyI",
+			metaKey: true,
+			shiftKey: true,
+		});
+		const menu = await screen.findByRole("menu");
+		expect(
+			within(menu).getByRole("menuitemcheckbox", {name: "Enable fast mode"}).getAttribute("aria-checked"),
+		).toBe("true");
+	});
+
+	it("omits the Fast word when settings leave new sessions at standard speed", async () => {
+		await renderApp("/", null, () => {}, false);
 
 		const trigger = await screen.findByRole("button", {name: /^Model:/});
 		expect({label: trigger.getAttribute("aria-label"), text: trigger.textContent}).toStrictEqual({
@@ -613,7 +645,20 @@ describe("getComposerDefaults", () => {
 			effortLevel: "xhigh",
 			defaultMode: "acceptEdits",
 			bypassPermissionsAllowed: false,
+			fastMode: false,
 		});
+	});
+
+	it("starts new sessions fast when settings.json sets fastMode without a per-session opt-in", async () => {
+		expect(
+			await Promise.all([
+				getComposerDefaults(async () => Promise.resolve({fastMode: true})),
+				getComposerDefaults(async () => Promise.resolve({fastMode: true, fastModePerSessionOptIn: true})),
+			]),
+		).toStrictEqual([
+			{model: null, effortLevel: null, defaultMode: null, bypassPermissionsAllowed: false, fastMode: true},
+			{model: null, effortLevel: null, defaultMode: null, bypassPermissionsAllowed: false, fastMode: false},
+		]);
 	});
 
 	it("returns nulls when settings.json is missing", async () => {
@@ -622,6 +667,7 @@ describe("getComposerDefaults", () => {
 			effortLevel: null,
 			defaultMode: null,
 			bypassPermissionsAllowed: false,
+			fastMode: false,
 		});
 	});
 });

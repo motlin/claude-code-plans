@@ -60,7 +60,7 @@ export function HomeComposer() {
 						lastAssistantModel: null,
 						lastAssistantUsage: null,
 						lastAssistantEffort: null,
-						fastMode: false,
+						fastMode: defaults.fastMode,
 						settingsModel: defaults.model,
 						settingsEffortLevel: defaults.effortLevel,
 						statusline: null,

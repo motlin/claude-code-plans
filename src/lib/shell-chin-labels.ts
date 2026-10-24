@@ -14,7 +14,7 @@ export function resolveShellChinLabels(defaults: ComposerDefaults | null): Shell
 		lastAssistantModel: null,
 		lastAssistantUsage: null,
 		lastAssistantEffort: null,
-		fastMode: false,
+		fastMode: defaults?.fastMode ?? false,
 		settingsModel: defaults?.model ?? null,
 		settingsEffortLevel: defaults?.effortLevel ?? null,
 		statusline: null,
