@@ -60,6 +60,7 @@ import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
 import {sessionProcessLive} from "../lib/session-state";
+import {sessionFastMode} from "../lib/session-fast-mode";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
 import {tailMarkerQuiet, workingLineWaitsOnUser} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
@@ -486,6 +487,7 @@ function SessionView({
 				lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
 				lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
 				lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
+				fastMode: sessionFastMode(transcript.records, {fastMode: composerServerState?.settingsFastMode}),
 				settingsModel: composerServerState?.settingsModel ?? null,
 				settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
 				statusline: composerServerState?.statusline ?? null,

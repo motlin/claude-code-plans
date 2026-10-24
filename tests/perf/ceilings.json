@@ -262,11 +262,11 @@
 		"tolerance": 0
 	},
 	"client.liveEvent.appendOpen.mutations": {
-		"ceiling": 10,
+		"ceiling": 11,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The usage ring tracks the plan limits rather than the context window, so a fixture with no rate limits keeps one static arc: no stroke-dashoffset churn as context grows or the session changes.",
-		"raisedAt": "2026-10-21"
+		"reason": "The chin now mounts upstream's sr-only Fast mode on/off live status on fast-capable models, one more node when a session opens.",
+		"raisedAt": "2026-10-24"
 	},
 	"client.liveEvent.appendOther.commits": {
 		"ceiling": 1,

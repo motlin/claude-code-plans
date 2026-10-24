@@ -205,6 +205,7 @@ describe("Composer", () => {
 			mode: {id: "acceptEdits", label: "Accept edits"},
 			model: "Opus 5.5",
 			modelId: "claude-opus-5-5",
+			fastMode: false,
 			effort: {id: "xhigh", label: "Extra-high"},
 			usage: {
 				contextTokens: 190_200,

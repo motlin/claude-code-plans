@@ -204,13 +204,20 @@ export function ModelMenu({
 	const level = EffortLevelSchema.safeParse(currentEffort);
 	const effortLabel = level.success ? effortLevelShortLabels[level.data] : currentEffort;
 	const modelKeys = useShortcutKeys("open_model_menu").keys;
+	const fastShown = fastMode && current !== undefined && fastModeSupported(current);
 	const trigger = (
 		<MenuTrigger
 			data-cds="ModelSelector"
-			aria-label={`Model: ${currentLabel} ${effortLabel}`}
+			aria-label={`Model: ${currentLabel}${fastShown ? " Fast" : ""} ${effortLabel}`}
 			className={CHIN_TRIGGER_CLASS}
 		>
 			<span className="truncate">{currentLabel}</span>
+			{/* Upstream's tail order: the " Fast" word, then the effort. */}
+			{fastShown && (
+				<span data-fast-label="" className={EFFORT_LABEL_CLASS}>
+					{" Fast"}
+				</span>
+			)}
 			<span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>
 			{level.success && level.data === "max" && (
 				<TriangleAlert

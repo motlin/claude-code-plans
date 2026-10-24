@@ -18,6 +18,7 @@ import {
 import {
 	type EffortLevel,
 	EffortLevelSchema,
+	fastModeSupported,
 	type LaunchOptions,
 	modeTriggerLabel,
 	modelLabel,
@@ -246,6 +247,8 @@ export const ComposerChin = memo(function ComposerChin({
 			? (state.mode?.label ?? "Manual")
 			: modeTriggerLabel(launchOptions.permissionMode);
 	const modelText = launchOptions.model === undefined ? state.model : modelLabel(launchOptions.model);
+	const currentModel = launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined;
+	const fastMode = launchOptions.fastMode ?? state.fastMode;
 	return (
 		<>
 			<div className="flex min-w-0 items-center self-start">
@@ -269,16 +272,22 @@ export const ComposerChin = memo(function ComposerChin({
 					}}
 					surface={surface}
 					effortOpen={openMenu === "effort" && surface === "chin"}
-					current={launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined}
+					current={currentModel}
 					currentLabel={modelText}
 					currentEffort={currentEffort}
 					onSelect={selectModel}
 					onSelectEffort={selectEffort}
-					fastMode={launchOptions.fastMode === true}
-					onFastModeChange={(fastMode) => {
-						onLaunchOptionsChange({...launchOptions, fastMode});
+					fastMode={fastMode}
+					onFastModeChange={(on) => {
+						onLaunchOptionsChange({...launchOptions, fastMode: on});
 					}}
 				/>
+				{/* Upstream's session chin announces the fast state at rest; the new-session bar has no live region. */}
+				{surface === "chin" && currentModel !== undefined && fastModeSupported(currentModel) && (
+					<span data-fast-mode-status="" role="status" aria-live="polite" className="sr-only">
+						{fastMode ? "Fast mode on" : "Fast mode off"}
+					</span>
+				)}
 				<UsageRing usage={state.usage} />
 			</div>
 			<ConfirmDialog

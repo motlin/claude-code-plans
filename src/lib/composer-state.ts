@@ -3,6 +3,7 @@ import {type Statusline, SESSION_ID_PATTERN, StatuslineSchema} from "./api/statu
 import {isBypassPermissionsAllowed, resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
 import {ClaudeSettingsSchema} from "./runtime-schemas";
+import {sessionFastMode} from "./session-fast-mode";
 import {formatWeeklyReset} from "./usage";
 import {nonEmpty} from "./non-empty";
 
@@ -51,6 +52,8 @@ export interface ComposerStateSources {
 	/** settings.json `model`: what a session with no model yet launches with. */
 	settingsModel: string | null;
 	settingsEffortLevel: string | null;
+	/** `sessionFastMode` over the transcript and settings.json. */
+	fastMode: boolean;
 	statusline: Statusline | null;
 	statuslineUpdatedAt: string | null;
 }
@@ -88,6 +91,8 @@ export interface ComposerState {
 	/** The id behind `model`; the Model menu checks its row. */
 	modelId: string;
 	effort: ComposerLabelled;
+	/** The trigger's " Fast" word and the chin's "Fast mode on|off" live status. */
+	fastMode: boolean;
 	usage: ComposerUsage | null;
 }
 
@@ -166,6 +171,7 @@ export function resolveComposerState(sources: ComposerStateSources): ComposerSta
 		model: nonEmpty(sources.statuslineModel) ?? formatModelName(modelId) ?? modelId,
 		modelId,
 		effort: {id: effortId, label: EFFORT_LABELS[effortId] ?? effortId},
+		fastMode: sources.fastMode,
 		usage: resolveComposerUsage(sources, modelId),
 	};
 }
@@ -351,6 +357,8 @@ export interface ComposerServerState {
 	settingsEffortLevel: string | null;
 	/** Settings let a launch use Bypass permissions (see `isBypassPermissionsAllowed`). */
 	settingsBypassPermissionsAllowed: boolean;
+	/** Settings start a fresh session in fast mode (`sessionFastMode` with no turns). */
+	settingsFastMode: boolean;
 	statusline: Statusline | null;
 	statuslineUpdatedAt: string | null;
 }
@@ -360,6 +368,7 @@ export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.str
 	settingsModel: z.string().nullable(),
 	settingsEffortLevel: z.string().nullable(),
 	settingsBypassPermissionsAllowed: z.boolean(),
+	settingsFastMode: z.boolean(),
 	statusline: StatuslineSchema.nullable(),
 	statuslineUpdatedAt: z.string().nullable(),
 });
@@ -374,7 +383,11 @@ async function readSettingsDefaults(
 ): Promise<
 	Pick<
 		ComposerServerState,
-		"settingsDefaultMode" | "settingsModel" | "settingsEffortLevel" | "settingsBypassPermissionsAllowed"
+		| "settingsDefaultMode"
+		| "settingsModel"
+		| "settingsEffortLevel"
+		| "settingsBypassPermissionsAllowed"
+		| "settingsFastMode"
 	>
 > {
 	try {
@@ -388,6 +401,7 @@ async function readSettingsDefaults(
 					defaultMode: parsed.data.permissions?.defaultMode,
 					skipDangerousModePermissionPrompt: parsed.data.skipDangerousModePermissionPrompt,
 				}),
+				settingsFastMode: sessionFastMode([], parsed.data),
 			};
 		}
 	} catch {
@@ -398,6 +412,7 @@ async function readSettingsDefaults(
 		settingsModel: null,
 		settingsEffortLevel: null,
 		settingsBypassPermissionsAllowed: false,
+		settingsFastMode: false,
 	};
 }
 

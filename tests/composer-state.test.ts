@@ -52,6 +52,7 @@ const EMPTY_SOURCES: ComposerStateSources = {
 	lastAssistantModel: null,
 	lastAssistantUsage: null,
 	lastAssistantEffort: null,
+	fastMode: false,
 	settingsModel: null,
 	settingsEffortLevel: null,
 	statusline: null,
@@ -59,6 +60,13 @@ const EMPTY_SOURCES: ComposerStateSources = {
 };
 
 describe("resolveComposerState precedence", () => {
+	it("carries the session's fast mode through", () => {
+		expect({
+			on: resolveComposerState({...EMPTY_SOURCES, fastMode: true}).fastMode,
+			off: resolveComposerState(EMPTY_SOURCES).fastMode,
+		}).toStrictEqual({on: true, off: false});
+	});
+
 	it.each([
 		{
 			hook: "plan",
@@ -493,6 +501,7 @@ describe("getComposerState", () => {
 			settingsModel: "fable",
 			settingsEffortLevel: "xhigh",
 			settingsBypassPermissionsAllowed: false,
+			settingsFastMode: false,
 			statusline: ALICE_STATUSLINE,
 			statuslineUpdatedAt: "2026-09-29T09:00:00.000Z",
 		});
@@ -509,6 +518,7 @@ describe("getComposerState", () => {
 			settingsModel: null,
 			settingsEffortLevel: null,
 			settingsBypassPermissionsAllowed: false,
+			settingsFastMode: false,
 			statusline: null,
 			statuslineUpdatedAt: null,
 		});
@@ -530,6 +540,22 @@ describe("getComposerState", () => {
 		}).toStrictEqual({skip: true, defaultMode: true, neither: false});
 	});
 
+	it("starts a fresh session in fast mode when settings turn it on without a per-session opt-in", async () => {
+		const fast = async (settings: unknown) =>
+			(
+				await getComposerState("dave-session", {
+					readStatusline: async () => Promise.reject(new Error("ENOENT: fabricated")),
+					readSettings: async () => Promise.resolve(settings),
+				})
+			).settingsFastMode;
+
+		expect({
+			on: await fast({fastMode: true}),
+			optIn: await fast({fastMode: true, fastModePerSessionOptIn: true}),
+			off: await fast({}),
+		}).toStrictEqual({on: true, optIn: false, off: false});
+	});
+
 	it("never reads a statusline for a traversal session id", async () => {
 		const readStatusline = vi.fn<ComposerStateDependencies["readStatusline"]>(async () =>
 			Promise.resolve({json: {}, mtimeMs: 0}),
@@ -548,6 +574,7 @@ describe("getComposerState", () => {
 				settingsModel: null,
 				settingsEffortLevel: null,
 				settingsBypassPermissionsAllowed: false,
+				settingsFastMode: false,
 				statusline: null,
 				statuslineUpdatedAt: null,
 			},

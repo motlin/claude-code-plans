@@ -394,7 +394,7 @@ describe("SessionPage dock composition", () => {
 	function dockContents() {
 		return [
 			...document.querySelectorAll(
-				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status]:not([data-skill-arg-hint-sr]), [data-session-footer] [data-composer-card], [data-session-footer] [data-approval-card-root]",
+				"[data-session-footer] [data-branch-strip], [data-session-footer] [role=status]:not([data-skill-arg-hint-sr]):not([data-fast-mode-status]), [data-session-footer] [data-composer-card], [data-session-footer] [data-approval-card-root]",
 			),
 		].map((element) =>
 			element.hasAttribute("data-approval-card-root")

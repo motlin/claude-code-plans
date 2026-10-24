@@ -26,6 +26,7 @@ const CHIN: ComposerState = {
 	mode: {id: "default", label: "Manual"},
 	model: "Opus 5.5",
 	modelId: "claude-opus-5-5",
+	fastMode: false,
 	effort: {id: "high", label: "High"},
 	usage: null,
 };
@@ -680,6 +681,125 @@ describe("Composer model menu Fast mode section", () => {
 			header: within(menu).queryByText("Fast mode"),
 			separators: within(menu).getAllByRole("separator").length,
 		}).toStrictEqual({rows: 0, header: null, separators: 2});
+	});
+});
+
+describe("Composer model trigger Fast word and live status", () => {
+	function triggerParts() {
+		const trigger = screen.getByRole("button", {name: /^Model:/});
+		return {
+			label: trigger.getAttribute("aria-label"),
+			children: Array.from(trigger.children).map((child) => ({
+				fast: child.hasAttribute("data-fast-label"),
+				className: child.getAttribute("class"),
+				text: child.textContent,
+			})),
+		};
+	}
+
+	function liveStatus() {
+		const status = document.querySelector("[data-fast-mode-status][role=status][aria-live=polite]");
+		return status === null ? null : {className: status.getAttribute("class"), text: status.textContent};
+	}
+
+	const TAIL_CLASS = "shrink-0 whitespace-pre text-ink-muted @max-[280px]:hidden";
+
+	it("puts upstream's Fast word between the model and the effort while the session is fast", () => {
+		renderComposer({chin: {...CHIN, fastMode: true}});
+
+		expect({trigger: triggerParts(), status: liveStatus()}).toStrictEqual({
+			trigger: {
+				label: "Model: Opus 5.5 Fast High",
+				children: [
+					{fast: false, className: "truncate", text: "Opus 5.5"},
+					{fast: true, className: TAIL_CLASS, text: " Fast"},
+					{fast: false, className: TAIL_CLASS, text: " High"},
+				],
+			},
+			status: {className: "sr-only", text: "Fast mode on"},
+		});
+	});
+
+	it("has no Fast word with fast mode off, and flips the word and live status when the switch row toggles", async () => {
+		renderComposer();
+		const before = {trigger: triggerParts(), status: liveStatus()};
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		fireEvent.click(within(menu).getByRole("menuitemcheckbox", {name: "Enable fast mode"}));
+		await waitFor(() => {
+			expect(liveStatus()?.text).toBe("Fast mode on");
+		});
+
+		expect({before, after: triggerParts().label}).toStrictEqual({
+			before: {
+				trigger: {
+					label: "Model: Opus 5.5 High",
+					children: [
+						{fast: false, className: "truncate", text: "Opus 5.5"},
+						{fast: false, className: TAIL_CLASS, text: " High"},
+					],
+				},
+				status: {className: "sr-only", text: "Fast mode off"},
+			},
+			after: "Model: Opus 5.5 Fast High",
+		});
+	});
+
+	it("turns a fast session off from its switch row", async () => {
+		const onSend = renderComposer({chin: {...CHIN, fastMode: true}});
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const checked = within(menu)
+			.getByRole("menuitemcheckbox", {name: "Enable fast mode"})
+			.getAttribute("aria-checked");
+		fireEvent.click(within(menu).getByRole("menuitemcheckbox", {name: "Enable fast mode"}));
+		await waitFor(() => {
+			expect(liveStatus()?.text).toBe("Fast mode off");
+		});
+		fireEvent.keyDown(menu, {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Mallory's test");
+
+		expect({checked, label: triggerParts().label, calls: onSend.mock.calls}).toStrictEqual({
+			checked: "true",
+			label: "Model: Opus 5.5 High",
+			calls: [["Continue Mallory's test", {fastMode: false}]],
+		});
+	});
+
+	it("keeps the Fast word but has no live status on the new-session bar, as upstream's bar has none", () => {
+		renderHomeComposer();
+		const bar = {label: triggerParts().label, status: liveStatus()};
+		cleanup();
+		render(
+			<DensityScope density="compact">
+				<Composer
+					variant="home"
+					draftKey="home-erin"
+					onSend={vi.fn<OnSend>()}
+					chin={{...CHIN, fastMode: true}}
+					environment={<span>Erin's project</span>}
+				/>
+			</DensityScope>,
+		);
+
+		expect({bar, fast: {label: triggerParts().label, status: liveStatus()}}).toStrictEqual({
+			bar: {label: "Model: Opus 5.5 High", status: null},
+			fast: {label: "Model: Opus 5.5 Fast High", status: null},
+		});
+	});
+
+	it("has neither the word nor the live status on a model without fast mode", () => {
+		renderComposer({chin: {...CHIN, model: "Sonnet 5.5", modelId: "claude-sonnet-5-5", fastMode: true}});
+
+		expect({label: triggerParts().label, status: liveStatus()}).toStrictEqual({
+			label: "Model: Sonnet 5.5 High",
+			status: null,
+		});
 	});
 });
 
