@@ -4432,7 +4432,8 @@ function ThinkingBlock({
 	// Upstream's pr-6 fits the copy button alone. When DebugLink renders it
 	// shares the overlay, so the gutter has to grow or long lines run under it.
 	const gutterClass = settings.showDebug && sourceUuid ? "pr-10" : "pr-6";
-	// Upstream's $X confirms the copy with a "Copied" toast. Read the context
+	// Upstream's $X confirms the copy with a "Copied" toast and relabels the
+	// button "Copied" for its copy hook's 2000ms default. Read the context
 	// directly so a SessionChat rendered without a ToastProvider still copies.
 	const toast = useContext(ToastContext);
 	const handleCopied = useCallback(() => {
@@ -4449,7 +4450,13 @@ function ThinkingBlock({
 				</div>
 				<div className="absolute right-0 top-0 flex items-center gap-g3">
 					<DebugLink sessionId={sessionId} uuid={sourceUuid} />
-					<CopyButton text={toMarkdownQuote(thinking)} label="Copy as quote" onCopied={handleCopied} />
+					<CopyButton
+						text={toMarkdownQuote(thinking)}
+						label="Copy as quote"
+						copiedLabel="Copied"
+						resetMs={2000}
+						onCopied={handleCopied}
+					/>
 				</div>
 			</div>
 		</div>

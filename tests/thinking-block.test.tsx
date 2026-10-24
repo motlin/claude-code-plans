@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
@@ -162,6 +162,41 @@ describe("thinking block", () => {
 		fireEvent.click(screen.getByLabelText("Copy as quote"));
 
 		expect(toast.mock.calls).toStrictEqual([[{message: "Copied", kind: "success"}]]);
+	});
+
+	it("relabels the thinking quote button Copied with a check icon for 2000ms after a click", () => {
+		vi.useFakeTimers();
+		try {
+			const writeText = vi.fn<Clipboard["writeText"]>(async (_text: string) => {});
+			Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+			renderThinking();
+			const button = screen.getByLabelText("Copy as quote");
+			const state = () => ({
+				ariaLabel: button.getAttribute("aria-label"),
+				icon: button.querySelector("svg")?.innerHTML,
+			});
+			const idle = state();
+
+			fireEvent.click(button);
+			const copied = state();
+			act(() => {
+				vi.advanceTimersByTime(1999);
+			});
+			const beforeReset = state();
+			act(() => {
+				vi.advanceTimersByTime(1);
+			});
+
+			expect({idle, copied, beforeReset, reset: state()}).toStrictEqual({
+				idle: {ariaLabel: "Copy as quote", icon: idle.icon},
+				copied: {ariaLabel: "Copied", icon: copied.icon},
+				beforeReset: {ariaLabel: "Copied", icon: copied.icon},
+				reset: {ariaLabel: "Copy as quote", icon: idle.icon},
+			});
+			expect(copied.icon).not.toBe(idle.icon);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("labels how long the model thought above the thinking text", () => {

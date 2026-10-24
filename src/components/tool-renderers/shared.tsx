@@ -299,11 +299,16 @@ export function CopyButton({
 	label = "Copy",
 	size,
 	onCopied,
+	copiedLabel = label,
+	resetMs = 1500,
 }: {
 	text: string;
 	label?: string;
 	size?: "xs";
 	onCopied?: () => void;
+	/** Label and tooltip while the Check icon shows, like upstream's "Copied". */
+	copiedLabel?: string;
+	resetMs?: number;
 }) {
 	const [copied, setCopied] = useState(false);
 
@@ -313,18 +318,19 @@ export function CopyButton({
 		setCopied(true);
 		setTimeout(() => {
 			setCopied(false);
-		}, 1500);
-	}, [text, onCopied]);
+		}, resetMs);
+	}, [text, onCopied, resetMs]);
+	const currentLabel = copied ? copiedLabel : label;
 	const iconSize = size === "xs" ? 12 : 16;
 
 	return (
 		<div
 			className={`opacity-0 group-hover/body:opacity-100 focus-within:opacity-100 [transition:opacity_150ms_cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none ${TOUCH_REVEAL}`}
 		>
-			<Tooltip content={label}>
+			<Tooltip content={currentLabel}>
 				<button
 					type="button"
-					aria-label={label}
+					aria-label={currentLabel}
 					onClick={handleClick}
 					className={`inline-flex ${size === "xs" ? "size-5" : "size-6"} items-center justify-center border-0 cursor-default select-none rounded-r4 text-secondary hover:text-primary hover:bg-t2 transition-colors`}
 				>
