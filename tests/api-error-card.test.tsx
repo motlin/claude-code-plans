@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {ApiErrorCard} from "../src/components/api-error-card";
+import {preloadErrorRecoveryActions} from "../src/components/error-recovery-actions-entry";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
@@ -420,5 +422,146 @@ describe("ApiErrorCard", () => {
 			markers: [...container.querySelectorAll("[data-api-error-marker]")].map((marker) => marker.textContent),
 			cards: container.querySelectorAll("[data-api-error-card]").length,
 		}).toStrictEqual({markers: ["Service was busyView details"], cards: 0});
+	});
+});
+
+describe("ApiErrorCard recovery actions", () => {
+	// The page warms the deferred recovery row on idle; load it up front so the card renders it directly.
+	beforeAll(async () => {
+		await preloadErrorRecoveryActions();
+	});
+
+	const OVERLOADED_PROPS = {
+		text: RAW_529,
+		status: 529,
+		requestId: "req_011CfHarGaksRjzuQwv2aEni",
+		code: "server_error",
+		stopReason: "stop_sequence",
+	} as const;
+
+	function actionGroup(card: Element | null): Element | null | undefined {
+		return card?.querySelector("[data-api-error-actions]");
+	}
+
+	function buttons(group: Element | null | undefined): {text: string; variant: string | null}[] {
+		return [...(group?.querySelectorAll(":scope > button, :scope > * > button") ?? [])].map((button) => ({
+			text: button.textContent,
+			variant: button.getAttribute("data-approval-variant"),
+		}));
+	}
+
+	it("puts the model trigger before a primary Try again at the trailing edge of the details row for the 529 specimen", () => {
+		const onRetry = vi.fn<() => void>();
+		const {container} = render(
+			<ApiErrorCard
+				{...OVERLOADED_PROPS}
+				recovery={{
+					onRetry,
+					onRetryWithModel: vi.fn<(model: string) => void>(),
+					currentModel: "claude-opus-5-5",
+				}}
+			/>,
+		);
+		const card = container.querySelector("[data-api-error-card]");
+		const group = actionGroup(card);
+		const retry = [...(group?.querySelectorAll("button") ?? [])].find(
+			(button) => button.textContent === "Try again",
+		);
+
+		expect({
+			hint: card?.children[1]?.textContent,
+			rowClass: group?.parentElement?.className,
+			rowFirst: group?.parentElement?.firstElementChild?.textContent,
+			groupClass: group?.className,
+			buttons: buttons(group),
+			retryPrimary: retry?.className.split(" ").includes("bg-primary"),
+		}).toStrictEqual({
+			hint: "Try again in a moment, or switch to a different model.",
+			rowClass: "flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 pt-2",
+			rowFirst: "View details",
+			groupClass: "ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2",
+			buttons: [
+				{text: "Opus 5.5", variant: null},
+				{text: "Try again", variant: "primary"},
+			],
+			retryPrimary: true,
+		});
+	});
+
+	it("calls onRetry once on Try again, then hides every action and swaps the hint to the without-retry copy", () => {
+		const onRetry = vi.fn<() => void>();
+		const {container, getByRole} = render(
+			<ApiErrorCard
+				{...OVERLOADED_PROPS}
+				recovery={{
+					onRetry,
+					onRetryWithModel: vi.fn<(model: string) => void>(),
+					currentModel: "claude-opus-5-5",
+				}}
+			/>,
+		);
+		fireEvent.click(getByRole("button", {name: "Try again"}));
+		const card = container.querySelector("[data-api-error-card]");
+
+		expect({
+			calls: onRetry.mock.calls,
+			group: actionGroup(card) ?? null,
+			hint: card?.children[1]?.querySelector("span:not(.sr-only)")?.textContent,
+			status: card?.querySelector("[role=status].sr-only")?.textContent,
+		}).toStrictEqual({
+			calls: [[]],
+			group: null,
+			hint: "You can send a message to try again in a moment, or switch to a different model.",
+			status: "You can send a message to try again in a moment, or switch to a different model.",
+		});
+	});
+
+	it("draws no action group and keeps the details row unchanged without handlers", () => {
+		const {container} = render(<ApiErrorCard {...OVERLOADED_PROPS} />);
+		const card = container.querySelector("[data-api-error-card]");
+
+		expect({
+			group: actionGroup(card) ?? null,
+			row: card?.children[2]?.outerHTML.includes("data-api-error-actions"),
+			rowChildren: card?.children[2]?.children.length,
+			hint: card?.children[1]?.textContent,
+		}).toStrictEqual({
+			group: null,
+			row: false,
+			rowChildren: 1,
+			hint: "This is usually temporary.",
+		});
+	});
+
+	it("keeps the details row for the actions alone when there are no details, with a primary Compact session", () => {
+		const onCompact = vi.fn<() => void>();
+		const {container, getByRole} = render(
+			<ApiErrorCard text="Prompt is too long" recovery={{onRetry: vi.fn<() => void>(), onCompact}} />,
+		);
+		const card = container.querySelector("[data-api-error-card]");
+		const group = actionGroup(card);
+		const before = {
+			headline: card?.children[0]?.textContent,
+			rowChildren: group?.parentElement?.children.length,
+			buttons: buttons(group),
+		};
+		fireEvent.click(getByRole("button", {name: "Compact session"}));
+
+		expect({
+			before,
+			calls: onCompact.mock.calls,
+			after: [...(card?.children ?? [])].map((child) => child.className),
+		}).toStrictEqual({
+			before: {
+				headline: "Your context window is full",
+				rowChildren: 1,
+				buttons: [{text: "Compact session", variant: "primary"}],
+			},
+			calls: [[]],
+			after: [
+				"flex items-center gap-3 bg-alpha-1 px-3 py-2 contain-inline-size",
+				"flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
+			],
+		});
 	});
 });

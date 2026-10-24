@@ -1,3 +1,5 @@
+import type {ApiErrorCategory} from "./api-error-category";
+
 /**
  * The API error card's recovery-row decision, ported from upstream's `Kt` hook
  * (c3e34355f). Pure: which actions show, which one is primary, and their order.
@@ -93,4 +95,42 @@ export function fallbackModel(runningModel: string): FallbackModel | undefined {
 	if (runningModel.startsWith("claude-opus")) return {alias: "sonnet", label: "Sonnet"};
 	if (runningModel.startsWith("claude-sonnet")) return {alias: "haiku", label: "Haiku"};
 	return undefined;
+}
+
+export interface CategoryRecoveryHelps {
+	retryHelps: boolean;
+	compactHelps: boolean;
+	isOverloaded: boolean;
+	modelSwitchHelps: boolean;
+}
+
+/** Upstream's `wr` rows with `retryHelps: true`; `unknown` depends on its HTTP status. */
+const RETRY_HELPS: ReadonlySet<ApiErrorCategory> = new Set([
+	"rate_limit",
+	"server_rate_limit",
+	"overloaded",
+	"server_error",
+	"stream_idle_timeout",
+	"network",
+	"model_not_found",
+	"output_token_limit",
+]);
+
+/**
+ * Upstream's `at(status)` isn't in the dumped chunk; this is the Anthropic SDK's retry rule
+ * (408, 409, 429 and every 5xx), which the same statuses in `wr` already follow.
+ */
+function retryableStatus(status: number | undefined): boolean {
+	if (status === undefined) return false;
+	return status === 408 || status === 409 || status === 429 || status >= 500;
+}
+
+/** The per-category flags upstream's card `HW` feeds the recovery row. */
+export function categoryRecoveryHelps(category: ApiErrorCategory, status?: number): CategoryRecoveryHelps {
+	return {
+		retryHelps: RETRY_HELPS.has(category) || (category === "unknown" && retryableStatus(status)),
+		compactHelps: category === "context_length",
+		isOverloaded: category === "overloaded",
+		modelSwitchHelps: category === "overloaded" || category === "model_not_found",
+	};
 }

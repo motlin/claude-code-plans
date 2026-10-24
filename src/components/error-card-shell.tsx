@@ -17,6 +17,8 @@ interface ErrorCardShellProps {
 	data?: Record<`data-${string}`, string>;
 	/** Appends upstream's " Learn more" link to the hint. */
 	learnMoreUrl?: string;
+	/** A screen-reader-only live status in the hint row, e.g. the hint a recovery press swapped in. */
+	status?: string;
 	/** Rows after the hint row, e.g. the View details disclosure. */
 	children?: ReactNode;
 }
@@ -49,6 +51,7 @@ export function ErrorCardShell({
 	onDismiss,
 	data,
 	learnMoreUrl,
+	status,
 	children,
 }: ErrorCardShellProps) {
 	return (
@@ -97,6 +100,11 @@ export function ErrorCardShell({
 						</>
 					)}
 				</span>
+				{status !== undefined && (
+					<span role="status" className="sr-only">
+						{status}
+					</span>
+				)}
 			</div>
 			{children}
 		</div>

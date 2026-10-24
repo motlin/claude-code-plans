@@ -72,6 +72,7 @@ import {UsagePaceBanner} from "./usage-pace-banner";
 import {WorkingMarker} from "./working-marker";
 import {useWorkingMarkerState} from "./use-working-marker-state";
 import {preloadSideChatPanel, SideChat} from "./side-chat";
+import {preloadErrorRecoveryActions} from "./error-recovery-actions-entry";
 import {handleBtwPrompt} from "./btw-prompt";
 import {useSideChatShortcut} from "./use-side-chat-shortcut";
 import {useToast} from "./toast-context";
@@ -168,6 +169,7 @@ const SESSION_PANE_CHUNKS = [
 	preloadBackgroundTasksPane,
 	loadSessionPromptCards,
 	preloadSideChatPanel,
+	preloadErrorRecoveryActions,
 ];
 
 function SessionChrome({children}: {children: React.ReactNode}) {

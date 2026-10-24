@@ -1,9 +1,13 @@
 import {Check, Copy, Gauge, TriangleAlert} from "lucide-react";
-import {useEffect, useId, useRef, useState} from "react";
+import {type ReactNode, useEffect, useId, useRef, useState} from "react";
 
-import {classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
+import {type ApiErrorCategory, classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
+import {categoryRecoveryHelps, fallbackModel, type RecoveryAction, recoveryActions} from "../lib/api-error-recovery";
+import {modelLabel, primaryModelMenuValue, PRIMARY_MODELS} from "../lib/launch-options";
 import {writeClipboardText} from "../lib/clipboard";
 import {ErrorCardShell} from "./error-card-shell";
+import type {RecoveryHandlers} from "./error-recovery-actions";
+import {DeferredErrorRecoveryActions} from "./error-recovery-actions-entry";
 import {ChevronIcon} from "./tool-renderers/shared";
 
 /** How long upstream's Copy details button shows "Copied" with a check. */
@@ -22,6 +26,19 @@ export interface ApiErrorCardProps {
 	code?: string;
 	/** The assistant message's `stop_reason`; `refusal` is a safeguards flag. */
 	stopReason?: string;
+	/** The live session's recovery handlers; only the transcript's last entry gets them. */
+	recovery?: ApiErrorRecovery;
+}
+
+/** What the session can do from the card; a missing handler hides its action. */
+export interface ApiErrorRecovery {
+	onRetry?: () => void;
+	onCompact?: () => void;
+	onRewind?: () => void;
+	/** Switches the session to a model (a primary alias) and retries. */
+	onRetryWithModel?: (model: string) => void;
+	/** The running model's id, e.g. `claude-opus-5-5`. */
+	currentModel?: string;
 }
 
 function numericStatus(status: number | string | undefined): number | undefined {
@@ -80,19 +97,18 @@ function CopyDetailsButton({details}: {details: string}) {
  * joins the body and the lines with newlines.
  */
 function ErrorDetails({
-	body,
-	status,
-	requestId,
-	messageId,
+	details,
 	inCard,
+	actions,
 }: {
-	body?: string;
-	status?: number | string;
-	requestId?: string;
-	messageId?: string;
+	/** Undefined hides View details; the row still shows for the actions. */
+	details: ResolvedApiError["details"];
 	/** In the card the row and panel carry the card's padding; the marker's sit flush with `pt-2`. */
 	inCard: boolean;
+	/** Upstream's action group, pushed to the row's trailing edge. */
+	actions?: ReactNode;
 }) {
+	const {body, status, requestId, messageId} = details ?? {};
 	const [open, setOpen] = useState(false);
 	const panelId = useId();
 	const facts =
@@ -109,18 +125,28 @@ function ErrorDetails({
 			<div
 				className={`flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2${inCard ? " px-3 pb-3 pt-2" : ""}`}
 			>
-				<button
-					type="button"
-					aria-expanded={open}
-					aria-controls={panelId}
-					className="inline-flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap text-footnote text-secondary hover:text-primary"
-					onClick={() => {
-						setOpen(!open);
-					}}
-				>
-					<span>View details</span>
-					<ChevronIcon expanded={open} />
-				</button>
+				{details !== undefined && (
+					<button
+						type="button"
+						aria-expanded={open}
+						aria-controls={panelId}
+						className="inline-flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap text-footnote text-secondary hover:text-primary"
+						onClick={() => {
+							setOpen(!open);
+						}}
+					>
+						<span>View details</span>
+						<ChevronIcon expanded={open} />
+					</button>
+				)}
+				{actions !== undefined && (
+					<div
+						data-api-error-actions=""
+						className="ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2"
+					>
+						{actions}
+					</div>
+				)}
 			</div>
 			{open && (
 				<div id={panelId} data-api-error-details="" className={inCard ? "border-t px-3 py-3" : "pt-2"}>
@@ -144,18 +170,27 @@ function ErrorDetails({
 }
 
 interface ResolvedApiError {
+	category: ApiErrorCategory;
+	status?: number;
+	rewindHelps: boolean;
 	headline: string;
 	markerLabel: string;
 	hint: string;
 	icon: "warning" | "gauge";
 	learnMoreUrl?: string;
 	/** The View details props, or undefined when upstream shows no View details. */
-	details?: {body?: string; status?: number | string; requestId?: string; messageId?: string};
+	details?: {
+		body?: string;
+		status?: number | string;
+		requestId?: string;
+		messageId?: string;
+	};
 }
 
 /**
- * Classifies the error and picks what upstream shows for it. The viewer can't
- * rewind, retry or send, so the hint is the no-composer variant. A `drop`
+ * Classifies the error and picks what upstream shows for it. Without a live
+ * session the viewer can't rewind, retry or send, so the hint is the
+ * no-composer variant; with one, it follows what the card offers. A `drop`
  * verdict hides the raw body and keeps View details only for a status or
  * request id.
  */
@@ -167,7 +202,10 @@ function resolveApiError({
 	messageId,
 	code,
 	stopReason,
-}: ApiErrorCardProps): ResolvedApiError {
+	hint: hintContext = {canRewind: false, canRetry: false, hasComposer: false},
+}: ApiErrorCardProps & {
+	hint?: Parameters<typeof errorCopy>[1];
+}): ResolvedApiError {
 	const numeric = numericStatus(status);
 	const category = classifyApiError({
 		text,
@@ -175,7 +213,7 @@ function resolveApiError({
 		...(stopReason !== undefined && {stopReason}),
 		...(numeric !== undefined && {status: numeric}),
 	});
-	const copy = errorCopy(category, {canRewind: false, canRetry: false, hasComposer: false});
+	const copy = errorCopy(category, hintContext);
 	// Upstream's passthrough: a refusal's own text replaces the hint, drops Learn more, and leaves View details.
 	const passthrough = category === "usage_policy" && stopReason === "refusal" ? refusalPassthrough(text) : undefined;
 	const raw = details ?? (text === "" ? undefined : text);
@@ -183,6 +221,9 @@ function resolveApiError({
 	const showDetails = body !== undefined || status !== undefined || requestId !== undefined;
 	const learnMoreUrl = passthrough === undefined ? copy.learnMoreUrl : undefined;
 	return {
+		category,
+		...(numeric !== undefined && {status: numeric}),
+		rewindHelps: copy.rewindHelps,
 		headline: copy.headline,
 		markerLabel: copy.markerLabel,
 		hint: passthrough?.body ?? copy.hint,
@@ -201,18 +242,85 @@ function resolveApiError({
 
 /** Upstream's transcript API-error card (c44e562e8 `DW` over the shared card): the headline, hint and View details. */
 export function ApiErrorCard(props: ApiErrorCardProps) {
-	const error = resolveApiError(props);
+	const [retried, setRetried] = useState(false);
+	const {recovery} = props;
+	const canRetry = recovery?.onRetry !== undefined && !retried;
+	const error = resolveApiError({
+		...props,
+		hint: {
+			canRewind: recovery?.onRewind !== undefined,
+			canRetry,
+			hasComposer: recovery !== undefined,
+		},
+	});
+	const {actions, handlers} =
+		recovery === undefined ? {actions: [], handlers: undefined} : cardRecovery(error, recovery, retried);
 	return (
 		<ErrorCardShell
 			data={{"data-api-error-card": ""}}
 			headline={error.headline}
 			hint={error.hint}
 			icon={error.icon}
-			{...(error.learnMoreUrl !== undefined && {learnMoreUrl: error.learnMoreUrl})}
+			{...(error.learnMoreUrl !== undefined && {
+				learnMoreUrl: error.learnMoreUrl,
+			})}
+			{...(recovery !== undefined && {status: retried ? error.hint : ""})}
 		>
-			{error.details !== undefined && <ErrorDetails {...error.details} inCard={true} />}
+			{(error.details !== undefined || actions.length > 0) && (
+				<ErrorDetails
+					details={error.details}
+					inCard={true}
+					{...(handlers !== undefined &&
+						actions.length > 0 && {
+							actions: (
+								<DeferredErrorRecoveryActions
+									actions={actions}
+									handlers={handlers}
+									onActed={() => {
+										setRetried(true);
+									}}
+								/>
+							),
+						})}
+				/>
+			)}
 		</ErrorCardShell>
 	);
+}
+
+/** The card's inputs to upstream's recovery-row decision, and the handlers its buttons call. */
+function cardRecovery(
+	error: ResolvedApiError,
+	recovery: ApiErrorRecovery,
+	retried: boolean,
+): {actions: RecoveryAction[]; handlers: RecoveryHandlers} {
+	const {currentModel, onRetry, onCompact, onRewind, onRetryWithModel} = recovery;
+	const current = primaryModelMenuValue(currentModel);
+	const fallback = currentModel === undefined ? undefined : fallbackModel(currentModel);
+	const actions = recoveryActions({
+		...categoryRecoveryHelps(error.category, error.status),
+		rewindHelps: error.rewindHelps,
+		retried,
+		canRetry: onRetry !== undefined,
+		canRewind: onRewind !== undefined,
+		canCompact: onCompact !== undefined,
+		canFallback: onRetryWithModel !== undefined && fallback !== undefined,
+		currentModelLabel: current === "" ? (currentModel ?? "") : modelLabel(current),
+		...(fallback !== undefined && {fallbackModelLabel: fallback.label}),
+		...(onRetryWithModel !== undefined &&
+			currentModel !== undefined && {
+				modelItems: PRIMARY_MODELS.map((model) => ({value: model.id, checked: model.id === current})),
+			}),
+	});
+	const handlers: RecoveryHandlers = {
+		...(onRetry !== undefined && {onRetry}),
+		...(onCompact !== undefined && {onCompact}),
+		...(onRewind !== undefined && {onRewind}),
+		...(onRetryWithModel !== undefined && {onRetryWithModel}),
+		...(fallback !== undefined && {fallbackAlias: fallback.alias}),
+		...(current !== "" && {currentModelValue: current}),
+	};
+	return {actions, handlers};
 }
 
 const MARKER_ICON_CLASS = "size-4 shrink-0 text-danger-000";
@@ -231,7 +339,7 @@ export function ApiErrorMarker(props: ApiErrorCardProps) {
 				<Icon aria-hidden="true" className={MARKER_ICON_CLASS} />
 				<span className="min-w-0 text-body text-secondary break-words">{error.markerLabel}</span>
 			</div>
-			{error.details !== undefined && <ErrorDetails {...error.details} inCard={false} />}
+			{error.details !== undefined && <ErrorDetails details={error.details} inCard={false} />}
 		</div>
 	);
 }
