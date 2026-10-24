@@ -33,7 +33,7 @@ function errorStatus(code: string): number {
 	}
 }
 
-/** The herdr call for one chin pick: `/model` and `/effort` prompts, or shift+tab presses. */
+/** The herdr call for one chin pick: `/model`, `/effort` and `/fast` prompts, or shift+tab presses. */
 function liveOptionCall(paneId: string, change: LiveOptionChange): {method: string; params: Record<string, unknown>} {
 	switch (change.kind) {
 		case "model":
@@ -43,6 +43,8 @@ function liveOptionCall(paneId: string, change: LiveOptionChange): {method: stri
 				method: "agent.prompt",
 				params: {target: paneId, text: `/effort ${change.effort}`},
 			};
+		case "fast":
+			return {method: "agent.prompt", params: {target: paneId, text: `/fast ${change.on ? "on" : "off"}`}};
 		case "mode":
 			return {
 				method: "agent.send_keys",
@@ -61,7 +63,7 @@ export const defaultHerdrLiveOptionDependencies: HerdrLiveOptionDependencies = {
 	createRequestId: () => `ccp:live-option:${crypto.randomUUID()}`,
 };
 
-/** Apply a composer mode / model / effort pick to the session's live herdr pane. */
+/** Apply a composer mode / model / effort / fast pick to the session's live herdr pane. */
 export async function handleHerdrLiveOption(
 	request: Request,
 	dependencies: HerdrLiveOptionDependencies = defaultHerdrLiveOptionDependencies,

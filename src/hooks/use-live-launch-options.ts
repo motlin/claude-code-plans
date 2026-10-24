@@ -7,6 +7,7 @@ import {
 	type LaunchPermissionMode,
 	type LiveOptionChange,
 	shiftTabCount,
+	withModel,
 } from "../lib/launch-options";
 import {isKeyOf} from "../lib/narrow";
 import {launchPermissionModeLabels} from "../lib/schema-choices";
@@ -38,6 +39,7 @@ const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> = {
 	model: "Model change couldn’t be applied. You can try again.",
 	effort: "Effort change couldn’t be applied. You can try again.",
 	mode: "Mode change couldn’t be applied. You can try again.",
+	fast: "Fast mode couldn’t be applied. You can try again.",
 };
 
 function modeLabel(mode: string): string {
@@ -62,8 +64,8 @@ function reportedMode(pending: PendingMode, context: LiveHookContext | undefined
 }
 
 /**
- * Steer a live herdr pane from the composer chin: `/model` and `/effort`
- * prompts, and shift+tab presses for the mode, confirmed by the next hook
+ * Steer a live herdr pane from the composer chin: `/model`, `/effort` and
+ * `/fast` prompts, and shift+tab presses for the mode, confirmed by the next hook
  * `permission_mode` with an error toast on mismatch.
  */
 export function useLiveLaunchOptions({
@@ -126,7 +128,8 @@ export function useLiveLaunchOptions({
 			if ("mode" in change) {
 				setPendingMode({sessionId, expected: change.mode, baseline});
 			} else {
-				setApplied({sessionId, options: {...sessionOptions, ...change.applied}});
+				const merged = {...sessionOptions, ...change.applied};
+				setApplied({sessionId, options: next.model === undefined ? merged : withModel(merged, next.model)});
 			}
 		},
 		[availableModes, currentMode, hookContext, options, send, sessionId, sessionOptions, toast],
@@ -153,6 +156,9 @@ function nextChange(
 	}
 	if (next.effort !== undefined && next.effort !== current.effort) {
 		return {change: {kind: "effort", effort: next.effort}, applied: {effort: next.effort}};
+	}
+	if (next.fastMode !== undefined && next.fastMode !== current.fastMode) {
+		return {change: {kind: "fast", on: next.fastMode}, applied: {fastMode: next.fastMode}};
 	}
 	const target = next.permissionMode;
 	if (target === undefined || target === current.permissionMode) return null;

@@ -112,4 +112,64 @@ describe("useLiveLaunchOptions", () => {
 			],
 		});
 	});
+
+	it("sends /fast on and off and shows the pick in the chin", async () => {
+		const send = vi.fn<Send>(async () => {});
+		const {result, toast} = renderLive({send});
+
+		await act(async () => result.current.apply({fastMode: true}));
+		const afterOn = result.current.options;
+		await act(async () => result.current.apply({fastMode: false}));
+
+		expect({
+			sends: send.mock.calls,
+			afterOn,
+			afterOff: result.current.options,
+			toasts: toast.mock.calls,
+		}).toStrictEqual({
+			sends: [
+				["session-ivan", {kind: "fast", on: true}],
+				["session-ivan", {kind: "fast", on: false}],
+			],
+			afterOn: {fastMode: true},
+			afterOff: {fastMode: false},
+			toasts: [],
+		});
+	});
+
+	it("drops the fast pick when the live model switches to one without fast mode", async () => {
+		const send = vi.fn<Send>(async () => {});
+		const {result} = renderLive({send});
+
+		await act(async () => result.current.apply({fastMode: true}));
+		await act(async () => result.current.apply({fastMode: true, model: "sonnet"}));
+
+		expect({sends: send.mock.calls, options: result.current.options}).toStrictEqual({
+			sends: [
+				["session-ivan", {kind: "fast", on: true}],
+				["session-ivan", {kind: "model", model: "sonnet"}],
+			],
+			options: {model: "sonnet"},
+		});
+	});
+
+	it("toasts the upstream copy when the pane rejects a fast mode change", async () => {
+		const send = vi.fn<Send>(async () => Promise.reject(new Error("agent is busy")));
+		const {result, toast} = renderLive({send});
+
+		await act(async () => result.current.apply({fastMode: true}));
+
+		expect({options: result.current.options, toasts: toast.mock.calls}).toStrictEqual({
+			options: {},
+			toasts: [
+				[
+					{
+						kind: "error",
+						message: "Fast mode couldn’t be applied. You can try again.",
+						description: "agent is busy",
+					},
+				],
+			],
+		});
+	});
 });

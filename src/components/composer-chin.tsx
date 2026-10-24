@@ -22,6 +22,7 @@ import {
 	modeTriggerLabel,
 	modelLabel,
 	modelMenuValue,
+	withModel,
 } from "../lib/launch-options";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
@@ -226,7 +227,7 @@ export const ComposerChin = memo(function ComposerChin({
 		}
 	};
 	const selectModel = (model: string) => {
-		onLaunchOptionsChange({...launchOptions, model});
+		onLaunchOptionsChange(withModel(launchOptions, model));
 	};
 	useImperativeHandle(pickRef, () => ({
 		pick: (pick) => {

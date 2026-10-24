@@ -4,8 +4,8 @@ import {formatModelName} from "./model-name";
 import {launchPermissionModeLabels} from "./schema-choices";
 
 /**
- * The composer's mode / model / effort / worktree choices for the next fork or launch,
- * passed to the `claude` CLI as `--permission-mode`, `--model`, `--effort` and `--worktree`.
+ * The composer's mode / model / effort / fast / worktree choices for the next fork or launch,
+ * passed to the `claude` CLI as `--permission-mode`, `--model`, `--effort`, `--settings` and `--worktree`.
  */
 
 /** Upstream mode registry order for a local CLI session; `default` is the CLI's name for Manual. */
@@ -25,21 +25,27 @@ export const LaunchOptionsSchema = z.strictObject({
 	permissionMode: LaunchPermissionModeSchema.optional(),
 	model: ModelIdSchema.optional(),
 	effort: EffortLevelSchema.optional(),
+	fastMode: z.boolean().optional(),
 	/** The CLI's `-w, --worktree [name]`: start in a new git worktree with a generated name. */
 	worktree: z.literal(true).optional(),
 });
 export type LaunchOptions = z.infer<typeof LaunchOptionsSchema>;
 
 /** CLI flags for the chosen options, one argv entry per word; never joined into a shell string. */
-export function buildLaunchFlags({permissionMode, model, effort, worktree}: LaunchOptions): string[] {
+export function buildLaunchFlags({permissionMode, model, effort, fastMode, worktree}: LaunchOptions): string[] {
 	const flags: string[] = [];
 	if (permissionMode !== undefined) flags.push("--permission-mode", permissionMode);
 	if (model !== undefined) flags.push("--model", model);
 	if (effort !== undefined) flags.push("--effort", effort);
+	// Flag settings win over `fastModePerSessionOptIn`, so the session starts fast.
+	if (fastMode === true) flags.push("--settings", FAST_MODE_SETTINGS);
 	// Last, so the flag's optional name can never take the next flag's value.
 	if (worktree === true) flags.push("--worktree");
 	return flags;
 }
+
+/** The `--settings` JSON that starts a session in fast mode. */
+export const FAST_MODE_SETTINGS = JSON.stringify({fastMode: true});
 
 export interface ModeMenuItem {
 	id: LaunchPermissionMode;
@@ -149,6 +155,26 @@ export function moreModelsMenuValue(current: string | undefined): string {
 	return (Object.hasOwn(ALIAS_LATEST, current) ? ALIAS_LATEST[current] : undefined) ?? current;
 }
 
+/** Models whose catalog entry offers the Fast mode toggle (upstream `fast_mode:{type:"toggle"}`). */
+const FAST_MODE_MODELS: ReadonlySet<string> = new Set([
+	"claude-opus-5-5",
+	"claude-opus-5",
+	"claude-opus-4-8",
+	"claude-opus-4-6",
+]);
+
+/** Whether a model id or family alias offers fast mode; a `[1m]` context suffix doesn't matter. */
+export function fastModeSupported(model: string): boolean {
+	return FAST_MODE_MODELS.has(resolveLaunchModel(model.replace(/\[[^\]]*\]$/, "")));
+}
+
+/** Options with a new model; fast mode is dropped when that model lacks it, as the CLI turns it off. */
+export function withModel(options: LaunchOptions, model: string): LaunchOptions {
+	if (fastModeSupported(model)) return {...options, model};
+	const {fastMode: _dropped, ...rest} = options;
+	return {...rest, model};
+}
+
 export function modelLabel(id: string): string {
 	return [...PRIMARY_MODELS, ...MORE_MODELS].find((model) => model.id === id)?.label ?? formatModelName(id) ?? id;
 }
@@ -191,10 +217,11 @@ export function canApplyLive({
 	return hasLivePane && writesEnabled && !working;
 }
 
-/** One chin pick applied to a live pane: a `/model` or `/effort` prompt, or shift+tab presses. */
+/** One chin pick applied to a live pane: a `/model`, `/effort` or `/fast` prompt, or shift+tab presses. */
 export const LiveOptionChangeSchema = z.discriminatedUnion("kind", [
 	z.strictObject({kind: z.literal("model"), model: ModelIdSchema}),
 	z.strictObject({kind: z.literal("effort"), effort: EffortLevelSchema}),
+	z.strictObject({kind: z.literal("fast"), on: z.boolean()}),
 	z.strictObject({
 		kind: z.literal("mode"),
 		presses: z

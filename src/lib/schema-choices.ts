@@ -1289,6 +1289,7 @@ export const effortLevelShortLabels = {
 const liveOptionChangeVariants = {
 	model: true,
 	effort: true,
+	fast: true,
 	mode: true,
 } satisfies Record<LiveOptionChange["kind"], true>;
 

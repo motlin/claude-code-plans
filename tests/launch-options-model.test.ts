@@ -2,11 +2,13 @@ import {describe, expect, it} from "vite-plus/test";
 import {
 	buildLaunchFlags,
 	CLI_DEFAULT_MODEL,
+	fastModeSupported,
 	MORE_MODELS,
 	modelMenuValue,
 	moreModelsMenuValue,
 	primaryModelMenuValue,
 	resolveLaunchModel,
+	withModel,
 } from "../src/lib/launch-options";
 
 describe("modelMenuValue", () => {
@@ -76,5 +78,66 @@ describe("buildLaunchFlags worktree", () => {
 		expect(buildLaunchFlags({worktree: true, permissionMode: "plan", model: "opus", effort: "high"})).toStrictEqual(
 			["--permission-mode", "plan", "--model", "opus", "--effort", "high", "--worktree"],
 		);
+	});
+});
+
+describe("fastModeSupported", () => {
+	it.each([
+		{model: "opus", expected: true},
+		{model: "opus[1m]", expected: true},
+		{model: "claude-opus-5-5", expected: true},
+		{model: "claude-opus-5", expected: true},
+		{model: "claude-opus-4-8[1m]", expected: true},
+		{model: "claude-opus-4-6", expected: true},
+		{model: "claude-opus-4-7", expected: false},
+		{model: "sonnet", expected: false},
+		{model: "claude-fable-5-1", expected: false},
+		{model: "haiku", expected: false},
+	])("$model -> $expected", ({model, expected}) => {
+		expect(fastModeSupported(model)).toBe(expected);
+	});
+});
+
+describe("buildLaunchFlags fast mode", () => {
+	it("launches fast mode through one --settings JSON", () => {
+		expect({
+			on: buildLaunchFlags({fastMode: true}),
+			off: buildLaunchFlags({fastMode: false}),
+			withEverything: buildLaunchFlags({
+				worktree: true,
+				permissionMode: "plan",
+				model: "opus",
+				effort: "ultracode",
+				fastMode: true,
+			}),
+		}).toStrictEqual({
+			on: ["--settings", '{"fastMode":true}'],
+			off: [],
+			withEverything: [
+				"--permission-mode",
+				"plan",
+				"--model",
+				"opus",
+				"--effort",
+				"ultracode",
+				"--settings",
+				'{"fastMode":true}',
+				"--worktree",
+			],
+		});
+	});
+});
+
+describe("withModel", () => {
+	it("drops fast mode when the picked model doesn't offer it, since the CLI turns it off", () => {
+		expect({
+			sonnet: withModel({effort: "high", fastMode: true}, "sonnet"),
+			opus: withModel({effort: "high", fastMode: true}, "claude-opus-4-6"),
+			off: withModel({fastMode: false}, "fable"),
+		}).toStrictEqual({
+			sonnet: {effort: "high", model: "sonnet"},
+			opus: {effort: "high", fastMode: true, model: "claude-opus-4-6"},
+			off: {model: "fable"},
+		});
 	});
 });

@@ -110,8 +110,16 @@ describe("herdr live-option handler", () => {
 			sessionId: "session-grace",
 			change: {kind: "mode", presses: 3},
 		});
+		const fastOn = await callHandler({
+			sessionId: "session-grace",
+			change: {kind: "fast", on: true},
+		});
+		const fastOff = await callHandler({
+			sessionId: "session-grace",
+			change: {kind: "fast", on: false},
+		});
 
-		expect({model, effort, mode}).toStrictEqual({
+		expect({model, effort, mode, fastOn, fastOff}).toStrictEqual({
 			model: {
 				status: 200,
 				body: {ok: true},
@@ -142,6 +150,28 @@ describe("herdr live-option handler", () => {
 						id: "ccp:live-option:test-200",
 						method: "agent.send_keys",
 						params: {target: "w200:p200", keys: ["shift+tab", "shift+tab", "shift+tab"]},
+					},
+				],
+			},
+			fastOn: {
+				status: 200,
+				body: {ok: true},
+				herdrCalls: [
+					{
+						id: "ccp:live-option:test-200",
+						method: "agent.prompt",
+						params: {target: "w200:p200", text: "/fast on"},
+					},
+				],
+			},
+			fastOff: {
+				status: 200,
+				body: {ok: true},
+				herdrCalls: [
+					{
+						id: "ccp:live-option:test-200",
+						method: "agent.prompt",
+						params: {target: "w200:p200", text: "/fast off"},
 					},
 				],
 			},
