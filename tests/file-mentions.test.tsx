@@ -383,6 +383,19 @@ describe("Composer @ file mentions", () => {
 		});
 	});
 
+	it("clamps ArrowUp and ArrowDown at the list ends instead of wrapping, like upstream", async () => {
+		responses.set(searchUrl("ind"), search("ind", ["src/a/index.ts", "src/b/index.ts", "src/c/index.ts"]));
+		const {textarea} = setup();
+
+		await type(textarea, "@ind");
+		const activeOption = () => textarea.getAttribute("aria-activedescendant")?.replace(/^.*-(option-\d+)$/, "$1");
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		const afterUp = activeOption();
+		for (let i = 0; i < 5; i++) fireEvent.keyDown(textarea, {key: "ArrowDown"});
+
+		expect({afterUp, afterDowns: activeOption()}).toStrictEqual({afterUp: "option-0", afterDowns: "option-2"});
+	});
+
 	it("closes on Escape until the token changes", async () => {
 		responses.set(searchUrl("ind"), search("ind", ["src/index.ts"]));
 		const {textarea} = setup();

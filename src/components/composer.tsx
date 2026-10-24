@@ -662,7 +662,7 @@ export function Composer({
 		if (move !== 0) {
 			setMentionHighlight({
 				entries: mentionEntries,
-				index: (mentionHighlighted + move + mentionEntries.length) % mentionEntries.length,
+				index: Math.min(Math.max(mentionHighlighted + move, 0), mentionEntries.length - 1),
 			});
 		} else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey) {
 			const entry = mentionEntries[mentionHighlighted];
