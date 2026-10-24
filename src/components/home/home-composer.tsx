@@ -4,7 +4,7 @@ import {useEffect, useMemo, useRef, useState} from "react";
 import {HOME_DOCK_CLASS} from "../dock-tokens";
 
 import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
-import {slashCommandsQueryOptions} from "../../lib/api/commands";
+import {useSlashCommands} from "../../hooks/use-slash-commands";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
 import {composerDefaultsQueryOptions} from "../../lib/api/composer-defaults";
 import {launchHerdrSession} from "../../lib/api/herdr";
@@ -44,7 +44,7 @@ export function HomeComposer() {
 		launching,
 		setLaunching,
 	} = useHomeLaunchFolder();
-	const {data: slashCommands} = useQuery(slashCommandsQueryOptions(project?.projectPath ?? undefined));
+	const slashMenu = useSlashCommands(project?.projectPath ?? undefined);
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
 	const chin = useMemo(
@@ -132,7 +132,7 @@ export function HomeComposer() {
 				environment={
 					<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
 				}
-				slashCommands={slashCommands}
+				{...slashMenu}
 				promptHistory={promptHistory}
 				subscribePrefill={onHomeComposerPrefillRequest}
 				bypassPermissionsAllowed={defaults?.bypassPermissionsAllowed ?? false}

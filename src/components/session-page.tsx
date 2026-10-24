@@ -75,9 +75,9 @@ import {useSideChatShortcut} from "./use-side-chat-shortcut";
 import {useToast} from "./toast-context";
 import {CHAT_COLUMN_CLASS, transcriptWidthStyle} from "../lib/transcript-width";
 import {useChatStream} from "../hooks/use-chat-stream";
-import {slashCommandsQueryOptions} from "../lib/api/commands";
 import {promptHistoryQueryOptions} from "../lib/api/prompt-history";
 import {useShortcutKeys} from "../hooks/use-shortcut";
+import {useSlashCommands} from "../hooks/use-slash-commands";
 import {useLiveLaunchOptions} from "../hooks/use-live-launch-options";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
 import {useComposerQueue} from "../hooks/use-composer-queue";
@@ -493,10 +493,8 @@ function SessionView({
 			}),
 		[hookContext?.permissionMode, transcript.records, composerServerState],
 	);
-	const {data: slashCommands} = useQuery({
-		...slashCommandsQueryOptions(sessionDirectory ?? undefined),
-		enabled: Boolean(sessionDirectory),
-	});
+	const slashMenu = useSlashCommands(sessionDirectory ?? undefined, Boolean(sessionDirectory));
+	const {slashCommands} = slashMenu;
 	const {data: promptHistory} = useQuery({
 		...promptHistoryQueryOptions(sessionId),
 		enabled: Boolean(sessionDirectory),
@@ -1010,7 +1008,7 @@ function SessionView({
 													}
 													deliveryHint={promptBehavior.deliveryHint}
 													chin={composerChin}
-													slashCommands={slashCommands}
+													{...slashMenu}
 													bypassPermissionsAllowed={bypassPermissionsAllowed}
 													live={liveLaunchAvailable ? liveLaunch : undefined}
 													mentionSessionId={sessionId}

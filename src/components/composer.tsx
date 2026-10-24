@@ -173,6 +173,8 @@ interface ComposerProps {
 	slashCommands?: readonly SlashCommand[] | undefined;
 	/** Upstream's explanatory section header drawn above the "/" rows, e.g. when the command list didn't load. */
 	slashMenuHeader?: string | undefined;
+	/** Called each time a "/" trigger opens the menu, so a failed command list can retry. */
+	onSlashMenuOpen?: (() => void) | undefined;
 	/** Settings allow launching in Bypass permissions mode. */
 	bypassPermissionsAllowed?: boolean | undefined;
 	/** An idle live pane: chin picks steer it instead of becoming launch flags. */
@@ -485,6 +487,7 @@ export function Composer({
 	environment,
 	slashCommands = NO_COMMANDS,
 	slashMenuHeader,
+	onSlashMenuOpen,
 	bypassPermissionsAllowed = false,
 	live,
 	mentionSessionId,
@@ -617,6 +620,12 @@ export function Composer({
 		key: null,
 		index: 0,
 	});
+	const slashTyped = slash !== null;
+	const onSlashMenuOpenRef = useRef(onSlashMenuOpen);
+	onSlashMenuOpenRef.current = onSlashMenuOpen;
+	useEffect(() => {
+		if (slashTyped) onSlashMenuOpenRef.current?.();
+	}, [slashTyped]);
 	const matches = slash === null || slashDismissed ? [] : filterSlashCommands(slashCommands, slash.query);
 	const slashOpen = matches.length > 0;
 	const slashItems: SlashMenuItem[] = [
