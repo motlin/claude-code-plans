@@ -156,13 +156,95 @@ export function limitReached(usage: UsageSummary, nowMs: number): {headline: str
 	return null;
 }
 
+/** The rate-limit window a composer usage band speaks for, in upstream's window names. */
+export type UsageBandWindow = "5h" | "7d";
+
+/** Upstream's `Kt` dismissal record: hidden until a higher threshold or a later reset. */
+export interface UsageBandDismissal {
+	/** The dismissed band's reset, epoch seconds. */
+	validUntil: number;
+	threshold: number;
+}
+
+export type UsageBandDismissals = Partial<Record<UsageBandWindow, UsageBandDismissal>>;
+
+/** Upstream's `V9`: the on-pace band dismisses below every real threshold, so a crossed one re-shows. */
+const PACE_THRESHOLD = -1;
+
 /**
- * The composer's pace banner shows while the weekly window is ahead of pace, unless it was
- * dismissed for a reset (epoch seconds) that has not happened yet.
+ * The server's `approaching_limit` thresholds. The statusline only carries the used percent, so
+ * these are assumed: 70% matches upstream's on-pace ceiling (`re`), 90% is the next step.
  */
-export function shouldShowPaceBanner(usage: UsageSummary, nowMs: number, dismissedUntil: number | null): boolean {
-	if (dismissedUntil !== null && nowMs < dismissedUntil * 1000) return false;
-	return weeklyAheadOfPace(usage, nowMs);
+function approachingThreshold(usedPct: number): number {
+	return usedPct >= 90 ? 90 : ON_PACE_CEILING_PCT;
+}
+
+export interface ApproachingLimit {
+	window: UsageBandWindow;
+	headline: string;
+	resetsAt: number;
+	threshold: number;
+}
+
+/**
+ * Upstream's "approaching" band: a window at 70% or more but not yet spent, before its reset. The
+ * weekly window binds first; the session window speaks only when the weekly one is not approaching.
+ */
+export function approachingLimit(usage: UsageSummary, nowMs: number): ApproachingLimit | null {
+	const approaching = (window: UsageWindow | null): window is UsageWindow =>
+		window !== null &&
+		window.usedPct >= ON_PACE_CEILING_PCT &&
+		window.usedPct < 100 &&
+		window.resetsAt * 1000 > nowMs;
+	if (approaching(usage.sevenDay)) {
+		return {
+			window: "7d",
+			headline: "Approaching weekly usage limit",
+			resetsAt: usage.sevenDay.resetsAt,
+			threshold: approachingThreshold(usage.sevenDay.usedPct),
+		};
+	}
+	if (approaching(usage.fiveHour)) {
+		return {
+			window: "5h",
+			headline: "Approaching session usage limit",
+			resetsAt: usage.fiveHour.resetsAt,
+			threshold: approachingThreshold(usage.fiveHour.usedPct),
+		};
+	}
+	return null;
+}
+
+export type UsageBand =
+	| ({kind: "approaching"} & ApproachingLimit)
+	| ({kind: "pace"; usedPct: number} & ApproachingLimit);
+
+/** Upstream's `uU`: a dismissal holds while the threshold has not risen and the window has not reset. */
+function isDismissed(dismissals: UsageBandDismissals, band: ApproachingLimit): boolean {
+	const stored = dismissals[band.window];
+	return stored !== undefined && band.threshold <= stored.threshold && band.resetsAt <= stored.validUntil;
+}
+
+/**
+ * The composer's dismissible usage band: approaching a window's limit, else on pace to hit the
+ * weekly limit early, unless the user dismissed it for this threshold and reset.
+ */
+export function usageBand(usage: UsageSummary, nowMs: number, dismissals: UsageBandDismissals): UsageBand | null {
+	const approaching = approachingLimit(usage, nowMs);
+	let band: UsageBand | null = null;
+	if (approaching !== null) {
+		band = {kind: "approaching", ...approaching};
+	} else if (usage.sevenDay !== null && weeklyAheadOfPace(usage, nowMs)) {
+		band = {
+			kind: "pace",
+			window: "7d",
+			headline: "On pace to hit your weekly limit early",
+			usedPct: usage.sevenDay.usedPct,
+			resetsAt: usage.sevenDay.resetsAt,
+			threshold: PACE_THRESHOLD,
+		};
+	}
+	return band === null || isDismissed(dismissals, band) ? null : band;
 }
 
 /** Upstream's pace band reset: "Resets at 5:40 PM" on the reset's own day, else "Resets Tue, Oct 6, 4:00 AM". */

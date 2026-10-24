@@ -5,14 +5,15 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {UsageLimitBand, UsagePaceBand} from "../src/components/usage-pace-banner";
 import {
+	approachingLimit,
 	formatPaceBannerReset,
 	limitReached,
 	paceState,
-	shouldShowPaceBanner,
+	usageBand,
 	weeklyAheadOfPace,
 	type UsageSummary,
 } from "../src/lib/usage";
-import {readPaceBannerDismissedUntil, writePaceBannerDismissedUntil} from "../src/lib/usage-pace-dismissal";
+import {readUsageBandDismissals, writeUsageBandDismissal} from "../src/lib/usage-pace-dismissal";
 
 afterEach(cleanup);
 
@@ -85,23 +86,108 @@ describe("paceState", () => {
 	});
 });
 
-describe("shouldShowPaceBanner", () => {
-	const ahead = summary([29, 6 * DAY]);
+describe("approachingLimit", () => {
+	it.each([
+		{name: "under 70% everywhere", usage: summary([69, 4 * DAY], [69, HOUR]), expected: null},
+		{
+			name: "weekly at 72%",
+			usage: summary([72, 4 * DAY]),
+			expected: {
+				window: "7d",
+				headline: "Approaching weekly usage limit",
+				resetsAt: NOW_SECONDS + 4 * DAY,
+				threshold: 70,
+			},
+		},
+		{
+			name: "weekly at 91% uses the 90 threshold",
+			usage: summary([91, 4 * DAY]),
+			expected: {
+				window: "7d",
+				headline: "Approaching weekly usage limit",
+				resetsAt: NOW_SECONDS + 4 * DAY,
+				threshold: 90,
+			},
+		},
+		{
+			name: "session at 80% while the weekly window is not approaching",
+			usage: summary([40, 4 * DAY], [80, HOUR]),
+			expected: {
+				window: "5h",
+				headline: "Approaching session usage limit",
+				resetsAt: NOW_SECONDS + HOUR,
+				threshold: 70,
+			},
+		},
+		{
+			name: "weekly wins over the session",
+			usage: summary([75, 4 * DAY], [95, HOUR]),
+			expected: {
+				window: "7d",
+				headline: "Approaching weekly usage limit",
+				resetsAt: NOW_SECONDS + 4 * DAY,
+				threshold: 70,
+			},
+		},
+		{name: "a spent window is the reached band's, not this one", usage: summary([100, 4 * DAY]), expected: null},
+		{name: "a window whose reset has passed", usage: summary([80, -HOUR]), expected: null},
+	])("$name", ({usage, expected}) => {
+		expect(approachingLimit(usage, NOW_MS)).toStrictEqual(expected);
+	});
+});
 
-	it("shows when ahead of pace and never dismissed", () => {
-		expect(shouldShowPaceBanner(ahead, NOW_MS, null)).toBe(true);
+describe("usageBand", () => {
+	const weeklyReset = NOW_SECONDS + 4 * DAY;
+
+	it("shows the on-pace band when ahead of pace and never dismissed", () => {
+		expect(usageBand(summary([29, 6 * DAY]), NOW_MS, {})).toStrictEqual({
+			kind: "pace",
+			window: "7d",
+			headline: "On pace to hit your weekly limit early",
+			usedPct: 29,
+			resetsAt: NOW_SECONDS + 6 * DAY,
+			threshold: -1,
+		});
 	});
 
-	it("hides when behind pace", () => {
-		expect(shouldShowPaceBanner(summary([10, 3.5 * DAY]), NOW_MS, null)).toBe(false);
+	it("shows nothing when behind pace", () => {
+		expect(usageBand(summary([10, 3.5 * DAY]), NOW_MS, {})).toBeNull();
 	});
 
-	it("hides until the dismissed reset passes", () => {
-		expect(shouldShowPaceBanner(ahead, NOW_MS, NOW_SECONDS + 6 * DAY)).toBe(false);
+	it("shows the approaching band at 72% weekly", () => {
+		expect(usageBand(summary([72, 4 * DAY]), NOW_MS, {})).toStrictEqual({
+			kind: "approaching",
+			window: "7d",
+			headline: "Approaching weekly usage limit",
+			resetsAt: weeklyReset,
+			threshold: 70,
+		});
 	});
 
-	it("shows again once the dismissed reset is in the past", () => {
-		expect(shouldShowPaceBanner(ahead, NOW_MS, NOW_SECONDS - HOUR)).toBe(true);
+	it("hides a dismissed band until a higher threshold is crossed", () => {
+		const dismissed = {"7d": {validUntil: weeklyReset, threshold: 70}};
+		expect({
+			at72: usageBand(summary([72, 4 * DAY]), NOW_MS, dismissed),
+			at91: usageBand(summary([91, 4 * DAY]), NOW_MS, dismissed)?.threshold,
+		}).toStrictEqual({at72: null, at91: 90});
+	});
+
+	it("shows a dismissed band again once the window resets", () => {
+		const dismissed = {"7d": {validUntil: weeklyReset, threshold: 70}};
+		expect(usageBand(summary([72, 11 * DAY]), NOW_MS, dismissed)?.kind).toBe("approaching");
+	});
+
+	it("shows the approaching band after the on-pace band was dismissed", () => {
+		const dismissed = {"7d": {validUntil: weeklyReset, threshold: -1}};
+		expect({
+			pace: usageBand(summary([40, 4 * DAY]), NOW_MS, dismissed),
+			approaching: usageBand(summary([72, 4 * DAY]), NOW_MS, dismissed)?.kind,
+		}).toStrictEqual({pace: null, approaching: "approaching"});
+	});
+
+	it("keeps a session dismissal from hiding the weekly band", () => {
+		const dismissed = {"5h": {validUntil: weeklyReset, threshold: 90}};
+		expect(usageBand(summary([72, 4 * DAY]), NOW_MS, dismissed)?.kind).toBe("approaching");
 	});
 });
 
@@ -119,20 +205,24 @@ describe("formatPaceBannerReset", () => {
 	});
 });
 
-describe("pace banner dismissal storage", () => {
+describe("usage band dismissal storage", () => {
 	beforeEach(() => {
 		localStorage.clear();
 	});
 
-	it("round-trips the dismissed-until reset time", () => {
-		expect(readPaceBannerDismissedUntil()).toBeNull();
-		writePaceBannerDismissedUntil(NOW_SECONDS + DAY);
-		expect(readPaceBannerDismissedUntil()).toBe(NOW_SECONDS + DAY);
+	it("round-trips a per-window dismissal", () => {
+		expect(readUsageBandDismissals()).toStrictEqual({});
+		writeUsageBandDismissal("7d", {validUntil: NOW_SECONDS + DAY, threshold: 70});
+		writeUsageBandDismissal("5h", {validUntil: NOW_SECONDS + HOUR, threshold: 90});
+		expect(readUsageBandDismissals()).toStrictEqual({
+			"7d": {validUntil: NOW_SECONDS + DAY, threshold: 70},
+			"5h": {validUntil: NOW_SECONDS + HOUR, threshold: 90},
+		});
 	});
 
 	it("treats corrupt storage as never dismissed", () => {
-		localStorage.setItem("ccp-usage-pace-dismissed-until", "not a number");
-		expect(readPaceBannerDismissedUntil()).toBeNull();
+		localStorage.setItem("ccp-usage-band-dismissed", "not json");
+		expect(readUsageBandDismissals()).toStrictEqual({});
 	});
 });
 
@@ -155,6 +245,21 @@ describe("UsagePaceBand", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: "Dismiss"}));
 		expect(onDismiss).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("UsagePaceBand approaching", () => {
+	it("renders the approaching headline and reset with no percent", () => {
+		render(
+			<UsagePaceBand
+				headline="Approaching weekly usage limit"
+				resetText="Resets Tue, Oct 27, 4:00 AM"
+				onDismiss={() => {}}
+			/>,
+		);
+		expect(screen.getByRole("status").textContent).toBe(
+			"Approaching weekly usage limitResets Tue, Oct 27, 4:00 AM",
+		);
 	});
 });
 

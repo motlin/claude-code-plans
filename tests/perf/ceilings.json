@@ -54,10 +54,10 @@
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1265272,
+		"ceiling": 1278605,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Cold JS drifted through the 1% band from 408972 / 1251066 as the composer's did-you-mean matcher landed; the complete CLI command-name set (about 160 built-in names, aliases and bundled skills the composer needs to tell a typo from a real command) tipped home to 414105 / 1265272. Ceilings set to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold JS drifted through the 1% band from 1265272 (the composer's did-you-mean command-name set) as the approaching usage band landed: the per-window threshold-and-reset dismissal store and the weekly/session approaching headlines tipped home raw to 1278605 (gzip 418904 stays inside its band). Ceiling set to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-23"
 	},
 	"bundle.session.gzip": {

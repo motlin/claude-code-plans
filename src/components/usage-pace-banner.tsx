@@ -1,20 +1,23 @@
 import {useQuery} from "@tanstack/react-query";
 import {Gauge, X} from "lucide-react";
 import {usageQueryOptions} from "../lib/api/usage";
-import {formatPaceBannerReset, limitReached, meterPercent, shouldShowPaceBanner} from "../lib/usage";
-import {usePaceBannerDismissedUntil, writePaceBannerDismissedUntil} from "../lib/usage-pace-dismissal";
+import {formatPaceBannerReset, limitReached, meterPercent, usageBand} from "../lib/usage";
+import {useUsageBandDismissals, writeUsageBandDismissal} from "../lib/usage-pace-dismissal";
 
 /**
- * claude.ai/code's weekly pace band between the dock card and the composer: a gauge, "On pace to
- * hit your weekly limit early", the used percent and reset time (wrapping below it on a narrow
- * dock, as upstream does), and a Dismiss ×.
+ * claude.ai/code's dismissible usage band between the dock card and the composer: a gauge, the
+ * headline ("On pace to hit your weekly limit early", "Approaching weekly usage limit", …), the
+ * used percent (on-pace only) and reset time, wrapping below it on a narrow dock as upstream
+ * does, and a Dismiss ×.
  */
 export function UsagePaceBand({
+	headline = "On pace to hit your weekly limit early",
 	usedPct,
 	resetText,
 	onDismiss,
 }: {
-	usedPct: number;
+	headline?: string;
+	usedPct?: number;
 	resetText: string;
 	onDismiss: () => void;
 }) {
@@ -25,9 +28,9 @@ export function UsagePaceBand({
 		>
 			<Gauge className="size-4 shrink-0 text-secondary" aria-hidden="true" />
 			<span className="flex min-w-0 flex-wrap gap-x-1">
-				<span className="text-primary">On pace to hit your weekly limit early</span>
+				<span className="text-primary">{headline}</span>
 				<span className="text-secondary dark:text-ink-muted">
-					{meterPercent(usedPct)}% used · {resetText}
+					{usedPct === undefined ? resetText : `${meterPercent(usedPct)}% used · ${resetText}`}
 				</span>
 			</span>
 			<button
@@ -62,12 +65,13 @@ export function UsageLimitBand({headline, resetText}: {headline: string; resetTe
 
 /**
  * The band: the limit-reached band while the statusline reports a window spent before its reset,
- * else the pace band while the weekly window is ahead of pace and not dismissed until its reset.
+ * else the approaching or on-pace band unless dismissed for its window's threshold and reset.
  */
 export function UsagePaceBanner() {
 	const {data: usage, dataUpdatedAt} = useQuery(usageQueryOptions);
-	const dismissedUntil = usePaceBannerDismissedUntil();
-	const reached = usage === undefined ? null : limitReached(usage, dataUpdatedAt);
+	const dismissals = useUsageBandDismissals();
+	if (usage === undefined) return null;
+	const reached = limitReached(usage, dataUpdatedAt);
 	if (reached !== null) {
 		return (
 			<UsageLimitBand
@@ -76,15 +80,16 @@ export function UsagePaceBanner() {
 			/>
 		);
 	}
-	if (usage?.sevenDay == null) return null;
-	if (!shouldShowPaceBanner(usage, dataUpdatedAt, dismissedUntil)) return null;
-	const {usedPct, resetsAt} = usage.sevenDay;
+	const band = usageBand(usage, dataUpdatedAt, dismissals);
+	if (band === null) return null;
+	const {window, resetsAt, threshold} = band;
 	return (
 		<UsagePaceBand
-			usedPct={usedPct}
+			headline={band.headline}
+			{...(band.kind === "pace" ? {usedPct: band.usedPct} : {})}
 			resetText={formatPaceBannerReset(resetsAt, Date.now())}
 			onDismiss={() => {
-				writePaceBannerDismissedUntil(resetsAt);
+				writeUsageBandDismissal(window, {validUntil: resetsAt, threshold});
 			}}
 		/>
 	);
