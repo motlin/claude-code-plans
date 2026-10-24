@@ -129,7 +129,12 @@ describe("SessionChat turn headings", () => {
 			expectedHeading: "Claude responded: Fabricated assistant response",
 			firstAction: "Copy",
 		},
-		{record: TOOL_CALL, expectedHeading: "Claude responded", firstAction: "Copy"},
+		// A turn with only a tool call has no text, so its first item is the disabled Copy's reason wrapper.
+		{
+			record: TOOL_CALL,
+			expectedHeading: "Claude responded",
+			firstAction: "Copy: This message has no text to copy.",
+		},
 		{record: COMMAND_INVOCATION, expectedHeading: "You said: /fabricated --dry-run", firstAction: "Read by Claude"},
 		{record: COMPACT_SUMMARY, expectedHeading: "You said: Compacted conversation", firstAction: "Copy"},
 		{
@@ -148,7 +153,10 @@ describe("SessionChat turn headings", () => {
 			expect({
 				heading: within(container).getByRole("heading", {level: 2}).textContent,
 				name: reveal.getAttribute("aria-label"),
-				focused: document.activeElement?.getAttribute("aria-label"),
+				focused: (document.activeElement?.closest("[data-cds-disabled-reason-wrapper]")
+					? document.activeElement.querySelector("button")
+					: document.activeElement
+				)?.getAttribute("aria-label"),
 			}).toStrictEqual({
 				heading: expectedHeading,
 				name: `Show message actions for ${expectedHeading}`,

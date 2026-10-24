@@ -1,5 +1,5 @@
 /**
- * Write text to the clipboard with a legacy fallback for non-secure contexts.
+ * Write text (and, when given, its HTML rendering) to the clipboard with a legacy fallback for non-secure contexts.
  *
  * The modern `navigator.clipboard.writeText()` API requires a secure context
  * (HTTPS or localhost). When the app is served over plain HTTP on a LAN address,
@@ -8,7 +8,21 @@
  *
  * Returns true if the copy succeeded, false otherwise.
  */
-export async function writeClipboardText(text: string): Promise<boolean> {
+export async function writeClipboardText(text: string, html?: string): Promise<boolean> {
+	// With html, write both flavours as one item so rich editors keep the formatting, as upstream's Copy does.
+	if (html !== undefined) {
+		try {
+			const item = new ClipboardItem({
+				"text/plain": new Blob([text], {type: "text/plain"}),
+				"text/html": new Blob([html], {type: "text/html"}),
+			});
+			await navigator.clipboard.write([item]);
+			return true;
+		} catch {
+			// Fall through to plain text
+		}
+	}
+
 	// Try the modern Clipboard API first; outside a secure context navigator.clipboard is
 	// undefined despite its type, and the TypeError lands in the same fallback.
 	try {

@@ -396,6 +396,28 @@ function AssistantSpanInteractions({children, held, setHeld}: AssistantFooterFoc
 	);
 }
 
+/**
+ * The rendered prose of a display span's members, for Copy's text/html flavour: the transcript list's rows that
+ * belong to the span and start at or before its (possibly held) endpoint, read at click time. Undefined when no
+ * prose is mounted, so Copy writes text only.
+ */
+function spanProseHtml(footer: HTMLElement | null, span: AssistantDisplaySpan): string | undefined {
+	const list = footer?.closest("[data-transcript-entry-index]")?.parentElement;
+	if (list === null || list === undefined) return undefined;
+	const rows = list.querySelectorAll<HTMLElement>(`[data-assistant-span="${CSS.escape(span.key)}"]`);
+	const prose = Array.from(rows)
+		.filter((row) => Number(row.dataset["perfLine"]) <= span.anchorLineIndex)
+		.flatMap((row) => Array.from(row.querySelectorAll("[data-transcript-prose]")));
+	if (prose.length === 0) return undefined;
+	return prose
+		.map((element) => {
+			// The markdown article wrapper carries only a CSS-module class, which means nothing pasted elsewhere.
+			const only = element.childElementCount === 1 ? element.firstElementChild : null;
+			return (only?.tagName === "ARTICLE" ? only : element).innerHTML.trim();
+		})
+		.join("\n");
+}
+
 /** Every member has a slot, so a focused footer can remain at its former endpoint. */
 function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
 	const interaction = useProvidedContext(AssistantSpanInteractionContext, "AssistantSpanInteractionContext");
@@ -407,12 +429,14 @@ function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
 		},
 		[setHeld, entry.key, span.key],
 	);
+	const footerRef = useRef<HTMLDivElement>(null);
 	const held = interaction.held?.span.key === span.key ? interaction.held : null;
 	const isEndpoint = span.anchorLineIndex >= entry.startRecordIndex && span.anchorLineIndex <= entry.endRecordIndex;
 	if (held === null ? !isEndpoint : held.entryKey !== entry.key) return null;
 	const displayed = held?.span ?? span;
 	return (
 		<div
+			ref={footerRef}
 			data-assistant-span-footer={span.key}
 			onFocusCapture={() => {
 				if (interaction.held?.entryKey === entry.key && interaction.held.span.key === span.key) return;
@@ -436,6 +460,7 @@ function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan}) {
 				timestamp={displayed.endpoint.timestamp}
 				details={assistantTurnDetails(displayed.endpoint, {verbose: false})}
 				hovered={interaction.hoveredKey === span.key || interaction.focusedKey === span.key}
+				getHtml={() => spanProseHtml(footerRef.current, displayed)}
 			/>
 		</div>
 	);

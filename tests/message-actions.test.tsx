@@ -176,6 +176,65 @@ describe("AssistantMessageActions", () => {
 		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([["Hello **world**"]]);
 	});
 
+	it("copies the trimmed text", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text={"  hi \n"} timestamp={TIMESTAMP} details={[]} />,
+		);
+		fireEvent.click(button(container, "Copy"));
+
+		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([["hi"]]);
+	});
+
+	it("copies the turn's rendered HTML alongside the text when the footer can read it", () => {
+		const {container} = render(
+			<AssistantMessageActions
+				message={MESSAGE}
+				text="Hello **world**"
+				getHtml={() => "<p>Hello <strong>world</strong></p>"}
+				timestamp={TIMESTAMP}
+				details={[]}
+			/>,
+		);
+		fireEvent.click(button(container, "Copy"));
+
+		expect(vi.mocked(writeClipboardText).mock.calls).toStrictEqual([
+			["Hello **world**", "<p>Hello <strong>world</strong></p>"],
+		]);
+	});
+
+	it("shows the copied check for upstream's 2000ms", async () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const checked = () => button(container, "Copy").querySelector(".lucide-check") !== null;
+		await actAndSettle(() => {
+			fireEvent.click(button(container, "Copy"));
+		});
+		const atStart = checked();
+		act(() => {
+			vi.advanceTimersByTime(1999);
+		});
+		const at1999 = checked();
+		act(() => {
+			vi.advanceTimersByTime(2);
+		});
+
+		expect({atStart, at1999, at2001: checked()}).toStrictEqual({atStart: true, at1999: true, at2001: false});
+	});
+
+	it("disables Copy with upstream's reason when the turn has no text", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text={" \n"} timestamp={TIMESTAMP} details={[]} />,
+		);
+		const copy = button(container, "Copy: This message has no text to copy.");
+
+		expect({
+			disabled: copy.disabled,
+			reason: copy.closest("[data-cds-disabled-reason-wrapper]")?.querySelector("[data-cds-disabled-reason]")
+				?.textContent,
+		}).toStrictEqual({disabled: true, reason: "This message has no text to copy."});
+	});
+
 	it("reads the message aloud as plain text, loading until speech starts, then pausing and resuming on later presses", () => {
 		const speech = stubSpeech();
 		const {container} = render(

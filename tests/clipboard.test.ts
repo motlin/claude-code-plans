@@ -1,6 +1,10 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from "vite-plus/test";
 import {writeClipboardText} from "../src/lib/clipboard";
 
+class StubClipboardItem {
+	constructor(readonly items: Record<string, Blob>) {}
+}
+
 describe("writeClipboardText", () => {
 	let originalClipboard: Clipboard;
 	let originalDocument: typeof globalThis.document;
@@ -31,6 +35,43 @@ describe("writeClipboardText", () => {
 		const result = await writeClipboardText("hello");
 		expect(result).toBe(true);
 		expect(writeText).toHaveBeenCalledWith("hello");
+	});
+
+	it("writes text/plain and text/html as one ClipboardItem when given html", async () => {
+		vi.stubGlobal("ClipboardItem", StubClipboardItem);
+		const write = vi.fn<(items: StubClipboardItem[]) => Promise<void>>().mockResolvedValue(undefined);
+		const writeText = vi.fn<Clipboard["writeText"]>().mockResolvedValue(undefined);
+		Object.defineProperty(navigator, "clipboard", {value: {write, writeText}, writable: true, configurable: true});
+
+		const result = await writeClipboardText("hi", "<p>hi</p>");
+		const item = write.mock.calls[0]?.[0][0];
+
+		expect({
+			result,
+			writeText: writeText.mock.calls,
+			plain: await item?.items["text/plain"]?.text(),
+			html: await item?.items["text/html"]?.text(),
+			types: Object.keys(item?.items ?? {}),
+		}).toStrictEqual({
+			result: true,
+			writeText: [],
+			plain: "hi",
+			html: "<p>hi</p>",
+			types: ["text/plain", "text/html"],
+		});
+		vi.unstubAllGlobals();
+	});
+
+	it("falls back to plain text when the rich write rejects", async () => {
+		vi.stubGlobal("ClipboardItem", StubClipboardItem);
+		const write = vi.fn<() => Promise<void>>().mockRejectedValue(new Error("Not allowed"));
+		const writeText = vi.fn<Clipboard["writeText"]>().mockResolvedValue(undefined);
+		Object.defineProperty(navigator, "clipboard", {value: {write, writeText}, writable: true, configurable: true});
+
+		const result = await writeClipboardText("hi", "<p>hi</p>");
+
+		expect({result, writeText: writeText.mock.calls}).toStrictEqual({result: true, writeText: [["hi"]]});
+		vi.unstubAllGlobals();
 	});
 
 	it("falls back to execCommand when clipboard API rejects", async () => {

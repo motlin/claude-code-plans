@@ -436,7 +436,12 @@ describe("assistant display-span actions", () => {
 			times: Array.from(footer.querySelectorAll("time"), (time) => time.dateTime),
 		}).toStrictEqual({
 			anchors: ["4"],
-			copy: [["Example introduction.\n\nExample conclusion."]],
+			copy: [
+				[
+					"Example introduction.\n\nExample conclusion.",
+					"<p>Example introduction.</p>\n<p>Example conclusion.</p>",
+				],
+			],
 			fork: [[{sessionId: "example-main", uuid: "example-last"}]],
 			pin: [[{sessionId: "example-main", uuid: "example-last"}]],
 			times: ["2000-01-01T00:00:00.000Z"],
@@ -474,7 +479,10 @@ describe("assistant display-span actions", () => {
 		}).toStrictEqual({
 			held: {sameNode: true, focused: true, anchors: ["0"], time: "2000-01-01T00:00:00.000Z"},
 			after: {anchors: ["1"], time: "2000-01-02T00:00:00.000Z"},
-			copy: [["Example first."], ["Example first.\n\nExample last."]],
+			copy: [
+				["Example first.", "<p>Example first.</p>"],
+				["Example first.\n\nExample last.", "<p>Example first.</p>\n<p>Example last.</p>"],
+			],
 			fork: [
 				[{sessionId: "example-main", uuid: "example-first"}],
 				[{sessionId: "example-main", uuid: "example-last"}],
@@ -573,18 +581,26 @@ describe("assistant display-span actions", () => {
 				text("example-c", "Example C."),
 			]),
 		);
+		const copyLabels: string[] = [];
 		for (const footer of footers(view.container)) {
-			fireEvent.click(button(footer, "Copy"));
+			const copy = footer.querySelector<HTMLButtonElement>('button[aria-label^="Copy"]')!;
+			copyLabels.push(copy.getAttribute("aria-label")!);
+			fireEvent.click(copy);
 			fireEvent.click(button(footer, "Pin as chapter"));
 			fireEvent.click(button(footer, "Fork from here"));
 		}
 		await act(async () => {});
 		expect({
+			copyLabels,
 			copy: vi.mocked(writeClipboardText).mock.calls,
 			pin: pinChapter.mock.calls,
 			fork: forkFrom.mock.calls,
 		}).toStrictEqual({
-			copy: [["Example A."], [""], ["Example C."]],
+			copyLabels: ["Copy", "Copy: This message has no text to copy.", "Copy"],
+			copy: [
+				["Example A.", "<p>Example A.</p>"],
+				["Example C.", "<p>Example C.</p>"],
+			],
 			pin: [
 				[{sessionId: "example-main", uuid: "example-a"}],
 				[{sessionId: "example-agent", uuid: "example-b"}],

@@ -44,6 +44,8 @@ export interface MessageActionsProps {
 	hovered?: boolean | undefined;
 	/** The CLI took this prompt into a turn, so the user row shows upstream's "Read by Claude" receipt. */
 	readByClaude?: boolean;
+	/** Reads the turn's rendered prose as HTML for Copy's text/html flavour; absent or undefined copies text only. */
+	getHtml?: (() => string | undefined) | undefined;
 }
 
 const BAR_CLASS = [
@@ -75,7 +77,9 @@ const BUTTON_CLASS =
 
 const ICON_CLASS = "size-4";
 
-const COPIED_MS = 1500;
+const COPIED_MS = 2000;
+
+const NOTHING_TO_COPY = "This message has no text to copy.";
 
 /**
  * Inside a roving bar: items render the tab index the roving hook would elect at rest (the first item 0, the rest
@@ -134,13 +138,27 @@ function ActionButton({
 	);
 	if (disabledReason === undefined) return control;
 	return (
-		<DisabledReason reason={disabledReason} tabIndex={-1}>
+		// A roving bar's first item may be the disabled-reason wrapper (Copy on a turn with no text), which the
+		// roving hook then elects as the tab stop; render that index up front so the hook has nothing to rewrite.
+		<DisabledReason reason={disabledReason} tabIndex={tabIndex === 0 ? 0 : -1}>
 			{control}
 		</DisabledReason>
 	);
 }
 
-function CopyAction({text, first = false}: {text: string; first?: boolean}) {
+/**
+ * Upstream's Copy: writes the trimmed text (plus the turn's rendered HTML when `getHtml` reads it), swaps to a
+ * check for 2000ms, and is disabled with a reason when the turn has no text.
+ */
+function CopyAction({
+	text,
+	getHtml,
+	first = false,
+}: {
+	text: string;
+	getHtml?: (() => string | undefined) | undefined;
+	first?: boolean;
+}) {
 	const [copied, setCopied] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	useEffect(
@@ -149,14 +167,19 @@ function CopyAction({text, first = false}: {text: string; first?: boolean}) {
 		},
 		[],
 	);
+	const trimmed = text.trim();
+	const empty = trimmed === "";
 
 	return (
 		<>
 			<ActionButton
-				label="Copy"
+				label={empty ? `Copy: ${NOTHING_TO_COPY}` : "Copy"}
 				first={first}
+				{...(empty ? {disabledReason: NOTHING_TO_COPY} : {})}
 				onClick={() => {
-					void writeClipboardText(text).then((ok) => {
+					const html = getHtml?.();
+					const write = html === undefined ? writeClipboardText(trimmed) : writeClipboardText(trimmed, html);
+					void write.then((ok) => {
 						if (!ok) return;
 						setCopied(true);
 						clearTimeout(timer.current);
@@ -356,7 +379,7 @@ function ActionBar({
 	);
 }
 
-export function AssistantMessageActions({message, text, timestamp, details, hovered}: MessageActionsProps) {
+export function AssistantMessageActions({message, text, timestamp, details, hovered, getHtml}: MessageActionsProps) {
 	return (
 		<ActionBar
 			className={`${BAR_CLASS} pt-[4px]`}
@@ -364,7 +387,7 @@ export function AssistantMessageActions({message, text, timestamp, details, hove
 			hovered={hovered}
 			testId="message-actions"
 		>
-			<CopyAction text={text} first />
+			<CopyAction text={text} getHtml={getHtml} first />
 			<ForkAction message={message} />
 			<PinAction message={message} />
 			<ReadAloudAction text={text} />
