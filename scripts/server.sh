@@ -39,11 +39,17 @@ port_pids() {
     lsof -nP -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true
 }
 
-# PIDs of server processes we own: command line matches SERVER_MATCH and cwd
-# is PROJECT_DIR (so other projects' servers are left alone), plus port holders.
+# PIDs of server processes we own: port holders, plus processes whose command
+# line matches SERVER_MATCH and whose cwd is PROJECT_DIR (so other projects'
+# servers are left alone). A matched process that already holds the port is
+# taken without asking lsof for its cwd: lsof can stall for minutes under load.
 server_pids() {
-    local pid cwd
+    local pid cwd port_holders
+    port_holders=$(port_pids)
     for pid in $(pgrep -f "$SERVER_MATCH" || true); do
+        if printf '%s\n' "$port_holders" | grep -qx "$pid"; then
+            continue
+        fi
         # -b skips lsof's stat of every mount point, which blocks for up to 15s
         # whenever a network mount (an SMB or Time Machine share) is slow.
         cwd=$(lsof -b -w -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1 || true)
@@ -51,7 +57,22 @@ server_pids() {
             echo "$pid"
         fi
     done
-    port_pids
+    if [ -n "$port_holders" ]; then
+        echo "$port_holders"
+    fi
+}
+
+# Which of the given (already vetted) PIDs are still running a server: still
+# matched by SERVER_MATCH or still holding the port. Polling this rather than
+# server_pids skips the per-pid lsof cwd check. pgrep, unlike kill -0, does
+# not count an exited child its parent has yet to reap.
+remaining_pids() {
+    local running
+    running=$({
+        pgrep -f "$SERVER_MATCH" || true
+        port_pids
+    } | sort -u)
+    printf '%s\n' "$@" | sort -u | comm -12 - <(printf '%s\n' "$running")
 }
 
 dev_server() {
@@ -79,21 +100,18 @@ stop_server() {
     # shellcheck disable=SC2086
     kill $pids 2>/dev/null || true
     local deadline=$((SECONDS + STOP_GRACE_SECONDS))
-    while [ "$SECONDS" -lt "$deadline" ]; do
-        pids=$(server_pids | sort -u)
-        if [ -z "$pids" ]; then
-            return 0
-        fi
+    # shellcheck disable=SC2086
+    while [ -n "$(remaining_pids $pids)" ] && [ "$SECONDS" -lt "$deadline" ]; do
         sleep 0.2
     done
-    pids=$(server_pids | sort -u)
-    if [ -z "$pids" ]; then
-        return 0
-    fi
-    echo "Force killing pid(s): $pids"
     # shellcheck disable=SC2086
-    kill -9 $pids 2>/dev/null || true
-    sleep 0.5
+    pids=$(remaining_pids $pids)
+    if [ -n "$pids" ]; then
+        echo "Force killing pid(s): $pids"
+        # shellcheck disable=SC2086
+        kill -9 $pids 2>/dev/null || true
+        sleep 0.5
+    fi
     pids=$(server_pids | sort -u)
     if [ -n "$pids" ]; then
         echo "Failed to stop server pid(s): $pids" >&2

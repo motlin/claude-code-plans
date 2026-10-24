@@ -1,12 +1,11 @@
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {execFileSync} from "node:child_process";
 import fs, {
 	appendFileSync,
+	fstatSync,
+	lstatSync,
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
-	readlinkSync,
-	realpathSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -21,33 +20,40 @@ import {processJsonlAppend} from "../src/lib/watcher";
 const SESSION_COUNT = 8;
 const APPENDS_PER_SESSION = 4;
 
-function openPaths(): string[] {
-	if (process.platform === "linux") {
-		return readdirSync("/proc/self/fd").flatMap((fd) => {
-			try {
-				return [readlinkSync(`/proc/self/fd/${fd}`)];
-			} catch {
-				return [];
-			}
-		});
-	}
-	// -b skips lsof's stat of every mount point, which blocks for its 15s kernel-call timeout whenever a network
-	// mount (an SMB or Time Machine share) is slow to answer. Descriptor paths still come from the kernel.
-	const lsof = execFileSync("lsof", ["-b", "-w", "-n", "-P", "-p", String(process.pid), "-Fn"], {encoding: "utf8"});
-	return lsof
-		.split("\n")
-		.filter((line) => line.startsWith("n"))
-		.map((line) => line.slice(1));
+/** Every file and directory in `root`'s tree, keyed by device and inode, which is how an open descriptor names it. */
+function treeByIdentity(root: string): Map<string, string> {
+	const tree = new Map<string, string>();
+	const visit = (path: string) => {
+		const stats = lstatSync(path);
+		tree.set(`${stats.dev}:${stats.ino}`, path);
+		if (stats.isDirectory()) for (const entry of readdirSync(path)) visit(join(path, entry));
+	};
+	visit(root);
+	return tree;
 }
 
 /**
  * Paths this process holds open inside `root`. Counting only the test's own tree keeps
  * descriptors the test runner or other in-process work opens out of the assertion.
+ *
+ * Descriptors are listed in-process (/dev/fd, or /proc/self/fd on Linux) and matched by fstat rather than read
+ * from lsof: a synchronous lsof blocks the event loop for as long as the kernel keeps it waiting, and under load
+ * that ran past a minute, failing the test on its timeout after the work under test had already finished.
  */
 function openPathsUnder(root: string): string[] {
-	const realRoot = realpathSync(root);
-	return openPaths()
-		.filter((path) => path === realRoot || path.startsWith(`${realRoot}/`))
+	const tree = treeByIdentity(root);
+	const descriptorDir = process.platform === "linux" ? "/proc/self/fd" : "/dev/fd";
+	return readdirSync(descriptorDir)
+		.flatMap((fd) => {
+			try {
+				const stats = fstatSync(Number(fd));
+				const path = tree.get(`${stats.dev}:${stats.ino}`);
+				return path === undefined ? [] : [path];
+			} catch {
+				// The descriptor readdirSync listed the directory with is already closed.
+				return [];
+			}
+		})
 		.toSorted();
 }
 
