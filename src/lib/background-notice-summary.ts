@@ -15,7 +15,8 @@ export interface NoticePart {
 	danger: boolean;
 }
 
-const NOUNS = {
+/** Each kind's singular and plural noun. */
+export const NOTICE_NOUNS = {
 	shell: ["command", "commands"],
 	agent: ["agent", "agents"],
 	workflow: ["workflow", "workflows"],
@@ -33,7 +34,7 @@ const PART_ORDER = ["completed", "failed", "stopped", "running"] as const satisf
 export function backgroundNoticeSummary(entries: readonly NoticeEntry[]): NoticePart[] {
 	const kinds = new Set(entries.map((entry) => entry.kind));
 	const [kind] = kinds.size === 1 ? [...kinds] : ["task" as const];
-	const [singular, plural] = NOUNS[kind ?? "task"];
+	const [singular, plural] = NOTICE_NOUNS[kind ?? "task"];
 	const parts: NoticePart[] = [];
 	for (const key of PART_ORDER) {
 		const count = entries.filter((entry) => entry.status === key).length;

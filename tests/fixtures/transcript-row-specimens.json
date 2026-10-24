@@ -12014,7 +12014,7 @@
 		"line": 1126,
 		"upstream": [
 			"prose",
-			"status: Background command completed · Commit and run git test on HEAD",
+			"status: Background command completed·Commit and run git test on HEAD",
 			"message from subagent",
 			"status: Verified task commit, gate HEAD, get next task"
 		],
@@ -12531,7 +12531,7 @@
 		"line": 933,
 		"upstream": [
 			"prose",
-			"status: Background command completed · Commit change and run git-test on HEAD",
+			"status: Background command completed·Commit change and run git-test on HEAD",
 			"message from subagent",
 			"status: Verified task commit, gate HEAD, get next task"
 		],
@@ -17199,7 +17199,7 @@
 		"upstream": [
 			"prose",
 			"prose",
-			"status: Background task stopped · You are doing a behaviour-preserving refactor of a...",
+			"status: Background task stopped·You are doing a behaviour-preserving refactor of a...",
 			"user: Background agent \"You are doing a behaviour-preserving refactor of a...\" was stopped by the user."
 		],
 		"records": [
@@ -18832,7 +18832,7 @@
 	{
 		"session": "5f402159",
 		"line": 1911,
-		"upstream": ["prose", "status: Committed input-debug tooling · took 23s", "prose"],
+		"upstream": ["prose", "status: Committed input-debug tooling· took 23s", "prose"],
 		"records": [
 			{
 				"parentUuid": "5fc0c999-93d7-4f84-947d-b3793ef65b0e",
@@ -19164,7 +19164,7 @@
 	{
 		"session": "5f402159",
 		"line": 2172,
-		"upstream": ["prose", "status: Committed crank sensitivity change · took 27s", "prose"],
+		"upstream": ["prose", "status: Committed crank sensitivity change· took 27s", "prose"],
 		"records": [
 			{
 				"parentUuid": "f8cdd569-9af4-4a8b-921f-6622a28bc06c",
@@ -22557,7 +22557,7 @@
 	{
 		"session": "79a0ad58",
 		"line": 153,
-		"upstream": ["user: /git:commit", "status: Committed local changes · took 20s", "prose", "prose"],
+		"upstream": ["user: /git:commit", "status: Committed local changes· took 20s", "prose", "prose"],
 		"records": [
 			{
 				"parentUuid": "42ad7201-ba5f-47e8-b056-10125794ece6",

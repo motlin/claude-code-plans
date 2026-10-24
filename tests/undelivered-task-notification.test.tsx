@@ -104,7 +104,7 @@ describe("undelivered background-task notifications", () => {
 			),
 		]);
 
-		expect(taskEventRows(container)).toStrictEqual(["Background task stopped · Wait for test-branch to finish"]);
+		expect(taskEventRows(container)).toStrictEqual(["Background task stopped·Wait for test-branch to finish"]);
 	});
 
 	it("collapses two or more undelivered notifications in one slot into upstream's single summary row", () => {
@@ -174,7 +174,7 @@ describe("undelivered background-task notifications", () => {
 			(first, second) => text.indexOf(first) - text.indexOf(second),
 		);
 		expect({rows: taskEventRows(container), order}).toStrictEqual({
-			rows: ["Background command completed · Run git test on every branch commit"],
+			rows: ["Background command completed·Run git test on every branch commit"],
 			order: ["Waiting on the teammate.", "Background command completed"],
 		});
 	});
@@ -224,5 +224,85 @@ describe("undelivered background-task notifications", () => {
 		]);
 
 		expect(taskEventRows(container)).toStrictEqual([]);
+	});
+
+	it("draws a run with a failed part as upstream's wrapping summary: failed part nowrap in danger ink, label min-w-0 break-words", () => {
+		const container = renderRecords([
+			reply,
+			enqueue(
+				notification("toolu_elsewhere1", "completed", 'Background command "First" completed (exit code 0)'),
+			),
+			enqueue(
+				notification("toolu_elsewhere2", "completed", 'Background command "Second" completed (exit code 0)'),
+			),
+			enqueue(notification("toolu_elsewhere3", "failed", 'Background command "Third" failed with exit code 1')),
+		]);
+
+		const row = container.querySelector("[data-task-event-row]")!;
+		const label = row.querySelector("[data-turn-status-marker] > span > span")!;
+		expect({
+			rows: taskEventRows(container),
+			label: label.className,
+			parts: Array.from(label.children, (part) => ({text: part.textContent, className: part.className})),
+		}).toStrictEqual({
+			rows: ["2 background commands completed, 1 failed"],
+			label: "text-body text-secondary group-hover/tool:text-primary min-w-0 break-words",
+			parts: [
+				{text: "2 background commands completed", className: ""},
+				{text: ", ", className: ""},
+				{text: "1 failed", className: "whitespace-nowrap text-danger-ink"},
+			],
+		});
+	});
+
+	it("draws a single failed command with its label in danger ink", () => {
+		const container = renderRecords([
+			reply,
+			enqueue(notification("toolu_elsewhere1", "failed", 'Background command "Fetch" failed with exit code 1')),
+		]);
+
+		const spans = container.querySelectorAll("[data-turn-status-marker] > span > span");
+		expect({
+			rows: taskEventRows(container),
+			spans: Array.from(spans, (span) => ({text: span.textContent, className: span.className})),
+		}).toStrictEqual({
+			rows: ["Background command failed·Fetch"],
+			spans: [
+				{text: "Background command failed", className: "text-body shrink-0 text-danger-ink"},
+				{text: "·", className: "text-body text-secondary group-hover/tool:text-primary shrink-0"},
+				{text: "Fetch", className: "text-body text-secondary group-hover/tool:text-primary min-w-0 truncate"},
+			],
+		});
+	});
+
+	it("ends a single completed command with its duration, as upstream's took span", () => {
+		const container = renderRecords([
+			reply,
+			enqueue(
+				notification(
+					"toolu_elsewhere1",
+					"completed",
+					'Background command "Build" completed (exit code 0)',
+				).replace(
+					"</task-notification>",
+					"<usage><duration_ms>12000</duration_ms></usage>\n</task-notification>",
+				),
+			),
+		]);
+
+		const took = container.querySelector("[data-turn-status-marker] > span > span:last-child")!;
+		expect({rows: taskEventRows(container), took: took.className}).toStrictEqual({
+			rows: ["Background command completed·Build· took 12s"],
+			took: "text-body text-secondary group-hover/tool:text-primary shrink-0 whitespace-nowrap tabular-nums",
+		});
+	});
+
+	it("draws a single completed agent notification whose launch is elsewhere", () => {
+		const container = renderRecords([
+			reply,
+			enqueue(notification("toolu_elsewhere1", "completed", 'Agent "Review the diff" completed')),
+		]);
+
+		expect(taskEventRows(container)).toStrictEqual(["Background agent completed·Review the diff"]);
 	});
 });

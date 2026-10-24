@@ -324,7 +324,7 @@ describe("agent completion row placement", () => {
 	it("draws 79a0ad58:153's completion above its launch, as upstream does when no hand-back from the agent came first", () => {
 		expect(rows("79a0ad58", 153)).toStrictEqual([
 			"user",
-			"Committed local changes · took 20s",
+			"Committed local changes· took 20s",
 			"Claude responded",
 			"Claude responded: The commit is running ",
 			"Claude responded: I committed the change",
@@ -334,7 +334,7 @@ describe("agent completion row placement", () => {
 	it("keeps 5f402159:2172's completion where its notification arrived, after the agent's hand-back", () => {
 		expect(rows("5f402159", 2172)).toStrictEqual([
 			"Claude responded: The crank change is co",
-			"Committed crank sensitivity change · took 27s",
+			"Committed crank sensitivity change· took 27s",
 			"Claude responded: That notification only",
 		]);
 	});
@@ -486,7 +486,7 @@ describe("background task stopped row", () => {
 			rows.map((row) => ({
 				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
 				secondary: Array.from(
-					row.querySelectorAll("[data-turn-status-marker] > span"),
+					row.querySelectorAll("[data-turn-status-marker] > span > span"),
 					(span) => span.classList.contains("text-secondary") && span.classList.contains("text-body"),
 				),
 				precedesStatus: row.querySelector(":scope > [data-precedes-turn-status]") !== null,
@@ -498,8 +498,8 @@ describe("background task stopped row", () => {
 			{status: null, secondary: [], precedesStatus: false, footer: false, disclosures: 0, bubble: false},
 			{status: null, secondary: [], precedesStatus: true, footer: false, disclosures: 0, bubble: false},
 			{
-				status: "Background task stopped · You are doing a behaviour-preserving refactor of a...",
-				secondary: [true, true],
+				status: "Background task stopped·You are doing a behaviour-preserving refactor of a...",
+				secondary: [true, true, true],
 				precedesStatus: false,
 				footer: true,
 				disclosures: 0,
@@ -519,7 +519,7 @@ describe("agent completion row", () => {
 		expect(
 			rows.map((row) => ({
 				status: row.querySelector("[data-turn-status]")?.textContent ?? null,
-				secondary: Array.from(row.querySelectorAll("[data-turn-status-marker] > span"), (span) =>
+				secondary: Array.from(row.querySelectorAll("[data-turn-status-marker] > span > span"), (span) =>
 					span.classList.contains("text-secondary"),
 				),
 				precedesStatus: row.querySelector(":scope > [data-precedes-turn-status]") !== null,
@@ -530,7 +530,7 @@ describe("agent completion row", () => {
 		).toStrictEqual([
 			{status: null, secondary: [], precedesStatus: true, footer: false, disclosures: 0, bubble: false},
 			{
-				status: "Committed crank sensitivity change · took 27s",
+				status: "Committed crank sensitivity change· took 27s",
 				secondary: [true, true],
 				precedesStatus: false,
 				footer: false,

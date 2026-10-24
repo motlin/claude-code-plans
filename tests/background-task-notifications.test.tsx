@@ -751,7 +751,7 @@ describe("idle-period subagent slow commands", () => {
 			rows: [...container.querySelectorAll("[data-task-event-row]")].map((row) => row.textContent),
 			beforeHandBack: /6 background commands completed.*Message from/s.test(text),
 		}).toStrictEqual({
-			rows: ["6 background commands completed", "Background command completed · Fix formatting and recheck"],
+			rows: ["6 background commands completed", "Background command completed·Fix formatting and recheck"],
 			beforeHandBack: true,
 		});
 	});
@@ -828,7 +828,7 @@ describe("idle-period background command failures", () => {
 		]);
 		const container = renderLines(doAllFailedIdleRecords(), "normal", [lone]);
 		expect([...container.querySelectorAll("[data-task-event-row]")].map((row) => row.textContent)).toStrictEqual([
-			"Background command failed · git fetch -q origin",
+			"Background command failed·git fetch -q origin",
 		]);
 	});
 });

@@ -25,7 +25,7 @@ import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow} from "./agent-message-row";
 import {AgentNameContext, type AgentNameResolver} from "./agent-name-context";
 import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
-import {backgroundNoticeSummary, type NoticeEntry} from "../lib/background-notice-summary";
+import type {NoticeKind} from "../lib/background-notice-summary";
 import {parseTaskNotification, stoppedAgentDescription, type TaskNotification} from "../lib/background-tasks";
 import {SlashCommandText} from "./slash-command-chip";
 import {SlashCommandsContext} from "./slash-commands-context";
@@ -79,6 +79,7 @@ import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-util
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {ELAPSED_MIN_SECONDS, formatElapsed} from "../lib/working-marker";
+import {type TaskEvent, TaskEventRun} from "./task-event-run-row";
 import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
 import {inlinePathImages} from "./inline-path-images";
@@ -1391,18 +1392,10 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
 
 /**
  * Upstream's task-event row: a plain 20px status line in secondary ink with
- * no disclosure, "Background task stopped · <description>" or an agent's
- * "<done description> · took 27s".
+ * no disclosure, "Background task stopped · <description>", an agent's
+ * "<done description> · took 27s", or one "N background commands completed" summary.
  */
-function TaskEventStatusRow({
-	label,
-	detail,
-	footer,
-}: {
-	label: React.ReactNode;
-	detail: string | null;
-	footer: React.ReactNode;
-}) {
+function TaskEventRunRow({events, footer}: {events: readonly TaskEvent[]; footer: React.ReactNode}) {
 	return (
 		<div
 			data-task-event-row=""
@@ -1410,15 +1403,7 @@ function TaskEventStatusRow({
 		>
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" className={TURN_STATUS_CLASS}>
-					<div data-turn-status-marker="" className="flex min-w-0 gap-1 me-[52px] px-1">
-						<span className="text-body shrink-0 text-secondary">{label}</span>
-						{detail !== null && (
-							<>
-								{" "}
-								<span className="text-body min-w-0 truncate text-secondary">· {detail}</span>
-							</>
-						)}
-					</div>
+					<TaskEventRun events={events} />
 				</div>
 			</TurnStatusFrame>
 			{footer}
@@ -1426,35 +1411,28 @@ function TaskEventStatusRow({
 	);
 }
 
-interface UndeliveredRow {
-	label: React.ReactNode;
-	detail: string | null;
-}
-
 /**
- * The task-event row each slot of undelivered `<task-notification>`s draws, keyed by the slot's
- * first index in `lines`. Upstream draws a completed command and a stopped task, one alone as its
- * own row and two or more in a row as one summary row; only a line that renders ends the run. A
- * task launched in this transcript already settles on its own launch row.
+ * The task events each slot of undelivered `<task-notification>`s draws, keyed by the slot's
+ * first index in `lines`. Upstream draws one alone as its own row and two or more in a row as one
+ * summary row; only a line that renders ends the run. A task launched in this transcript already
+ * settles on its own launch row.
  */
 function undeliveredTaskRows(
 	lines: readonly SessionLine[],
 	renders: (index: number) => boolean,
-): Map<number, UndeliveredRow> {
-	const rows = new Map<number, UndeliveredRow>();
+): Map<number, TaskEvent[]> {
+	const rows = new Map<number, TaskEvent[]>();
 	let launches: Set<string> | null = null;
-	let slot: Array<{index: number; label: string; notification: TaskNotification}> = [];
+	let slot: Array<{index: number; notification: TaskNotification}> = [];
 	const flush = () => {
 		const [first] = slot;
 		if (first !== undefined) {
+			const events = slot.map(({notification}) => taskEvent(notification));
+			const [only] = events;
+			// A lone stopped task reads "Background task stopped", as upstream drew a killed command.
 			rows.set(
 				first.index,
-				slot.length === 1
-					? {label: first.label, detail: first.notification.description}
-					: {
-							label: <NoticeSummary entries={slot.map(({notification}) => noticeEntry(notification))} />,
-							detail: null,
-						},
+				events.length === 1 && only?.status === "stopped" ? [{...only, kind: "task"}] : events,
 			);
 		}
 		slot = [];
@@ -1466,48 +1444,33 @@ function undeliveredTaskRows(
 		}
 		const notification = parseTaskNotification(line.content);
 		if (notification === null) continue;
-		const label =
-			notification.status === "stopped"
-				? "Background task stopped"
-				: notification.status === "completed" && notification.command
-					? "Background command completed"
-					: null;
-		if (label === null) continue;
 		launches ??= transcriptToolUseIds(lines);
 		if (notification.toolUseId !== null && launches.has(notification.toolUseId)) continue;
-		slot.push({index, label, notification});
+		slot.push({index, notification});
 	}
 	flush();
 	return rows;
 }
 
-function noticeEntry(notification: TaskNotification): NoticeEntry {
-	return {
-		status: notification.status,
-		kind: notification.command ? "shell" : notification.agent ? "agent" : "task",
-	};
+function noticeKind(notification: TaskNotification): NoticeKind {
+	return notification.command ? "shell" : notification.agent ? "agent" : "task";
 }
 
-/** Upstream's summary row text: one span per part, joined by ", ", with failed in danger ink. */
-function NoticeSummary({entries}: {entries: readonly NoticeEntry[]}) {
-	return backgroundNoticeSummary(entries).map((part, index) => (
-		<React.Fragment key={part.key}>
-			{index > 0 && ", "}
-			<span className={part.danger ? "text-danger-ink" : undefined}>{part.text}</span>
-		</React.Fragment>
-	));
+function taskEvent(notification: TaskNotification): TaskEvent {
+	return {
+		taskId: notification.taskId,
+		status: notification.status,
+		kind: noticeKind(notification),
+		description: notification.description,
+		durationMs: notification.durationMs,
+	};
 }
 
 /** A completed background Agent's "<done description> · took Ns" task-event row. */
 function AgentCompletionRow({completion, footer}: {completion: TaskNotification; footer: React.ReactNode}) {
 	return (
-		<TaskEventStatusRow
-			label={pastTense(completion.description)}
-			detail={
-				completion.durationMs === null
-					? null
-					: `took ${formatElapsed(Math.round(completion.durationMs / 1000))}`
-			}
+		<TaskEventRunRow
+			events={[{...taskEvent(completion), phrase: pastTense(completion.description)}]}
 			footer={footer}
 		/>
 	);
@@ -2075,13 +2038,15 @@ function slowCommandCompletion(command: SlowCommand): TaskNotification {
  * for one, "N background commands completed, 1 failed" for several.
  */
 function IdleCommandsRow({commands}: {commands: readonly SlowCommand[]}) {
-	const [first] = commands;
-	return commands.length === 1 && first !== undefined ? (
-		<TaskEventStatusRow label={`Background command ${first.status}`} detail={first.description} footer={null} />
-	) : (
-		<TaskEventStatusRow
-			label={<NoticeSummary entries={commands.map(({status}) => ({status, kind: "shell"}))} />}
-			detail={null}
+	return (
+		<TaskEventRunRow
+			events={commands.map(({status, description}) => ({
+				taskId: null,
+				status,
+				kind: "shell",
+				description,
+				durationMs: null,
+			}))}
 			footer={null}
 		/>
 	);
@@ -2549,13 +2514,7 @@ function buildSessionListEntries(
 				kind: "assistant_tool",
 				assistantSpan: displaySpans?.get(line.lineIndex),
 				opensWithStatus: "marker",
-				element: (
-					<TaskEventStatusRow
-						label={undelivered.label}
-						detail={undelivered.detail}
-						footer={footerFor(line)}
-					/>
-				),
+				element: <TaskEventRunRow events={undelivered} footer={footerFor(line)} />,
 			});
 			i++;
 			continue;
@@ -2589,9 +2548,16 @@ function buildSessionListEntries(
 				assistantSpan: span,
 				opensWithStatus: "marker",
 				element: (
-					<TaskEventStatusRow
-						label="Background task stopped"
-						detail={stoppedAgent}
+					<TaskEventRunRow
+						events={[
+							{
+								taskId: null,
+								status: "stopped",
+								kind: "task",
+								description: stoppedAgent,
+								durationMs: null,
+							},
+						]}
 						footer={span === undefined ? null : <AssistantDisplaySpanFooter span={span} />}
 					/>
 				),
