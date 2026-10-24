@@ -39,6 +39,7 @@ import type {OutputFile} from "../../lib/session-outputs";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import {type BackgroundTasksFocus, useBackgroundTasksOpener} from "../background-tasks-opener-context";
+import {useCopyToClipboard} from "../files/file-actions-menu";
 import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
 import {ContextBreakdownBody} from "./context-breakdown";
@@ -140,6 +141,7 @@ function EnvironmentMenuRow({
  */
 function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const toast = useToast();
+	const copy = useCopyToClipboard();
 	const {cwd, gitBranch, model, herdrPane} = inputs;
 	const openIn = useQuery(sessionOpenInQueryOptions(inputs.sessionId)).data;
 	const bridgeSessionId = openIn?.bridgeSessionId ?? null;
@@ -169,13 +171,7 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 					</MenuItem>
 					<MenuItem
 						onSelect={() => {
-							void writeClipboardText(cwd).then((copied) => {
-								toast(
-									copied
-										? {kind: "success", message: "Path copied to clipboard."}
-										: {kind: "error", message: "Couldn’t copy the path."},
-								);
-							});
+							copy(cwd);
 						}}
 					>
 						Copy path

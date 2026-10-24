@@ -15,7 +15,6 @@ import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 
 import {ApiResponseError} from "../../lib/api/client";
 import {fileContentUrl, fileViewQueryOptions} from "../../lib/api/file";
-import {writeClipboardText} from "../../lib/clipboard";
 import type {AttachContextHandler, ContextAttachment} from "../../lib/context-attach";
 import {formatFileSize, imageContentType, isMarkdownPath, normalizeFileTabSize} from "../../lib/file-preview";
 import {firstMatchFromLine, lineMatchOffsets, lineOfMatch, stepMatch} from "../../lib/find-in-file";
@@ -30,9 +29,9 @@ import {FileViewer} from "../file-viewer";
 import {fileViewerLanguage} from "../file-viewer-utils";
 import {MarkdownArticle} from "../markdown-article";
 import {useSettings} from "../settings-context";
-import {useToast} from "../toast-context";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
+import {useCopyToClipboard} from "./file-actions-menu";
 import {ViewerMenuItems} from "./file-context-menu";
 import {mentionPath} from "./mention-path";
 import {FindBar} from "./find-in-file";
@@ -79,21 +78,15 @@ function directoryOf(path: string): string {
 
 /** The subheader's `dir / dir / name` breadcrumb, which copies the path when clicked. */
 function Breadcrumb({path}: {path: string}) {
-	const toast = useToast();
+	const copy = useCopyToClipboard();
 	const segments = path.split("/");
-	const copy = async () => {
-		const copied = await writeClipboardText(path);
-		toast(
-			copied
-				? {kind: "success", message: "Path copied to clipboard."}
-				: {kind: "error", message: "Couldn’t copy the path."},
-		);
-	};
 	return (
 		<button
 			type="button"
 			aria-label={`Copy path ${path}`}
-			onClick={() => void copy()}
+			onClick={() => {
+				copy(path);
+			}}
 			className="-mx-0.75 flex min-w-0 flex-1 cursor-pointer rounded-r3 text-left text-pane text-secondary hover:bg-fill-ghost-hover"
 		>
 			<span className="-mx-1 -my-1 flex min-w-0 overflow-x-auto px-1 py-1 whitespace-nowrap [direction:rtl] [scrollbar-width:none]">

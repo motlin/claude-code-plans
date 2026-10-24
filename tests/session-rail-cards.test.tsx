@@ -426,7 +426,7 @@ describe("Environment card", () => {
 		}).toStrictEqual({
 			items: ["menu", "Open in Finder", "Copy path"],
 			copied: [["/Users/alice/projects/avalonlogs"]],
-			toast: "Path copied to clipboard.",
+			toast: "Copied to clipboard.",
 		});
 	});
 

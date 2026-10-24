@@ -190,11 +190,11 @@ describe("breadcrumb", () => {
 
 		expect({
 			copied: vi.mocked(writeClipboardText).mock.calls,
-			toast: (await screen.findByText("Path copied to clipboard.")).textContent,
+			toast: (await screen.findByText("Copied to clipboard.")).textContent,
 			segments: [...button.querySelectorAll("[data-breadcrumb-segment]")].map((segment) => segment.textContent),
 		}).toStrictEqual({
 			copied: [["src/agent.ts"]],
-			toast: "Path copied to clipboard.",
+			toast: "Copied to clipboard.",
 			segments: ["src", "agent.ts"],
 		});
 	});
