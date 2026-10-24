@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 import {HookEventEnvelope, ToolUseUnion} from "../src/lib/hook-events";
 import {McpServerDetailResponse, McpServerListResponse, SkillListResponse} from "../src/lib/api/customize";
+import {FileRefStatusSchema} from "../src/lib/api/file-refs";
 import {PluginFileSchema, PluginListResponse} from "../src/lib/api/plugins";
 import {
 	UnifiedSearchDateSchema,
@@ -120,6 +121,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["UnifiedSearchTypeSchema", UnifiedSearchTypeSchema],
 	["UnifiedSearchDateSchema", UnifiedSearchDateSchema],
 	["UnifiedSearchKindSchema", UnifiedSearchKindSchema],
+	["FileRefStatusSchema", FileRefStatusSchema],
 	["PaletteTypeSchema", PaletteTypeSchema],
 	["PaletteFilterSchema", PaletteFilterSchema],
 	["SessionSummaryStateSchema", SessionSummaryStateSchema],

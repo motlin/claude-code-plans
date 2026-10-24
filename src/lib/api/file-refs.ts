@@ -6,10 +6,17 @@ import {apiFetch} from "./client";
 /** Enough for every inline code and tool path in a long transcript window. */
 export const MAX_FILE_REF_PATHS = 1000;
 
-export const FileRefsResponseSchema = z.strictObject({existing: z.array(z.string())});
+/**
+ * Where a ref's path stands: a regular file inside the allowed roots, nothing
+ * readable inside them, or outside every root (symlinks resolved).
+ */
+export const FileRefStatusSchema = z.enum(["exists", "missing", "outside"]);
+export type FileRefStatus = z.infer<typeof FileRefStatusSchema>;
+
+export const FileRefsResponseSchema = z.strictObject({statuses: z.record(z.string(), FileRefStatusSchema)});
 
 interface PendingCheck {
-	resolve: (exists: boolean) => void;
+	resolve: (status: FileRefStatus) => void;
 	reject: (error: unknown) => void;
 }
 
@@ -28,14 +35,13 @@ async function flush(): Promise<void> {
 	for (let start = 0; start < paths.length; start += MAX_FILE_REF_PATHS) {
 		const chunk = paths.slice(start, start + MAX_FILE_REF_PATHS);
 		try {
-			const {existing} = await apiFetch("/api/file-refs", FileRefsResponseSchema, {
+			const {statuses} = await apiFetch("/api/file-refs", FileRefsResponseSchema, {
 				method: "POST",
 				headers: {"Content-Type": "application/json"},
 				body: JSON.stringify({paths: chunk}),
 			});
-			const found = new Set(existing);
 			for (const path of chunk) {
-				for (const check of batch.get(path) ?? []) check.resolve(found.has(path));
+				for (const check of batch.get(path) ?? []) check.resolve(statuses[path] ?? "missing");
 			}
 		} catch (error) {
 			for (const path of chunk) for (const check of batch.get(path) ?? []) check.reject(error);
@@ -43,7 +49,7 @@ async function flush(): Promise<void> {
 	}
 }
 
-async function checkFileExists(path: string): Promise<boolean> {
+async function checkFileRefStatus(path: string): Promise<FileRefStatus> {
 	return new Promise((resolve, reject) => {
 		const checks = pending.get(path) ?? [];
 		checks.push({resolve, reject});
@@ -55,10 +61,10 @@ async function checkFileExists(path: string): Promise<boolean> {
 	});
 }
 
-/** Whether `path` is a regular file the file API will serve, batched with its neighbours. */
-export const fileExistsQueryOptions = (path: string) =>
+/** The {@link FileRefStatus} of `path`, batched with its neighbours. */
+export const fileRefStatusQueryOptions = (path: string) =>
 	queryOptions({
-		queryKey: ["file-exists", path] as const,
-		queryFn: async () => checkFileExists(path),
+		queryKey: ["file-ref-status", path] as const,
+		queryFn: async () => checkFileRefStatus(path),
 		staleTime: 60_000,
 	});

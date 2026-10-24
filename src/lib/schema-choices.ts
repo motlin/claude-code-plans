@@ -17,6 +17,7 @@ import type {TerminalAppearance} from "./terminal-theme";
 import type {InterfaceFont} from "./appearance";
 import type {TerminalHostSetting} from "./terminal-host-setting";
 import type {McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema} from "./api/customize";
+import type {FileRefStatusSchema} from "./api/file-refs";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
 import type {UnifiedSearchDateSchema, UnifiedSearchKindSchema, UnifiedSearchTypeSchema} from "./api/search";
 import type {SessionSummaryStateSchema} from "./api/sessions";
@@ -1443,6 +1444,13 @@ const pendingApprovalToolNameLabels = {
 	AskUserQuestion: "Question",
 } satisfies Record<z.infer<typeof PendingApprovalToolNameSchema>, string>;
 
+/** How a transcript file ref renders for each `/api/file-refs` status (src/components/use-resolved-file-refs.ts). */
+const fileRefStatusRenders = {
+	exists: "File link",
+	missing: "Plain code",
+	outside: "Blocked: outside the session's folders",
+} satisfies Record<z.infer<typeof FileRefStatusSchema>, string>;
+
 /** Exhaustive handler: offersPersistentOption switch in src/lib/permission-suggestions.ts. */
 const permissionUpdateVariants = {
 	addRules: true,
@@ -1462,6 +1470,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	UnifiedSearchTypeSchema: unifiedSearchTypeLabels,
 	UnifiedSearchDateSchema: unifiedSearchDateLabels,
 	UnifiedSearchKindSchema: unifiedSearchKindLabels,
+	FileRefStatusSchema: fileRefStatusRenders,
 	PaletteTypeSchema: paletteTypeLabels,
 	PaletteFilterSchema: paletteFilterLabels,
 	SessionSummaryStateSchema: sessionSummaryStateLabels,

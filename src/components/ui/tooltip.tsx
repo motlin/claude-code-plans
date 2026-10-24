@@ -14,9 +14,9 @@ import {ViewportPortal} from "../viewport-portal";
 import {Shortcut} from "./shortcut";
 import {placeTooltip, type TooltipAlign, type TooltipPlacement} from "./tooltip-placement";
 
-const OPEN_DELAY_MS = 300;
+export const OPEN_DELAY_MS = 300;
 
-const SIDE_CLASS = {
+export const SIDE_CLASS = {
 	top: "bottom-full left-1/2 mb-1 -translate-x-1/2",
 	bottom: "top-full left-1/2 mt-1 -translate-x-1/2",
 	right: "left-full top-1/2 ml-1 -translate-y-1/2",
@@ -60,7 +60,7 @@ const ACTION_ROWS_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
  * Upstream's disabled-reason box (cds `DisabledReasonTooltip`, multiline): a balanced wrap within 240px with
  * 6px 8px padding.
  */
-const REASON_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
+export const REASON_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
 	"flex w-max max-w-[240px] flex-col gap-0.5 whitespace-normal text-balance",
 ).replace("py-[3px]", "py-1.5");

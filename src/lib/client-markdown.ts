@@ -7,7 +7,7 @@ import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
 import {type CodeThemePair, DEFAULT_CODE_THEMES} from "./code-themes";
-import type {FileRef} from "./file-refs";
+import type {FileRef, FileRefBlock} from "./file-refs";
 import {normalizeArtifactUrl} from "./artifact-output";
 import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
 import {mdFileHref, resolveRelativeMdHref} from "./md-links";
@@ -74,6 +74,7 @@ function envOf(env: unknown): MarkdownEnv | undefined {
 export const FILE_REF_ATTR = "data-file-ref";
 
 function fileRefHtml(text: string, ref: FileRef, escape: (value: string) => string): string {
+	if (ref.block !== undefined) return blockedFileRefHtml(text, ref.path, ref.block, escape);
 	const attrs = [
 		`role="button"`,
 		`tabindex="0"`,
@@ -84,6 +85,36 @@ function fileRefHtml(text: string, ref: FileRef, escape: (value: string) => stri
 		...(ref.endLine === undefined ? [] : [`data-file-end-line="${ref.endLine}"`]),
 	];
 	return `<span ${attrs.join(" ")}><span data-inline-code="">${escape(text)}</span></span>`;
+}
+
+/** Marks the cds disabled-reason wrapper around a blocked file ref; its `[data-disabled-reason]` child holds the reason. */
+export const DISABLED_REASON_WRAPPER_ATTR = "data-disabled-reason-wrapper";
+
+/** Upstream's `ir()` reason copy for each block. */
+const FILE_REF_BLOCK_REASONS = {
+	outside_roots: "This file is outside this session’s folders, so it can’t be opened here.",
+} as const satisfies Record<FileRefBlock, string>;
+
+/** A stable id for a reason element: the same path and block always share one, and they say the same thing. */
+function reasonId(path: string, block: FileRefBlock): string {
+	let hash = 5381;
+	for (const char of `${block}\0${path}`) hash = (Math.imul(hash, 33) ^ (char.codePointAt(0) ?? 0)) >>> 0;
+	return `file-ref-reason-${hash.toString(36)}`;
+}
+
+/** Upstream's `sr`: the plain code chip in a focusable disabled-reason wrapper, with the reason hidden for `aria-describedby`. */
+function blockedFileRefHtml(
+	text: string,
+	path: string,
+	block: FileRefBlock,
+	escape: (value: string) => string,
+): string {
+	const id = reasonId(path, block);
+	return (
+		`<span tabindex="0" ${DISABLED_REASON_WRAPPER_ATTR}="" aria-describedby="${id}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">` +
+		`<code data-inline-code="" data-file-ref-blocked="">${escape(text)}</code>` +
+		`<span id="${id}" hidden data-disabled-reason="">${escape(FILE_REF_BLOCK_REASONS[block])}</span></span>`
+	);
 }
 
 /** Read the ref a {@link FILE_REF_ATTR} element carries. */

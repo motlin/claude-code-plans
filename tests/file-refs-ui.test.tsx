@@ -17,6 +17,14 @@ import type {SessionFiles} from "../src/lib/session-files";
 import {installLocalStorage} from "./fake-storage";
 
 const EXISTING = ["/repo/.mise/config.toml", "/repo/src/app.ts"];
+const OUTSIDE = new Set(["/tmp/outside/notes.txt"]);
+
+const OUTSIDE_REASON = "This file is outside this session’s folders, so it can’t be opened here.";
+
+function fileRefStatus(path: string): "exists" | "missing" | "outside" {
+	if (EXISTING.includes(path)) return "exists";
+	return OUTSIDE.has(path) ? "outside" : "missing";
+}
 
 const EMPTY_SESSION_FILES = {
 	files: [],
@@ -49,7 +57,9 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
 	if (url === "/api/file-refs") {
 		const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
 		statRequests.push(paths);
-		return Promise.resolve(Response.json({existing: paths.filter((path) => EXISTING.includes(path))}));
+		return Promise.resolve(
+			Response.json({statuses: Object.fromEntries(paths.map((path) => [path, fileRefStatus(path)]))}),
+		);
 	}
 	if (url.startsWith("/api/file/")) {
 		return Promise.resolve(Response.json({content: "[tools]\n", path: EXISTING[0]}));
@@ -136,6 +146,51 @@ describe("ProseMarkdown file refs", () => {
 		]);
 	});
 
+	it("renders an outside-roots path as blocked code with its reason, shown in a tooltip on hover", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {container} = render(
+			withQueryClient(
+				<FileRefsProvider value={{cwd: "/repo", sessionPaths: [], open}}>
+					<ProseMarkdown markdown="Notes are in `/tmp/outside/notes.txt`." />
+				</FileRefsProvider>,
+			),
+		);
+
+		const wrapper = await waitFor(() => {
+			const found = container.querySelector<HTMLElement>("[data-disabled-reason-wrapper]");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		const reasonId = wrapper.getAttribute("aria-describedby")!;
+		expect({
+			html: wrapper.outerHTML,
+			refs: container.querySelectorAll("[data-file-ref]").length,
+		}).toStrictEqual({
+			html: `<span tabindex="0" data-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code data-inline-code="" data-file-ref-blocked="">/tmp/outside/notes.txt</code><span id="${reasonId}" hidden="" data-disabled-reason="">${OUTSIDE_REASON}</span></span>`,
+			refs: 0,
+		});
+
+		fireEvent.click(wrapper);
+		fireEvent.pointerOver(wrapper.querySelector("code")!);
+		const tooltip = await screen.findByRole("tooltip");
+		expect({
+			text: tooltip.textContent,
+			side: tooltip.getAttribute("data-side"),
+			opened: open.mock.calls,
+		}).toStrictEqual({text: OUTSIDE_REASON, side: "top", opened: []});
+		fireEvent.pointerOut(wrapper, {relatedTarget: document.body});
+		expect(screen.queryByRole("tooltip")).toBeNull();
+
+		act(() => {
+			wrapper.focus();
+		});
+		expect(screen.getByRole("tooltip").textContent).toBe(OUTSIDE_REASON);
+		act(() => {
+			wrapper.blur();
+		});
+		expect(screen.queryByRole("tooltip")).toBeNull();
+	});
+
 	it("renders plain markdown outside a file-refs provider", () => {
 		const {container} = render(withQueryClient(<ProseMarkdown markdown={MESSAGE} />));
 		expect({
@@ -153,6 +208,7 @@ describe("TruncatedFilePathHeader file refs", () => {
 				<FileRefsProvider value={{cwd: "/repo", sessionPaths: [], open}}>
 					<TruncatedFilePathHeader filePath="/repo/src/app.ts" />
 					<TruncatedFilePathHeader filePath="/repo/deleted.ts" />
+					<TruncatedFilePathHeader filePath="/tmp/outside/notes.txt" />
 				</FileRefsProvider>,
 			),
 		);
@@ -162,7 +218,8 @@ describe("TruncatedFilePathHeader file refs", () => {
 		expect({
 			calls: open.mock.calls,
 			deletedIsButton: screen.queryByRole("button", {name: "/repo/deleted.ts"}) !== null,
-		}).toStrictEqual({calls: [[{path: "/repo/src/app.ts"}]], deletedIsButton: false});
+			outsideIsButton: screen.queryByRole("button", {name: "/tmp/outside/notes.txt"}) !== null,
+		}).toStrictEqual({calls: [[{path: "/repo/src/app.ts"}]], deletedIsButton: false, outsideIsButton: false});
 	});
 });
 

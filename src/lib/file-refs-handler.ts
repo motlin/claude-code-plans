@@ -1,7 +1,7 @@
 import {z} from "zod";
 
-import {FileRefsResponseSchema, MAX_FILE_REF_PATHS} from "./api/file-refs";
-import {areAllowedFiles} from "./file-serving";
+import {type FileRefStatus, FileRefsResponseSchema, MAX_FILE_REF_PATHS} from "./api/file-refs";
+import {fileRefStatuses} from "./file-serving";
 import {rejectCrossSite} from "./same-origin-guard";
 
 const FileRefsRequestSchema = z.strictObject({
@@ -9,9 +9,9 @@ const FileRefsRequestSchema = z.strictObject({
 });
 
 /**
- * Which of the requested paths are regular files inside the allowed file
- * roots, so the transcript only links refs that open. Paths come back as
- * requested (not symlink-resolved) so the client can match them.
+ * Each requested path's {@link FileRefStatus}, so the transcript links refs
+ * that open and blocks those outside the roots. Paths come back as requested
+ * (not symlink-resolved) so the client can match them.
  */
 export async function handleFileRefsRequest(
 	request: Request,
@@ -26,9 +26,10 @@ export async function handleFileRefsRequest(
 		return Response.json({error: z.prettifyError(parsed.error)}, {status: 400});
 	}
 
-	const checks = await areAllowedFiles(parsed.data.paths, configPath, defaultRoots);
-	const existing = parsed.data.paths.filter((_path, index) => checks[index]);
-	return Response.json(FileRefsResponseSchema.parse({existing}), {
+	const {paths} = parsed.data;
+	const checks = await fileRefStatuses(paths, configPath, defaultRoots);
+	const statuses = Object.fromEntries(paths.map((path, index) => [path, checks[index]]));
+	return Response.json(FileRefsResponseSchema.parse({statuses}), {
 		headers: {"Cache-Control": "private, no-store"},
 	});
 }

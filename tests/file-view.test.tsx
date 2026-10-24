@@ -34,7 +34,13 @@ function stubFetch(): void {
 		vi.fn(async (input: string, init?: RequestInit) => {
 			if (input === "/api/file-refs") {
 				const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
-				return Promise.resolve(Response.json({existing: paths.filter((path) => existingPaths.has(path))}));
+				return Promise.resolve(
+					Response.json({
+						statuses: Object.fromEntries(
+							paths.map((path) => [path, existingPaths.has(path) ? "exists" : "missing"]),
+						),
+					}),
+				);
 			}
 			const url = new URL(input, "http://localhost");
 			const path = decodeFilePath(url.pathname.slice("/api/file/".length)) ?? "";

@@ -5,11 +5,16 @@
  * candidates; a ref links only once the server has confirmed the file exists.
  */
 
+/** Why a ref renders as blocked code instead of a link, as upstream's `ir()` reasons. */
+export type FileRefBlock = "outside_roots";
+
 export interface FileRef {
-	/** Absolute path of the confirmed file. */
+	/** Absolute path of the confirmed file, or of the blocked path. */
 	path: string;
 	line?: number;
 	endLine?: number;
+	/** Set when the ref can't be opened; it renders as blocked code with the reason. */
+	block?: FileRefBlock;
 }
 
 export interface ParsedFileRefText {
@@ -124,29 +129,43 @@ function resolveTarget(
 	return suffixMatches.length === 1 ? (suffixMatches[0] ?? null) : null;
 }
 
+function refFor(parsed: ParsedFileRefText, path: string): FileRef {
+	const ref: FileRef = {path};
+	if (parsed.line !== undefined) ref.line = parsed.line;
+	if (parsed.endLine !== undefined) ref.endLine = parsed.endLine;
+	return ref;
+}
+
 /**
  * Map each inline-code text that names a known, existing file to its ref.
  * `knownPaths` must hold only paths confirmed to exist; a relative path
  * resolves against `cwd` first, then against a unique known path ending in it.
+ * A text that names no existing file but resolves the same way among
+ * `outsidePaths` (paths confirmed outside the allowed roots) gets a ref
+ * blocked as `outside_roots`.
  */
 export function resolveFileRefs(
 	inlineCodes: Iterable<string>,
 	knownPaths: Iterable<string>,
 	cwd: string | undefined,
+	outsidePaths: Iterable<string> = [],
 ): Map<string, FileRef> {
 	const known = [...knownPaths];
 	const knownSet = new Set(known);
+	const outside = [...outsidePaths];
+	const outsideSet = new Set(outside);
 	const refs = new Map<string, FileRef>();
 	for (const text of inlineCodes) {
 		if (refs.has(text)) continue;
 		const parsed = parseFileRefText(text);
 		if (parsed === null) continue;
 		const path = resolveTarget(parsed.target, known, knownSet, cwd);
-		if (path === null) continue;
-		const ref: FileRef = {path};
-		if (parsed.line !== undefined) ref.line = parsed.line;
-		if (parsed.endLine !== undefined) ref.endLine = parsed.endLine;
-		refs.set(text, ref);
+		if (path !== null) {
+			refs.set(text, refFor(parsed, path));
+			continue;
+		}
+		const blocked = outside.length === 0 ? null : resolveTarget(parsed.target, outside, outsideSet, cwd);
+		if (blocked !== null) refs.set(text, {...refFor(parsed, blocked), block: "outside_roots"});
 	}
 	return refs;
 }

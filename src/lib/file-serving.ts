@@ -1,6 +1,7 @@
 import type {Stats} from "node:fs";
 import {readFile, realpath, stat} from "node:fs/promises";
-import {isAbsolute, join, relative, sep} from "node:path";
+import {basename, dirname, isAbsolute, join, relative, resolve, sep} from "node:path";
+import type {FileRefStatus} from "./api/file-refs";
 import {resolveConfiguredFileRoots} from "./config";
 import {FILE_CONTENT_SIZE_CAP_BYTES} from "./db/indexer";
 import {fileTypeLabel} from "./file-preview";
@@ -76,24 +77,37 @@ export async function statAllowedFile(
 	};
 }
 
+/** Resolve every symlink in the longest existing prefix of `path`, keeping the missing rest as written. */
+async function realpathOfExistingPrefix(path: string): Promise<string> {
+	try {
+		return await realpath(path);
+	} catch {
+		const parent = dirname(path);
+		return parent === path ? path : join(await realpathOfExistingPrefix(parent), basename(path));
+	}
+}
+
 /**
- * For each path, whether it names an allow-listed regular file. The roots are
- * resolved once for the whole batch.
+ * For each path, whether it names a regular file inside the allowed roots
+ * (`exists`), names nothing readable there (`missing`), or resolves outside
+ * every root, symlinks included (`outside`). The roots are resolved once for
+ * the whole batch.
  */
-export async function areAllowedFiles(
+export async function fileRefStatuses(
 	requestedPaths: readonly string[],
 	configPath?: string,
 	defaultRoots: readonly string[] = [],
-): Promise<boolean[]> {
+): Promise<FileRefStatus[]> {
 	const roots = await resolveConfiguredFileRoots(configPath, defaultRoots);
 	return Promise.all(
-		requestedPaths.map(async (requestedPath) => {
+		requestedPaths.map(async (requestedPath): Promise<FileRefStatus> => {
+			if (!isAbsolute(requestedPath)) return "outside";
+			const resolvedPath = await realpathOfExistingPrefix(resolve(requestedPath));
+			if (!roots.some((root) => isContainedPath(resolvedPath, root))) return "outside";
 			try {
-				await statRegularFile(await resolveUnderRoots(requestedPath, roots));
-				return true;
-			} catch (error) {
-				if (error instanceof FileServingError) return false;
-				throw error;
+				return (await stat(resolvedPath)).isFile() ? "exists" : "missing";
+			} catch {
+				return "missing";
 			}
 		}),
 	);

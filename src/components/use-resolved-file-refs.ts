@@ -1,12 +1,13 @@
 import {useQueries} from "@tanstack/react-query";
 import {useMemo} from "react";
-import {fileExistsQueryOptions} from "../lib/api/file-refs";
+import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {type FileRef, fileRefStatCandidates, resolveFileRefs} from "../lib/file-refs";
 
 /**
  * Resolve inline-code texts to refs, linking only paths the server confirmed
- * exist inside the allowed file roots. Relative paths try each base directory
- * in order; the first that resolves wins.
+ * exist inside the allowed file roots and blocking (`outside_roots`) those it
+ * placed outside them. Relative paths try each base directory in order; the
+ * first that resolves wins.
  */
 export function useResolvedFileRefs(
 	texts: readonly string[],
@@ -22,21 +23,33 @@ export function useResolvedFileRefs(
 		}
 		return [...all];
 	}, [texts, sessionPaths, basesKey]);
-	const existingKey = useQueries({
-		queries: candidates.map((path) => fileExistsQueryOptions(path)),
-		combine: (results) => candidates.filter((_path, index) => results[index]?.data === true).join("\0"),
+	const statusKey = useQueries({
+		queries: candidates.map((path) => fileRefStatusQueryOptions(path)),
+		combine: (results) =>
+			candidates
+				.flatMap((path, index) => {
+					const status = results[index]?.data;
+					return status === "exists" || status === "outside" ? [`${status}\t${path}`] : [];
+				})
+				.join("\0"),
 	});
 	return useMemo(() => {
-		if (existingKey === "") return EMPTY_REFS;
-		const existing = existingKey.split("\0");
+		if (statusKey === "") return EMPTY_REFS;
+		const existing: string[] = [];
+		const outside: string[] = [];
+		for (const entry of statusKey.split("\0")) {
+			const [status, path = ""] = entry.split("\t");
+			(status === "exists" ? existing : outside).push(path);
+		}
 		const refs = new Map<string, FileRef>();
 		for (const base of basesKey.split("\0")) {
-			for (const [text, ref] of resolveFileRefs(texts, existing, base === "" ? undefined : base)) {
-				if (!refs.has(text)) refs.set(text, ref);
+			for (const [text, ref] of resolveFileRefs(texts, existing, base === "" ? undefined : base, outside)) {
+				if (!refs.has(text) || (refs.get(text)?.block !== undefined && ref.block === undefined))
+					refs.set(text, ref);
 			}
 		}
 		return refs;
-	}, [texts, existingKey, basesKey]);
+	}, [texts, statusKey, basesKey]);
 }
 
 export const EMPTY_REFS: ReadonlyMap<string, FileRef> = new Map();

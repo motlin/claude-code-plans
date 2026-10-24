@@ -1,5 +1,17 @@
-import {type KeyboardEvent, type MouseEvent, useMemo, useSyncExternalStore} from "react";
 import {
+	type CSSProperties,
+	type FocusEvent,
+	type KeyboardEvent,
+	type MouseEvent,
+	type PointerEvent,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
+import {
+	DISABLED_REASON_WRAPPER_ATTR,
 	FILE_REF_ATTR,
 	fileRefFromElement,
 	renderMarkdownWithHighlighting,
@@ -11,6 +23,8 @@ import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from ".
 import {useCodeThemes} from "../hooks/use-code-themes";
 import {handleCodeCopyClick} from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
+import {OPEN_DELAY_MS, REASON_TOOLTIP_CLASS, SIDE_CLASS} from "./ui/tooltip";
+import {ViewportPortal} from "./viewport-portal";
 
 interface FileRefProps {
 	/** Inline code rendered as clickable file refs, keyed by the code's text. */
@@ -33,6 +47,82 @@ type MarkdownArticleProps = FileRefProps &
 function targetFileRef(event: MouseEvent | KeyboardEvent): FileRef | null {
 	const element = event.target instanceof Element ? event.target.closest(`[${FILE_REF_ATTR}]`) : null;
 	return element === null ? null : fileRefFromElement(element);
+}
+
+/** Whether a pointer event's other end (`relatedTarget`) lies outside `wrapper`, so the pointer crossed its edge. */
+function crossesEdge(wrapper: HTMLElement, other: EventTarget | null): boolean {
+	return !(other instanceof Node && wrapper.contains(other));
+}
+
+function reasonWrapperOf(target: EventTarget | null): HTMLElement | null {
+	return target instanceof Element ? target.closest<HTMLElement>(`[${DISABLED_REASON_WRAPPER_ATTR}]`) : null;
+}
+
+interface OpenReason {
+	text: string;
+	anchor: CSSProperties;
+}
+
+/**
+ * The disabled-reason tooltip for blocked file refs in rendered HTML, which
+ * can't hold a {@link Tooltip} element: side top, opened after the hover delay
+ * or at once on focus, showing the wrapper's hidden `[data-disabled-reason]`.
+ */
+function useReasonTooltip() {
+	const [reason, setReason] = useState<OpenReason | null>(null);
+	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	useEffect(
+		() => () => {
+			clearTimeout(timer.current);
+		},
+		[],
+	);
+
+	function show(wrapper: HTMLElement, delay: number) {
+		clearTimeout(timer.current);
+		const reveal = () => {
+			const {left, top, width, height} = wrapper.getBoundingClientRect();
+			const text = wrapper.querySelector("[data-disabled-reason]")?.textContent ?? "";
+			setReason({text, anchor: {left, top, width, height}});
+		};
+		if (delay === 0) reveal();
+		else timer.current = setTimeout(reveal, delay);
+	}
+
+	function hide() {
+		clearTimeout(timer.current);
+		setReason(null);
+	}
+
+	const handlers = {
+		onPointerOver: (event: PointerEvent<HTMLElement>) => {
+			const wrapper = reasonWrapperOf(event.target);
+			if (wrapper !== null && crossesEdge(wrapper, event.relatedTarget)) show(wrapper, OPEN_DELAY_MS);
+		},
+		onPointerOut: (event: PointerEvent<HTMLElement>) => {
+			const wrapper = reasonWrapperOf(event.target);
+			if (wrapper !== null && crossesEdge(wrapper, event.relatedTarget)) hide();
+		},
+		onFocus: (event: FocusEvent<HTMLElement>) => {
+			const wrapper = reasonWrapperOf(event.target);
+			if (wrapper !== null) show(wrapper, 0);
+		},
+		onBlur: (event: FocusEvent<HTMLElement>) => {
+			if (reasonWrapperOf(event.target) !== null) hide();
+		},
+	};
+
+	const tooltip =
+		reason === null ? null : (
+			<ViewportPortal>
+				<span className="pointer-events-none fixed z-[140]" style={reason.anchor}>
+					<span role="tooltip" data-side="top" className={`${REASON_TOOLTIP_CLASS} ${SIDE_CLASS.top}`}>
+						{reason.text}
+					</span>
+				</span>
+			</ViewportPortal>
+		);
+	return {handlers, tooltip};
 }
 
 export function MarkdownArticle(props: MarkdownArticleProps) {
@@ -73,6 +163,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 		timesVersion,
 	]);
 
+	const reasonTooltip = useReasonTooltip();
 	const {onFileRef} = props;
 	const handleClick = (event: MouseEvent<HTMLElement>) => {
 		const ref = onFileRef === undefined ? null : targetFileRef(event);
@@ -88,12 +179,15 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 	};
 
 	return (
-		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- delegates clicks from the rendered links and copy buttons inside it, which are keyboard-reachable themselves
-		<article
-			className={styles["markdown"]}
-			onClick={handleClick}
-			{...(onFileRef === undefined ? {} : {onKeyDown: handleKeyDown})}
-			dangerouslySetInnerHTML={{__html: rendered}}
-		/>
+		<>
+			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- delegates clicks from the rendered links and copy buttons inside it, which are keyboard-reachable themselves */}
+			<article
+				className={styles["markdown"]}
+				onClick={handleClick}
+				{...(onFileRef === undefined ? {} : {onKeyDown: handleKeyDown, ...reasonTooltip.handlers})}
+				dangerouslySetInnerHTML={{__html: rendered}}
+			/>
+			{reasonTooltip.tooltip}
+		</>
 	);
 }

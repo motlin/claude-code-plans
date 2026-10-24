@@ -1,4 +1,4 @@
-import {mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:fs";
+import {mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -102,6 +102,19 @@ describe("resolveFileRefs", () => {
 			["components/shared.tsx", {path: "/repo/src/components/shared.tsx"}],
 		]);
 	});
+
+	it("blocks a ref that names a path outside the roots, preferring an existing match", () => {
+		const refs = resolveFileRefs(
+			["/tmp/outside/notes.txt:4", "src/app.ts", "/repo/gone.ts"],
+			["/repo/src/app.ts"],
+			"/repo",
+			["/tmp/outside/notes.txt", "/elsewhere/src/app.ts"],
+		);
+		expect([...refs]).toStrictEqual([
+			["/tmp/outside/notes.txt:4", {path: "/tmp/outside/notes.txt", line: 4, block: "outside_roots"}],
+			["src/app.ts", {path: "/repo/src/app.ts"}],
+		]);
+	});
 });
 
 describe("handleFileRefsRequest", () => {
@@ -135,19 +148,43 @@ describe("handleFileRefsRequest", () => {
 		});
 	}
 
-	it("returns only existing regular files inside the allowed roots", async () => {
+	it("reports whether each path exists inside the allowed roots, is missing there, or is outside them", async () => {
+		symlinkSync(join(outsideRoot, "secret.txt"), join(allowedRoot, "escape.txt"));
 		const paths = [
 			join(allowedRoot, ".mise", "config.toml"),
 			join(allowedRoot, "mise.toml"),
+			join(allowedRoot, "missing-dir", "a.ts"),
 			join(allowedRoot, "logs"),
+			join(allowedRoot, "escape.txt"),
 			join(outsideRoot, "secret.txt"),
+			join(outsideRoot, "x.txt"),
+			join(allowedRoot, "..", "outside", "y.txt"),
 			"relative/path.ts",
 		];
 		const response = await handleFileRefsRequest(request({paths}), configPath);
 		expect({status: response.status, body: await response.json()}).toStrictEqual({
 			status: 200,
-			body: {existing: [join(allowedRoot, ".mise", "config.toml")]},
+			body: {
+				statuses: {
+					[join(allowedRoot, ".mise", "config.toml")]: "exists",
+					[join(allowedRoot, "mise.toml")]: "missing",
+					[join(allowedRoot, "missing-dir", "a.ts")]: "missing",
+					[join(allowedRoot, "logs")]: "missing",
+					[join(allowedRoot, "escape.txt")]: "outside",
+					[join(outsideRoot, "secret.txt")]: "outside",
+					[join(outsideRoot, "x.txt")]: "outside",
+					[join(allowedRoot, "..", "outside", "y.txt")]: "outside",
+					"relative/path.ts": "outside",
+				},
+			},
 		});
+	});
+
+	it("marks /tmp/outside/x.txt outside when the only root is /repo", async () => {
+		const emptyConfig = join(fixture, "empty-config.json");
+		writeFileSync(emptyConfig, "{}");
+		const response = await handleFileRefsRequest(request({paths: ["/tmp/outside/x.txt"]}), emptyConfig, ["/repo"]);
+		expect(await response.json()).toStrictEqual({statuses: {"/tmp/outside/x.txt": "outside"}});
 	});
 
 	it("rejects a malformed body", async () => {
