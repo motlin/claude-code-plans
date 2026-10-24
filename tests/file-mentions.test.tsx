@@ -48,6 +48,23 @@ describe("fileMentionTrigger", () => {
 			query: "src",
 		});
 	});
+
+	it("matches only within the last 50 characters of the line before the caret, like upstream's textBetween window", () => {
+		const fortyNine = "a".repeat(49);
+		expect({
+			fiftyCharToken: fileMentionTrigger(`@${fortyNine}`, 50),
+			fiftyOneCharToken: fileMentionTrigger(`@${fortyNine}a`, 51),
+			longLine: fileMentionTrigger(`${"x ".repeat(40)}@ab`, 83),
+			windowCutsWord: fileMentionTrigger(`${"b".repeat(10)}@${fortyNine}`, 60),
+			previousLine: fileMentionTrigger(`${"c".repeat(60)}\n@ab`, 64),
+		}).toStrictEqual({
+			fiftyCharToken: {start: 0, query: fortyNine},
+			fiftyOneCharToken: null,
+			longLine: {start: 80, query: "ab"},
+			windowCutsWord: {start: 10, query: fortyNine},
+			previousLine: {start: 61, query: "ab"},
+		});
+	});
 });
 
 describe("isMentionSuppressed", () => {

@@ -15,6 +15,9 @@ export const HIDDEN_MENTION_NAMES: ReadonlySet<string> = new Set([
 	"desktop.ini",
 ]);
 
+/** Upstream's `textBetween(parentOffset - 50, parentOffset)` trigger window. */
+const FILE_MENTION_TRIGGER_WINDOW = 50;
+
 export interface FileMentionTrigger {
 	/** Index of the `@`. */
 	start: number;
@@ -25,9 +28,13 @@ export interface FileMentionTrigger {
 /**
  * The open mention before `caret`: an `@` at the start of the text or after
  * whitespace (so never inside an email address), followed by no whitespace.
+ * Like upstream, only the last {@link FILE_MENTION_TRIGGER_WINDOW} characters of
+ * the caret's line are searched, and the window's start counts as a line start.
  */
 export function fileMentionTrigger(text: string, caret: number): FileMentionTrigger | null {
-	const match = /(?:^|\s)@(\S*)$/.exec(text.slice(0, caret));
+	const lineStart = text.lastIndexOf("\n", caret - 1) + 1;
+	const lineTail = text.slice(Math.max(lineStart, caret - FILE_MENTION_TRIGGER_WINDOW), caret);
+	const match = /(?:^|\s)@(\S*)$/.exec(lineTail);
 	if (match === null) return null;
 	const query = match[1] ?? "";
 	return {start: caret - query.length - 1, query};
