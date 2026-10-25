@@ -9,6 +9,10 @@ export type SessionOpenEndpoint = (typeof SESSION_OPEN_ENDPOINTS)[number];
 const SESSION_OPEN_METRICS = ["sql.count", "jsonl.bytesRead", "jsonl.fullScans", "proc.spawned", "resp.bytes"] as const;
 export type SessionOpenMetric = (typeof SESSION_OPEN_METRICS)[number];
 
+/** Reopening a session the server already served: the detail endpoint must not parse the transcript again. */
+const SESSION_REOPEN_METRICS = ["jsonl.bytesRead", "jsonl.fullScans"] as const;
+export type SessionReopenMetric = (typeof SESSION_REOPEN_METRICS)[number];
+
 export const LIVE_APPEND_SIZES = [1, 20] as const;
 
 const LIVE_APPEND_METRICS = ["readAmplification", "jsonl.fullScans", "sql.count", "sse.payloadBytes"] as const;
@@ -54,6 +58,10 @@ export function sessionOpenPrefix(shape: string, endpoint: SessionOpenEndpoint):
 	return `server.sessionOpen.${shape}.${endpoint}`;
 }
 
+export function sessionReopenPrefix(shape: string): string {
+	return `server.sessionReopen.${shape}.detail`;
+}
+
 export function liveAppendPrefix(shape: string, count: number): string {
 	return `server.liveAppend.${shape}.${count}`;
 }
@@ -71,6 +79,7 @@ export function shapeMetricIds(shape: string): string[] {
 		...SESSION_OPEN_ENDPOINTS.flatMap((endpoint) =>
 			SESSION_OPEN_METRICS.map((metric) => `${sessionOpenPrefix(shape, endpoint)}.${metric}`),
 		),
+		...SESSION_REOPEN_METRICS.map((metric) => `${sessionReopenPrefix(shape)}.${metric}`),
 		...LIVE_APPEND_SIZES.flatMap((count) =>
 			LIVE_APPEND_METRICS.map((metric) => `${liveAppendPrefix(shape, count)}.${metric}`),
 		),

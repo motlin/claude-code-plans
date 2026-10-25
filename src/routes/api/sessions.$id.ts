@@ -27,6 +27,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const {getCurrentSessionMessageIndex, getSessionViewedState} =
 					await import("../../lib/db/viewed-state");
 				const {readSession} = await import("../../lib/sessions");
+				const {readSessionProvenance} = await import("../../lib/session-provenance");
 				const {readConfig} = await import("../../lib/config");
 				const {homedir} = await import("node:os");
 				const {join} = await import("node:path");
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 						aiTitle: sessions.aiTitle,
 						projectId: sessions.projectId,
 						mtimeMs: sessions.mtimeMs,
+						filePath: sessions.filePath,
 						canonicalRouteId: canonicalSessionRouteId,
 						canonicalRoutePending: sql<number>`CASE WHEN ${indexing ? 1 : 0} THEN NOT EXISTS (
 							SELECT 1 FROM ${metadata} WHERE ${metadata.key} = ${sessionBridgeMetadataKey(id)}
@@ -101,6 +103,8 @@ export const Route = createFileRoute("/api/sessions/$id")({
 					pendingTaskCount = taskCounts.pending + taskCounts.inProgress;
 				}
 
+				// The provenance fold and git run side by side: either can take a while on a huge transcript or repo.
+				const provenancePromise = readSessionProvenance(sessionRow.filePath);
 				let gitSha: string | null = null;
 				let gitClean: boolean | null = null;
 				if (projectPath) {
@@ -163,16 +167,10 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const planFilename = getPlanFilenameForSession(index, id);
 				if (planFilename !== null) detail.planFilename = planFilename;
 
-				const provenance = await readSession(PROJECTS_DIR, id);
-				if (provenance) {
-					if (detail.messageCount === 0) detail.messageCount = provenance.messageCount;
-					if (provenance.entrypoint !== undefined) detail.entrypoint = provenance.entrypoint;
-					if (provenance.sessionKind !== undefined) detail.sessionKind = provenance.sessionKind;
-					if (provenance.teamNames !== undefined) detail.teamNames = provenance.teamNames;
-					if (provenance.forkedFromSessionId !== undefined)
-						detail.forkedFromSessionId = provenance.forkedFromSessionId;
-					if (provenance.costState !== undefined) detail.costState = provenance.costState;
-				}
+				// Only a session the index has not counted yet pays for the full message parse.
+				if (detail.messageCount === 0)
+					detail.messageCount = (await readSession(PROJECTS_DIR, id))?.messageCount ?? 0;
+				Object.assign(detail, await provenancePromise);
 
 				return Response.json(SessionDetailResponse.parse(detail), {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},

@@ -1129,5 +1129,45 @@
 		"ceiling": 1,
 		"unit": "count",
 		"tolerance": 0
+	},
+	"server.sessionReopen.large-long.detail.jsonl.bytesRead": {
+		"ceiling": 64,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionReopen.large-long.detail.jsonl.fullScans": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionReopen.large-wide.detail.jsonl.bytesRead": {
+		"ceiling": 64,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionReopen.large-wide.detail.jsonl.fullScans": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionReopen.small.detail.jsonl.bytesRead": {
+		"ceiling": 64,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionReopen.small.detail.jsonl.fullScans": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
+	},
+	"server.sessionReopen.typical.detail.jsonl.bytesRead": {
+		"ceiling": 64,
+		"unit": "bytes",
+		"tolerance": 0
+	},
+	"server.sessionReopen.typical.detail.jsonl.fullScans": {
+		"ceiling": 0,
+		"unit": "count",
+		"tolerance": 0
 	}
 }

@@ -7,7 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {fullScan, indexJsonlFile} from "../src/lib/db/indexer";
 import * as schema from "../src/lib/db/schema";
-import * as sessionFiles from "../src/lib/sessions";
+import * as sessionProvenance from "../src/lib/session-provenance";
 import {currentPerfCounters, withPerfScope} from "../src/lib/perf/server-scope";
 import {Route as IdentityRoute} from "../src/routes/api/sessions.$id.identity";
 import {Route as DetailRoute} from "../src/routes/api/sessions.$id";
@@ -391,12 +391,12 @@ describe("detail alias backfill snapshot", () => {
 			entered = resolve;
 		});
 		let finish!: () => void;
-		const pending = new Promise<null>((resolve) => {
+		const pending = new Promise<Record<string, never>>((resolve) => {
 			finish = () => {
-				resolve(null);
+				resolve({});
 			};
 		});
-		vi.spyOn(sessionFiles, "readSession").mockImplementationOnce(async () => {
+		vi.spyOn(sessionProvenance, "readSessionProvenance").mockImplementationOnce(async () => {
 			entered();
 			return pending;
 		});

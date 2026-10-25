@@ -7,7 +7,14 @@ import {eq} from "drizzle-orm";
 import type {AppDb} from "../../src/lib/db/connection";
 import type {PerfCounters} from "../../src/lib/perf/server-scope";
 import {generateTranscript, perfShapes, seedFixtureDb} from "./fixtures/generate-transcript";
-import {metricIds, sessionOpenPrefix, type SessionOpenEndpoint, type SessionOpenMetric} from "./perf-ids";
+import {
+	metricIds,
+	sessionOpenPrefix,
+	sessionReopenPrefix,
+	type SessionOpenEndpoint,
+	type SessionOpenMetric,
+	type SessionReopenMetric,
+} from "./perf-ids";
 import {ratchet} from "./ratchet";
 
 /**
@@ -142,5 +149,18 @@ describe("server lab: opening a session", () => {
 				);
 			});
 		}
+
+		// Switching back to a session reopens its detail; only lines appended since the last open may be read.
+		it(`${shape.name} detail reopen`, async () => {
+			const sessionId = basename(await generateTranscript(shape), ".jsonl");
+			await open("detail", sessionId);
+			const {counters} = await open("detail", sessionId);
+			ratchetAll(
+				metricIds<SessionReopenMetric>(sessionReopenPrefix(shape.name), {
+					"jsonl.bytesRead": counters.jsonl.bytesRead,
+					"jsonl.fullScans": counters.jsonl.fullScans,
+				}),
+			);
+		});
 	}
 });
