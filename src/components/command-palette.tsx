@@ -1418,6 +1418,15 @@ function PalettePopup({
 		callback();
 	}
 
+	/** Upstream's sole send_message item: an empty draft is a shortcut to the New session page. */
+	function onSend() {
+		if (trimmedQuery === "" && composeChips.length === 0) {
+			select(() => void navigate({to: "/"}).then(requestHomeComposerFocus));
+		} else if (canSend) {
+			openStartPicker();
+		}
+	}
+
 	function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
 		if (!compose && event.target === inputRef.current) startPaletteSearchJourney(event.nativeEvent);
 		if (event.key === "Escape" && startStep === "picker") {
@@ -1440,6 +1449,23 @@ function PalettePopup({
 		}
 		if (event.key === "Enter" && event.altKey) {
 			openSelectedRowActions(event);
+			return;
+		}
+		if (
+			event.key === "Enter" &&
+			compose &&
+			startStep === "idle" &&
+			!event.shiftKey &&
+			!event.altKey &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.nativeEvent.isComposing &&
+			trimmedQuery === "" &&
+			composeChips.length === 0
+		) {
+			event.preventDefault();
+			event.stopPropagation();
+			onSend();
 			return;
 		}
 		if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
@@ -1723,9 +1749,7 @@ function PalettePopup({
 												onMouseDown={(event) => {
 													event.preventDefault();
 												}}
-												onClick={() => {
-													if (canSend) openStartPicker();
-												}}
+												onClick={onSend}
 												className={`${ICON_BUTTON_CLASS} me-0.5 rounded-r7 bg-fill-brand text-white hover:bg-fill-brand-hover`}
 											>
 												{startStep === "launching" ? (

@@ -14,6 +14,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
+import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
 import {artifactsQueryOptions, type ArtifactSummary} from "../src/lib/api/artifacts";
 import type {z} from "zod";
 import {MemoryListResponse, projectMemoriesQueryOptions} from "../src/lib/api/memories";
@@ -1015,6 +1016,40 @@ describe("CommandPalette shell", () => {
 			expect(groupLabels(dialog).map(([heading]) => heading)).toStrictEqual(["Choose a project"]);
 		});
 	});
+
+	for (const [label, trigger] of [
+		["clicking Send", (dialog: HTMLElement) => fireEvent.click(within(dialog).getByRole("button", {name: "Send"}))],
+		[
+			"pressing Enter",
+			(dialog: HTMLElement) =>
+				fireEvent.keyDown(within(dialog).getByRole("combobox", {name: "Write a message…"}), {
+					key: "Enter",
+					code: "Enter",
+				}),
+		],
+	] as const) {
+		it(`goes to the New session page on ${label} with an empty Compose`, async () => {
+			const focusRequests = vi.fn<() => void>();
+			const unsubscribe = onHomeComposerFocusRequest(focusRequests);
+			try {
+				localStorage.setItem("cmdk-mode", "compose");
+				const dialog = await openPalette(undefined, "/session/sess-1");
+				await within(dialog).findByRole("combobox", {name: "Write a message…"});
+
+				trigger(dialog);
+
+				await waitFor(() => {
+					expect({
+						open: screen.queryByRole("dialog", {name: "Search"}) !== null,
+						pathname: currentRouter?.state.location.pathname,
+						focusRequests: focusRequests.mock.calls.length,
+					}).toStrictEqual({open: false, pathname: "/", focusRequests: 1});
+				});
+			} finally {
+				unsubscribe();
+			}
+		});
+	}
 
 	it("shows Needs attention, Recents and Actions in the empty state", async () => {
 		const dialog = await openPalette(
