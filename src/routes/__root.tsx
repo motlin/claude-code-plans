@@ -20,6 +20,7 @@ import {Spark} from "../components/spark";
 import {AppShellFallback} from "../components/app-shell-fallback";
 import {getShellChinLabels} from "../lib/shell-chin-store";
 import {ChunkPrefetch} from "../components/chunk-prefetch";
+import {WaitingSessionPrefetch} from "../components/waiting-session-prefetch";
 import {DeferredCommandPalette} from "../components/command-palette-entry";
 import {DeferredSettingsDialog} from "../components/settings/settings-dialog-entry";
 import {DeferredKeyboardShortcutsDialog} from "../components/keyboard-shortcuts-dialog-entry";
@@ -205,6 +206,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 			<ForkNavigator />
 			<DeferredSettingsDialog />
 			<ChunkPrefetch />
+			<WaitingSessionPrefetch />
 		</>
 	);
 }
