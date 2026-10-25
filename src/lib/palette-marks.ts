@@ -33,8 +33,14 @@ function markFor({bucket, unseen, unseenError}: PaletteMarkInput): PaletteMark |
 	return undefined;
 }
 
+/** A row's mark and whether it leads (is promoted above Recents). */
+export interface PaletteMarkEntry {
+	mark: PaletteMark;
+	leads: boolean;
+}
+
 /** A session's palette mark and whether it leads; archived rows are never marked. */
-export function paletteMark(session: PaletteMarkInput, now: number): {mark: PaletteMark; leads: boolean} | undefined {
+export function paletteMark(session: PaletteMarkInput, now: number): PaletteMarkEntry | undefined {
 	if (session.archived) return undefined;
 	const mark = markFor(session);
 	if (mark === undefined) return undefined;

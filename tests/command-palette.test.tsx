@@ -1126,6 +1126,115 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	describe("freezes groups and marks while open, as upstream's settle snapshot", () => {
+		const recentKey = recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey;
+
+		async function openFrozen() {
+			let client: QueryClient | null = null;
+			const dialog = await openPalette(
+				[
+					recentSession("s-a", "Alpha task", "blocked"),
+					recentSession("s-b", "Beta task", "working"),
+					recentSession("s-plain", "Plain one"),
+				],
+				"/",
+				(queryClient) => {
+					client = queryClient;
+				},
+			);
+			await within(dialog).findByRole("option", {name: /Alpha task/});
+			const changed = async () => {
+				await act(async () => {
+					client?.setQueryData(recentKey, {
+						sessions: [
+							recentSession("s-c", "Gamma task", "blocked"),
+							recentSession("s-a", "Alpha task", "done"),
+							recentSession("s-b", "Beta task", "done"),
+							recentSession("s-plain", "Plain one"),
+						],
+						nextCursor: null,
+					});
+					await new Promise((resolve) => {
+						setTimeout(resolve, 0);
+					});
+				});
+			};
+			return {dialog, changed};
+		}
+
+		const OPENING_VIEW = [
+			["Needs attention", ["Alpha task Awaiting input"]],
+			["Recents", ["Beta task Running", "Plain one"]],
+			["Actions", ["New session"]],
+		];
+
+		it("keeps the opening groups and marks when the sessions change, and takes a fresh snapshot on reopen", async () => {
+			const {dialog, changed} = await openFrozen();
+			expect(groupLabels(dialog)).toStrictEqual(OPENING_VIEW);
+
+			await changed();
+			const frozen = groupLabels(dialog);
+			const input = within(dialog).getByRole("combobox");
+			fireEvent.change(input, {target: {value: "task"}});
+			const typedLabels = () =>
+				[...dialog.querySelectorAll("[cmdk-item]")]
+					.map(
+						(item) =>
+							`${item.querySelector("[data-palette-label]")?.textContent ?? ""}${item.querySelector(".sr-only")?.textContent ?? ""}`,
+					)
+					.filter((label) => label.includes("task"));
+			await waitFor(() => {
+				expect(typedLabels().length).toBeGreaterThan(0);
+			});
+			const typed = typedLabels();
+			fireEvent.change(input, {target: {value: ""}});
+			await within(dialog).findByRole("option", {name: /Alpha task/});
+			const cleared = groupLabels(dialog);
+
+			fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
+			await waitFor(() => {
+				expect(screen.queryByRole("dialog")).toBeNull();
+			});
+			pressK(document.body, {metaKey: true});
+			const reopened = await screen.findByRole("dialog", {name: "Search"});
+			await within(reopened).findByRole("option", {name: /Gamma task/});
+
+			expect({frozen, typed, cleared, reopened: groupLabels(reopened)}).toStrictEqual({
+				frozen: OPENING_VIEW,
+				// Typed rows list live sessions but read the frozen marks; one new since opening stays unmarked.
+				typed: ["Gamma task", "Alpha task Awaiting input", "Beta task Running"],
+				cleared: OPENING_VIEW,
+				reopened: [
+					["Needs attention", ["Gamma task Awaiting input"]],
+					["Recents", ["Alpha task", "Beta task", "Plain one"]],
+					["Actions", ["New session"]],
+				],
+			});
+		});
+
+		it("lets a row the user opened row actions on read its live mark", async () => {
+			const {dialog, changed} = await openFrozen();
+			const input = within(dialog).getByRole("combobox");
+
+			fireEvent.keyDown(input, {key: "Enter", code: "Enter", altKey: true});
+			const card = await within(dialog).findByRole("menu", {name: "Actions"});
+			fireEvent.keyDown(within(card).getByRole("menuitem", {name: /^Open1/}), {
+				key: "Escape",
+				code: "Escape",
+			});
+			await waitFor(() => {
+				expect(within(dialog).queryByRole("menu", {name: "Actions"})).toBeNull();
+			});
+			await changed();
+
+			// The acted-on lead lost its live mark, so it drops back into the frozen Recents pool.
+			expect(groupLabels(dialog)).toStrictEqual([
+				["Recents", ["Alpha task", "Beta task Running", "Plain one"]],
+				["Actions", ["New session"]],
+			]);
+		});
+	});
+
 	it("shows upstream's trailing PR #N secondary on an empty-view session, without the time", async () => {
 		const dialog = await openPalette([
 			recentSession("s-pr", "With PR", "done", {pr: PR_863}),

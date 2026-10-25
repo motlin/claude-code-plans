@@ -81,6 +81,7 @@ import {
 	sortLeads,
 	type PaletteGroup,
 	type PaletteMark,
+	type PaletteMarkEntry,
 } from "../lib/palette-marks";
 import {buildClaudeCopyCommand} from "../lib/claude-launch-command";
 import {
@@ -214,8 +215,11 @@ interface SearchRow {
 	meta?: string;
 }
 
-function sessionRow(session: SessionListItem, matches: readonly TextMatch[], now: number): SearchRow {
-	const mark = paletteMark(session, now)?.mark;
+/** Resolves a session's mark: live, or from the snapshot frozen when the palette settled. */
+type MarkOf = (session: SessionListItem) => PaletteMarkEntry | undefined;
+
+function sessionRow(session: SessionListItem, matches: readonly TextMatch[], markOf: MarkOf): SearchRow {
+	const mark = markOf(session)?.mark;
 	return {
 		kind: "session",
 		id: session.id,
@@ -230,11 +234,11 @@ function sessionRow(session: SessionListItem, matches: readonly TextMatch[], now
 	};
 }
 
-function instantRows(sessions: readonly SessionListItem[], query: string, now: number): SearchRow[] {
+function instantRows(sessions: readonly SessionListItem[], query: string, markOf: MarkOf): SearchRow[] {
 	const rows: SearchRow[] = [];
 	for (const session of sessions) {
 		const matches = titleMatches(session.title, query);
-		if (matches !== null) rows.push(sessionRow(session, matches, now));
+		if (matches !== null) rows.push(sessionRow(session, matches, markOf));
 	}
 	return rows;
 }
@@ -500,36 +504,60 @@ function paletteSessionRow(session: SessionListItem, mark: PaletteMark | undefin
 	};
 }
 
+/** The empty view's membership frozen at the palette's first settle (upstream's `{recentIds, leadIds}`). */
+interface PaletteViewSnapshot {
+	leadIds: readonly string[];
+	recentIds: readonly string[];
+}
+
 /**
  * Build upstream's fitted empty view, dropping the page on screen. Recents follow the per-tab visit
  * MRU, falling back to mtime-ordered sessions until the tab has visited anything else; marked
- * sessions lead by rank, and `fitPaletteEmptyView` sizes the groups to the 440px list.
+ * sessions lead by rank, and `fitPaletteEmptyView` sizes the groups to the 440px list. With a
+ * frozen `view`, membership and lead order come from it and only titles follow the live sessions;
+ * a frozen lead whose mark is gone drops out.
  */
 function paletteGroups(
 	sessions: readonly SessionListItem[],
 	history: readonly RecentEntry[],
 	currentKey: string | undefined,
 	currentSessionId: string | undefined,
-	now: number,
-): PaletteGroup<EmptyViewRow>[] {
+	markOf: MarkOf,
+	view: PaletteViewSnapshot | null,
+): {groups: PaletteGroup<EmptyViewRow>[]; view: PaletteViewSnapshot} {
 	const leads: LeadSession[] = [];
+	const marked = new Map<string, LeadSession>();
 	const sessionRows = new Map<string, PaletteSessionRow>();
 	const fallback: PaletteRecent[] = [];
 	for (const session of sessions) {
-		const marked = session.id === currentSessionId ? undefined : paletteMark(session, now);
-		const row = paletteSessionRow(session, marked?.mark);
+		const entry = session.id === currentSessionId ? undefined : markOf(session);
+		const row = paletteSessionRow(session, entry?.mark);
 		sessionRows.set(session.id, row);
 		if (session.id === currentSessionId) continue;
-		if (marked?.leads === true) leads.push({...row, mark: marked.mark});
+		if (entry !== undefined) marked.set(session.id, {...row, mark: entry.mark});
+		if (entry?.leads === true) leads.push({...row, mark: entry.mark});
 		fallback.push(row);
 	}
 	const visited = mruRecents(history, currentKey, sessionRows);
 	const recents = visited.length > 0 ? visited : fallback;
-	return fitPaletteEmptyView<EmptyViewRow>({
-		leads: sortLeads(leads),
-		recents: recents.slice(0, RECENTS_POOL),
-		actions: [{kind: "action", id: "new_session"}],
-	});
+	let leadRows: LeadSession[];
+	let pool: PaletteRecent[];
+	if (view === null) {
+		leadRows = sortLeads(leads);
+		pool = recents.slice(0, RECENTS_POOL);
+	} else {
+		const recentRows = new Map(recents.map((row) => [row.id, row]));
+		leadRows = view.leadIds.flatMap((id) => marked.get(id) ?? []);
+		pool = view.recentIds.flatMap((id) => recentRows.get(id) ?? []);
+	}
+	return {
+		groups: fitPaletteEmptyView<EmptyViewRow>({
+			leads: leadRows,
+			recents: pool,
+			actions: [{kind: "action", id: "new_session"}],
+		}),
+		view: view ?? {leadIds: leadRows.map((row) => row.id), recentIds: pool.map((row) => row.id)},
+	};
 }
 
 /** Pages reachable by typing; upstream keeps navigation out of the empty state. */
@@ -654,8 +682,11 @@ function useCurrentSessionId(): string | undefined {
 	return useSessionIdentity(routeId) ?? undefined;
 }
 
-/** Keep this opening's MRU fixed while its legacy alias identities finish loading. */
-function usePaletteHistory(): RecentEntry[] {
+/**
+ * Keep this opening's MRU fixed while its legacy alias identities finish loading; `settled` turns
+ * true once none is still pending.
+ */
+function usePaletteHistory(): {entries: RecentEntry[]; settled: boolean} {
 	const [snapshot] = useState(loadRecents);
 	const aliases = useMemo(
 		() => [
@@ -675,7 +706,23 @@ function usePaletteHistory(): RecentEntry[] {
 			return [alias, identity?.isSuccess ? identity.data.sessionId : null] as const;
 		}),
 	);
-	return resolveRecentSessions(snapshot, (alias) => owners.get(alias) ?? null);
+	return {
+		entries: resolveRecentSessions(snapshot, (alias) => owners.get(alias) ?? null),
+		settled: identities.every((identity) => !identity.isPending),
+	};
+}
+
+/** Upstream's last staged settle timer (`Af`): freeze even if the MRU identity lookups never finish. */
+const PALETTE_SETTLE_FALLBACK_MS = 3000;
+
+/** Every listed session's mark at the palette's first settle (upstream's `poolMarks`). */
+function freezeMarks(sessions: readonly SessionListItem[], now: number): ReadonlyMap<string, PaletteMarkEntry> {
+	return new Map(
+		sessions.flatMap((session) => {
+			const entry = paletteMark(session, now);
+			return entry === undefined ? [] : [[session.id, entry] as const];
+		}),
+	);
 }
 
 export interface CommandPaletteProps {
@@ -764,7 +811,31 @@ function PalettePopup({
 	}, []);
 
 	const pathname = useRouterState({select: (state) => state.location.pathname});
-	const history = usePaletteHistory();
+	const {entries: history, settled: historySettled} = usePaletteHistory();
+	// Upstream freezes the open palette at its first settle: marks for every listed row, then the
+	// empty view's membership, so rows never jump groups while it is open. Rows acted on through
+	// row actions read their live mark again. The popup unmounts on close, so reopening starts fresh.
+	const [settleTimedOut, setSettleTimedOut] = useState(false);
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			setSettleTimedOut(true);
+		}, PALETTE_SETTLE_FALLBACK_MS);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, []);
+	const [frozenMarks, setFrozenMarks] = useState<ReadonlyMap<string, PaletteMarkEntry> | null>(null);
+	const [frozenView, setFrozenView] = useState<PaletteViewSnapshot | null>(null);
+	const [actedIds, setActedIds] = useState<ReadonlySet<string>>(() => new Set());
+	const settled = data !== undefined && (historySettled || settleTimedOut);
+	if (settled && frozenMarks === null) setFrozenMarks(freezeMarks(data.sessions, Date.now()));
+	const markOf = useCallback(
+		(session: SessionListItem) =>
+			frozenMarks === null || actedIds.has(session.id)
+				? paletteMark(session, Date.now())
+				: frozenMarks.get(session.id),
+		[frozenMarks, actedIds],
+	);
 	const emptyView = useMemo(
 		() =>
 			paletteGroups(
@@ -772,9 +843,10 @@ function PalettePopup({
 				history,
 				currentSessionId === undefined ? routeToRecent(pathname)?.key : `session:${currentSessionId}`,
 				currentSessionId,
-				Date.now(),
+				markOf,
+				frozenView,
 			),
-		[data, history, pathname, currentSessionId],
+		[data, history, pathname, currentSessionId, markOf, frozenView],
 	);
 
 	const trimmedQuery = query.trim();
@@ -878,7 +950,7 @@ function PalettePopup({
 		if (type === "plans" && tokens.text === "") return recentDocRows(planDocs(plans), tokens, projects, Date.now());
 		if (type === "memories" && tokens.text === "") return recentDocRows(memoryDocs, tokens, projects, Date.now());
 		if ((type === "sessions" || type === "all") && tokens.text === "") {
-			return visibleSessions.slice(0, PALETTE_RECENT_LIMIT).map((session) => sessionRow(session, [], Date.now()));
+			return visibleSessions.slice(0, PALETTE_RECENT_LIMIT).map((session) => sessionRow(session, [], markOf));
 		}
 		return null;
 	}, [
@@ -893,11 +965,12 @@ function PalettePopup({
 		memoryDocs,
 		tokens,
 		visibleSessions,
+		markOf,
 	]);
 
 	const instant = useMemo(
-		() => (!searchesSessions || tokens.text === "" ? [] : instantRows(visibleSessions, tokens.text, Date.now())),
-		[searchesSessions, visibleSessions, tokens.text],
+		() => (!searchesSessions || tokens.text === "" ? [] : instantRows(visibleSessions, tokens.text, markOf)),
+		[searchesSessions, visibleSessions, tokens.text, markOf],
 	);
 
 	// Instant rows keep their position; server rows append, minus what is already shown.
@@ -941,6 +1014,7 @@ function PalettePopup({
 		const session = cardSessions.get(id);
 		const popup = popupRef.current;
 		if (session === undefined || popup === null) return;
+		setActedIds((acted) => (acted.has(id) ? acted : new Set(acted).add(id)));
 		const row = [...popup.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
 			(item) => item.dataset["value"] === `session:${id}`,
 		);
@@ -1306,6 +1380,7 @@ function PalettePopup({
 				: emptyMessage;
 	const idle = startStep === "idle";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all";
+	if (frozenMarks !== null && frozenView === null && showEmptyState) setFrozenView(emptyView.view);
 	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
 	// Upstream sizes the scroller to its content, but holds it at the cap while the skeleton or empty block fills it.
 	const listCapped = showEmptyState || (showResults && (searching || emptyKind !== null));
@@ -1546,7 +1621,7 @@ function PalettePopup({
 
 						{showEmptyState && (
 							<>
-								{emptyView.map((group) => (
+								{emptyView.groups.map((group) => (
 									<Command.Group key={group.id} heading={group.title} className={GROUP_CLASS}>
 										{group.items.map((row) => (
 											<EmptyViewItem
