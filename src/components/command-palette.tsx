@@ -104,6 +104,7 @@ import {pin, unpin, usePins} from "../lib/pin-store";
 import {toMdSlug} from "../lib/md-slug";
 import {loadRecents, resolveRecentSessions, routeToRecent, type RecentEntry} from "../lib/recents-history";
 import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
+import {paletteEmptyMessage} from "../lib/palette-empty";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
 import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
 import {createSessionCommands} from "../lib/session-commands";
@@ -1678,7 +1679,9 @@ function PalettePopup({
 										data-palette-empty=""
 										className="flex min-h-fit flex-1 flex-col items-center justify-center gap-3 px-6 py-6 text-center"
 									>
-										<p className="m-0 max-w-full break-words text-secondary">No results found</p>
+										<p className="m-0 max-w-full break-words text-secondary">
+											{paletteEmptyMessage(tokens.text, null)}
+										</p>
 										{hasFilterTokens && (
 											<button
 												type="button"
@@ -1695,7 +1698,7 @@ function PalettePopup({
 								{!searching && resultCount === 0 && type !== "all" && (
 									<div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
 										<span className="text-base leading-6 text-secondary">
-											No results in {paletteTypeLabels[type]}
+											{paletteEmptyMessage(tokens.text, paletteTypeLabels[type])}
 										</span>
 										<button
 											type="button"

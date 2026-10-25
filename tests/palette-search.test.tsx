@@ -497,13 +497,13 @@ describe("⌘K palette filters", () => {
 		expect((await awaitRequest()).url).toBe("/api/search?query=auth&type=plans&date=week");
 	});
 
-	it("centers upstream's No results found and announces it when the All search finds nothing", async () => {
+	it("centers upstream's No results for the query and announces it when the All search finds nothing", async () => {
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "zzqxvq");
 		(await awaitRequest()).resolve([]);
 
-		const empty = await within(dialog).findByText("No results found", {selector: "p"});
+		const empty = await within(dialog).findByText("No results for “zzqxvq”", {selector: "p"});
 		expect({
 			tag: empty.tagName,
 			block: empty.parentElement?.className
@@ -539,7 +539,7 @@ describe("⌘K palette filters", () => {
 		expect(request.url).toBe("/api/search?query=zzqxvq&type=sessions");
 		request.resolve([]);
 
-		await within(dialog).findByText("No results in Code");
+		await within(dialog).findByText("No results for “zzqxvq” in Code");
 		fireEvent.click(within(dialog).getByRole("button", {name: "Search all"}));
 
 		expect(tabs(dialog)[0]).toStrictEqual({name: "All", selected: "true"});
