@@ -2336,4 +2336,66 @@ describe("CommandPalette pinned Jump to question row", () => {
 			reopened: (await within(reopened).findByRole("option", {name: "Jump to question"})).textContent,
 		}).toStrictEqual({whileOpen: null, reopened: "Jump to question"});
 	});
+
+	function searchResultLabels(dialog: HTMLElement): string[] {
+		const results = within(dialog).queryByRole("group", {name: "Search results"});
+		return [...(results?.querySelectorAll("[cmdk-item]") ?? [])].map(
+			(item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
+		);
+	}
+
+	function typeQuery(dialog: HTMLElement, value: string) {
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value}});
+	}
+
+	it("lists a typed Jump to question action for its label, search hints and !jq bang while a waiting card is on the page", async () => {
+		addWaitingCard();
+		const dialog = await openPalette([recentSession("sess-1", "Settings refactor")]);
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		const matches: Record<string, string[]> = {};
+		for (const query of ["question", "approval", "verification code", "!jq", "actions:true"]) {
+			typeQuery(dialog, query);
+			matches[query] = searchResultLabels(dialog).filter((label) => label === "Jump to question");
+		}
+
+		expect(matches).toStrictEqual({
+			question: ["Jump to question"],
+			approval: ["Jump to question"],
+			"verification code": ["Jump to question"],
+			"!jq": ["Jump to question"],
+			"actions:true": ["Jump to question"],
+		});
+	});
+
+	it("lists no typed jump action without a waiting card", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Settings refactor")]);
+		await within(dialog).findByRole("option", {name: /Settings refactor/});
+		typeQuery(dialog, "!jq");
+		const bang = searchResultLabels(dialog);
+		typeQuery(dialog, "actions:true");
+
+		expect({bang, actions: searchResultLabels(dialog)}).toStrictEqual({
+			bang: [],
+			actions: ["Search sessions", "Keyboard shortcuts", "Toggle sidebar", "Settings", "Mark all sessions seen"],
+		});
+	});
+
+	it("choosing the typed jump action closes the palette and lands on the waiting card", async () => {
+		const card = addWaitingCard();
+		const dialog = await openPalette([recentSession("sess-1", "Settings refactor")]);
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		typeQuery(dialog, "!jq");
+		const results = within(dialog).getByRole("group", {name: "Search results"});
+		fireEvent.click(within(results).getByRole("option", {name: "Jump to question"}));
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+		await waitFor(() => {
+			expect({
+				focused: document.activeElement === card,
+				landing: card.getAttribute("data-focus-region-landing"),
+			}).toStrictEqual({focused: true, landing: "overlay"});
+		});
+	});
 });

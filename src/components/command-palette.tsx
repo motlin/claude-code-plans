@@ -52,6 +52,7 @@ import {
 	CircleHelp,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
+import {jumpActionKeywords, PALETTE_JUMP_ACTIONS} from "../lib/palette-jump-actions";
 import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteEntrypoint, PaletteMode} from "../hooks/use-command-palette";
@@ -673,6 +674,8 @@ interface PaletteAction {
 	icon: ReactNode;
 	run: () => void;
 	shortcut?: ShortcutId;
+	/** Extra fuzzy-match words, as upstream's `[...searchHints, bang]`. */
+	keywords?: readonly string[];
 }
 
 function useCurrentSessionId(): string | undefined {
@@ -1187,6 +1190,16 @@ function PalettePopup({
 		chooseTab("all");
 	}
 
+	// Closes the palette and lands on the waiting card seen at open, if it is still on the page.
+	function jumpToQuestion() {
+		restoreFocusRef.current = false;
+		select(() => {
+			requestAnimationFrame(() => {
+				if (jumpCard?.isConnected === true) landOnWaitingCard(jumpCard);
+			});
+		});
+	}
+
 	// Upstream's Actions minus the cloud-only ones; New session lives in Quick actions once text is typed.
 	const actions = (
 		[
@@ -1231,6 +1244,17 @@ function PalettePopup({
 						} satisfies PaletteAction,
 					]
 				: []),
+			// Upstream lists an unavailable jump action nowhere, so it needs the card seen at open.
+			...(jumpCard === null
+				? []
+				: [
+						{
+							label: PALETTE_JUMP_ACTIONS.jump_to_question.label,
+							icon: <CircleHelp />,
+							run: jumpToQuestion,
+							keywords: jumpActionKeywords("jump_to_question"),
+						} satisfies PaletteAction,
+					]),
 		] satisfies PaletteAction[]
 	).filter((action: PaletteAction) => action.shortcut === undefined || SHORTCUTS[action.shortcut].enabled);
 
@@ -1356,7 +1380,7 @@ function PalettePopup({
 		actionsOnly && tokens.text === ""
 			? actions
 			: matchesCommands || actionsOnly
-				? actions.filter((action) => commandMatches(action.label, tokens.text))
+				? actions.filter((action) => commandMatches(action.label, tokens.text, action.keywords))
 				: [];
 	const matchedCommands = matchesCommands
 		? NAV_COMMANDS.filter((command) => commandMatches(command.label, tokens.text, command.keywords))
@@ -1636,17 +1660,9 @@ function PalettePopup({
 											<CommandItem
 												value="action:jump_to_question"
 												icon={<CircleHelp />}
-												onSelect={() => {
-													restoreFocusRef.current = false;
-													select(() => {
-														requestAnimationFrame(() => {
-															if (jumpCard?.isConnected === true)
-																landOnWaitingCard(jumpCard);
-														});
-													});
-												}}
+												onSelect={jumpToQuestion}
 											>
-												Jump to question
+												{PALETTE_JUMP_ACTIONS.jump_to_question.label}
 											</CommandItem>
 										</div>
 									) : (
