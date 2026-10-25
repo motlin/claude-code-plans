@@ -2265,6 +2265,85 @@ describe("CommandPalette filter values", () => {
 			wrapper: null,
 		});
 	});
+
+	function resultRows(dialog: HTMLElement): Array<{value: string | null; text: string; icon: string[]}> {
+		return [...within(dialog).getByRole("group", {name: "Search results"}).querySelectorAll("[cmdk-item]")].map(
+			(item) => ({
+				value: item.getAttribute("data-value"),
+				text: item.textContent,
+				icon: [...(item.querySelector("svg")?.classList ?? [])].filter((name) => name !== "lucide"),
+			}),
+		);
+	}
+
+	it("suggests a Filter by Date: Past week row inside the results for text ending in week", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Sync this week notes")]);
+
+		typeQuery(dialog, "sync this week");
+
+		expect(resultRows(dialog).filter((row) => row.value?.startsWith("filter") === true)).toStrictEqual([
+			{value: "filter-value:date:week", text: "Filter by Date: Past week", icon: ["lucide-clock"]},
+		]);
+	});
+
+	it("commits the suggested chip in place of the matched words", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Sync this week notes")]);
+		typeQuery(dialog, "sync this week");
+
+		fireEvent.click(dialog.querySelector('[cmdk-item][data-value="filter-value:date:week"]')!);
+
+		expect({
+			value: within(dialog).getByRole<HTMLTextAreaElement>("combobox").value,
+			chips: [...dialog.querySelectorAll("[role=group][data-filter]")].map((chip) =>
+				chip.getAttribute("aria-label"),
+			),
+		}).toStrictEqual({value: "sync this ", chips: ["Date Past week"]});
+	});
+
+	it("lists every hint first, then the results, for filter by", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Filter by date bug")]);
+
+		typeQuery(dialog, "filter by");
+
+		expect(resultRows(dialog).map((row) => row.value)).toStrictEqual([
+			"filter:date",
+			"filter:repo",
+			"filter:project",
+			"filter:type",
+			"filter:archived",
+			"filter:actions",
+			"session:sess-1",
+		]);
+	});
+
+	it("replaces the filter by words with the chosen hint's token", async () => {
+		const dialog = await openPalette();
+		typeQuery(dialog, "fix filter by re");
+
+		fireEvent.click(dialog.querySelector('[cmdk-item][data-value="filter:date"]')!);
+
+		expect({
+			value: within(dialog).getByRole<HTMLTextAreaElement>("combobox").value,
+			groups: groupLabels(dialog),
+		}).toStrictEqual({value: "fix date:", groups: [["Date", ["Today", "Past week", "Past month"]]]});
+	});
+
+	it("offers a single hint for a bare keyword, dropped when a value suggestion names the same filter", async () => {
+		const dialog = await openPalette();
+
+		typeQuery(dialog, "rep");
+		const filterRows = () =>
+			resultRows(dialog)
+				.map((row) => row.value)
+				.filter((value) => value?.startsWith("filter") === true);
+		const keyword = filterRows();
+		typeQuery(dialog, "fix today");
+
+		expect({keyword, value: filterRows()}).toStrictEqual({
+			keyword: ["filter:repo"],
+			value: ["filter-value:date:today"],
+		});
+	});
 });
 
 describe("CommandPalette committed filter chips", () => {

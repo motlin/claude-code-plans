@@ -183,15 +183,58 @@ export const PALETTE_FILTER_TOKENS = {
 	actions: "actions:",
 } as const satisfies Record<PaletteFilter, string>;
 
-/** Hint rows for a "/…" query, narrowed by keyword prefix; null when the query is not a hint query. */
-export function paletteFilterHints(query: string): PaletteFilter[] | null {
-	if (!query.startsWith("/") || /\s/u.test(query)) return null;
-	const prefix = query.slice(1).toLowerCase();
+/** The filters whose token or one of whose keywords starts with `prefix` (lowercase). */
+function filtersMatching(prefix: string): PaletteFilter[] {
 	return PaletteFilterSchema.options.filter(
 		(filter) =>
 			PALETTE_FILTER_TOKENS[filter].startsWith(prefix) ||
 			FILTER_KEYWORDS[filter].some((keyword) => keyword.startsWith(prefix)),
 	);
+}
+
+/** Hint rows for a "/…" query, narrowed by keyword prefix; null when the query is not a hint query. */
+export function paletteFilterHints(query: string): PaletteFilter[] | null {
+	if (!query.startsWith("/") || /\s/u.test(query)) return null;
+	return filtersMatching(query.slice(1).toLowerCase());
+}
+
+export interface PaletteFilterHintMatch {
+	keys: PaletteFilter[];
+	/** Where the hint's words start; choosing a hint replaces the query from here on. */
+	start: number;
+	/** The "/" and "filter by" forms list hints; false for a bare keyword's single hint. */
+	sentence: boolean;
+}
+
+/** Upstream's `xt`: the query ends in "filt", "filter", "filters", "filter b", "filter by" or "filter by <letters>". */
+const FILTER_SENTENCE = /(?:^|\s)(filt(?:e(?:rs?)?)?(?: (?:by?(?: ([a-z]*))?)?)?)$/iu;
+/** Upstream's bare-keyword mode needs at least this many letters. */
+const KEYWORD_HINT_MIN = 3;
+
+/**
+ * Upstream's `Ct`: the "Filter by" hints a query asks for. A whole "/<letters>" query or a
+ * trailing "filter by <letters>" lists every filter those letters start; a last word of 3 or
+ * more letters that starts a filter keyword (`rep`, `today`) asks for that filter alone.
+ */
+export function paletteFilterHintMatch(query: string): PaletteFilterHintMatch | undefined {
+	const slash = /^\/([a-z]*)$/iu.exec(query);
+	if (slash !== null) {
+		const keys = filtersMatching((slash[1] ?? "").toLowerCase());
+		return keys.length === 0 ? undefined : {keys, start: 0, sentence: true};
+	}
+	const sentence = FILTER_SENTENCE.exec(query);
+	if (sentence?.[1] !== undefined) {
+		const keys = filtersMatching((sentence[2] ?? "").toLowerCase());
+		const start = query.length - sentence[1].length;
+		return keys.length === 0 ? undefined : {keys, start, sentence: true};
+	}
+	const word = /(?:^|\s)([a-z]+)$/iu.exec(query)?.[1];
+	if (word === undefined || word.length < KEYWORD_HINT_MIN) return undefined;
+	const lower = word.toLowerCase();
+	const keys = PaletteFilterSchema.options.filter((filter) =>
+		FILTER_KEYWORDS[filter].some((keyword) => keyword.startsWith(lower)),
+	);
+	return keys.length === 0 ? undefined : {keys, start: query.length - word.length, sentence: false};
 }
 
 /** The filter a bare `key:` names, including the parser's aliases. */
@@ -294,6 +337,47 @@ export function paletteValueSuggestions(
 		.filter(([label]) => valueMatches(filter, label, typed.toLowerCase()))
 		.map(([label, value]) => ({label, query: `${head}${value} `}));
 	return values.length === 0 ? null : {filter, values};
+}
+
+export interface PaletteInlineSuggestion {
+	filter: PaletteFilter;
+	/** The value the filter's token takes, e.g. `week` in `date:week`. */
+	value: string;
+	/** "<Name>: <Value>", the row's badge. */
+	label: string;
+	/** Where the matched words start; choosing the row commits the chip in their place. */
+	start: number;
+}
+
+/** Upstream matches the last 1–4 words of ordinary text against the filter values. */
+const INLINE_MAX_WORDS = 4;
+const INLINE_MIN_LETTERS = 2;
+
+/**
+ * Upstream's `Wo`: "Filter by <Name>: <Value>" rows for the values the query's last 1–4 words
+ * name, each matched like a value list's typed text, longest phrase first. Words of fewer than
+ * two letters, `key:value` tokens and a trailing space match nothing. `sessions` are most recent first.
+ */
+export function paletteInlineSuggestions(
+	query: string,
+	sessions: readonly PaletteValueSession[],
+): PaletteInlineSuggestion[] {
+	const words = [...query.matchAll(/\S+/gu)];
+	const last = words.at(-1);
+	if (last === undefined || last.index + last[0].length !== query.length) return [];
+	const phrases: Array<{typed: string; start: number}> = [];
+	for (let count = Math.min(INLINE_MAX_WORDS, words.length); count >= 1; count--) {
+		const tail = words.slice(-count);
+		if (tail.some(([word]) => word.length < INLINE_MIN_LETTERS || word.includes(":"))) continue;
+		phrases.push({typed: tail.map(([word]) => word.toLowerCase()).join(""), start: tail[0]?.index ?? 0});
+	}
+	return PaletteFilterSchema.options.flatMap((filter) =>
+		filterValues(filter, sessions).flatMap(([label, value]) => {
+			const phrase = phrases.find(({typed}) => valueMatches(filter, label, typed));
+			if (phrase === undefined) return [];
+			return [{filter, value, label: `${paletteFilterLabels[filter]}: ${label}`, start: phrase.start}];
+		}),
+	);
 }
 
 /** The palette's committed filter chips, kept apart from the query text like upstream's filter object. */

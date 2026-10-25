@@ -107,7 +107,9 @@ import {
 	popPaletteFilter,
 	paletteDateCutoff,
 	nextPaletteType,
+	paletteFilterHintMatch,
 	paletteFilterHints,
+	paletteInlineSuggestions,
 	paletteProjectMatches,
 	paletteSearchParams,
 	paletteValueSuggestions,
@@ -118,6 +120,7 @@ import {
 	type PaletteChipFilter,
 	type PaletteFilter,
 	type PaletteFilters,
+	type PaletteInlineSuggestion,
 	type PaletteProject,
 	type PaletteTokens,
 	type PaletteType,
@@ -914,6 +917,30 @@ function PalettePopup({
 	// Outside Compose, the New session prompt is the free text, never a filter token.
 	const startPrompt = compose ? trimmedQuery : tokens.text;
 	const canStart = startPrompt !== "" && searchable;
+	// Upstream's inline "Filter by <Name>: <Value>" rows for values the last words name, minus facets already set.
+	const inlineSuggestions = useMemo(
+		() =>
+			searchable && !compose
+				? paletteInlineSuggestions(query, data?.sessions ?? []).filter((suggestion) =>
+						suggestion.filter === "type"
+							? suggestion.value !== tab
+							: filters[suggestion.filter] === undefined,
+					)
+				: [],
+		[searchable, compose, query, data, filters, tab],
+	);
+	// Upstream's "filter by" sentence and bare-keyword hints, which join the results instead of replacing them.
+	const hintMatch = searchable && !compose ? paletteFilterHintMatch(query) : undefined;
+	const inlineHints =
+		hintMatch === undefined ||
+		(!hintMatch.sentence && inlineSuggestions.some((suggestion) => hintMatch.keys.includes(suggestion.filter)))
+			? []
+			: hintMatch.keys;
+	const inlineHintsFirst =
+		hintMatch !== undefined &&
+		(hintMatch.sentence
+			? query.slice(0, hintMatch.start).trim() === ""
+			: hintMatch.keys.every((filter) => PALETTE_FILTER_TOKENS[filter].startsWith(trimmedQuery.toLowerCase())));
 	// `archived:` searches recents that include archived sessions.
 	const withArchivedQuery = useQuery({
 		...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all"),
@@ -1214,12 +1241,42 @@ function PalettePopup({
 	}
 
 	// Upstream commits the flag filters (Archived, Actions) at once; the others open their value list.
-	function chooseFilter(filter: PaletteFilter) {
-		const token = PALETTE_FILTER_TOKENS[filter];
+	// Either way the hint replaces the query from `start`, where its "filter by" words begin.
+	function chooseFilter(filter: PaletteFilter, start = 0) {
+		const token = `${query.slice(0, start)}${PALETTE_FILTER_TOKENS[filter]}`;
 		if (filter === "archived" || filter === "actions") changeQuery(`${token} `);
 		else setQuery(token);
 		inputRef.current?.focus();
 	}
+
+	// An inline suggestion commits its chip in place of the words it matched.
+	function chooseInlineSuggestion(suggestion: PaletteInlineSuggestion) {
+		chooseFilterValue(
+			`${query.slice(0, suggestion.start)}${PALETTE_FILTER_TOKENS[suggestion.filter]}${suggestion.value} `,
+		);
+	}
+
+	function filterHintItem(filter: PaletteFilter, start = 0) {
+		return (
+			<CommandItem
+				key={filter}
+				value={`filter:${filter}`}
+				icon={PALETTE_FILTER_ICONS[filter]}
+				badge={
+					<span className={FILTER_BADGE_CLASS}>
+						<span className="pb-[0.05em]">{paletteFilterLabels[filter]}</span>
+					</span>
+				}
+				onSelect={() => {
+					chooseFilter(filter, start);
+				}}
+			>
+				Filter by{" "}
+			</CommandItem>
+		);
+	}
+
+	const inlineHintItems = inlineHints.map((filter) => filterHintItem(filter, hintMatch?.start));
 
 	function chooseFilterValue(next: string) {
 		changeQuery(next);
@@ -1465,7 +1522,9 @@ function PalettePopup({
 		matchedSessionCommands.length +
 		matchedActions.length +
 		matchedCommands.length +
-		serverRows.length;
+		serverRows.length +
+		inlineHints.length +
+		inlineSuggestions.length;
 	const emptyKind = paletteEmptyKind({
 		query: tokens.text,
 		searching,
@@ -1688,25 +1747,7 @@ function PalettePopup({
 							</Command.Group>
 						)}
 						{idle && !compose && hints !== null && (
-							<div>
-								{hints.map((filter) => (
-									<CommandItem
-										key={filter}
-										value={`filter:${filter}`}
-										icon={PALETTE_FILTER_ICONS[filter]}
-										badge={
-											<span className={FILTER_BADGE_CLASS}>
-												<span className="pb-[0.05em]">{paletteFilterLabels[filter]}</span>
-											</span>
-										}
-										onSelect={() => {
-											chooseFilter(filter);
-										}}
-									>
-										Filter by{" "}
-									</CommandItem>
-								))}
-							</div>
+							<div>{hints.map((filter) => filterHintItem(filter))}</div>
 						)}
 
 						{idle && !compose && valueSuggestions !== null && (
@@ -1780,6 +1821,7 @@ function PalettePopup({
 									aria-busy={searching}
 									className="flex flex-col"
 								>
+									{inlineHintsFirst && inlineHintItems}
 									{listing?.map((row) => (
 										<SearchResultItem
 											key={rowKey(row)}
@@ -1879,6 +1921,24 @@ function PalettePopup({
 											}}
 										/>
 									))}
+									{inlineSuggestions.map((suggestion) => (
+										<CommandItem
+											key={`${suggestion.filter}:${suggestion.value}`}
+											value={`filter-value:${suggestion.filter}:${suggestion.value}`}
+											icon={PALETTE_FILTER_ICONS[suggestion.filter]}
+											badge={
+												<span className={FILTER_BADGE_CLASS}>
+													<span className="pb-[0.05em]">{suggestion.label}</span>
+												</span>
+											}
+											onSelect={() => {
+												chooseInlineSuggestion(suggestion);
+											}}
+										>
+											Filter by{" "}
+										</CommandItem>
+									))}
+									{!inlineHintsFirst && inlineHintItems}
 									{/* Local-only row; upstream's empty view has no option rows, so it waits for results. */}
 									{emptyKind === null &&
 										!searching &&

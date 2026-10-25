@@ -5,7 +5,9 @@ import {
 	paletteChips,
 	popPaletteFilter,
 	paletteDateCutoff,
+	paletteFilterHintMatch,
 	paletteFilterHints,
+	paletteInlineSuggestions,
 	paletteSearchParams,
 	PaletteTypeSchema,
 	paletteValueSuggestions,
@@ -257,6 +259,74 @@ describe("paletteValueSuggestions", () => {
 			null,
 			null,
 		]);
+	});
+});
+
+describe("paletteFilterHintMatch", () => {
+	const ALL = ["date", "repo", "project", "type", "archived", "actions"];
+
+	it.each([
+		["/", {keys: ALL, start: 0, sentence: true}],
+		["/re", {keys: ["date", "repo"], start: 0, sentence: true}],
+		["filter by re", {keys: ["date", "repo"], start: 0, sentence: true}],
+		["fix filt", {keys: ALL, start: 4, sentence: true}],
+		["filte", {keys: ALL, start: 0, sentence: true}],
+		["Filters", {keys: ALL, start: 0, sentence: true}],
+		["filter b", {keys: ALL, start: 0, sentence: true}],
+		["filter by ", {keys: ALL, start: 0, sentence: true}],
+		["filter by a", {keys: ["archived", "actions"], start: 0, sentence: true}],
+		["rep", {keys: ["repo"], start: 0, sentence: false}],
+		["fix today", {keys: ["date"], start: 4, sentence: false}],
+		["com", {keys: ["actions"], start: 0, sentence: false}],
+	])("matches %j", (query, expected) => {
+		expect(paletteFilterHintMatch(query)).toStrictEqual(expected);
+	});
+
+	it.each(["ab", "", "/zz", "filter by zz", "zzz", "fix ", "rep ", "repo:", "filtering", "prefilter"])(
+		"is undefined for %j",
+		(query) => {
+			expect(paletteFilterHintMatch(query)).toBeUndefined();
+		},
+	);
+});
+
+describe("paletteInlineSuggestions", () => {
+	const sessions = [
+		{project: "/Users/dev/claude-code-plans", projectName: "ccp"},
+		{project: "/Users/dev/avalon", projectName: "avalon"},
+	];
+
+	it("suggests the value the last words name, with where its words start", () => {
+		expect(paletteInlineSuggestions("sync this week", sessions)).toStrictEqual([
+			{filter: "date", value: "week", label: "Date: Past week", start: 10},
+		]);
+	});
+
+	it("matches up to four trailing words against the label without spaces", () => {
+		expect(paletteInlineSuggestions("fix past mo", sessions)).toStrictEqual([
+			{filter: "date", value: "month", label: "Date: Past month", start: 4},
+		]);
+	});
+
+	it("suggests repos, projects and types too", () => {
+		expect({
+			repo: paletteInlineSuggestions("fix ava", sessions),
+			type: paletteInlineSuggestions("my plans", sessions),
+		}).toStrictEqual({
+			repo: [
+				{filter: "repo", value: "avalon", label: "Repo: avalon", start: 4},
+				{filter: "project", value: "avalon", label: "Project: avalon", start: 4},
+			],
+			type: [{filter: "type", value: "plans", label: "Type: Plans", start: 3}],
+		});
+	});
+
+	it("matches only words of two or more letters, never a token or nothing", () => {
+		expect(
+			["sy", "fix p", "", "fix ", "date:week", "sync zzz"].map((query) =>
+				paletteInlineSuggestions(query, sessions),
+			),
+		).toStrictEqual([[], [], [], [], [], []]);
 	});
 });
 
