@@ -52,7 +52,13 @@ describe("DockedPlanApproval", () => {
 			decide: async () => Promise.resolve(),
 		};
 		const {container} = render(<DockedPlanApproval pendingPlan={HOOK_PLAN} plan={plan} />);
-		expect(container.querySelector("[data-docked-plan]")?.hasAttribute("data-approval-card-root")).toBe(true);
+		const root = container.querySelector<HTMLElement>("[data-docked-plan]");
+		// Focusable and positioned, so a jump lands on it and its ::after landing ring sits inside it.
+		expect({
+			waitingCard: root?.hasAttribute("data-approval-card-root"),
+			tabIndex: root?.getAttribute("tabindex"),
+			positioned: root?.classList.contains("relative"),
+		}).toStrictEqual({waitingCard: true, tabIndex: "-1", positioned: true});
 	});
 
 	it("leads with 'Claude proposed a plan' and answers through the plan approval context", async () => {

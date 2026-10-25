@@ -796,6 +796,30 @@ html[data-interface-font="dyslexic"] {
 	box-shadow: var(--focus-shadow);
 }
 
+/* Upstream's focus-region landing ring: a jump (palette "Jump to question")
+   marks the landed card `data-focus-region-landing="overlay"`, which swaps its
+   own outline for the focus shadow drawn as an ::after 2px inside the card.
+   Unlayered so the `outline: none` beats the approval card's focus-visible
+   outline utility, as upstream's does. */
+[data-focus-region-landing="overlay"]:focus,
+[data-focus-region-landing="overlay"][data-focus-region-around]:focus-within,
+[data-focus-region-inside]:focus {
+	outline: none;
+}
+[data-focus-region-landing="overlay"]:focus::after,
+[data-focus-region-landing="overlay"][data-focus-region-around]:focus-within::after {
+	content: "";
+	position: absolute;
+	inset: 2px;
+	z-index: 2147483647;
+	border-radius: inherit;
+	pointer-events: none;
+	opacity: 1;
+	outline: 2px solid transparent;
+	outline-offset: -2px;
+	box-shadow: var(--focus-shadow);
+}
+
 [data-record-index] {
 	transition: background-color 200ms ease-out;
 }
