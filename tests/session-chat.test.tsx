@@ -1583,10 +1583,11 @@ describe("SessionChat Agent row label", () => {
 		]);
 	});
 
-	it("trails no model label, which upstream shows in the Subagent pane footnote instead", () => {
+	it("trails the subagent's model in a muted badge before the chevron", () => {
 		expect(rowHeaderSpanClasses(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001")))).toStrictEqual([
 			VERB,
 			DESCRIPTION,
+			"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-ink-muted tabular-nums",
 			"shrink-0 -ms-1 self-center text-t6",
 		]);
 	});
@@ -1645,6 +1646,9 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		).container;
 	}
 
+	const MODEL_BADGE_CLASS =
+		"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-ink-muted tabular-nums";
+
 	function agentRow(container: HTMLElement): HTMLElement {
 		const row = container.querySelector<HTMLElement>("[data-transcript-keeps-pin]");
 		if (row === null) throw new Error("no pane-opening agent row");
@@ -1676,10 +1680,47 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			spans: [
 				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Ran agent"],
 				["truncate min-w-0 text-body text-primary", "Commit lazy allocation fixup"],
+				[MODEL_BADGE_CLASS, "Haiku 4.5"],
 			],
 			glyph: undefined,
 			body: false,
 		});
+	});
+
+	it("follows a settled agent's description with upstream's muted model badge", () => {
+		const {lines, toolResultMap} = processTranscript(toolCallRecords([AGENT_CALL]));
+		const container = render(
+			<SubagentOpenerProvider value={() => {}}>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					subagents={[{...SUBAGENT, model: "claude-opus-5-5"}]}
+					showCompactSummaries
+					showTranscriptOnly
+					shouldScrollToEnd={false}
+				/>
+			</SubagentOpenerProvider>,
+		).container;
+		const badge = agentRow(container).lastElementChild;
+
+		expect({
+			className: badge?.getAttribute("class"),
+			bdi: badge?.querySelector(":scope > bdi")?.outerHTML,
+		}).toStrictEqual({
+			className: MODEL_BADGE_CLASS,
+			bdi: '<bdi class="inline-block max-w-[28ch] truncate align-bottom">Opus 5.5</bdi>',
+		});
+	});
+
+	it("shows no model badge while the agent runs or after it fails", () => {
+		const pending = renderWithOpener(toolCallRecords([AGENT_CALL]).slice(0, 1), () => {});
+		const failed = renderWithOpener(toolResultRecords(AGENT_CALL, "Fabricated failure", true), () => {});
+
+		expect([pending, failed].map((container) => agentRow(container).textContent)).toStrictEqual([
+			"Committing lazy allocation fixupCommitting lazy allocation fixuprunning",
+			"Commit lazy allocation fixupFailed",
+		]);
 	});
 
 	it.each([

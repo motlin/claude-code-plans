@@ -16,6 +16,7 @@ import React, {
 import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
+import {formatModelName} from "../lib/model-name";
 import {isWithdrawnQuestion, questionOutcomeNote, type AskedCall} from "../lib/ask-user-question";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
@@ -5377,6 +5378,7 @@ function ToolCallRow({
 	// A null ink marks an in-flight label, which upstream draws as ShimmerText.
 	const labelClass = call.isError ? ink : busy ? null : isSkill ? "text-secondary" : (workflowInk ?? ink);
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !busy;
+	const agentModel = isAgent && !call.isError && !busy ? formatModelName(call.subagentInfo?.model) : null;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
 	// Upstream draws every standalone status row in one 24px padded layout, whether it
 	// completed, failed, or is still running.
@@ -5534,6 +5536,12 @@ function ToolCallRow({
 				</button>
 			)}
 			{diffStats && <DiffStatPill added={diffStats.added} removed={diffStats.removed} />}
+			{agentModel !== null && (
+				// Upstream trails a settled Agent step with the subagent's model.
+				<span className="inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-ink-muted tabular-nums">
+					<bdi className="inline-block max-w-[28ch] truncate align-bottom">{agentModel}</bdi>
+				</span>
+			)}
 			{status !== null &&
 				(workflowStatusSummary === undefined ? (
 					<span
