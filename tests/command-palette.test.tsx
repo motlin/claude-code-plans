@@ -2163,3 +2163,156 @@ describe("CommandPalette filter values", () => {
 		});
 	});
 });
+
+describe("CommandPalette pinned Jump to question row", () => {
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		Element.prototype.scrollIntoView = () => {};
+	});
+
+	afterEach(() => {
+		cleanup();
+		document.querySelectorAll("[data-test-waiting-card]").forEach((card) => {
+			card.remove();
+		});
+		localStorage.clear();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	function addWaitingCard(): HTMLElement {
+		const card = document.createElement("div");
+		card.setAttribute("data-approval-card-root", "");
+		card.setAttribute("data-test-waiting-card", "");
+		card.setAttribute("role", "group");
+		card.setAttribute("aria-label", "Pick one");
+		card.tabIndex = -1;
+		document.body.append(card);
+		return card;
+	}
+
+	function firstListChild(dialog: HTMLElement): Element | null {
+		return dialog.querySelector("[cmdk-list-sizer]")?.firstElementChild ?? null;
+	}
+
+	it("pins a selected, headingless Jump to question row above Needs attention when a waiting card is on the page", async () => {
+		addWaitingCard();
+		const dialog = await openPalette([
+			recentSession("sess-1", "Refactor auth module", "blocked"),
+			recentSession("sess-2", "Fix the flaky test"),
+		]);
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const pinned = firstListChild(dialog);
+		const row = pinned?.querySelector("[cmdk-item]");
+
+		expect({
+			pinnedIsGroup: pinned?.hasAttribute("cmdk-group"),
+			heading: pinned?.querySelector("[cmdk-group-heading]") ?? null,
+			rows: [...(pinned?.querySelectorAll("[cmdk-item]") ?? [])].map((item) => item.textContent),
+			value: row?.getAttribute("data-value"),
+			selected: row?.getAttribute("data-selected"),
+			icon: row?.querySelector("svg")?.getAttribute("class"),
+			nextGroup: pinned?.nextElementSibling?.querySelector("[cmdk-group-heading]")?.textContent,
+		}).toStrictEqual({
+			pinnedIsGroup: false,
+			heading: null,
+			rows: ["Jump to question"],
+			value: "action:jump_to_question",
+			selected: "true",
+			icon: "lucide lucide-circle-question-mark",
+			nextGroup: "Needs attention",
+		});
+	});
+
+	it("offers no jump row without a waiting card", async () => {
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+
+		expect(within(dialog).queryByRole("option", {name: "Jump to question"})).toBeNull();
+	});
+
+	it("Enter closes the palette and lands on the waiting card instead of returning focus to the opener", async () => {
+		const card = addWaitingCard();
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Enter", code: "Enter"});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+		await waitFor(() => {
+			expect({
+				focused: document.activeElement === card,
+				landing: card.getAttribute("data-focus-region-landing"),
+			}).toStrictEqual({focused: true, landing: "overlay"});
+		});
+	});
+
+	it("hides the pinned row once a query is typed, and in Compose", async () => {
+		addWaitingCard();
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		const input = within(dialog).getByRole("combobox");
+		fireEvent.change(input, {target: {value: "x"}});
+		const typed = within(dialog).queryByRole("option", {name: "Jump to question"});
+		fireEvent.change(input, {target: {value: ""}});
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+		await within(dialog).findByRole("combobox", {name: "Write a message…"});
+
+		expect({
+			typed,
+			compose: within(dialog).queryByRole("option", {name: "Jump to question"}),
+		}).toStrictEqual({typed: null, compose: null});
+	});
+
+	it("decides the row once per open: a card removed while open keeps it, and Enter then just closes", async () => {
+		const card = addWaitingCard();
+		const composer = await renderPalette();
+		pressK(composer, {metaKey: true});
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		card.remove();
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "x"}});
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: ""}});
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Enter", code: "Enter"});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+		expect(card.hasAttribute("data-focus-region-landing")).toBe(false);
+	});
+
+	it("shows no row for a card that arrives while open, until the palette is reopened", async () => {
+		const composer = await renderPalette();
+		pressK(composer, {metaKey: true});
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		addWaitingCard();
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "x"}});
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: ""}});
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const whileOpen = within(dialog).queryByRole("option", {name: "Jump to question"});
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Escape", code: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+		pressK(composer, {metaKey: true});
+		const reopened = await screen.findByRole("dialog", {name: "Search"});
+
+		expect({
+			whileOpen,
+			reopened: (await within(reopened).findByRole("option", {name: "Jump to question"})).textContent,
+		}).toStrictEqual({whileOpen: null, reopened: "Jump to question"});
+	});
+});

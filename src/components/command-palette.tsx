@@ -49,8 +49,10 @@ import {
 	Clock,
 	Paperclip,
 	ArrowUp,
+	CircleHelp,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
+import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteEntrypoint, PaletteMode} from "../hooks/use-command-palette";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
@@ -793,6 +795,8 @@ function PalettePopup({
 	const [selectedValue, setSelectedValue] = useState("");
 	// Rename hands focus to the page title, so closing must not pull it back to the old element.
 	const restoreFocusRef = useRef(true);
+	// Upstream decides "Jump to question" once per open, from the waiting card on the page at that moment.
+	const [jumpCard] = useState(() => (typeof document === "undefined" ? null : findWaitingCard(document)));
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const composeChips = useContextChips(COMPOSE_DRAFT_KEY);
 
@@ -1621,6 +1625,25 @@ function PalettePopup({
 
 						{showEmptyState && (
 							<>
+								{jumpCard !== null && emptyView.groups.length > 0 && (
+									// Upstream's pinned jump group is a bare, untitled div above Needs attention.
+									<div>
+										<CommandItem
+											value="action:jump_to_question"
+											icon={<CircleHelp />}
+											onSelect={() => {
+												restoreFocusRef.current = false;
+												select(() => {
+													requestAnimationFrame(() => {
+														if (jumpCard.isConnected) landOnWaitingCard(jumpCard);
+													});
+												});
+											}}
+										>
+											Jump to question
+										</CommandItem>
+									</div>
+								)}
 								{emptyView.groups.map((group) => (
 									<Command.Group key={group.id} heading={group.title} className={GROUP_CLASS}>
 										{group.items.map((row) => (
