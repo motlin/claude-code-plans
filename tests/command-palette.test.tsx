@@ -1051,6 +1051,63 @@ describe("CommandPalette shell", () => {
 		});
 	}
 
+	async function openCompose() {
+		localStorage.setItem("cmdk-mode", "compose");
+		const dialog = await openPalette();
+		const composer = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Write a message…"});
+		return {dialog, composer};
+	}
+
+	it("lets Shift+Enter insert a newline in Compose instead of opening the picker", async () => {
+		const {dialog, composer} = await openCompose();
+		fireEvent.change(composer, {target: {value: "fix the parser"}});
+
+		const notCancelled = fireEvent.keyDown(composer, {key: "Enter", code: "Enter", shiftKey: true});
+
+		expect({notCancelled, headings: groupLabels(dialog).map(([heading]) => heading)}).toStrictEqual({
+			notCancelled: true,
+			headings: ["Quick actions"],
+		});
+	});
+
+	it("opens the picker on plain Enter with text in Compose", async () => {
+		const {dialog, composer} = await openCompose();
+		fireEvent.change(composer, {target: {value: "fix the parser"}});
+
+		const notCancelled = fireEvent.keyDown(composer, {key: "Enter", code: "Enter"});
+
+		await waitFor(() => {
+			expect({notCancelled, headings: groupLabels(dialog).map(([heading]) => heading)}).toStrictEqual({
+				notCancelled: false,
+				headings: ["Choose a project"],
+			});
+		});
+	});
+
+	it("ignores Enter while an IME composition is in progress in Compose", async () => {
+		const {dialog, composer} = await openCompose();
+		fireEvent.change(composer, {target: {value: "fix the parser"}});
+
+		fireEvent.keyDown(composer, {key: "Enter", code: "Enter", isComposing: true});
+
+		expect(groupLabels(dialog).map(([heading]) => heading)).toStrictEqual(["Quick actions"]);
+	});
+
+	for (const [label, value, grows] of [
+		["51 characters", "a".repeat(51), true],
+		["a newline", "a\nb", true],
+		["50 characters", "a".repeat(50), false],
+	] as const) {
+		it(`${grows ? "auto-grows" : "keeps the 2-row height"} for ${label} in Compose`, async () => {
+			const {composer} = await openCompose();
+			Object.defineProperty(composer, "scrollHeight", {configurable: true, value: 72});
+
+			fireEvent.change(composer, {target: {value}});
+
+			expect(composer.style.height).toBe(grows ? "72px" : "");
+		});
+	}
+
 	it("shows Needs attention, Recents and Actions in the empty state", async () => {
 		const dialog = await openPalette(
 			[

@@ -1303,6 +1303,24 @@ function PalettePopup({
 		if (committed.tab !== undefined && committed.tab !== tab) chooseTab(committed.tab);
 	}
 
+	// Upstream grows the Compose field to its content (capped by max-h-24) once the draft is multi-line
+	// or past 50 characters; otherwise, and always in Search, the rows height applies.
+	useLayoutEffect(() => {
+		const input = inputRef.current;
+		if (!input) return;
+		if (compose && (query.includes("\n") || query.length > 50)) {
+			input.style.height = "auto";
+			input.style.height = `${input.scrollHeight}px`;
+		} else {
+			input.style.height = "";
+		}
+	}, [compose, query]);
+
+	// Shift+Enter inserts the newline natively; stopping it here keeps cmdk's Enter from selecting a row.
+	function handleComposeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+		if (compose && event.key === "Enter" && event.shiftKey) event.stopPropagation();
+	}
+
 	function clearFilter(filter: PaletteChipFilter) {
 		setFilters(({[filter]: _removed, ...rest}) => rest);
 		clearFilterSelection();
@@ -1459,9 +1477,7 @@ function PalettePopup({
 			!event.altKey &&
 			!event.metaKey &&
 			!event.ctrlKey &&
-			!event.nativeEvent.isComposing &&
-			trimmedQuery === "" &&
-			composeChips.length === 0
+			!event.nativeEvent.isComposing
 		) {
 			event.preventDefault();
 			event.stopPropagation();
@@ -1664,6 +1680,7 @@ function PalettePopup({
 							<Command.Input asChild value={query} onValueChange={changeQuery}>
 								<textarea
 									ref={inputRef}
+									onKeyDown={handleComposeKeyDown}
 									aria-activedescendant={undefined}
 									aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
 									placeholder={!compose && actionsOnly ? "Search actions" : label}
