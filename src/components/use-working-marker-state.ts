@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useRef, useState} from "react";
 import {
 	markerEventsFromRecords,
 	toolActivityLabel,
@@ -44,7 +44,24 @@ export function useWorkingMarkerState({
 	}, [records, sessionState, isActive, pendingToolName, interruptedAt]);
 	const open = !awaitingPermission && workingMarkerState(events, 0).status !== "idle";
 	const now = useNow(open);
-	return awaitingPermission ? {status: "waiting"} : workingMarkerState(events, now);
+	return useStableState(awaitingPermission ? {status: "waiting"} : workingMarkerState(events, now));
+}
+
+/** The previous state while the new one holds the same values, so what memoizes on it re-renders once per change. */
+function useStableState(state: WorkingMarkerState): WorkingMarkerState {
+	const previous = useRef(state);
+	if (!sameState(previous.current, state)) {
+		previous.current = state;
+	}
+	return previous.current;
+}
+
+function sameState(a: WorkingMarkerState, b: WorkingMarkerState): boolean {
+	const aEntries = Object.entries(a);
+	return (
+		aEntries.length === Object.keys(b).length &&
+		aEntries.every(([key, value]) => Object.is(value, (b as Record<string, unknown>)[key]))
+	);
 }
 
 function useNow(ticking: boolean): number {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, render, renderHook} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {WorkingMarker} from "../src/components/working-marker";
@@ -747,6 +747,34 @@ describe("useWorkingMarkerState", () => {
 			visible: "Needs your input",
 			announcer: "Needs your input",
 			announcerLive: "polite",
+		});
+	});
+	it("keeps one state object while its value holds, so the working line it memoizes renders once per change", () => {
+		const signals = (records: readonly unknown[], sessionState: WorkingMarkerSignals["sessionState"]) => ({
+			records,
+			sessionState,
+			isActive: false,
+			pendingToolName: undefined,
+		});
+		const {result, rerender} = renderHook((props: WorkingMarkerSignals) => useWorkingMarkerState(props), {
+			initialProps: signals(OPEN_TURN, "idle"),
+		});
+		const idle = result.current;
+		rerender(signals([...OPEN_TURN], "idle"));
+		const idleAgain = result.current;
+		rerender(signals(OPEN_TURN, "working"));
+		const working = result.current;
+		rerender(signals([...OPEN_TURN], "working"));
+		expect({
+			idle,
+			idleKept: idleAgain === idle,
+			working,
+			workingKept: result.current === working,
+		}).toStrictEqual({
+			idle: {status: "idle"},
+			idleKept: true,
+			working: {status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 3},
+			workingKept: true,
 		});
 	});
 });

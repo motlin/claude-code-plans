@@ -423,7 +423,7 @@
 		"ceiling": 42,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row, as upstream's last AssistantMessage column, so it moves from after the feed into that row once the row mounts: one more insertion.",
+		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
 		"raisedAt": "2026-10-25"
 	},
 	"client.sessionOpen.typical.commits": {
@@ -459,7 +459,7 @@
 		"ceiling": 42,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row, as upstream's last AssistantMessage column, so it moves from after the feed into that row once the row mounts: one more insertion.",
+		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
 		"raisedAt": "2026-10-25"
 	},
 	"client.sessionSwitch.small.commits": {
@@ -468,11 +468,9 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.commits.SessionChat": {
-		"ceiling": 6,
+		"ceiling": 4,
 		"unit": "count",
-		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row, as upstream's last AssistantMessage column, so its updates while a session opens now commit inside SessionChat's subtree.",
-		"raisedAt": "2026-10-25"
+		"tolerance": 0
 	},
 	"client.sessionSwitch.small.commits.SessionPage": {
 		"ceiling": 6,
@@ -500,7 +498,7 @@
 		"ceiling": 49,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row, as upstream's last AssistantMessage column, so it moves from after the feed into that row once the row mounts: one more insertion.",
+		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
 		"raisedAt": "2026-10-25"
 	},
 	"client.sessionSwitch.typical.commits": {
@@ -509,11 +507,9 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.commits.SessionChat": {
-		"ceiling": 6,
+		"ceiling": 4,
 		"unit": "count",
-		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row, as upstream's last AssistantMessage column, so its updates while a session opens now commit inside SessionChat's subtree.",
-		"raisedAt": "2026-10-25"
+		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.commits.SessionPage": {
 		"ceiling": 6,
@@ -541,7 +537,7 @@
 		"ceiling": 49,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row, as upstream's last AssistantMessage column, so it moves from after the feed into that row once the row mounts: one more insertion.",
+		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
 		"raisedAt": "2026-10-25"
 	},
 	"hot.claudeEventsReducer.replay-200.calls": {
