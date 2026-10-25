@@ -362,6 +362,76 @@ describe("RecentsSwitcher", () => {
 		});
 	});
 
+	it("stays open across Q keyups while Control is held and commits only on Control up", async () => {
+		const router = renderApp();
+		await screen.findByText("page");
+
+		pressQ();
+		await screen.findByRole("dialog", {name: "Recents"});
+		const focused = () => document.activeElement ?? document.body;
+		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", ctrlKey: true});
+		const afterFirstUp = {dialog: screen.queryByRole("dialog") !== null, selected: selectedRow().active};
+		pressQ({ctrlKey: true}, focused());
+		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", ctrlKey: true});
+		const afterSecondUp = {
+			dialog: screen.queryByRole("dialog") !== null,
+			selected: selectedRow().active,
+			path: router.state.location.pathname,
+		};
+		fireEvent.keyUp(focused(), {key: "Control", code: "ControlLeft", ctrlKey: false});
+
+		expect({afterFirstUp, afterSecondUp}).toStrictEqual({
+			afterFirstUp: {dialog: true, selected: "recents-switcher-row-1"},
+			afterSecondUp: {dialog: true, selected: "recents-switcher-row-2", path: "/session/alpha"},
+		});
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/memory/proj/notes");
+		});
+		expect(screen.queryByRole("dialog")).toBeNull();
+	});
+
+	it("commits on any keyup that arrives without Control held", async () => {
+		const router = renderApp();
+		await screen.findByText("page");
+
+		pressQ();
+		await screen.findByRole("dialog", {name: "Recents"});
+		fireEvent.keyUp(document.activeElement ?? document.body, {key: "q", code: "KeyQ", ctrlKey: false});
+
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/plan/big-plan");
+		});
+		expect(screen.queryByRole("dialog")).toBeNull();
+	});
+
+	it("stays open across Q keyups while Alt is held on windows and commits on Alt up or an Alt-less keyup", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(WINDOWS_UA);
+		const router = renderApp();
+		await screen.findByText("page");
+		const focused = () => document.activeElement ?? document.body;
+
+		pressQ({altKey: true});
+		await screen.findByRole("dialog", {name: "Recents"});
+		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", altKey: true});
+		pressQ({altKey: true}, focused());
+		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", altKey: true});
+		const held = {dialog: screen.queryByRole("dialog") !== null, selected: selectedRow().active};
+		fireEvent.keyUp(focused(), {key: "Alt", code: "AltLeft", altKey: false});
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/memory/proj/notes");
+		});
+
+		pressQ({altKey: true});
+		await screen.findByRole("dialog", {name: "Recents"});
+		fireEvent.keyUp(focused(), {key: "q", code: "KeyQ", altKey: false});
+
+		expect(held).toStrictEqual({dialog: true, selected: "recents-switcher-row-2"});
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/session/alpha");
+		});
+		expect(screen.queryByRole("dialog")).toBeNull();
+	});
+
 	it("commits on Enter", async () => {
 		const router = renderApp();
 		await screen.findByText("page");
