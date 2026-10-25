@@ -45,6 +45,16 @@ describe("dockedHookPlan", () => {
 });
 
 describe("DockedPlanApproval", () => {
+	it("marks its root as a waiting card for the palette's Jump to question", () => {
+		const plan: PlanApprovalContextValue = {
+			answerRoute: "live-pane",
+			loadDialog: async () => Promise.resolve({forwardMode: null, manual: true}),
+			decide: async () => Promise.resolve(),
+		};
+		const {container} = render(<DockedPlanApproval pendingPlan={HOOK_PLAN} plan={plan} />);
+		expect(container.querySelector("[data-docked-plan]")?.hasAttribute("data-approval-card-root")).toBe(true);
+	});
+
 	it("leads with 'Claude proposed a plan' and answers through the plan approval context", async () => {
 		const decide = vi.fn<(decision: PlanDecision) => Promise<void>>(async () => Promise.resolve());
 		const plan: PlanApprovalContextValue = {

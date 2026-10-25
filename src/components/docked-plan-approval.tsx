@@ -18,6 +18,7 @@ export function DockedPlanApproval({pendingPlan, plan}: {pendingPlan: PendingPla
 	return (
 		<div
 			data-docked-plan=""
+			data-approval-card-root=""
 			className="@container flex flex-col gap-2 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
 		>
 			<div className="flex items-center justify-between gap-2">

@@ -11,7 +11,8 @@ export const FOCUS_REGION_ENTRY_ATTR = "data-focus-region-entry";
 
 export type FocusRegionDirection = "next" | "previous";
 
-function isAvailable(region: HTMLElement): boolean {
+/** Whether a region (or any landing target) is shown: not hidden, inert or aria-hidden. */
+export function isAvailable(region: HTMLElement): boolean {
 	if (region.closest('[hidden],[inert],[aria-hidden="true"]') !== null) return false;
 	return typeof region.checkVisibility === "function" ? region.checkVisibility() : true;
 }
