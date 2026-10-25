@@ -703,6 +703,64 @@ describe("CommandPalette shell", () => {
 		await within(dialog).findByRole("combobox", {name: "Search"});
 	});
 
+	it("moves single-line Search text into Compose and back again, emptying the view it leaves", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
+		fireEvent.change(input, {target: {value: "foo"}});
+
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Write a message…"});
+		const inCompose = composer.value;
+		fireEvent.keyDown(composer, {key: "Tab", code: "Tab"});
+		const search = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Search"});
+
+		expect({inCompose, inSearch: search.value}).toStrictEqual({inCompose: "foo", inSearch: "foo"});
+	});
+
+	it("keeps a multi-line Compose draft in Compose and shows Search's own empty text", async () => {
+		localStorage.setItem("cmdk-mode", "compose");
+		const dialog = await openPalette();
+		const composer = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Write a message…"});
+		fireEvent.change(composer, {target: {value: "a\nb"}});
+
+		fireEvent.keyDown(composer, {key: "Tab", code: "Tab"});
+		const search = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Search"});
+		const inSearch = search.value;
+		fireEvent.keyDown(search, {key: "Tab", code: "Tab"});
+		const back = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Write a message…"});
+
+		expect({inSearch, inCompose: back.value}).toStrictEqual({inSearch: "", inCompose: "a\nb"});
+	});
+
+	it("keeps each view's own draft when both have text", async () => {
+		localStorage.setItem("cmdk-mode", "compose");
+		const dialog = await openPalette();
+		const composer = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Write a message…"});
+		fireEvent.change(composer, {target: {value: "a\nb"}});
+		fireEvent.keyDown(composer, {key: "Tab", code: "Tab"});
+		const search = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Search"});
+		fireEvent.change(search, {target: {value: "b"}});
+		fireEvent.keyDown(search, {key: "Tab", code: "Tab"});
+		const composerAgain = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {
+			name: "Write a message…",
+		});
+		const inCompose = composerAgain.value;
+		fireEvent.change(composerAgain, {target: {value: "a"}});
+		fireEvent.keyDown(composerAgain, {key: "Tab", code: "Tab"});
+		const searchAgain = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Search"});
+		const inSearch = searchAgain.value;
+		fireEvent.keyDown(searchAgain, {key: "Tab", code: "Tab"});
+		const finalComposer = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {
+			name: "Write a message…",
+		});
+
+		expect({inCompose, inSearch, finalCompose: finalComposer.value}).toStrictEqual({
+			inCompose: "a\nb",
+			inSearch: "b",
+			finalCompose: "a",
+		});
+	});
+
 	it("toggles Compose on Shift+Tab like Tab, keeping the type and focus in the field", async () => {
 		const dialog = await openPalette();
 		const input = within(dialog).getByRole("combobox");

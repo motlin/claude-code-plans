@@ -58,6 +58,7 @@ import {jumpActionKeywords, PALETTE_JUMP_ACTIONS, type PaletteJumpActionId} from
 import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteEntrypoint, PaletteMode} from "../hooks/use-command-palette";
+import {type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {useSessionIdentity} from "../hooks/use-session-identity";
@@ -807,7 +808,8 @@ function PalettePopup({
 	const popupRef = useRef<HTMLDivElement>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
 	const [rowActions, setRowActions] = useState<{session: PaletteCardSession; top: number} | null>(null);
-	const [query, setQuery] = useState("");
+	// Upstream keeps separate Search and Compose drafts; `query` is the active view's.
+	const [buffers, setBuffers] = useState<PaletteBuffers>({search: "", compose: ""});
 	const [tab, setTab] = useState<PaletteType>("all");
 	// Upstream's filter object: committed chips, kept apart from the query text.
 	const [filters, setFilters] = useState<PaletteFilters>({});
@@ -833,12 +835,22 @@ function PalettePopup({
 	const [jumpCard] = useState(() => (typeof document === "undefined" ? null : findWaitingCard(document)));
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const composeChips = useContextChips(COMPOSE_DRAFT_KEY);
+	const compose = mode === "compose";
+	const query = compose ? buffers.compose : buffers.search;
+	function setQuery(next: string) {
+		setBuffers((current) => (compose ? {...current, compose: next} : {...current, search: next}));
+	}
+
+	function switchView(next: PaletteMode) {
+		setBuffers((current) => switchPaletteView(next, current));
+		onModeChange(next);
+	}
 
 	// Compose attachments land as chips here (⌘U, the paperclip); they are dropped when the palette closes.
 	useEffect(() => {
 		const unregister = registerComposer(COMPOSE_DRAFT_KEY, {
 			insertText: (text) => {
-				setQuery((current) => appendAttachment(current, text));
+				setBuffers((current) => ({...current, compose: appendAttachment(current.compose, text)}));
 			},
 			focus: () => inputRef.current?.focus(),
 		});
@@ -911,7 +923,6 @@ function PalettePopup({
 		[hints, query, data],
 	);
 	const actionsOnly = tokens.actions === true;
-	const compose = mode === "compose";
 	// A query starting with "!" searches only the jump bangs: no sessions, server search or Quick actions.
 	const bangQuery = !compose && hints === null && valueSuggestions === null && tokens.text.startsWith("!");
 	const searchable = hints === null && valueSuggestions === null && !actionsOnly && !bangQuery;
@@ -1499,7 +1510,7 @@ function PalettePopup({
 		}
 		event.preventDefault();
 		if (event.repeat) return;
-		onModeChange(mode === "search" ? "compose" : "search");
+		switchView(mode === "search" ? "compose" : "search");
 	}
 
 	// ← / → at the matching edge of the input (or with no query) step through the type tabs:
@@ -2058,7 +2069,7 @@ function PalettePopup({
 										message={emptyMessage}
 										onSearchAll={searchAll}
 										onCompose={() => {
-											onModeChange("compose");
+											switchView("compose");
 										}}
 									/>
 								)}
@@ -2104,7 +2115,7 @@ function PalettePopup({
 												<ViewHint
 													label="Compose"
 													onSwitch={() => {
-														onModeChange("compose");
+														switchView("compose");
 													}}
 												/>
 											),
