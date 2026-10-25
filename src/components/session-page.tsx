@@ -198,6 +198,12 @@ function SessionNotFound() {
 	);
 }
 
+/**
+ * The composer's Background tasks opener only opens the pane (for `/workflows`), so it gets a fixed
+ * running map and keeps a stable value as tasks start and stop, sparing the composer re-renders.
+ */
+const COMPOSER_RUNNING_LAUNCHES: ReadonlyMap<string, string> = new Map();
+
 /** A pane to open on arrival (the `?pane=` deep link), reported back once handled. */
 interface RequestedPaneProps {
 	requestedPane?: PaneKind | undefined;
@@ -1234,53 +1240,59 @@ function SessionView({
 												</div>
 											)}
 											{!chromeHidden && sessionDirectory && !data.archived && (
-												<Composer
-													variant="session"
-													draftKey={sessionId}
-													onSend={(prompt, launchOptions) => {
-														if (
-															handleBtwPrompt(prompt, {
-																sessionId,
-																messageCount: data.messageCount,
-																toast,
-															})
-														) {
-															return;
+												<SessionBackgroundTasksOpener
+													sessionId={sessionId}
+													running={COMPOSER_RUNNING_LAUNCHES}
+												>
+													<Composer
+														variant="session"
+														draftKey={sessionId}
+														onSend={(prompt, launchOptions) => {
+															if (
+																handleBtwPrompt(prompt, {
+																	sessionId,
+																	messageCount: data.messageCount,
+																	toast,
+																})
+															) {
+																return;
+															}
+															submitComposer("send", prompt, launchOptions);
+														}}
+														onFork={(prompt, launchOptions) =>
+															submitComposer("fork", prompt, launchOptions)
 														}
-														submitComposer("send", prompt, launchOptions);
-													}}
-													onFork={(prompt, launchOptions) =>
-														submitComposer("fork", prompt, launchOptions)
-													}
-													forkLabel={forkSubmitLabel({
-														pane: paneState,
-														writesEnabled: herdr.writesEnabled,
-													})}
-													onCancel={() => {
-														void chatStream.cancel();
-													}}
-													isStreaming={
-														!promptBehavior.usesHerdr && chatStream.state.isStreaming
-													}
-													onStop={stopAvailable ? stopResponse : undefined}
-													disabled={
-														promptBehavior.disabled ||
-														(!promptBehavior.usesHerdr && liveHerdrPrompt.state.isPending)
-													}
-													queue={promptBehavior.usesHerdr ? composerQueue : undefined}
-													onQueueForLater={
-														promptBehavior.usesHerdr ? enqueuePrompt : undefined
-													}
-													deliveryHint={promptBehavior.deliveryHint}
-													chin={composerChin}
-													{...slashMenu}
-													bypassPermissionsAllowed={bypassPermissionsAllowed}
-													live={liveLaunchAvailable ? liveLaunch : undefined}
-													mentionSessionId={sessionId}
-													mentionCwd={sessionDirectory}
-													promptHistory={promptHistory}
-													onRewind={rewindAvailableFromComposer}
-												/>
+														forkLabel={forkSubmitLabel({
+															pane: paneState,
+															writesEnabled: herdr.writesEnabled,
+														})}
+														onCancel={() => {
+															void chatStream.cancel();
+														}}
+														isStreaming={
+															!promptBehavior.usesHerdr && chatStream.state.isStreaming
+														}
+														onStop={stopAvailable ? stopResponse : undefined}
+														disabled={
+															promptBehavior.disabled ||
+															(!promptBehavior.usesHerdr &&
+																liveHerdrPrompt.state.isPending)
+														}
+														queue={promptBehavior.usesHerdr ? composerQueue : undefined}
+														onQueueForLater={
+															promptBehavior.usesHerdr ? enqueuePrompt : undefined
+														}
+														deliveryHint={promptBehavior.deliveryHint}
+														chin={composerChin}
+														{...slashMenu}
+														bypassPermissionsAllowed={bypassPermissionsAllowed}
+														live={liveLaunchAvailable ? liveLaunch : undefined}
+														mentionSessionId={sessionId}
+														mentionCwd={sessionDirectory}
+														promptHistory={promptHistory}
+														onRewind={rewindAvailableFromComposer}
+													/>
+												</SessionBackgroundTasksOpener>
 											)}
 										</SessionDock>
 									</div>

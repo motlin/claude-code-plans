@@ -47,17 +47,17 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 407901,
+		"ceiling": 412071,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Deferring the composer's on-demand surfaces (slash and @ menus, drop scrim, context chips, queued-message band; warmed on composer mount), the Keyboard shortcuts dialog (warmed on idle and ⌘/Ctrl), and moving the /search page body out of its route file so the entry no longer carries file-search-results took home cold JS from 418904 gzip / 1278605 raw at 81d3f336 to 407901 gzip / 1241011 raw. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"reason": "The /workflows built-in (2026-10-24): the composer reads the Background tasks opener context to route /workflows and /workflow to the pane, and the slash list gains the workflows row. Home cold JS had drifted to just under the 1% tolerance since ba320e97 and this takes it to 412071 gzip / 1250441 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1241011,
+		"ceiling": 1250441,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Deferring the composer's on-demand surfaces (slash and @ menus, drop scrim, context chips, queued-message band; warmed on composer mount), the Keyboard shortcuts dialog (warmed on idle and ⌘/Ctrl), and moving the /search page body out of its route file so the entry no longer carries file-search-results took home cold JS from 418904 gzip / 1278605 raw at 81d3f336 to 407901 gzip / 1241011 raw. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"reason": "The /workflows built-in (2026-10-24): the composer reads the Background tasks opener context to route /workflows and /workflow to the pane, and the slash list gains the workflows row. Home cold JS had drifted to just under the 1% tolerance since ba320e97 and this takes it to 412071 gzip / 1250441 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.gzip": {
@@ -85,10 +85,10 @@
 		"tolerance": 0
 	},
 	"client.coldHome.default.responseBytes": {
-		"ceiling": 6248,
+		"ceiling": 6502,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "The /api/composer-defaults response cold home fetches carries the settings-derived fastMode flag so the home bar shows the Fast word, +17 bytes (6231 to 6248). /rewind is session-only, so the home slash list no longer carries its row (back down from 6436).",
+		"reason": "The home slash list (/api/commands) carries upstream's workflows row (alias workflow, “Browse workflow history (running and completed)”), +254 bytes (6248 to 6502); claude.ai/code lists it on home too.",
 		"raisedAt": "2026-10-24"
 	},
 	"client.composer.home.slashMenu.claudeEventsConsumers": {

@@ -109,6 +109,12 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 	},
 	{name: "skills", description: "Browse and manage your skills", source: "builtin"},
 	{
+		name: "workflows",
+		description: "Browse workflow history (running and completed)",
+		source: "builtin",
+		aliases: ["workflow"],
+	},
+	{
 		name: "usage",
 		description: "Show plan usage and rate limits",
 		source: "builtin",

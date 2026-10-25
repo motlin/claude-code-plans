@@ -76,6 +76,7 @@ import {
 	slashTrigger,
 } from "../lib/slash-commands";
 import {nearestCommand} from "../lib/command-suggest";
+import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {ComposerCommandNotice} from "./composer-command-notice";
 import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
 import {ErrorCardShell} from "./error-card-shell";
@@ -516,6 +517,8 @@ export function Composer({
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	// Optional: composers rendered outside the app shell (tests, previews) have no toaster.
 	const toast = useContext(ToastContext);
+	// The session's Background tasks pane, which `/workflows` opens; null on the home composer.
+	const backgroundTasks = useBackgroundTasksOpener();
 	const hintId = useId();
 	const isMac = useIsMac();
 	const slashMenuId = useId();
@@ -915,7 +918,7 @@ export function Composer({
 	}
 	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
 	function runHostCommand(text: string): boolean {
-		if (runFastCommand(text) || runRewindCommand(text)) return true;
+		if (runFastCommand(text) || runRewindCommand(text) || runWorkflowsCommand(text)) return true;
 		const command = parseHostCommand(text, {
 			effortLevels: EFFORT_LEVELS,
 			models: HOST_COMMAND_MODELS,
@@ -957,6 +960,25 @@ export function Composer({
 		if (shape.kind === "run") {
 			clearDraft();
 			onRewind();
+		} else {
+			setCommandError({
+				draftKey,
+				body: shape.kind === "extra_lines" ? extraLinesBody(shape.name) : trailingArgsBody(shape.name),
+			});
+		}
+		return true;
+	}
+	/**
+	 * Upstream's `/workflows` (alias `/workflow`, `noArgs`): opens the Background tasks pane with its
+	 * Finished section expanded. Without a pane to open, it reaches the CLI as typed.
+	 */
+	function runWorkflowsCommand(text: string): boolean {
+		if (backgroundTasks === null) return false;
+		const shape = parseCommandShape(["workflows", "workflow"], text);
+		if (shape === null) return false;
+		if (shape.kind === "run") {
+			clearDraft();
+			backgroundTasks.open({finished: true});
 		} else {
 			setCommandError({
 				draftKey,

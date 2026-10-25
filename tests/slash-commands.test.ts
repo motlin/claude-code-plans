@@ -66,6 +66,12 @@ describe("BUILTIN_SLASH_COMMANDS", () => {
 			},
 			{name: "skills", description: "Browse and manage your skills", source: "builtin"},
 			{
+				name: "workflows",
+				description: "Browse workflow history (running and completed)",
+				source: "builtin",
+				aliases: ["workflow"],
+			},
+			{
 				name: "usage",
 				description: "Show plan usage and rate limits",
 				source: "builtin",

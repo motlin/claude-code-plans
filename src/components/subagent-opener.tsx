@@ -1,4 +1,4 @@
-import {type ReactNode, useCallback, useMemo} from "react";
+import {type ReactNode, useCallback, useMemo, useRef} from "react";
 
 import {requestBackgroundTaskFocus, setFinishedExpanded} from "../lib/background-task-focus";
 import {requestSubagentFocus} from "../lib/subagent-focus-requests";
@@ -33,10 +33,14 @@ export function SessionBackgroundTasksOpener({
 	running: ReadonlyMap<string, string>;
 	children: ReactNode;
 }) {
-	const {openPane} = usePaneHost();
+	// Read through a ref so the value stays put while the layout changes, sparing its consumers re-renders.
+	const {openPane: latestOpenPane} = usePaneHost();
+	const openPaneRef = useRef(latestOpenPane);
+	openPaneRef.current = latestOpenPane;
 	const value = useMemo(
 		() => ({
 			open: (focus?: BackgroundTasksFocus) => {
+				const openPane = openPaneRef.current;
 				const finished = focus?.finished === true;
 				if (finished) setFinishedExpanded(sessionId, true);
 				if (focus?.agentId === undefined) {
@@ -51,7 +55,7 @@ export function SessionBackgroundTasksOpener({
 			},
 			running,
 		}),
-		[sessionId, openPane, running],
+		[sessionId, running],
 	);
 	return <BackgroundTasksOpenerProvider value={value}>{children}</BackgroundTasksOpenerProvider>;
 }
