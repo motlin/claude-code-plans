@@ -205,18 +205,51 @@ describe("paletteValueSuggestions", () => {
 		});
 	});
 
-	it("offers a single row for Archived and Actions", () => {
+	it("offers no value list for Archived and Actions, whose hints commit at once", () => {
 		expect({
 			archived: paletteValueSuggestions("archived:", sessions),
 			actions: paletteValueSuggestions("actions:", sessions),
+		}).toStrictEqual({archived: null, actions: null});
+	});
+
+	it("narrows the values to those whose label, or a word of it, starts with the typed text", () => {
+		expect({
+			p: labels("date:p"),
+			week: labels("date:WE"),
+			joined: labels("date:pastw"),
+			repo: labels("repo:av"),
+			project: labels("project:not"),
 		}).toStrictEqual({
-			archived: {filter: "archived", values: [{label: "Archived", query: "archived:true "}]},
-			actions: {filter: "actions", values: [{label: "Actions", query: "actions:true "}]},
+			p: ["Past week", "Past month"],
+			week: ["Past week"],
+			joined: ["Past week"],
+			repo: ["avalon"],
+			project: null,
 		});
 	});
 
-	it("is null unless the query ends in a bare filter key", () => {
-		expect(["", "date", "date:t", "date: ", "http:", "/date:"].map(labels)).toStrictEqual([
+	it("does not split repo labels on hyphens, like upstream", () => {
+		expect(
+			paletteValueSuggestions("fix repo:pla", [
+				{project: "motlin/playdate-template", projectName: "playdate"},
+				{project: "/Users/dev/claude-code-plans", projectName: "ccp"},
+			]),
+		).toStrictEqual({
+			filter: "repo",
+			values: [{label: "playdate-template", query: "fix repo:playdate-template "}],
+		});
+	});
+
+	it("completes a typed prefix, keeping the text before the token", () => {
+		expect(paletteValueSuggestions("fix date:p", sessions)?.values).toStrictEqual([
+			{label: "Past week", query: "fix date:week "},
+			{label: "Past month", query: "fix date:month "},
+		]);
+	});
+
+	it("is null when no value matches, so the query falls through to search", () => {
+		expect(["", "date", "date:zz", "repo:plazz", "date: ", "http:", "/date:"].map(labels)).toStrictEqual([
+			null,
 			null,
 			null,
 			null,

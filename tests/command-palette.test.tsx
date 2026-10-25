@@ -2049,16 +2049,78 @@ describe("CommandPalette filter values", () => {
 		expect(groupLabels(dialog)).toStrictEqual([["Repo", ["ccp", "avalon"]]]);
 	});
 
-	it("offers one Archived row and one Actions row", async () => {
+	it("commits the Archived and Actions chips straight from their hints, with no value list", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
+		const state = () => ({
+			value: input.value,
+			headings: groupLabels(dialog).map(([heading]) => heading),
+			chips: [...dialog.querySelectorAll("[role=group][data-filter]")].map((chip) =>
+				chip.getAttribute("aria-label"),
+			),
+		});
+
+		typeQuery(dialog, "/");
+		fireEvent.click(dialog.querySelector('[cmdk-item][data-value="filter:archived"]')!);
+		const archived = state();
+		typeQuery(dialog, "/act");
+		fireEvent.click(dialog.querySelector('[cmdk-item][data-value="filter:actions"]')!);
+		const actions = state();
+
+		expect({
+			archived: {...archived, headings: archived.headings.includes("Archived")},
+			actions: {...actions, headings: actions.headings.includes("Actions")},
+		}).toStrictEqual({
+			archived: {value: "", headings: false, chips: ["Archived"]},
+			actions: {value: "", headings: false, chips: ["Actions"]},
+		});
+	});
+
+	it("narrows a value list by the typed prefix and commits the chosen value", async () => {
 		const dialog = await openPalette();
 
-		typeQuery(dialog, "archived:");
-		const archived = groupLabels(dialog);
-		typeQuery(dialog, "actions:");
+		typeQuery(dialog, "fix date:p");
+		const narrowed = groupLabels(dialog);
+		fireEvent.click(within(dialog).getByRole("option", {name: /Past month/u}));
 
-		expect({archived, actions: groupLabels(dialog)}).toStrictEqual({
-			archived: [["Archived", ["Archived"]]],
-			actions: [["Actions", ["Actions"]]],
+		expect({
+			narrowed,
+			value: within(dialog).getByRole<HTMLTextAreaElement>("combobox").value,
+			chips: [...dialog.querySelectorAll("[role=group][data-filter]")].map((chip) =>
+				chip.getAttribute("aria-label"),
+			),
+		}).toStrictEqual({
+			narrowed: [["Date", ["Past week", "Past month"]]],
+			value: "fix ",
+			chips: ["Date Past month"],
+		});
+	});
+
+	it("never selects a New session row whose prompt is a filter token", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
+
+		typeQuery(dialog, "date:");
+		fireEvent.click(within(dialog).getByRole("option", {name: /Today/u}));
+		await act(async () => {
+			await new Promise((resolve) => {
+				requestAnimationFrame(resolve);
+			});
+		});
+		const picked = {
+			selected: dialog.querySelector("[cmdk-item][data-selected=true]")?.getAttribute("data-value") ?? null,
+			newSession: dialog.querySelector('[cmdk-item][data-value="start:new-session"]'),
+		};
+		typeQuery(dialog, "archived:true");
+
+		expect({
+			picked: {...picked, selected: picked.selected?.startsWith("start:new-session") ?? false},
+			typedToken: dialog.querySelector('[cmdk-item][data-value="start:new-session"]'),
+			value: input.value,
+		}).toStrictEqual({
+			picked: {selected: false, newSession: null},
+			typedToken: null,
+			value: "archived:true",
 		});
 	});
 

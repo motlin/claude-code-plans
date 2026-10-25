@@ -255,32 +255,45 @@ function filterValues(
 			return recentValues(sessions.map((session) => basename(session.project))).map((repo) => [repo, repo]);
 		case "project":
 			return recentValues(sessions.map((session) => session.projectName)).map((name) => [name, name]);
+		// Upstream's Archived and Actions hints commit their chip at once, so they have no values.
 		case "archived":
 		case "actions":
-			return [[paletteFilterLabels[filter], "true"]];
+			return [];
 		default:
 			return assertNever(filter);
 	}
 }
 
 /**
- * The value list shown when the query ends in a bare filter key such as `date:`,
- * or null otherwise. `sessions` are most recent first.
+ * Upstream's value match: the label without spaces starts with `typed`, or any word of it
+ * does (repo labels also split on "/"). Case-insensitive; empty `typed` matches everything.
+ */
+function valueMatches(filter: PaletteFilter, label: string, typed: string): boolean {
+	const lower = label.toLowerCase();
+	if (lower.replaceAll(/\s/gu, "").startsWith(typed)) return true;
+	return lower.split(filter === "repo" ? /[\s/]+/u : /\s+/u).some((word) => word.startsWith(typed));
+}
+
+/**
+ * The value list shown when the query's last word is a filter key plus optional typed text,
+ * such as `date:` or `repo:pla`, narrowed by that text. Null when the key is unknown, has no
+ * values, or none match, so the query falls through to search. `sessions` are most recent first.
  */
 export function paletteValueSuggestions(
 	query: string,
 	sessions: readonly PaletteValueSession[],
 ): PaletteValueSuggestions | null {
-	const match = /(?:^|\s)([a-z]+):$/iu.exec(query);
+	const match = /(?:^|\s)([a-z]+):(\S*)$/iu.exec(query);
 	const key = match?.[1];
 	if (match === null || key === undefined) return null;
 	const filter = BARE_KEY_FILTERS[key.toLowerCase()];
 	if (filter === undefined) return null;
-	const prefix = query.slice(0, query.length - 1);
-	return {
-		filter,
-		values: filterValues(filter, sessions).map(([label, value]) => ({label, query: `${prefix}:${value} `})),
-	};
+	const typed = match[2] ?? "";
+	const head = query.slice(0, query.length - typed.length);
+	const values = filterValues(filter, sessions)
+		.filter(([label]) => valueMatches(filter, label, typed.toLowerCase()))
+		.map(([label, value]) => ({label, query: `${head}${value} `}));
+	return values.length === 0 ? null : {filter, values};
 }
 
 /** The palette's committed filter chips, kept apart from the query text like upstream's filter object. */

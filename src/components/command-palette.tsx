@@ -910,7 +910,10 @@ function PalettePopup({
 	const type = tokens.type ?? tab;
 	const filtered =
 		type !== "all" || tokens.project !== undefined || tokens.date !== undefined || tokens.archived === true;
-	const canStart = trimmedQuery !== "" && searchable;
+	const compose = mode === "compose";
+	// Outside Compose, the New session prompt is the free text, never a filter token.
+	const startPrompt = compose ? trimmedQuery : tokens.text;
+	const canStart = startPrompt !== "" && searchable;
 	// `archived:` searches recents that include archived sessions.
 	const withArchivedQuery = useQuery({
 		...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all"),
@@ -1148,7 +1151,7 @@ function PalettePopup({
 	async function launchSession(project: StartProject) {
 		const launch = {
 			cwd: project.projectPath,
-			prompt: composePrompt(trimmedQuery, takeContextChips(COMPOSE_DRAFT_KEY), []),
+			prompt: composePrompt(startPrompt, takeContextChips(COMPOSE_DRAFT_KEY), []),
 		};
 		const since = Date.now();
 		setStartStep("launching");
@@ -1210,8 +1213,11 @@ function PalettePopup({
 		inputRef.current?.focus();
 	}
 
+	// Upstream commits the flag filters (Archived, Actions) at once; the others open their value list.
 	function chooseFilter(filter: PaletteFilter) {
-		setQuery(PALETTE_FILTER_TOKENS[filter]);
+		const token = PALETTE_FILTER_TOKENS[filter];
+		if (filter === "archived" || filter === "actions") changeQuery(`${token} `);
+		else setQuery(token);
 		inputRef.current?.focus();
 	}
 
@@ -1424,7 +1430,6 @@ function PalettePopup({
 		openRowActions(id);
 	}
 
-	const compose = mode === "compose";
 	const footerCollapsed = !compose && query.trim() !== "";
 	const coarsePointer = useCoarsePointer();
 	const [listRef, contentHeight] = useListContentHeight();
@@ -1676,7 +1681,7 @@ function PalettePopup({
 						{idle && canStart && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 								<NewSessionItem
-									prompt={trimmedQuery}
+									prompt={startPrompt}
 									projectName={startProjectName}
 									onSelect={openStartPicker}
 								/>
