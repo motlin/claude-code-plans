@@ -4,14 +4,24 @@ import {defined} from "./defined";
 import {toMdSlug} from "./md-slug";
 
 /**
- * Per-tab most-recently-visited pages, the model behind the ⌃Q recents switcher. Mirrors
- * claude.ai/code's `cmdk-navigation-history`: move-to-front, dedupe by key, at most 30 entries,
- * persisted in sessionStorage so each tab keeps its own back-stack.
+ * Per-tab most-recently-visited pages, the model behind the ⌃Q recents switcher and the ⌘K Recents
+ * group. Mirrors claude.ai/code's `cmdk-navigation-history`: move-to-front, dedupe by key, at most 30
+ * switchable entries, persisted in sessionStorage so each tab keeps its own back-stack. The other page
+ * kinds only feed the palette, so they get their own 30 and never crowd the switcher.
  */
 export const RECENTS_HISTORY_STORAGE_KEY = "ccb-navigation-history";
 export const RECENTS_HISTORY_MAX = 30;
 
 const RECENT_KINDS = ["session", "subagents", "plan", "memory", "project", "command"] as const;
+
+/** Upstream's switcher lists chats, code sessions, projects and artifacts; ours has sessions and projects. */
+const SWITCHER_KINDS = ["session", "project"] as const satisfies readonly RecentKind[];
+export type SwitcherKind = (typeof SWITCHER_KINDS)[number];
+export type SwitcherEntry = RecentEntry & {kind: SwitcherKind};
+
+function isSwitcherEntry(entry: RecentEntry): entry is SwitcherEntry {
+	return (SWITCHER_KINDS as readonly RecentKind[]).includes(entry.kind);
+}
 
 const RecentKindSchema = z.enum(RECENT_KINDS);
 export type RecentKind = z.infer<typeof RecentKindSchema>;
@@ -23,7 +33,7 @@ const RecentEntrySchema = z.strictObject({
 	title: z.string().optional(),
 });
 
-export const RecentsHistorySchema = z.array(RecentEntrySchema).max(RECENTS_HISTORY_MAX);
+export const RecentsHistorySchema = z.array(RecentEntrySchema).max(RECENTS_HISTORY_MAX * 2);
 
 export type RecentEntry = z.infer<typeof RecentEntrySchema>;
 export type RecentTarget = Omit<RecentEntry, "title">;
@@ -107,12 +117,21 @@ export function resolveRecentSessions(
 	return result;
 }
 
-/** Moves `entry` to the front, dropping any older entry with its key and capping at 30. */
+/** The entries the ⌃Q switcher lists, in visit order. */
+export function switcherRecents(entries: readonly RecentEntry[]): SwitcherEntry[] {
+	return entries.filter(isSwitcherEntry);
+}
+
+/** Moves `entry` to the front, dropping any older entry with its key; keeps 30 switchable and 30 other pages. */
 export function push(entries: readonly RecentEntry[], entry: RecentEntry): RecentEntry[] {
 	const existing = entries.find((candidate) => candidate.key === entry.key);
 	const merged =
 		entry.title === undefined && existing?.title !== undefined ? {...entry, title: existing.title} : entry;
-	return [merged, ...entries.filter((candidate) => candidate.key !== entry.key)].slice(0, RECENTS_HISTORY_MAX);
+	let switchable = 0;
+	let other = 0;
+	return [merged, ...entries.filter((candidate) => candidate.key !== entry.key)].filter((candidate) =>
+		isSwitcherEntry(candidate) ? ++switchable <= RECENTS_HISTORY_MAX : ++other <= RECENTS_HISTORY_MAX,
+	);
 }
 
 export function retitle(entries: readonly RecentEntry[], key: string, title: string): RecentEntry[] {

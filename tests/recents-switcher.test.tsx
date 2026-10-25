@@ -26,8 +26,8 @@ const CHROMEOS_UA = "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36
 
 const ENTRIES: RecentEntry[] = [
 	{key: "session:alpha", kind: "session", href: "/session/alpha", title: "Alpha session"},
-	{key: "plan:big-plan", kind: "plan", href: "/plan/big-plan", title: "Big plan"},
-	{key: "memory:proj/notes", kind: "memory", href: "/memory/proj/notes"},
+	{key: "session:beta", kind: "session", href: "/session/beta", title: "Beta session"},
+	{key: "project:proj", kind: "project", href: "/project/proj"},
 ];
 
 function keyEvent(init: Partial<KeyboardEvent>) {
@@ -183,12 +183,12 @@ describe("RecentsSwitcher", () => {
 				.map((option) => option.textContent),
 			selected: selectedRow(),
 		}).toStrictEqual({
-			rows: ["Alias session", "Big plan", "Untitled"],
-			selected: {active: "recents-switcher-row-1", title: "Big plan"},
+			rows: ["Alias session", "Beta session", "Untitled"],
+			selected: {active: "recents-switcher-row-1", title: "Beta session"},
 		});
 		releaseControl();
 		await waitFor(() => {
-			expect(router.state.location.pathname).toBe("/plan/big-plan");
+			expect(router.state.location.pathname).toBe("/session/beta");
 		});
 	});
 
@@ -228,7 +228,7 @@ describe("RecentsSwitcher", () => {
 					.map((option) => option.textContent),
 				selected: selectedRow(),
 			}).toStrictEqual({
-				rows: ["Alpha alias", "Big plan", "Untitled"],
+				rows: ["Alpha alias", "Beta session", "Untitled"],
 				selected: {active: "recents-switcher-row-0", title: "Alpha alias"},
 			});
 			releaseControl();
@@ -279,6 +279,37 @@ describe("RecentsSwitcher", () => {
 		expect(navigate.mock.calls).toStrictEqual([]);
 	});
 
+	it("lists only sessions and projects, not plans, memories, commands or subagent views, each row a kind icon and a title", async () => {
+		saveRecents([
+			{key: "session:alpha", kind: "session", href: "/session/alpha", title: "Alpha session"},
+			{key: "plan:big-plan", kind: "plan", href: "/plan/big-plan", title: "Big plan"},
+			{key: "subagents:alpha", kind: "subagents", href: "/session/alpha/subagents", title: "Subagents"},
+			{key: "project:proj", kind: "project", href: "/project/proj", title: "proj"},
+			{key: "memory:proj/notes", kind: "memory", href: "/memory/proj/notes", title: "Notes"},
+			{key: "command:user/deploy", kind: "command", href: "/command/user/deploy", title: "deploy"},
+			{key: "session:beta", kind: "session", href: "/session/beta"},
+		]);
+		renderApp("/plan/big-plan");
+		await screen.findByText("page");
+
+		pressQ();
+
+		const dialog = await screen.findByRole("dialog", {name: "Recents"});
+		expect({
+			rows: within(dialog)
+				.getAllByRole("option")
+				.map((option) => [option.querySelector("svg")?.getAttribute("class"), option.textContent]),
+			selected: selectedRow(),
+		}).toStrictEqual({
+			rows: [
+				["lucide lucide-code-xml", "Alpha session"],
+				["lucide lucide-folder-open", "proj"],
+				["lucide lucide-code-xml", "Untitled"],
+			],
+			selected: {active: "recents-switcher-row-0", title: "Alpha session"},
+		});
+	});
+
 	it("selects exactly the previous entry on ⌃Q", async () => {
 		renderApp();
 		await screen.findByText("page");
@@ -294,10 +325,10 @@ describe("RecentsSwitcher", () => {
 		}).toStrictEqual({
 			rows: [
 				["recents-switcher-row-0", "Alpha session"],
-				["recents-switcher-row-1", "Big plan"],
+				["recents-switcher-row-1", "Beta session"],
 				["recents-switcher-row-2", "Untitled"],
 			],
-			selected: {active: "recents-switcher-row-1", title: "Big plan"},
+			selected: {active: "recents-switcher-row-1", title: "Beta session"},
 		});
 	});
 
@@ -355,7 +386,7 @@ describe("RecentsSwitcher", () => {
 		releaseControl();
 
 		await waitFor(() => {
-			expect(router.state.location.pathname).toBe("/memory/proj/notes");
+			expect(router.state.location.pathname).toBe("/project/proj");
 		});
 		await waitFor(() => {
 			expect(screen.queryByRole("dialog")).toBeNull();
@@ -385,7 +416,7 @@ describe("RecentsSwitcher", () => {
 			afterSecondUp: {dialog: true, selected: "recents-switcher-row-2", path: "/session/alpha"},
 		});
 		await waitFor(() => {
-			expect(router.state.location.pathname).toBe("/memory/proj/notes");
+			expect(router.state.location.pathname).toBe("/project/proj");
 		});
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
@@ -399,7 +430,7 @@ describe("RecentsSwitcher", () => {
 		fireEvent.keyUp(document.activeElement ?? document.body, {key: "q", code: "KeyQ", ctrlKey: false});
 
 		await waitFor(() => {
-			expect(router.state.location.pathname).toBe("/plan/big-plan");
+			expect(router.state.location.pathname).toBe("/session/beta");
 		});
 		expect(screen.queryByRole("dialog")).toBeNull();
 	});
@@ -418,7 +449,7 @@ describe("RecentsSwitcher", () => {
 		const held = {dialog: screen.queryByRole("dialog") !== null, selected: selectedRow().active};
 		fireEvent.keyUp(focused(), {key: "Alt", code: "AltLeft", altKey: false});
 		await waitFor(() => {
-			expect(router.state.location.pathname).toBe("/memory/proj/notes");
+			expect(router.state.location.pathname).toBe("/project/proj");
 		});
 
 		pressQ({altKey: true});
@@ -441,7 +472,7 @@ describe("RecentsSwitcher", () => {
 		fireEvent.keyDown(document.body, {key: "Enter", ctrlKey: true});
 
 		await waitFor(() => {
-			expect(router.state.location.pathname).toBe("/plan/big-plan");
+			expect(router.state.location.pathname).toBe("/session/beta");
 		});
 	});
 
@@ -529,7 +560,7 @@ describe("RecentsSwitcher", () => {
 
 		expect(afterCtrl).toBeNull();
 		await waitFor(() => {
-			expect(router.state.location.pathname).toBe("/plan/big-plan");
+			expect(router.state.location.pathname).toBe("/session/beta");
 		});
 	});
 

@@ -1,7 +1,7 @@
 import {Dialog} from "@base-ui/react/dialog";
 import {useQueryClient} from "@tanstack/react-query";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
-import {Bot, Brain, CornerDownLeft, FileText, FolderOpen, MessageSquare, SquareSlash} from "lucide-react";
+import {CodeXml, CornerDownLeft, FolderOpen} from "lucide-react";
 import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
@@ -10,8 +10,9 @@ import {
 	resolveRecentSession,
 	resolveRecentSessions,
 	routeToRecent,
-	type RecentEntry,
-	type RecentKind,
+	switcherRecents,
+	type SwitcherEntry,
+	type SwitcherKind,
 } from "../lib/recents-history";
 import {
 	currentSwitcherPlatform,
@@ -22,20 +23,17 @@ import {
 	switchModifier,
 } from "../lib/recents-switcher-keys";
 
+/** Upstream's codeSession `</>` and project glyphs. */
 const KIND_ICONS = {
-	session: <MessageSquare />,
-	subagents: <Bot />,
-	plan: <FileText />,
-	memory: <Brain />,
+	session: <CodeXml />,
 	project: <FolderOpen />,
-	command: <SquareSlash />,
-} as const satisfies Record<RecentKind, ReactNode>;
+} as const satisfies Record<SwitcherKind, ReactNode>;
 
 /** Where ⌃Q yields so the terminal receives it, like upstream's `[data-ccd-terminal]` guard. */
 const TERMINAL_SELECTOR = "[data-terminal], canvas, [role='application']";
 
 interface SwitcherState {
-	entries: RecentEntry[];
+	entries: SwitcherEntry[];
 	index: number;
 }
 
@@ -95,7 +93,7 @@ export function RecentsSwitcher() {
 				const direction: SwitchDirection = event.shiftKey ? -1 : 1;
 				if (current === null) {
 					if (inTerminal(event.target)) return;
-					const entries = resolveRecentSessions(loadRecents(), resolveAlias);
+					const entries = switcherRecents(resolveRecentSessions(loadRecents(), resolveAlias));
 					if (entries.length === 0) return;
 					const currentKey = routeToRecent(contextRef.current.pathname, resolveAlias)?.key ?? null;
 					update({entries, index: initialIndex(entries, currentKey, direction)});

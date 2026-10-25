@@ -10,6 +10,7 @@ import {
 	retitle,
 	routeToRecent,
 	saveRecents,
+	switcherRecents,
 } from "../src/lib/recents-history";
 
 class MemoryStorage implements Storage {
@@ -171,10 +172,40 @@ describe("push", () => {
 		expect(result).toEqual([session("new"), ...Array.from({length: 29}, (_, index) => session(String(index)))]);
 	});
 
+	it("caps sessions and projects at 30 apart from other pages, so page visits never crowd the ⌃Q list", () => {
+		const plan = (id: string): RecentEntry => ({key: `plan:${id}`, kind: "plan", href: `/plan/${id}`});
+		const sessions = Array.from({length: RECENTS_HISTORY_MAX}, (_, index) => session(String(index)));
+		const plans = Array.from({length: RECENTS_HISTORY_MAX}, (_, index) => plan(String(index)));
+		expect(push([...sessions, ...plans], plan("new"))).toStrictEqual([
+			plan("new"),
+			...sessions,
+			...plans.slice(0, RECENTS_HISTORY_MAX - 1),
+		]);
+	});
+
 	it("does not mutate its input", () => {
 		const entries = [session("a", "A")];
 		push(entries, session("b"));
 		expect(entries).toEqual([session("a", "A")]);
+	});
+});
+
+describe("switcherRecents", () => {
+	it("keeps only upstream's switchable kinds, sessions and projects, in visit order", () => {
+		const entries: RecentEntry[] = [
+			{key: "plan:p", kind: "plan", href: "/plan/p", title: "Plan"},
+			session("a", "A"),
+			{key: "subagents:a", kind: "subagents", href: "/session/a/subagents"},
+			{key: "memory:proj/notes", kind: "memory", href: "/memory/proj/notes"},
+			{key: "project:proj", kind: "project", href: "/project/proj", title: "proj"},
+			{key: "command:user/deploy", kind: "command", href: "/command/user/deploy"},
+			session("b"),
+		];
+		expect(switcherRecents(entries)).toStrictEqual([
+			session("a", "A"),
+			{key: "project:proj", kind: "project", href: "/project/proj", title: "proj"},
+			session("b"),
+		]);
 	});
 });
 
