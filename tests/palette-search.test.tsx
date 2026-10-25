@@ -307,9 +307,9 @@ describe("⌘K palette live search", () => {
 			expect(optionLabels(dialog)).toContain("Deploy idle");
 		});
 		expect({
-			waiting: option(dialog, "Deploy waiting").querySelector("[data-palette-attention-dot]")?.tagName,
+			waiting: option(dialog, "Deploy waiting").querySelector("[data-palette-mark-dot]")?.tagName,
 			waitingSr: option(dialog, "Deploy waiting").querySelector(".sr-only")?.textContent,
-			idle: option(dialog, "Deploy idle").querySelector("[data-palette-attention-dot]"),
+			idle: option(dialog, "Deploy idle").querySelector("[data-palette-mark-dot]"),
 		}).toStrictEqual({waiting: "SPAN", waitingSr: " Awaiting input", idle: null});
 	});
 

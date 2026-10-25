@@ -116,6 +116,18 @@ describe("dark palette", () => {
 		});
 	});
 
+	it("defines upstream's fill-brand as #c6613f in both modes", () => {
+		expect({
+			theme: tokens("@theme inline", ["--color-fill-brand"]),
+			light: tokens(":root", ["--upstream-fill-brand"]),
+			dark: tokens(".dark", ["--upstream-fill-brand"]),
+		}).toStrictEqual({
+			theme: {"--color-fill-brand": "var(--upstream-fill-brand)"},
+			light: {"--upstream-fill-brand": "#c6613f"},
+			dark: {"--upstream-fill-brand": "#c6613f"},
+		});
+	});
+
 	it("rings upstream's question receipt outside its edge, as epitaxy-card-outline does", () => {
 		expect(
 			/\.card-ring \{\s*background-color: transparent;\s*box-shadow: 0 0 0 1px var\(--card-outline\);/.test(

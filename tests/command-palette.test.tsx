@@ -952,7 +952,7 @@ describe("CommandPalette shell", () => {
 				?.split(" ")
 				.find((name) => name.startsWith("lucide-")),
 		).toBe("lucide-circle-plus");
-		expect(dialog.querySelectorAll("[data-palette-attention-dot]").length).toBe(1);
+		expect(dialog.querySelectorAll("[data-palette-mark-dot]").length).toBe(1);
 		// Upstream's group headers are 12/17 muted, and their rows sit flush at a 36px pitch.
 		const group = dialog.querySelector("[cmdk-group]");
 		expect({
@@ -1028,6 +1028,50 @@ describe("CommandPalette shell", () => {
 				["Actions", ["New session"]],
 			],
 			active: true,
+		});
+	});
+
+	it("marks lead icons with upstream's shared notched icon: a static accent dot for awaiting, brand for running", async () => {
+		const recent = new Date(Date.now() - 60_000).toISOString();
+		const dialog = await openPalette([
+			recentSession("s-running", "Running one", "working", {mtime: recent}),
+			recentSession("s-blocked", "Blocked one", "blocked"),
+			recentSession("s-plain", "Plain one"),
+		]);
+
+		await within(dialog).findByRole("option", {name: /Running one/});
+		const dotClasses = (name: RegExp) =>
+			within(dialog).getByRole("option", {name}).querySelector("[data-palette-mark-dot]")?.className.split(" ");
+		const maskClasses = (name: RegExp) =>
+			within(dialog)
+				.getByRole("option", {name})
+				.querySelector("[data-palette-mark-dot]")
+				?.previousElementSibling?.className.split(" ");
+		const plain = within(dialog).getByRole("option", {name: /Plain one/});
+		expect({
+			running: dotClasses(/Running one/),
+			awaiting: dotClasses(/Blocked one/),
+			wrapper: within(dialog)
+				.getByRole("option", {name: /Running one/})
+				.querySelector("[data-palette-mark-dot]")
+				?.parentElement?.className.split(" "),
+			mask: maskClasses(/Running one/),
+			plain: {
+				dot: plain.querySelector("[data-palette-mark-dot]"),
+				mask: plain.querySelector("[class*='mask-image']"),
+			},
+		}).toStrictEqual({
+			running: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-brand"],
+			awaiting: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-accent"],
+			wrapper: ["relative", "shrink-0"],
+			mask: [
+				"block",
+				"[--dot-r:0.1875rem]",
+				"[mask-image:radial-gradient(circle_at_calc(100%_-_var(--dot-r)_+_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))]",
+				"rtl:[mask-image:radial-gradient(circle_at_calc(var(--dot-r)_-_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))]",
+				"forced-colors:[mask-image:none]",
+			],
+			plain: {dot: null, mask: null},
 		});
 	});
 
