@@ -2035,7 +2035,7 @@ function EmptyViewItem({
 			}}
 		>
 			<CommandItem
-				icon={mark === undefined ? <MessageSquare /> : <PaletteSessionIcon mark={mark} />}
+				icon={<PaletteSessionIcon mark={mark} />}
 				value={`session:${row.id}`}
 				onSelect={() => {
 					onOpenSession(row.id);
@@ -2057,8 +2057,15 @@ const MARK_DOT_CLASS = {
 	running: "bg-fill-brand",
 } as const satisfies Record<PaletteMark, string>;
 
-/** Upstream's marked code-session icon (`er`): the icon notched by a `--dot-r` mask (mirrored in RTL) under its mark dot. */
-function PaletteSessionIcon({mark}: {mark: PaletteMark}) {
+/** Upstream's code-session icon (`er`): bare when unmarked, else notched by a `--dot-r` mask (mirrored in RTL) under its mark dot. */
+function PaletteSessionIcon({mark}: {mark: PaletteMark | undefined}) {
+	if (mark === undefined) {
+		return (
+			<div className="relative shrink-0">
+				<CodeXml />
+			</div>
+		);
+	}
 	return (
 		<div className="relative shrink-0">
 			<span className="block [--dot-r:0.1875rem] [mask-image:radial-gradient(circle_at_calc(100%_-_var(--dot-r)_+_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))] rtl:[mask-image:radial-gradient(circle_at_calc(var(--dot-r)_-_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))] forced-colors:[mask-image:none]">

@@ -1098,6 +1098,27 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("draws an unmarked Recents session with upstream's bare code icon, not a chat bubble", async () => {
+		const dialog = await openPalette([recentSession("s-plain", "Plain one")]);
+
+		const row = await within(dialog).findByRole("option", {name: "Plain one"});
+		const svg = row.querySelector("svg");
+		expect({
+			wrapper: svg?.parentElement?.className.split(" "),
+			icon: svg
+				?.getAttribute("class")
+				?.split(" ")
+				.find((name) => name.startsWith("lucide-")),
+			dot: row.querySelector("[data-palette-mark-dot]"),
+			mask: row.querySelector("[class*='mask-image']"),
+		}).toStrictEqual({
+			wrapper: ["relative", "shrink-0"],
+			icon: "lucide-code-xml",
+			dot: null,
+			mask: null,
+		});
+	});
+
 	it("marks an unseen finished session Unread on the Code tab", async () => {
 		const dialog = await openPalette([
 			recentSession("s-unseen", "Unseen done", "done", {unseen: true}),
