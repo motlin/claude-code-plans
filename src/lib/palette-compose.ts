@@ -17,3 +17,6 @@ export function switchPaletteView(next: PaletteMode, buffers: PaletteBuffers): P
 	if (dest.trim() !== "" || (!enteringCompose && leaving.includes("\n"))) return buffers;
 	return enteringCompose ? {search: "", compose: leaving} : {search: leaving, compose: ""};
 }
+
+/** Upstream's ⌘K Compose turns a text paste this long into a pasted-text attachment instead of inline text. */
+export const PASTE_ATTACH_CHARS = 500;

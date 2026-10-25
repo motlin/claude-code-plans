@@ -1122,6 +1122,69 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	function pasteInto(target: HTMLElement, init: {text?: string; files?: File[]}) {
+		const files = init.files ?? [];
+		return fireEvent.paste(target, {
+			clipboardData: {
+				getData: (type: string) => (type === "text/plain" ? (init.text ?? "") : ""),
+				files,
+				types: files.length > 0 ? ["Files"] : ["text/plain"],
+			},
+		});
+	}
+
+	it("turns a ≥500-char Compose paste into a pasted-text chip above the textarea, inside the field", async () => {
+		const {dialog, composer} = await openCompose();
+
+		const notPrevented = pasteInto(composer, {text: "x".repeat(500)});
+
+		const list = await within(dialog).findByRole("list", {name: "Attached context"});
+		const container = list.closest("[data-cds-composer-attachments-clip]")?.parentElement;
+		expect({
+			notPrevented,
+			value: composer.value,
+			chips: within(list)
+				.getAllByRole("listitem")
+				.map((item) => item.getAttribute("data-chip-label")),
+			containerClass: container?.className,
+			precedesTextarea:
+				container !== null &&
+				container !== undefined &&
+				(container.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+		}).toStrictEqual({
+			notPrevented: false,
+			value: "",
+			chips: ["Pasted text · 1 line"],
+			containerClass: "relative basis-full min-w-0 -ms-1.5 pe-0.5",
+			precedesTextarea: true,
+		});
+	});
+
+	it("pastes 499 chars inline in Compose with no chip", async () => {
+		const {dialog, composer} = await openCompose();
+
+		const notPrevented = pasteInto(composer, {text: "x".repeat(499)});
+
+		expect({
+			notPrevented,
+			list: within(dialog).queryByRole("list", {name: "Attached context"}),
+		}).toStrictEqual({notPrevented: true, list: null});
+	});
+
+	it("attaches files pasted into Compose", async () => {
+		const {dialog, composer} = await openCompose();
+
+		const notPrevented = pasteInto(composer, {files: [new File(["# Notes"], "notes.md", {type: "text/markdown"})]});
+
+		const list = await within(dialog).findByRole("list", {name: "Attached context"});
+		const chips = within(list)
+			.getAllByRole("listitem")
+			.map((item) => item.getAttribute("data-chip-label"));
+		// The upload never settles here, so remove its pending tile to keep the shared chip store clean.
+		fireEvent.click(within(list).getByRole("button", {name: "Remove notes.md"}));
+		expect({notPrevented, chips}).toStrictEqual({notPrevented: false, chips: ["notes.md"]});
+	});
+
 	it("places the Compose button tooltips above, like upstream", async () => {
 		const dialog = await openPalette();
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});

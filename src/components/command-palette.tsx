@@ -3,6 +3,7 @@ import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
 import {
+	type ClipboardEvent,
 	type KeyboardEvent,
 	type ReactNode,
 	useCallback,
@@ -58,7 +59,7 @@ import {jumpActionKeywords, PALETTE_JUMP_ACTIONS, type PaletteJumpActionId} from
 import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
-import {type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
+import {PASTE_ATTACH_CHARS, type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {useSessionIdentity} from "../hooks/use-session-identity";
@@ -92,6 +93,7 @@ import {
 import {buildClaudeCopyCommand} from "../lib/claude-launch-command";
 import {
 	appendAttachment,
+	attachContext,
 	attachUploadedFiles,
 	composePrompt,
 	registerComposer,
@@ -1317,6 +1319,20 @@ function PalettePopup({
 		}
 	}, [compose, query]);
 
+	// Upstream's Compose paste: files attach, and text of 500+ chars becomes a pasted-text chip instead of inline text.
+	function handleComposePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+		const files = Array.from(event.clipboardData.files);
+		if (files.length > 0) {
+			event.preventDefault();
+			attachUploadedFiles(COMPOSE_DRAFT_KEY, files, toast);
+			return;
+		}
+		const text = event.clipboardData.getData("text/plain");
+		if (text.length < PASTE_ATTACH_CHARS) return;
+		event.preventDefault();
+		attachContext(COMPOSE_DRAFT_KEY, {kind: "pasted-text", text});
+	}
+
 	// Shift+Enter inserts the newline natively; stopping it here keeps cmdk's Enter from selecting a row.
 	function handleComposeKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
 		if (compose && event.key === "Enter" && event.shiftKey) event.stopPropagation();
@@ -1689,10 +1705,20 @@ function PalettePopup({
 							{!compose && chips.length > 0 && (
 								<FilterChips chips={chips} onClear={clearFilter} onClearAll={clearFoldedFilters} />
 							)}
+							{compose && composeChips.length > 0 && (
+								<div className="relative basis-full min-w-0 -ms-1.5 pe-0.5">
+									<AttachedContextChips
+										sessionId={COMPOSE_DRAFT_KEY}
+										context={composeChips}
+										comments={[]}
+									/>
+								</div>
+							)}
 							<Command.Input asChild value={query} onValueChange={changeQuery}>
 								<textarea
 									ref={inputRef}
 									onKeyDown={handleComposeKeyDown}
+									onPaste={compose ? handleComposePaste : undefined}
 									aria-activedescendant={undefined}
 									aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
 									placeholder={!compose && actionsOnly ? "Search actions" : label}
@@ -1730,13 +1756,6 @@ function PalettePopup({
 							)}
 							{compose && (
 								<div className="relative flex w-full flex-col gap-1.5 pr-1.5">
-									{composeChips.length > 0 && (
-										<AttachedContextChips
-											sessionId={COMPOSE_DRAFT_KEY}
-											context={composeChips}
-											comments={[]}
-										/>
-									)}
 									<input
 										ref={fileInputRef}
 										type="file"

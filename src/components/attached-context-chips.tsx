@@ -1,5 +1,6 @@
 import {type KeyboardEvent, lazy, type MouseEvent, type ReactNode, Suspense, useRef, useState} from "react";
 import {
+	ClipboardPaste,
 	FileText,
 	Image as ImageIcon,
 	MessageSquare,
@@ -53,6 +54,7 @@ const CONTEXT_CHIP_ICON = {
 	image: ImageIcon,
 	message: MessageSquareText,
 	excerpt: TextQuote,
+	"pasted-text": ClipboardPaste,
 } satisfies Record<ContextChip["kind"], unknown>;
 
 /**
@@ -401,6 +403,7 @@ function textPreviewOf(chip: ContextChip): TextPreview | null {
 	if (chip.text === undefined) return null;
 	if (chip.kind === "message" || chip.kind === "excerpt")
 		return {title: "Excerpt", text: chip.text, variant: "excerpt"};
+	if (chip.kind === "pasted-text") return {title: "Pasted text", text: chip.text, variant: "file"};
 	if (chip.kind === "selection" || chip.kind === "terminal") {
 		return {title: contextChipLabel(chip), text: chip.text, variant: "file"};
 	}

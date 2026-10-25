@@ -118,6 +118,20 @@ describe("context attachments", () => {
 		]).toStrictEqual(["greet.ts", "lib/", "greet.ts:4", "greet.ts:2-5", "README.md", "Terminal output"]);
 	});
 
+	it("inlines pasted text as is on send and labels it by line count", () => {
+		expect({
+			formatted: formatContextAttachment({kind: "pasted-text", text: "a\n```\nb"}),
+			oneLine: contextChipLabel({kind: "pasted-text", text: "abc"}),
+			threeLines: contextChipLabel({kind: "pasted-text", text: "a\nb\nc"}),
+			composed: composePrompt("hi", [{kind: "pasted-text", text: "x\ny"}], []),
+		}).toStrictEqual({
+			formatted: "a\n```\nb",
+			oneLine: "Pasted text · 1 line",
+			threeLines: "Pasted text · 3 lines",
+			composed: "x\ny\n\nhi",
+		});
+	});
+
 	it("formats an excerpt as upstream's attach marker and quote, splitting on CR, LF and U+2028/9", () => {
 		expect({
 			twoLines: formatContextAttachment({kind: "excerpt", text: "a\nb"}),
@@ -293,7 +307,7 @@ describe("attachContext", () => {
 			options: ContextAttachmentKindSchema.options,
 			registry: schemaChoiceRegistry["ContextAttachmentKindSchema"],
 		}).toStrictEqual({
-			options: ["file", "selection", "terminal", "image", "message", "excerpt"],
+			options: ["file", "selection", "terminal", "image", "message", "excerpt", "pasted-text"],
 			registry: {
 				file: "File",
 				selection: "Selection",
@@ -301,6 +315,7 @@ describe("attachContext", () => {
 				image: "Image",
 				message: "Message",
 				excerpt: "Excerpt",
+				"pasted-text": "Pasted text",
 			},
 		});
 	});

@@ -68,11 +68,11 @@
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1848673,
+		"ceiling": 1867207,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Rewind picker wiring (Esc Esc window listener, /rewind host command, the E_ open gate and turn list, 2026-10-24) is static on the session route; the picker dialog itself stays deferred until first open. Session cold JS had drifted to 613077 gzip / 1845105 raw within tolerance at da7ac3c0 and this takes it to 614618 gzip / 1848673 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-24"
+		"reason": "⌘K Compose paste-to-attachment (2026-10-25): the palette's paste handler, the restored pasted-text chip kind and its chip icon. Session cold JS had drifted to just under the 1% tolerance and this takes it to 622207 gzip / 1867207 raw. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-25"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

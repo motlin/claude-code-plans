@@ -86,9 +86,18 @@ export function appendAttachment(prompt: string, snippet: string): string {
  * folders, selections and terminal output, plus uploaded images (⌘U, drop,
  * paste), transcript messages attached from their
  * context menu, which send as a fenced excerpt like terminal output, and
- * transcript text selections, which send as upstream's "Excerpt" snippet.
+ * transcript text selections, which send as upstream's "Excerpt" snippet,
+ * and ⌘K Compose pastes of 500+ chars, which send inline as is.
  */
-export const ContextAttachmentKindSchema = z.enum(["file", "selection", "terminal", "image", "message", "excerpt"]);
+export const ContextAttachmentKindSchema = z.enum([
+	"file",
+	"selection",
+	"terminal",
+	"image",
+	"message",
+	"excerpt",
+	"pasted-text",
+]);
 export type ContextAttachmentKind = z.infer<typeof ContextAttachmentKindSchema>;
 
 export interface ContextAttachment {
@@ -131,16 +140,21 @@ function formatExcerpt(text: string): string {
 /**
  * `@path#La-b` plus a fenced excerpt; terminal output is just the fenced text.
  * An image is its saved path, which the CLI attaches. A transcript excerpt is
- * upstream's `<!-- attach -->` quote block.
+ * upstream's `<!-- attach -->` quote block. Pasted text is inlined.
  */
 export function formatContextAttachment({kind, path, range, text, language}: ContextAttachment): string {
+	if (kind === "pasted-text") return text ?? "";
 	if (kind === "excerpt") return formatExcerpt(text ?? "");
 	if (kind === "image" && path !== undefined) return path;
 	if (kind === "terminal" || path === undefined) return formatFencedExcerpt(text ?? "");
 	return formatAttachContext({path, range, text, language});
 }
 
-export function contextChipLabel({kind, path, range, name: displayName}: ContextAttachment): string {
+export function contextChipLabel({kind, path, range, text, name: displayName}: ContextAttachment): string {
+	if (kind === "pasted-text") {
+		const lines = (text ?? "").split("\n").length;
+		return `Pasted text · ${lines} ${lines === 1 ? "line" : "lines"}`;
+	}
 	if (displayName !== undefined) return displayName;
 	if (kind === "message") return "Message";
 	if (kind === "excerpt") return "Excerpt";
