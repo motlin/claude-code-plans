@@ -762,6 +762,41 @@ describe("CommandPalette shell", () => {
 		);
 	});
 
+	it("matches upstream's Compose shell geometry: no divider, hidden list, borderless footer", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		const inputRow = composer.parentElement;
+
+		expect({
+			divider: dialog.querySelector(".h-\\[0\\.5px\\]") !== null,
+			listHidden: dialog.querySelector("[cmdk-list]")?.classList.contains("hidden"),
+			header: inputRow?.parentElement?.className,
+			footer: footer(dialog)?.className,
+			paperclip: within(dialog).getByRole("button", {name: "Add files or photos"}).classList.contains("-ms-3"),
+		}).toStrictEqual({
+			divider: false,
+			listHidden: true,
+			header: "flex-shrink-0 pb-1 pointer-coarse:pb-0",
+			footer: "bg-surface-3 pr-4 pb-2.5 pl-5 pointer-coarse:hidden",
+			paperclip: true,
+		});
+	});
+
+	it("keeps the Search divider, visible list and bordered footer", async () => {
+		const dialog = await openPalette();
+
+		expect({
+			divider: dialog.querySelector(".h-\\[0\\.5px\\]") !== null,
+			listHidden: dialog.querySelector("[cmdk-list]")?.classList.contains("hidden"),
+			footer: footer(dialog)?.className,
+		}).toStrictEqual({
+			divider: true,
+			listHidden: false,
+			footer: "border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden",
+		});
+	});
+
 	it("forces Search mode on ⇧⌘K", async () => {
 		const dialog = await openPalette();
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});

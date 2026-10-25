@@ -1576,6 +1576,7 @@ function PalettePopup({
 				? `${resultCount} ${resultCount === 1 ? "result" : "results"} available`
 				: emptyMessage;
 	const idle = startStep === "idle";
+	const composeAtRest = compose && idle;
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all" && chips.length === 0;
 	if (frozenMarks !== null && frozenView === null && showEmptyState) setFrozenView(emptyView.view);
 	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
@@ -1619,120 +1620,125 @@ function PalettePopup({
 					onKeyDown={handleKeyDown}
 					className="flex flex-col"
 				>
-					<div
-						className={`relative flex items-center gap-2 pr-2.5 pl-6 ${
-							compose ? "flex-wrap pt-[1.1rem] pb-3" : "pt-[1.1rem] pb-[0.9rem]"
-						}`}
-					>
-						{compose && (
-							<div
-								aria-hidden="true"
-								className="pointer-events-none absolute inset-1.5 rounded-composer bg-fill-field shadow-panel-sm-cds"
-							/>
-						)}
-						{!compose && chips.length > 0 && (
-							<FilterChips chips={chips} onClear={clearFilter} onClearAll={clearFoldedFilters} />
-						)}
-						<Command.Input asChild value={query} onValueChange={changeQuery}>
-							<textarea
-								ref={inputRef}
-								aria-activedescendant={undefined}
-								aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
-								placeholder={!compose && actionsOnly ? "Search actions" : label}
-								disabled={startStep === "launching"}
-								rows={compose ? 2 : 1}
-								wrap={compose ? undefined : "off"}
-								className={`relative max-h-24 min-w-[5rem] flex-1 resize-none border-none bg-transparent py-1.5 text-sm leading-5 text-primary outline-none placeholder:text-ink-muted ${
-									compose ? "overflow-y-auto" : "overflow-x-auto overflow-y-hidden"
-								}`}
-							/>
-						</Command.Input>
-						{!compose && (
-							<span id={PALETTE_KEYS_HINT_ID} hidden>
-								Left and Right arrows change the type of result. Option+Enter opens actions for the
-								highlighted result.
-							</span>
-						)}
-						{!compose && (
-							<span
-								data-palette-spinner-slot=""
-								className="flex size-4 shrink-0 items-center justify-center"
-							>
-								{searching && <Spinner size="md" delay={150} label="Searching deeper..." />}
-							</span>
-						)}
-						{!compose && (
-							<Tooltip content="Close" side="bottom" className="shrink-0">
-								<Dialog.Close
-									aria-label="Close"
-									className={`${ICON_BUTTON_BASE_CLASS} size-8 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
-								>
-									<X aria-hidden="true" className="h-5 w-5" />
-								</Dialog.Close>
-							</Tooltip>
-						)}
-						{compose && (
-							<div className="relative flex w-full flex-col gap-1.5 pr-1.5">
-								{composeChips.length > 0 && (
-									<AttachedContextChips
-										sessionId={COMPOSE_DRAFT_KEY}
-										context={composeChips}
-										comments={[]}
-									/>
-								)}
-								<input
-									ref={fileInputRef}
-									type="file"
-									multiple
-									accept="image/*,text/*"
-									aria-label="Add files or photos"
-									tabIndex={-1}
-									className="hidden"
-									onChange={(event) => {
-										attachUploadedFiles(
-											COMPOSE_DRAFT_KEY,
-											Array.from(event.target.files ?? []),
-											toast,
-										);
-										event.target.value = "";
-									}}
+					{/* Upstream's header wrapper: Compose at rest has no list below, so the input row takes the bottom gap. */}
+					<div className={composeAtRest ? "flex-shrink-0 pb-1 pointer-coarse:pb-0" : "flex-shrink-0"}>
+						<div
+							className={`relative flex items-center gap-2 pr-2.5 pl-6 ${
+								compose ? "flex-wrap pt-[1.1rem] pb-3" : "pt-[1.1rem] pb-[0.9rem]"
+							}`}
+						>
+							{compose && (
+								<div
+									aria-hidden="true"
+									className="pointer-events-none absolute inset-1.5 rounded-composer bg-fill-field shadow-panel-sm-cds"
 								/>
-								<div className="flex items-center justify-between">
-									<Tooltip content="Add files or photos" side="bottom">
-										<button
-											type="button"
-											aria-label="Add files or photos"
-											disabled={startStep !== "idle"}
-											onClick={openFilePicker}
-											className={`${ICON_BUTTON_CLASS} rounded-r7 text-primary hover:bg-fill-ghost-hover`}
-										>
-											<Paperclip aria-hidden="true" className="size-4" />
-										</button>
-									</Tooltip>
-									<Tooltip content="Send" side="bottom">
-										<button
-											type="button"
-											aria-label="Send"
-											disabled={!canSend}
-											onClick={openStartPicker}
-											className={`${ICON_BUTTON_CLASS} rounded-r7 bg-accent-100 text-white hover:bg-accent-200`}
-										>
-											<ArrowUp aria-hidden="true" className="size-4" />
-										</button>
-									</Tooltip>
+							)}
+							{!compose && chips.length > 0 && (
+								<FilterChips chips={chips} onClear={clearFilter} onClearAll={clearFoldedFilters} />
+							)}
+							<Command.Input asChild value={query} onValueChange={changeQuery}>
+								<textarea
+									ref={inputRef}
+									aria-activedescendant={undefined}
+									aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
+									placeholder={!compose && actionsOnly ? "Search actions" : label}
+									disabled={startStep === "launching"}
+									rows={compose ? 2 : 1}
+									wrap={compose ? undefined : "off"}
+									className={`relative max-h-24 min-w-[5rem] flex-1 resize-none border-none bg-transparent py-1.5 text-sm leading-5 text-primary outline-none placeholder:text-ink-muted ${
+										compose ? "overflow-y-auto" : "overflow-x-auto overflow-y-hidden"
+									}`}
+								/>
+							</Command.Input>
+							{!compose && (
+								<span id={PALETTE_KEYS_HINT_ID} hidden>
+									Left and Right arrows change the type of result. Option+Enter opens actions for the
+									highlighted result.
+								</span>
+							)}
+							{!compose && (
+								<span
+									data-palette-spinner-slot=""
+									className="flex size-4 shrink-0 items-center justify-center"
+								>
+									{searching && <Spinner size="md" delay={150} label="Searching deeper..." />}
+								</span>
+							)}
+							{!compose && (
+								<Tooltip content="Close" side="bottom" className="shrink-0">
+									<Dialog.Close
+										aria-label="Close"
+										className={`${ICON_BUTTON_BASE_CLASS} size-8 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
+									>
+										<X aria-hidden="true" className="h-5 w-5" />
+									</Dialog.Close>
+								</Tooltip>
+							)}
+							{compose && (
+								<div className="relative flex w-full flex-col gap-1.5 pr-1.5">
+									{composeChips.length > 0 && (
+										<AttachedContextChips
+											sessionId={COMPOSE_DRAFT_KEY}
+											context={composeChips}
+											comments={[]}
+										/>
+									)}
+									<input
+										ref={fileInputRef}
+										type="file"
+										multiple
+										accept="image/*,text/*"
+										aria-label="Add files or photos"
+										tabIndex={-1}
+										className="hidden"
+										onChange={(event) => {
+											attachUploadedFiles(
+												COMPOSE_DRAFT_KEY,
+												Array.from(event.target.files ?? []),
+												toast,
+											);
+											event.target.value = "";
+										}}
+									/>
+									<div className="flex items-center justify-between">
+										<Tooltip content="Add files or photos" side="bottom">
+											<button
+												type="button"
+												aria-label="Add files or photos"
+												disabled={startStep !== "idle"}
+												onClick={openFilePicker}
+												className={`${ICON_BUTTON_CLASS} -ms-3 rounded-r7 text-primary hover:bg-fill-ghost-hover`}
+											>
+												<Paperclip aria-hidden="true" className="size-4" />
+											</button>
+										</Tooltip>
+										<Tooltip content="Send" side="bottom">
+											<button
+												type="button"
+												aria-label="Send"
+												disabled={!canSend}
+												onClick={openStartPicker}
+												className={`${ICON_BUTTON_CLASS} rounded-r7 bg-accent-100 text-white hover:bg-accent-200`}
+											>
+												<ArrowUp aria-hidden="true" className="size-4" />
+											</button>
+										</Tooltip>
+									</div>
 								</div>
-							</div>
-						)}
+							)}
+						</div>
 					</div>
 					{!compose && <TypeTabs value={actionsOnly ? null : tab} onChange={chooseTab} />}
-					<div className="h-[0.5px] w-full bg-border" />
+					{!compose && <div className="h-[0.5px] w-full bg-border" />}
 
 					{/* Upstream animates the scroller between its measured content height and the cap.
 					    While capped, cmdk's sizer is a full-height column so the skeleton or empty block fills it. */}
 					<Command.List
 						ref={listRef}
 						className={[
-							compose ? "max-h-[440px] overflow-y-auto p-2.5" : LIST_SCROLLER_CLASS,
+							compose
+								? `max-h-[440px] overflow-y-auto p-2.5${composeAtRest ? " hidden" : ""}`
+								: LIST_SCROLLER_CLASS,
 							"[&_[cmdk-group]+[cmdk-group]]:mt-1 [&>[cmdk-list-sizer]]:flex [&>[cmdk-list-sizer]]:flex-col",
 							...(listCapped ? ["[&>[cmdk-list-sizer]]:min-h-full"] : []),
 						].join(" ")}
@@ -2020,7 +2026,7 @@ function PalettePopup({
 
 					<FooterCollapse open={!footerCollapsed}>
 						{compose ? (
-							<PaletteFooter hints={[["Send", ["enter"]]]} />
+							<PaletteFooter compose hints={[["Send", ["enter"]]]} />
 						) : (
 							<PaletteFooter
 								hints={[
@@ -2152,9 +2158,12 @@ function FooterCollapse({open, children}: {open: boolean; children: ReactNode}) 
 }
 
 function PaletteFooter({
+	compose = false,
 	hints,
 	trailing,
 }: {
+	/** Upstream's Compose footer has no top border and no top padding. */
+	compose?: boolean;
 	/** Each hint's optional className replaces the default wrapper class, e.g. upstream's breakpoint hiding. */
 	hints: ReadonlyArray<readonly [label: string, keys: readonly string[], className?: string]>;
 	/** Right-aligned extra, like the Search entry's view hint. */
@@ -2163,7 +2172,11 @@ function PaletteFooter({
 	return (
 		<div
 			data-palette-footer=""
-			className="border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden"
+			className={
+				compose
+					? "bg-surface-3 pr-4 pb-2.5 pl-5 pointer-coarse:hidden"
+					: "border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden"
+			}
 		>
 			<div className="flex min-h-5 items-center justify-between text-caption text-ink-muted">
 				<div className="flex items-center gap-5">
