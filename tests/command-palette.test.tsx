@@ -608,6 +608,17 @@ describe("CommandPalette shell", () => {
 		}).toStrictEqual({keyShortcuts: "Alt+Enter", dialogOpen: true});
 	});
 
+	it("shows the empty view's New session row without keycaps, as upstream does", async () => {
+		const dialog = await openPalette();
+		const row = await within(dialog).findByRole("option", {name: /^New session/});
+
+		expect({
+			keyShortcuts: row.getAttribute("aria-keyshortcuts"),
+			kbd: row.querySelectorAll("kbd").length,
+			text: row.textContent,
+		}).toStrictEqual({keyShortcuts: null, kbd: 0, text: "New session"});
+	});
+
 	it("closes on Escape", async () => {
 		const dialog = await openPalette();
 

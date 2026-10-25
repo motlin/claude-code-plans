@@ -2083,16 +2083,11 @@ function EmptyViewItem({
 	onNewSession: () => void;
 }) {
 	if (row.kind === "action") {
-		// Upstream's empty state lists only New session; the other actions answer a typed query.
+		// Upstream's empty state lists only New session, without keycaps; the other actions answer a typed query.
 		return (
-			<ShortcutCommandItem
-				value="action:New session"
-				id="new_session"
-				icon={<CirclePlus />}
-				onSelect={onNewSession}
-			>
+			<CommandItem value="action:New session" icon={<CirclePlus />} onSelect={onNewSession}>
 				New session
-			</ShortcutCommandItem>
+			</CommandItem>
 		);
 	}
 	if (row.kind === "page") {
