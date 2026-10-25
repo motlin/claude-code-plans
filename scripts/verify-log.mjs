@@ -13,31 +13,36 @@ import {basename, join, resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {stripVTControlCharacters} from "node:util";
 
-const FAILURE_LINES = [
-	/\(\d+ tests? \| \d+ failed\)/u,
-	/^\s*×/u,
-	/^\s*FAIL\s/u,
-	/^\s*(?:Test Files|Tests)\s.*\bfailed\b/u,
-	/^error: recipe `[^`]+` failed/u,
-];
-const MAX_LINES = 40;
+const RECIPE_LINE = /^error: recipe `[^`]+` failed/u;
+const COUNT_LINE = /^\s*(?:Test Files|Tests)\s.*\bfailed\b/u;
+const FAIL_LINE = /^\s*FAIL\s/u;
+const DETAIL_LINES = [/\(\d+ tests? \| \d+ failed\)/u, /^\s*×/u];
+const MAX_FAILURES = 12;
 const FALLBACK_LINES = 15;
 const KEPT_LOGS = 20;
 
 /**
+ * The failing recipes and counts come first and the failing tests last, so they sit right above the
+ * "Full log:" line and git test's ~13-line BAD COMMIT trailer, where a caller's tail still reaches them.
+ * Vitest names each failure three times (file row, × row, FAIL row); the FAIL rows alone are kept when present.
+ *
  * @param {string} log the combined output of a failed run
  * @returns {string[]} the lines that name what failed, or the last lines when none do
  */
 export function summarizeFailure(log) {
 	const lines = stripVTControlCharacters(log).split("\n");
-	const named = lines.filter((line) => FAILURE_LINES.some((pattern) => pattern.test(line)));
-	if (named.length === 0) {
+	const recipes = lines.filter((line) => RECIPE_LINE.test(line));
+	const counts = lines.filter((line) => COUNT_LINE.test(line));
+	const failLines = lines.filter((line) => FAIL_LINE.test(line));
+	const failures =
+		failLines.length > 0 ? failLines : lines.filter((line) => DETAIL_LINES.some((pattern) => pattern.test(line)));
+	if (recipes.length + counts.length + failures.length === 0) {
 		return lines.filter((line) => line.trim() !== "").slice(-FALLBACK_LINES);
 	}
-	if (named.length <= MAX_LINES) {
-		return named;
-	}
-	return [...named.slice(0, MAX_LINES), `… ${named.length - MAX_LINES} more failure lines in the log`];
+	const omitted = failures.length - MAX_FAILURES;
+	const shown =
+		omitted > 0 ? [`… ${omitted} more failing tests in the log`, ...failures.slice(-MAX_FAILURES)] : failures;
+	return [...recipes, ...counts, ...shown];
 }
 
 function logDirectory() {

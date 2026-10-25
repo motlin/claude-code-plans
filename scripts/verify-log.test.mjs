@@ -19,13 +19,34 @@ describe("summarizeFailure", () => {
 			"",
 		].join("\n");
 		expect(summarizeFailure(log)).toStrictEqual([
-			" ❯  isolated  tests/hook-dispatcher.test.ts (60 tests | 1 failed) 32277ms",
-			"       × only broadcasts plan:changed once when PostToolUse fires then watcher trails 4062ms",
-			" FAIL   isolated  tests/hook-dispatcher.test.ts > only broadcasts plan:changed once",
-			" Test Files  1 failed | 706 passed (707)",
-			"      Tests  1 failed | 8421 passed | 2 skipped (8424)",
 			"error: recipe `_test` failed on line 75 with exit code 1",
 			"error: recipe `_verify-test` failed on line 189 with exit code 1",
+			" Test Files  1 failed | 706 passed (707)",
+			"      Tests  1 failed | 8421 passed | 2 skipped (8424)",
+			" FAIL   isolated  tests/hook-dispatcher.test.ts > only broadcasts plan:changed once",
+		]);
+	});
+
+	test("ends with the failing tests so a caller's tail above git test's BAD COMMIT trailer still names them", () => {
+		const log = [
+			...Array.from({length: 14}, (_, index) => [
+				` ❯  isolated  tests/t${index}.test.tsx (3 tests | 1 failed) 900ms`,
+				`       × case ${index} 899ms`,
+			]).flat(),
+			...Array.from({length: 14}, (_, index) => ` FAIL   isolated  tests/t${index}.test.tsx > case ${index}`),
+			" Test Files  14 failed | 700 passed (714)",
+			"      Tests  14 failed | 9000 passed (9014)",
+			"error: recipe `_test` failed on line 75 with exit code 1",
+		].join("\n");
+		expect(summarizeFailure(log)).toStrictEqual([
+			"error: recipe `_test` failed on line 75 with exit code 1",
+			" Test Files  14 failed | 700 passed (714)",
+			"      Tests  14 failed | 9000 passed (9014)",
+			"… 2 more failing tests in the log",
+			...Array.from(
+				{length: 12},
+				(_, index) => ` FAIL   isolated  tests/t${index + 2}.test.tsx > case ${index + 2}`,
+			),
 		]);
 	});
 
@@ -37,8 +58,8 @@ describe("summarizeFailure", () => {
 			"error: recipe `check` failed on line 71 with exit code 1",
 		].join("\n");
 		expect(summarizeFailure(log)).toStrictEqual([
-			"  × typescript(TS2550): Property 'withResolvers' does not exist on type 'PromiseConstructor'.",
 			"error: recipe `check` failed on line 71 with exit code 1",
+			"  × typescript(TS2550): Property 'withResolvers' does not exist on type 'PromiseConstructor'.",
 		]);
 	});
 
@@ -53,8 +74,8 @@ describe("summarizeFailure", () => {
 	test("caps a long list of failures and says how many were left out", () => {
 		const log = Array.from({length: 50}, (_, index) => `       × test ${index}`).join("\n");
 		expect(summarizeFailure(log)).toStrictEqual([
-			...Array.from({length: 40}, (_, index) => `       × test ${index}`),
-			"… 10 more failure lines in the log",
+			"… 38 more failing tests in the log",
+			...Array.from({length: 12}, (_, index) => `       × test ${index + 38}`),
 		]);
 	});
 });
