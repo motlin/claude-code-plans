@@ -8,7 +8,12 @@ import {AskUserQuestionProvider} from "../src/components/ask-user-question-conte
 import {QuestionCard} from "../src/components/question-card";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
-import {findPendingAskUserQuestion} from "../src/lib/approval-dock";
+import {
+	findPendingAskUserQuestion,
+	hookQuestionCardShown,
+	liveHookQuestion,
+	toolUseProgress,
+} from "../src/lib/approval-dock";
 import type {QuestionLike} from "../src/lib/ask-user-question";
 import {clearSentQuestionCard, readSentQuestionCard} from "../src/lib/question-card-store";
 
@@ -91,6 +96,45 @@ describe("findPendingAskUserQuestion", () => {
 			toolUseId: "t4",
 			questions: [{question: "Pick?", options: [{label: "A"}, {label: "B"}]}],
 		});
+	});
+});
+
+describe("toolUseProgress", () => {
+	it("tells a main-thread tool call missing from the records, awaiting its result, or answered", () => {
+		const asked = [assistantToolUse("t2", "AskUserQuestion", {questions: QUESTIONS})];
+		expect([
+			toolUseProgress([], "t2"),
+			toolUseProgress(asked, "t2"),
+			toolUseProgress([...asked, toolResult("t2")], "t2"),
+			toolUseProgress([assistantToolUse("t2", "AskUserQuestion", {}, {isSidechain: true})], "t2"),
+		]).toStrictEqual(["absent", "pending", "answered", "absent"]);
+	});
+});
+
+describe("hook question across the answer", () => {
+	const HOOK_QUESTION = {toolUseId: "t2", questions: QUESTIONS};
+	const asked = [assistantToolUse("t2", "AskUserQuestion", {questions: QUESTIONS})];
+	const answered = [...asked, toolResult("t2")];
+
+	it("never draws the hook copy again once the transcript holds the answer the hook hasn't caught up to", () => {
+		// Frames: hook-only; record on disk awaiting; answer on disk while the hook
+		// state is still the stale "waiting" one; the hook confirms.
+		const frames = [
+			{state: "waiting", hookQuestion: HOOK_QUESTION, records: []},
+			{state: "waiting", hookQuestion: HOOK_QUESTION, records: asked},
+			{state: "waiting", hookQuestion: HOOK_QUESTION, records: answered},
+			{state: "working", hookQuestion: null, records: answered},
+		] as const;
+		expect(frames.map((frame) => hookQuestionCardShown(frame))).toStrictEqual([true, false, false, false]);
+	});
+
+	it("drops a hook question the transcript already answered, so the composer stops gating on it", () => {
+		expect([
+			liveHookQuestion(HOOK_QUESTION, []),
+			liveHookQuestion(HOOK_QUESTION, asked),
+			liveHookQuestion(HOOK_QUESTION, answered),
+			liveHookQuestion(undefined, answered),
+		]).toStrictEqual([HOOK_QUESTION, HOOK_QUESTION, null, undefined]);
 	});
 });
 

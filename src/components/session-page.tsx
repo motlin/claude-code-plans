@@ -117,7 +117,12 @@ import {
 import {useSessionViewedState} from "../hooks/use-session-viewed-state";
 import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
-import {findLastPendingToolUse, findPendingAskUserQuestion} from "../lib/approval-dock";
+import {
+	findLastPendingToolUse,
+	findPendingAskUserQuestion,
+	hookQuestionCardShown as isHookQuestionCardShown,
+	liveHookQuestion,
+} from "../lib/approval-dock";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../lib/api/application-settings";
 import {
 	herdrPanesQueryOptions,
@@ -621,12 +626,16 @@ function SessionView({
 		[answerRoute, sessionId],
 	);
 	const pendingQuestion = useMemo(() => findPendingAskUserQuestion(transcript.records), [transcript.records]);
-	// The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline until then.
-	const hookQuestionCardShown =
-		sessionSummaryState === "waiting" &&
-		hookQuestion !== undefined &&
-		hookQuestion !== null &&
-		pendingQuestion?.toolUseId !== hookQuestion.toolUseId;
+	// Until the question's record is on disk its hook copy is drawn inline; the hook state lags the JSONL, so an answered record never brings it back.
+	// The hook's question, until the transcript already holds its answer.
+	const unansweredHookQuestion = useMemo(
+		() => liveHookQuestion(hookQuestion, transcript.records),
+		[hookQuestion, transcript.records],
+	);
+	const hookQuestionCardShown = useMemo(
+		() => isHookQuestionCardShown({state: sessionSummaryState, hookQuestion, records: transcript.records}),
+		[sessionSummaryState, hookQuestion, transcript.records],
+	);
 	// Upstream draws a pending question inline as its card; one in the transcript answers there while the session runs.
 	const inlineQuestion = isActive ? pendingQuestion : null;
 	const chatStream = useChatStream();
@@ -753,7 +762,7 @@ function SessionView({
 		onError: onInterruptError,
 	});
 	const composerGate = composerPendingGate({
-		hookQuestion,
+		hookQuestion: unansweredHookQuestion,
 		transcriptQuestion: inlineQuestion !== null,
 		awaitingPermission,
 	});
@@ -1206,8 +1215,8 @@ function SessionView({
 												pendingPermission !== null ||
 												dockedPlan !== null ||
 												(sessionSummaryState === "waiting" &&
-													hookQuestion !== undefined &&
-													hookQuestion !== null)
+													unansweredHookQuestion !== undefined &&
+													unansweredHookQuestion !== null)
 											}
 										>
 											{!chromeHidden &&
@@ -1239,7 +1248,7 @@ function SessionView({
 													dockedPlan !== null,
 												workingLineWaits,
 											}) &&
-												!hookQuestion && <WaitingForInputNotice />}
+												!unansweredHookQuestion && <WaitingForInputNotice />}
 											{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
 											{dockedPlan !== null && (
 												<DeferredDockedPlanApproval
@@ -1448,8 +1457,8 @@ function SessionView({
 									plan={planApprovalCtx}
 								/>
 							)}
-							{/* The CLI writes a question to the JSONL only once answered, so its hook copy is drawn inline at the transcript's end */}
-							{hookQuestionCardShown && (
+							{/* Until the question's record is on disk, its hook copy is drawn inline at the transcript's end */}
+							{hookQuestionCardShown && hookQuestion && (
 								<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
 									<QuestionCard
 										key={hookQuestion.toolUseId}

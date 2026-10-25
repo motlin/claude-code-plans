@@ -34,6 +34,16 @@ describe("dockedHookPlan", () => {
 		expect(dockedHookPlan({hookPlan: HOOK_PLAN, state: "waiting", records})).toStrictEqual(HOOK_PLAN);
 	});
 
+	it("stays hidden once its own ExitPlanMode is answered on disk while the hook state still says waiting", () => {
+		const hookPlan = {...HOOK_PLAN, toolUseId: "toolu_plan_1"};
+		const asked = [assistantToolUse("toolu_plan_1", "ExitPlanMode", {plan: HOOK_PLAN.plan})];
+		expect([
+			dockedHookPlan({hookPlan, state: "waiting", records: []}),
+			dockedHookPlan({hookPlan, state: "waiting", records: asked}),
+			dockedHookPlan({hookPlan, state: "waiting", records: [...asked, toolResult("toolu_plan_1")]}),
+		]).toStrictEqual([hookPlan, null, null]);
+	});
+
 	it("hides when the hook state clears or the session is no longer waiting", () => {
 		expect([
 			dockedHookPlan({hookPlan: null, state: "waiting", records: []}),

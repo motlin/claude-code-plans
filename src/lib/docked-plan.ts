@@ -1,11 +1,12 @@
-import {findLastPendingToolUse, type PendingToolUse} from "./approval-dock";
+import {findLastPendingToolUse, type PendingToolUse, toolUseProgress} from "./approval-dock";
 import type {PendingPlan} from "./hook-events";
 import type {SessionSummaryState} from "./session-state";
 
 /**
  * The hook-reported plan to dock above the composer: the session waits on an
  * ExitPlanMode the CLI has not written to the JSONL yet. Once the record is on
- * disk and awaiting, the transcript's own plan card answers it instead.
+ * disk and awaiting, the transcript's own plan card answers it instead; once
+ * it is answered there, the lagging hook state never docks it again.
  */
 export function dockedHookPlan({
 	hookPlan,
@@ -17,6 +18,7 @@ export function dockedHookPlan({
 	records: readonly unknown[];
 }): PendingPlan | null {
 	if (hookPlan === null || hookPlan === undefined || state !== "waiting") return null;
+	if (hookPlan.toolUseId !== "" && toolUseProgress(records, hookPlan.toolUseId) !== "absent") return null;
 	return findLastPendingToolUse(records)?.name === "ExitPlanMode" ? null : hookPlan;
 }
 
