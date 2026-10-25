@@ -126,6 +126,17 @@ export function agentState(entry: WorkflowAgentEntry, options?: AgentStateOption
 	return "pending";
 }
 
+/** One agent's cell in the grid: its label (the hover detail) and state. */
+export interface AgentCell {
+	label: string;
+	state: AgentState;
+}
+
+/** Upstream `me`: each agent's label and state, in the given order. */
+export function agentCells(entries: readonly WorkflowAgentEntry[], options?: AgentStateOptions): AgentCell[] {
+	return entries.map((entry) => ({label: entry.label, state: agentState(entry, options)}));
+}
+
 /** Upstream `pe`: stalled agents count as running as well. */
 function tally(counts: WorkflowProgressCounts, entry: WorkflowAgentEntry, options?: AgentStateOptions): void {
 	counts.total += 1;

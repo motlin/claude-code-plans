@@ -891,6 +891,85 @@ html[data-interface-font="dyslexic"] {
 	}
 }
 
+/* Upstream's workflow agent cells (inline style c1bc4f7a0), on the local tokens. */
+.epitaxy-agent-cell {
+	background-color: transparent;
+	border: 1px solid transparent;
+	transition:
+		background-color 0.16s,
+		border-color 0.16s,
+		opacity 0.16s,
+		filter 0.16s;
+}
+
+.epitaxy-agent-cell:hover {
+	filter: brightness(0.9);
+}
+
+.dark .epitaxy-agent-cell:hover {
+	filter: brightness(1.1);
+}
+
+.epitaxy-agent-cell--done {
+	background-color: var(--color-alpha-3);
+}
+
+.epitaxy-agent-cell--running {
+	background-color: var(--color-fill-accent);
+	animation: epitaxy-agent-pulse var(--epitaxy-pulse-dur, 2.8s) ease-in-out var(--epitaxy-pulse-delay, 0s) infinite;
+}
+
+.epitaxy-agent-cell--stalled {
+	background-color: var(--upstream-fill-warning);
+}
+
+.epitaxy-agent-cell--error {
+	background-color: var(--color-fill-danger);
+}
+
+.epitaxy-agent-cell--stopped,
+.epitaxy-agent-cell--pending {
+	border-color: var(--color-alpha-3);
+}
+
+.epitaxy-agent-cell--ghost {
+	border-color: var(--color-alpha-3);
+	animation: 2.2s ease-in-out infinite epitaxy-agent-ghost-pulse;
+}
+
+@keyframes epitaxy-agent-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.72;
+	}
+}
+
+@keyframes epitaxy-agent-ghost-pulse {
+	0%,
+	100% {
+		opacity: 0.25;
+	}
+	50% {
+		opacity: 0.9;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.epitaxy-agent-cell {
+		transition: none;
+	}
+	.epitaxy-agent-cell--running {
+		animation: none;
+	}
+	.epitaxy-agent-cell--ghost {
+		opacity: 0.45;
+		animation: none;
+	}
+}
+
 /* A fresh question card fades in (upstream's epitaxy-approval-inline-enter); a restored one skips it. */
 @keyframes approval-inline-enter {
 	from {

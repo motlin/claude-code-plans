@@ -2,6 +2,7 @@ import {useEffect, useState} from "react";
 import {ChevronRight} from "lucide-react";
 import {formatPaddedElapsed} from "../../lib/working-marker";
 import {
+	agentCells,
 	buildWorkflowProgress,
 	type WorkflowProgressCounts,
 	type WorkflowProgressEntry,
@@ -65,6 +66,12 @@ export function WorkflowCard({
 	const now = useNow();
 	const model = buildWorkflowProgress(progress, {now, settled: false});
 	const counts = model?.counts ?? NO_AGENTS;
+	const agents = model
+		? agentCells(
+				model.phases.flatMap((phase) => phase.agents),
+				{now},
+			)
+		: undefined;
 	const hasName = name !== "";
 	const label = preLaunch ? "Starting workflow" : "Workflow";
 	const content = (
@@ -94,7 +101,7 @@ export function WorkflowCard({
 			</span>
 			{/* Upstream `pt-sm`: 5px, which the measured 318x81 one-row card pins. */}
 			<span className="block pt-p4 pb-0.5">
-				<WorkflowAgentCells counts={counts} maxRows={CARD_MAX_ROWS} anticipate />
+				<WorkflowAgentCells counts={counts} wrap maxRows={CARD_MAX_ROWS} anticipate agents={agents} />
 			</span>
 		</span>
 	);

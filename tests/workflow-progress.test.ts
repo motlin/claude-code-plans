@@ -9,6 +9,7 @@ import {
 	UNPHASED_INDEX,
 	WorkflowProgressEntrySchema,
 	RuntimeWorkflowProgressEntrySchema,
+	agentCells,
 	agentState,
 	buildWorkflowProgress,
 	cellCap,
@@ -270,6 +271,25 @@ describe("endUnfinishedAgents", () => {
 	it("leaves the error empty when the run was stopped", () => {
 		expect(endUnfinishedAgents([agent({index: 0, state: "progress"})], "stopped")).toStrictEqual([
 			agent({index: 0, state: "error"}),
+		]);
+	});
+});
+
+describe("agentCells", () => {
+	it("pairs each agent's label with its state, in the given order (upstream me)", () => {
+		expect(
+			agentCells(
+				[
+					agent({index: 0, state: "progress", lastProgressAt: 0}),
+					agent({index: 1, state: "done"}),
+					agent({index: 2, state: "start"}),
+				],
+				{now: 90_001},
+			),
+		).toStrictEqual([
+			{label: "agent-0", state: "stalled"},
+			{label: "agent-1", state: "done"},
+			{label: "agent-2", state: "pending"},
 		]);
 	});
 });
