@@ -939,8 +939,57 @@ describe("CommandPalette shell", () => {
 		}).toStrictEqual({
 			buttons: ["Add files or photos", "Send"],
 			fileInput: "Add files or photos",
-			send: true,
+			send: false,
 		});
+	});
+
+	it("paints Send as upstream's enabled brand ↵ button, even with no text", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		const send = within(dialog).getByRole<HTMLButtonElement>("button", {name: "Send"});
+		const mouseDown = new MouseEvent("mousedown", {bubbles: true, cancelable: true});
+		send.dispatchEvent(mouseDown);
+		const clipDown = new MouseEvent("mousedown", {bubbles: true, cancelable: true});
+		within(dialog).getByRole("button", {name: "Add files or photos"}).dispatchEvent(clipDown);
+
+		expect({
+			disabled: send.disabled,
+			classes: ["bg-fill-brand", "hover:bg-fill-brand-hover", "rounded-r7", "me-0.5", "text-white"].filter(
+				(name) => send.classList.contains(name),
+			),
+			icon: send.querySelector("svg")?.classList.contains("lucide-corner-down-left"),
+			sendMouseDownPrevented: mouseDown.defaultPrevented,
+			clipMouseDownPrevented: clipDown.defaultPrevented,
+		}).toStrictEqual({
+			disabled: false,
+			classes: ["bg-fill-brand", "hover:bg-fill-brand-hover", "rounded-r7", "me-0.5", "text-white"],
+			icon: true,
+			sendMouseDownPrevented: true,
+			clipMouseDownPrevented: true,
+		});
+	});
+
+	it("places the Compose button tooltips above, like upstream", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		const sides: Array<[string | null, string | null]> = [];
+		for (const name of ["Add files or photos", "Send"]) {
+			const button = within(dialog).getByRole("button", {name});
+			fireEvent.pointerEnter(button);
+			const tooltip = await within(dialog).findByRole("tooltip");
+			sides.push([tooltip.textContent, tooltip.getAttribute("data-side")]);
+			fireEvent.pointerLeave(button);
+			await waitFor(() => {
+				expect(within(dialog).queryByRole("tooltip")).toBeNull();
+			});
+		}
+
+		expect(sides).toStrictEqual([
+			["Add files or photos", "top"],
+			["Send", "top"],
+		]);
 	});
 
 	it("shows the Compose button tooltips", async () => {

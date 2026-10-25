@@ -48,7 +48,6 @@ import {
 	Shapes,
 	Clock,
 	Paperclip,
-	ArrowUp,
 	CircleHelp,
 	BookText,
 	TextCursorInput,
@@ -1701,26 +1700,39 @@ function PalettePopup({
 										}}
 									/>
 									<div className="flex items-center justify-between">
-										<Tooltip content="Add files or photos" side="bottom">
+										<Tooltip content="Add files or photos" side="top">
 											<button
 												type="button"
 												aria-label="Add files or photos"
 												disabled={startStep !== "idle"}
+												onMouseDown={(event) => {
+													event.preventDefault();
+												}}
 												onClick={openFilePicker}
 												className={`${ICON_BUTTON_CLASS} -ms-3 rounded-r7 text-primary hover:bg-fill-ghost-hover`}
 											>
 												<Paperclip aria-hidden="true" className="size-4" />
 											</button>
 										</Tooltip>
-										<Tooltip content="Send" side="bottom">
+										<Tooltip content="Send" side="top">
 											<button
 												type="button"
 												aria-label="Send"
-												disabled={!canSend}
-												onClick={openStartPicker}
-												className={`${ICON_BUTTON_CLASS} rounded-r7 bg-accent-100 text-white hover:bg-accent-200`}
+												aria-busy={startStep === "launching" ? true : undefined}
+												disabled={startStep !== "idle"}
+												onMouseDown={(event) => {
+													event.preventDefault();
+												}}
+												onClick={() => {
+													if (canSend) openStartPicker();
+												}}
+												className={`${ICON_BUTTON_CLASS} me-0.5 rounded-r7 bg-fill-brand text-white hover:bg-fill-brand-hover`}
 											>
-												<ArrowUp aria-hidden="true" className="size-4" />
+												{startStep === "launching" ? (
+													<LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+												) : (
+													<CornerDownLeft aria-hidden="true" className="size-4" />
+												)}
 											</button>
 										</Tooltip>
 									</div>

@@ -145,3 +145,20 @@ describe("compose field paint tokens (upstream --cds-fill-field / shadow-panel-s
 		});
 	});
 });
+
+describe("brand fill tokens (upstream --cds-fill-brand / -hover, the ⌘K Compose Send)", () => {
+	it("maps the theme utilities onto the upstream variables", () => {
+		expect(tokens(block("@theme inline"), ["--color-fill-brand", "--color-fill-brand-hover"])).toStrictEqual({
+			"--color-fill-brand": "var(--upstream-fill-brand)",
+			"--color-fill-brand-hover": "var(--upstream-fill-brand-hover)",
+		});
+	});
+
+	it("uses the same clay values in light and dark", () => {
+		const names = ["--upstream-fill-brand", "--upstream-fill-brand-hover"] as const;
+		expect({light: tokens(block(":root"), names), dark: tokens(block(".dark"), names)}).toStrictEqual({
+			light: {"--upstream-fill-brand": "#c6613f", "--upstream-fill-brand-hover": "#d97757"},
+			dark: {"--upstream-fill-brand": "#c6613f", "--upstream-fill-brand-hover": "#d97757"},
+		});
+	});
+});
