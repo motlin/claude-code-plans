@@ -1717,19 +1717,24 @@ function PalettePopup({
 											}}
 										/>
 									))}
-									{!searching && tokens.text !== "" && !actionsOnly && !isClientPaletteType(type) && (
-										<CommandItem
-											value="see-all-results"
-											icon={<Search />}
-											onSelect={() => {
-												select(() => {
-													seeAllResults(type);
-												});
-											}}
-										>
-											See all results for “{tokens.text}”
-										</CommandItem>
-									)}
+									{/* Local-only row; upstream's empty view has no option rows, so it waits for results. */}
+									{emptyKind === null &&
+										!searching &&
+										tokens.text !== "" &&
+										!actionsOnly &&
+										!isClientPaletteType(type) && (
+											<CommandItem
+												value="see-all-results"
+												icon={<Search />}
+												onSelect={() => {
+													select(() => {
+														seeAllResults(type);
+													});
+												}}
+											>
+												See all results for “{tokens.text}”
+											</CommandItem>
+										)}
 								</div>
 								{/* Upstream's block follows the results listbox, so its flex-1 centres it in the capped list. */}
 								{emptyKind !== null && (

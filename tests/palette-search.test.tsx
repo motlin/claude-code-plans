@@ -406,7 +406,7 @@ describe("⌘K palette live search", () => {
 			options: [],
 		});
 
-		request.resolve([]);
+		request.resolve([serverSession("sess-2", "Zqxvjkw notes")]);
 		await waitFor(() => {
 			expect(dialog.querySelector("[data-palette-skeleton]")).toBeNull();
 		});
@@ -728,6 +728,8 @@ describe("⌘K palette filters", () => {
 			afterResults: empty.parentElement?.previousElementSibling === resultsGroup(dialog),
 			clear: within(dialog).queryByRole("button", {name: "Clear filters"}),
 			live: dialog.querySelector("[aria-live=polite]")?.textContent,
+			// Upstream's empty view has no option rows: the local See all row waits for results.
+			options: optionLabels(dialog),
 		}).toStrictEqual({
 			tag: "P",
 			block: ["flex-1", "items-center", "justify-center", "text-center"],
@@ -735,6 +737,7 @@ describe("⌘K palette filters", () => {
 			afterResults: true,
 			clear: null,
 			live: "No results for “zzqxvq”",
+			options: [],
 		});
 	});
 
@@ -763,7 +766,8 @@ describe("⌘K palette filters", () => {
 		expect({
 			empty: dialog.querySelector("[data-palette-empty]"),
 			text: [...resultsGroup(dialog).querySelectorAll("p")].map((node) => node.textContent),
-		}).toStrictEqual({empty: null, text: []});
+			options: optionLabels(dialog),
+		}).toStrictEqual({empty: null, text: [], options: []});
 	});
 
 	it("offers upstream's Search all when filters emptied the list, clearing chips and type but keeping text and focus", async () => {
