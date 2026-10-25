@@ -27,7 +27,12 @@ const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.
 
 type Bucket = "blocked" | "review" | "working" | "done";
 
-function recentSession(id: string, title: string, bucket: Bucket = "done") {
+function recentSession(
+	id: string,
+	title: string,
+	bucket: Bucket = "done",
+	overrides: Partial<{unseen: boolean; mtime: string}> = {},
+) {
 	return {
 		id,
 		title,
@@ -44,6 +49,7 @@ function recentSession(id: string, title: string, bucket: Bucket = "done") {
 		liveAgentCount: 0,
 		unseen: false,
 		blockedSince: null,
+		...overrides,
 	};
 }
 
@@ -933,8 +939,9 @@ describe("CommandPalette shell", () => {
 
 		await within(dialog).findByRole("option", {name: /Blocked one/});
 		expect(groupLabels(dialog)).toStrictEqual([
-			["Needs attention", ["Blocked one Awaiting input", "Review one Needs review"]],
-			["Recents", ["Recent one", "Recent two", "Recent three", "Recent four", "Recent five"]],
+			["Needs attention", ["Blocked one Awaiting input"]],
+			// An old running session and an open PR with nothing unseen do not lead, so they stay in Recents.
+			["Recents", ["Recent one", "Recent two", "Review one", "Recent three", "Recent four", "Recent five"]],
 			["Actions", ["New session"]],
 		]);
 		const newSession = within(dialog).getByRole("option", {name: /^New session/});
@@ -945,7 +952,7 @@ describe("CommandPalette shell", () => {
 				?.split(" ")
 				.find((name) => name.startsWith("lucide-")),
 		).toBe("lucide-circle-plus");
-		expect(dialog.querySelectorAll("[data-palette-attention-dot]").length).toBe(2);
+		expect(dialog.querySelectorAll("[data-palette-attention-dot]").length).toBe(1);
 		// Upstream's group headers are 12/17 muted, and their rows sit flush at a 36px pitch.
 		const group = dialog.querySelector("[cmdk-group]");
 		expect({
@@ -982,19 +989,49 @@ describe("CommandPalette shell", () => {
 		expect(await within(dialog).findByRole("option", {name: /^Keyboard shortcuts/})).toBeTruthy();
 	});
 
-	it("caps Needs attention at the organic total of 7", async () => {
+	it("caps Needs attention at 5 leads, leaving the next ones in Recents", async () => {
 		const dialog = await openPalette(
 			Array.from({length: 9}, (_, index) => recentSession(`s-${index}`, `Waiting ${index}`, "blocked")),
 		);
 
 		await within(dialog).findByRole("option", {name: /Waiting 0/});
-		expect(groupLabels(dialog).map(([heading, labels]) => [heading, labels.length])).toStrictEqual([
-			["Needs attention", 7],
-			["Actions", 1],
+		expect(groupLabels(dialog)).toStrictEqual([
+			[
+				"Needs attention",
+				["Waiting 0", "Waiting 1", "Waiting 2", "Waiting 3", "Waiting 4"].map(
+					(title) => `${title} Awaiting input`,
+				),
+			],
+			["Recents", ["Waiting 5", "Waiting 6"]],
+			["Actions", ["New session"]],
 		]);
 	});
 
-	it("keeps up to three Recents rows inside the organic 7, between Needs attention and Actions, as upstream's 4 + 3", async () => {
+	it("rank-sorts recent leads and splits running ones into an Active group after Needs attention", async () => {
+		const recent = new Date(Date.now() - 60_000).toISOString();
+		const dialog = await openPalette([
+			recentSession("s-running", "Running one", "working", {mtime: recent}),
+			recentSession("s-unread", "Unread one", "done", {unseen: true, mtime: recent}),
+			recentSession("s-plain", "Plain one"),
+			recentSession("s-blocked", "Blocked one", "blocked"),
+		]);
+
+		await within(dialog).findByRole("option", {name: /Running one/});
+		expect({
+			groups: groupLabels(dialog),
+			active: within(dialog).queryByRole("group", {name: "Active"}) !== null,
+		}).toStrictEqual({
+			groups: [
+				["Needs attention", ["Blocked one Awaiting input", "Unread one Unread"]],
+				["Active", ["Running one Running"]],
+				["Recents", ["Plain one"]],
+				["Actions", ["New session"]],
+			],
+			active: true,
+		});
+	});
+
+	it("fits 5 leads and 2 Recents into the 440px list, as upstream's 5 + 2", async () => {
 		const dialog = await openPalette([
 			...Array.from({length: 9}, (_, index) => recentSession(`s-${index}`, `Waiting ${index}`, "blocked")),
 			...Array.from({length: 5}, (_, index) => recentSession(`r-${index}`, `Recent ${index}`)),
@@ -1008,8 +1045,8 @@ describe("CommandPalette shell", () => {
 			),
 		}).toStrictEqual({
 			groups: [
-				["Needs attention", 4],
-				["Recents", 3],
+				["Needs attention", 5],
+				["Recents", 2],
 				["Actions", 1],
 			],
 			named: [true, true, true],
@@ -1191,7 +1228,7 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 		]);
 	});
 
-	it("caps Needs attention plus Recents at the organic total of 7, without repeating attention sessions", async () => {
+	it("fits Needs attention plus visited Recents into 440px, without repeating attention sessions", async () => {
 		saveRecents([
 			entry("session", "s-blocked", "/session/s-blocked", "Blocked one"),
 			...Array.from({length: 8}, (_, index) =>
@@ -1205,8 +1242,8 @@ describe("CommandPalette Recents from the per-tab visit MRU", () => {
 
 		await within(dialog).findByRole("option", {name: /Plan 0/});
 		expect(groupLabels(dialog).slice(0, 2)).toStrictEqual([
-			["Needs attention", ["Blocked one Awaiting input", "Review one Needs review"]],
-			["Recents", ["Plan 0", "Plan 1", "Plan 2", "Plan 3", "Plan 4"]],
+			["Needs attention", ["Blocked one Awaiting input"]],
+			["Recents", ["Plan 0", "Plan 1", "Plan 2", "Plan 3", "Plan 4", "Plan 5"]],
 		]);
 	});
 

@@ -1,10 +1,16 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
+	fitPaletteEmptyView,
 	LEAD_WINDOW_MS,
+	PALETTE_FIT_METRICS,
+	paletteViewHeight,
 	PALETTE_MARK_LABELS,
 	PALETTE_MARK_RANK,
 	paletteMark,
 	sortLeads,
+	type PaletteFitItem,
+	type PaletteGroup,
+	type PaletteMark,
 	type PaletteMarkInput,
 } from "../src/lib/palette-marks";
 
@@ -76,6 +82,135 @@ describe("mark constants", () => {
 			PALETTE_MARK_RANK: {awaiting: 0, error: 1, unread: 2, running: 3},
 			PALETTE_MARK_LABELS: {awaiting: "Awaiting input", error: "Error", unread: "Unread", running: "Running"},
 			LEAD_WINDOW_MS: 604_800_000,
+		});
+	});
+});
+
+function rows(prefix: string, count: number, mark?: PaletteMark): PaletteFitItem[] {
+	return Array.from({length: count}, (_, index) =>
+		mark === undefined ? {id: `${prefix}${index}`} : {id: `${prefix}${index}`, mark},
+	);
+}
+
+function shape(groups: readonly PaletteGroup<PaletteFitItem>[]): [string, number][] {
+	return groups.map((group) => [group.title, group.items.length]);
+}
+
+const NEW_SESSION: PaletteFitItem[] = [{id: "action:new_session"}];
+
+describe("fitPaletteEmptyView", () => {
+	it("keeps 5 leads and trims Recents to 2 to fit 440px, as upstream's 5 + 2", () => {
+		const awaiting = rows("a", 9, "awaiting");
+		const plain = rows("p", 5);
+		// The organic recents pool is the 7 newest rows, which here are all leads.
+		const groups = fitPaletteEmptyView({
+			leads: awaiting,
+			recents: [...awaiting, ...plain].slice(0, 7),
+			actions: NEW_SESSION,
+		});
+
+		expect({
+			shape: shape(groups),
+			ids: groups.map((group) => group.items.map((item) => item.id)),
+			recentMarks: groups[1]?.items.map((item) => item.mark),
+			height: paletteViewHeight(groups),
+		}).toStrictEqual({
+			shape: [
+				["Needs attention", 5],
+				["Recents", 2],
+				["Actions", 1],
+			],
+			// A sliced lead never repeats in Recents; leads past the 5th stay there with their mark.
+			ids: [["a0", "a1", "a2", "a3", "a4"], ["a5", "a6"], ["action:new_session"]],
+			recentMarks: ["awaiting", "awaiting"],
+			height: 427,
+		});
+	});
+
+	it("moves running leads into an Active group after Needs attention", () => {
+		const leads = [...rows("a", 3, "awaiting"), ...rows("r", 2, "running")];
+
+		expect(shape(fitPaletteEmptyView({leads, recents: rows("p", 5), actions: NEW_SESSION}))).toStrictEqual([
+			["Needs attention", 3],
+			["Active", 2],
+			["Recents", 1],
+			["Actions", 1],
+		]);
+	});
+
+	it("lists 7 Recents when nothing leads", () => {
+		expect(shape(fitPaletteEmptyView({leads: [], recents: rows("p", 7), actions: NEW_SESSION}))).toStrictEqual([
+			["Recents", 7],
+			["Actions", 1],
+		]);
+	});
+
+	it("fits 2 leads beside 5 Recents", () => {
+		expect(
+			shape(fitPaletteEmptyView({leads: rows("a", 2, "awaiting"), recents: rows("p", 5), actions: NEW_SESSION})),
+		).toStrictEqual([
+			["Needs attention", 2],
+			["Recents", 5],
+			["Actions", 1],
+		]);
+	});
+
+	it("gives an all-running view only an Active group, within 440px", () => {
+		const running = rows("r", 6, "running");
+		const groups = fitPaletteEmptyView({leads: running, recents: running, actions: NEW_SESSION});
+
+		expect({
+			shape: shape(groups),
+			recents: groups[1]?.items.map((item) => item.id),
+			height: paletteViewHeight(groups),
+		}).toStrictEqual({
+			shape: [
+				["Active", 5],
+				["Recents", 1],
+				["Actions", 1],
+			],
+			recents: ["r5"],
+			height: 391,
+		});
+	});
+
+	it("drops an emptied Recents group and the actions group when there are no actions", () => {
+		const awaiting = rows("a", 2, "awaiting");
+
+		expect(shape(fitPaletteEmptyView({leads: awaiting, recents: awaiting, actions: []}))).toStrictEqual([
+			["Needs attention", 2],
+		]);
+	});
+
+	it("trims Actions to 1 before trimming Recents", () => {
+		const groups = fitPaletteEmptyView({
+			leads: rows("a", 5, "awaiting"),
+			recents: rows("p", 7),
+			actions: rows("x", 9),
+		});
+		expect(shape(groups)).toStrictEqual([
+			["Needs attention", 5],
+			["Recents", 2],
+			["Actions", 1],
+		]);
+	});
+});
+
+describe("paletteViewHeight", () => {
+	it("sums upstream's fm metrics: 20 padding, 37 per titled group, 36 per row, 4 between groups", () => {
+		expect({
+			PALETTE_FIT_METRICS,
+			empty: paletteViewHeight([]),
+			untitled: paletteViewHeight([{id: "recents", title: "", items: rows("j", 1)}]),
+			two: paletteViewHeight([
+				{id: "recents", title: "Recents", items: rows("p", 2)},
+				{id: "actions", title: "Actions", items: NEW_SESSION},
+			]),
+		}).toStrictEqual({
+			PALETTE_FIT_METRICS: {paddingY: 20, groupTitle: 37, row: 36, groupGap: 4},
+			empty: 20,
+			untitled: 56,
+			two: 20 + 37 + 72 + 4 + 37 + 36,
 		});
 	});
 });

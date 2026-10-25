@@ -73,6 +73,14 @@ import {
 	type SessionDetailData,
 	type SessionListItem,
 } from "../lib/api/sessions";
+import {
+	fitPaletteEmptyView,
+	PALETTE_MARK_LABELS,
+	paletteMark,
+	sortLeads,
+	type PaletteGroup,
+	type PaletteMark,
+} from "../lib/palette-marks";
 import {buildClaudeCopyCommand} from "../lib/claude-launch-command";
 import {
 	appendAttachment,
@@ -123,7 +131,6 @@ import {openSideChat} from "../lib/side-chat-store";
 import {getSessionMenuItems, type SessionMenuCapability} from "../lib/session-menu-items";
 import {copySessionLink} from "../lib/session-open-in";
 import {requestSessionRename} from "../lib/session-rename-request";
-import type {SessionBucket} from "../lib/session-state";
 import {SHORTCUTS, type ShortcutId} from "../lib/shortcuts/registry";
 import {toggleSidebarCollapsed} from "../lib/sidebar-store";
 import {type ShortcutKeys, useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
@@ -165,10 +172,8 @@ const GROUP_CLASS =
 /** Fetched deep enough that sessions needing attention surface even when they are not the newest. */
 export const PALETTE_RECENT_LIMIT = 25;
 
-/** Upstream caps the default entrypoint's organic list (Needs attention + Recents) at 7. */
-const ORGANIC_LIMIT = 7;
-/** Recents keep up to 3 of those rows, as upstream's 4 Needs attention + 3 Recents. */
-const RECENTS_RESERVED = 3;
+/** Upstream's organic Recents pool, before the empty-view fitter trims it. */
+const RECENTS_POOL = 7;
 
 /**
  * Upstream debounces its server search by 500ms (`Vn(query,500)`) because that search is remote
@@ -420,30 +425,26 @@ function commandMatches(label: string, query: string, keywords: readonly string[
 	return defaultFilter(label, query, [...keywords]) > 0;
 }
 
-type AttentionBucket = Extract<SessionBucket, "blocked" | "review">;
-
-const ATTENTION_LABELS = {
-	blocked: "Awaiting input",
-	review: "Needs review",
-} as const satisfies Record<AttentionBucket, string>;
-
-interface PaletteSession {
+/** A marked session promoted above Recents into Needs attention or Active. */
+interface LeadSession {
+	kind: "session";
 	id: string;
 	title: string;
-}
-
-interface AttentionSession extends PaletteSession {
-	bucket: AttentionBucket;
-}
-
-function isAttentionBucket(bucket: SessionBucket): bucket is AttentionBucket {
-	return bucket === "blocked" || bucket === "review";
+	mark: PaletteMark;
 }
 
 /** A Recents row: a visited page from the per-tab MRU, or an mtime-ordered session fallback. */
 type PaletteRecent =
-	| {kind: "session"; id: string; title: string}
-	| {kind: "page"; entry: PalettePageEntry; title: string};
+	| {kind: "session"; id: string; title: string; mark?: PaletteMark}
+	| {kind: "page"; id: string; entry: PalettePageEntry; title: string};
+
+/** The empty view's only action row, upstream's "New session". */
+interface PaletteActionRow {
+	kind: "action";
+	id: "new_session";
+}
+
+type EmptyViewRow = LeadSession | PaletteRecent | PaletteActionRow;
 
 type PalettePageKind = "plan" | "memory" | "project" | "command";
 type PalettePageEntry = RecentEntry & {kind: PalettePageKind};
@@ -464,58 +465,67 @@ function mruRecents(
 	history: readonly RecentEntry[],
 	currentKey: string | undefined,
 	sessionTitles: ReadonlyMap<string, string>,
-	attentionIds: ReadonlySet<string>,
+	marks: ReadonlyMap<string, PaletteMark>,
 ): PaletteRecent[] {
 	const recents: PaletteRecent[] = [];
 	for (const entry of history) {
 		if (entry.key === currentKey) continue;
 		if (entry.kind === "session") {
 			const id = entry.key.slice("session:".length);
-			if (isSessionRouteAlias(id) || attentionIds.has(id)) continue;
-			recents.push({
-				kind: "session",
-				id,
-				title: sessionTitles.get(id) ?? entry.title ?? "Untitled",
-			});
+			if (isSessionRouteAlias(id)) continue;
+			recents.push(
+				withMark(
+					{kind: "session", id, title: sessionTitles.get(id) ?? entry.title ?? "Untitled"},
+					marks.get(id),
+				),
+			);
 		} else if (isPageEntry(entry)) {
-			recents.push({kind: "page", entry, title: entry.title ?? "Untitled"});
+			recents.push({kind: "page", id: entry.key, entry, title: entry.title ?? "Untitled"});
 		}
 	}
 	return recents;
 }
 
+function withMark(row: {kind: "session"; id: string; title: string}, mark: PaletteMark | undefined): PaletteRecent {
+	return mark === undefined ? row : {...row, mark};
+}
+
 /**
- * Split into upstream's empty-state groups, dropping the page on screen. Recents follow the per-tab
- * visit MRU, falling back to mtime-ordered sessions until the tab has visited anything else.
+ * Build upstream's fitted empty view, dropping the page on screen. Recents follow the per-tab visit
+ * MRU, falling back to mtime-ordered sessions until the tab has visited anything else; marked
+ * sessions lead by rank, and `fitPaletteEmptyView` sizes the groups to the 440px list.
  */
 function paletteGroups(
 	sessions: readonly SessionListItem[],
 	history: readonly RecentEntry[],
 	currentKey: string | undefined,
 	currentSessionId: string | undefined,
-): {attention: AttentionSession[]; recents: PaletteRecent[]} {
-	const attention: AttentionSession[] = [];
+	now: number,
+): PaletteGroup<EmptyViewRow>[] {
+	const leads: LeadSession[] = [];
+	const marks = new Map<string, PaletteMark>();
 	const fallback: PaletteRecent[] = [];
 	for (const session of sessions) {
 		if (session.id === currentSessionId) continue;
-		if (isAttentionBucket(session.bucket)) {
-			attention.push({id: session.id, title: session.title, bucket: session.bucket});
-		} else {
-			fallback.push({kind: "session", id: session.id, title: session.title});
+		const marked = paletteMark(session, now);
+		if (marked !== undefined) {
+			marks.set(session.id, marked.mark);
+			if (marked.leads) leads.push({kind: "session", id: session.id, title: session.title, mark: marked.mark});
 		}
+		fallback.push(withMark({kind: "session", id: session.id, title: session.title}, marked?.mark));
 	}
 	const visited = mruRecents(
 		history,
 		currentKey,
 		new Map(sessions.map((session) => [session.id, session.title])),
-		new Set(attention.map((session) => session.id)),
+		marks,
 	);
 	const recents = visited.length > 0 ? visited : fallback;
-	const cappedAttention = attention.slice(0, ORGANIC_LIMIT - Math.min(RECENTS_RESERVED, recents.length));
-	return {
-		attention: cappedAttention,
-		recents: recents.slice(0, ORGANIC_LIMIT - cappedAttention.length),
-	};
+	return fitPaletteEmptyView<EmptyViewRow>({
+		leads: sortLeads(leads),
+		recents: recents.slice(0, RECENTS_POOL),
+		actions: [{kind: "action", id: "new_session"}],
+	});
 }
 
 /** Pages reachable by typing; upstream keeps navigation out of the empty state. */
@@ -751,13 +761,14 @@ function PalettePopup({
 
 	const pathname = useRouterState({select: (state) => state.location.pathname});
 	const history = usePaletteHistory();
-	const {attention, recents} = useMemo(
+	const emptyView = useMemo(
 		() =>
 			paletteGroups(
 				data?.sessions ?? [],
 				history,
 				currentSessionId === undefined ? routeToRecent(pathname)?.key : `session:${currentSessionId}`,
 				currentSessionId,
+				Date.now(),
 			),
 		[data, history, pathname, currentSessionId],
 	);
@@ -1531,85 +1542,31 @@ function PalettePopup({
 
 						{showEmptyState && (
 							<>
-								{attention.length > 0 && (
-									<Command.Group heading="Needs attention" className={GROUP_CLASS}>
-										{attention.map((session) => (
-											<SessionRowActions
-												key={session.id}
-												onOpen={() => {
-													openRowActions(session.id);
+								{emptyView.map((group) => (
+									<Command.Group key={group.id} heading={group.title} className={GROUP_CLASS}>
+										{group.items.map((row) => (
+											<EmptyViewItem
+												key={row.id}
+												row={row}
+												lead={group.id === "attention" || group.id === "active"}
+												onOpenSession={(id) => {
+													select(() => {
+														openSession(id);
+													});
 												}}
-											>
-												<CommandItem
-													icon={<AttentionIcon />}
-													value={`session:${session.id}`}
-													onSelect={() => {
-														select(() => {
-															openSession(session.id);
-														});
-													}}
-													rowActions
-												>
-													{session.title}
-													<span className="sr-only"> {ATTENTION_LABELS[session.bucket]}</span>
-												</CommandItem>
-											</SessionRowActions>
+												onOpenRowActions={openRowActions}
+												onNavigate={(href) => {
+													select(() => void navigate({href}));
+												}}
+												onNewSession={() => {
+													select(
+														() => void navigate({to: "/"}).then(requestHomeComposerFocus),
+													);
+												}}
+											/>
 										))}
 									</Command.Group>
-								)}
-
-								{recents.length > 0 && (
-									<Command.Group heading="Recents" className={GROUP_CLASS}>
-										{recents.map((recent) =>
-											recent.kind === "session" ? (
-												<SessionRowActions
-													key={recent.id}
-													onOpen={() => {
-														openRowActions(recent.id);
-													}}
-												>
-													<CommandItem
-														icon={<MessageSquare />}
-														value={`session:${recent.id}`}
-														onSelect={() => {
-															select(() => {
-																openSession(recent.id);
-															});
-														}}
-														rowActions
-													>
-														{recent.title}
-													</CommandItem>
-												</SessionRowActions>
-											) : (
-												<CommandItem
-													key={recent.entry.key}
-													icon={PAGE_ICONS[recent.entry.kind]}
-													value={`recent:${recent.entry.key}`}
-													onSelect={() => {
-														select(() => void navigate({href: recent.entry.href}));
-													}}
-												>
-													{recent.title}
-												</CommandItem>
-											),
-										)}
-									</Command.Group>
-								)}
-
-								{/* Upstream's empty state lists only New session; the other actions answer a typed query */}
-								<Command.Group heading="Actions" className={GROUP_CLASS}>
-									<ShortcutCommandItem
-										value="action:New session"
-										id="new_session"
-										icon={<CirclePlus />}
-										onSelect={() => {
-											select(() => void navigate({to: "/"}).then(requestHomeComposerFocus));
-										}}
-									>
-										New session
-									</ShortcutCommandItem>
-								</Command.Group>
+								))}
 							</>
 						)}
 
@@ -2030,6 +1987,72 @@ function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mod
 				</div>
 			</div>
 		</div>
+	);
+}
+
+/** One empty-view row: a lead or Recents session, a visited page, or the New session action. */
+function EmptyViewItem({
+	row,
+	lead,
+	onOpenSession,
+	onOpenRowActions,
+	onNavigate,
+	onNewSession,
+}: {
+	row: EmptyViewRow;
+	/** Rows in Needs attention or Active, which show their mark. */
+	lead: boolean;
+	onOpenSession: (id: string) => void;
+	onOpenRowActions: (id: string) => void;
+	onNavigate: (href: string) => void;
+	onNewSession: () => void;
+}) {
+	if (row.kind === "action") {
+		// Upstream's empty state lists only New session; the other actions answer a typed query.
+		return (
+			<ShortcutCommandItem
+				value="action:New session"
+				id="new_session"
+				icon={<CirclePlus />}
+				onSelect={onNewSession}
+			>
+				New session
+			</ShortcutCommandItem>
+		);
+	}
+	if (row.kind === "page") {
+		return (
+			<CommandItem
+				icon={PAGE_ICONS[row.entry.kind]}
+				value={`recent:${row.entry.key}`}
+				onSelect={() => {
+					onNavigate(row.entry.href);
+				}}
+			>
+				{row.title}
+			</CommandItem>
+		);
+	}
+	// Only leads show their mark for now; Recents sessions get theirs once every session row is marked.
+	const mark = lead ? row.mark : undefined;
+	return (
+		<SessionRowActions
+			onOpen={() => {
+				onOpenRowActions(row.id);
+			}}
+		>
+			<CommandItem
+				icon={mark === undefined ? <MessageSquare /> : <AttentionIcon />}
+				value={`session:${row.id}`}
+				onSelect={() => {
+					onOpenSession(row.id);
+				}}
+				rowActions
+			>
+				{row.title}
+				{mark !== undefined && <span className="sr-only"> {PALETTE_MARK_LABELS[mark]}</span>}
+			</CommandItem>
+		</SessionRowActions>
 	);
 }
 
