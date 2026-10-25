@@ -135,3 +135,20 @@ export function fitPaletteEmptyView<T extends PaletteFitItem>({
 	}
 	return fitted;
 }
+
+/**
+ * Upstream's row secondary (`Zn`): "PR #N" and the relative time joined by " · ". The empty view
+ * passes no time (upstream's `timesHidden`), so it shows the PR alone.
+ */
+export function paletteSecondary({
+	prNumber,
+	time,
+}: {
+	prNumber: number | undefined;
+	time: string | null | undefined;
+}): string | undefined {
+	const parts = [prNumber === undefined ? undefined : `PR #${prNumber}`, time].filter(
+		(part): part is string => part !== undefined && part !== null && part !== "",
+	);
+	return parts.length === 0 ? undefined : parts.join(" · ");
+}

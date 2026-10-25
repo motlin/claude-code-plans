@@ -7,6 +7,7 @@ import {
 	PALETTE_MARK_LABELS,
 	PALETTE_MARK_RANK,
 	paletteMark,
+	paletteSecondary,
 	sortLeads,
 	type PaletteFitItem,
 	type PaletteGroup,
@@ -212,5 +213,16 @@ describe("paletteViewHeight", () => {
 			untitled: 56,
 			two: 20 + 37 + 72 + 4 + 37 + 36,
 		});
+	});
+});
+
+describe("paletteSecondary", () => {
+	it("joins upstream's PR #N and time parts with a middle dot, dropping missing parts", () => {
+		expect([
+			paletteSecondary({prNumber: 863, time: "Past hour"}),
+			paletteSecondary({prNumber: 863, time: undefined}),
+			paletteSecondary({prNumber: undefined, time: "Past hour"}),
+			paletteSecondary({prNumber: undefined, time: undefined}),
+		]).toStrictEqual(["PR #863 · Past hour", "PR #863", "Past hour", undefined]);
 	});
 });

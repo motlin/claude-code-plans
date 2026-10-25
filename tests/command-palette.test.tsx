@@ -31,7 +31,12 @@ function recentSession(
 	id: string,
 	title: string,
 	bucket: Bucket = "done",
-	overrides: Partial<{unseen: boolean; mtime: string}> = {},
+	overrides: Partial<{
+		unseen: boolean;
+		mtime: string;
+		pr: {number: number; url: string; repository: string};
+		archived: boolean;
+	}> = {},
 ) {
 	return {
 		id,
@@ -116,6 +121,8 @@ async function renderPalette(
 function pressK(target: Element, init: KeyboardEventInit) {
 	fireEvent.keyDown(target, {key: "k", code: "KeyK", ...init});
 }
+
+const PR_863 = {number: 863, url: "https://github.com/acme/app/pull/863", repository: "acme/app"};
 
 async function openPalette(...args: Parameters<typeof renderPalette>) {
 	const composer = await renderPalette(...args);
@@ -1119,6 +1126,32 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("shows upstream's trailing PR #N secondary on an empty-view session, without the time", async () => {
+		const dialog = await openPalette([
+			recentSession("s-pr", "With PR", "done", {pr: PR_863}),
+			recentSession("s-plain", "Plain one"),
+		]);
+
+		const prRow = await within(dialog).findByRole("option", {name: /With PR/});
+		const plainRow = within(dialog).getByRole("option", {name: /Plain one/});
+		const meta = prRow.querySelector("[data-palette-meta]");
+		expect({
+			text: meta?.textContent,
+			classes: meta?.className.split(" "),
+			plain: plainRow.querySelector("[data-palette-meta]"),
+		}).toStrictEqual({
+			text: "PR #863",
+			classes: [
+				"shrink-0",
+				"text-xs",
+				"text-ink-muted",
+				"group-data-[selected=true]:hidden",
+				"pointer-coarse:!inline",
+			],
+			plain: null,
+		});
+	});
+
 	it("marks an unseen finished session Unread on the Code tab", async () => {
 		const dialog = await openPalette([
 			recentSession("s-unseen", "Unseen done", "done", {unseen: true}),
@@ -1929,6 +1962,55 @@ describe("CommandPalette filter values", () => {
 			{label: "Refactor auth module", badge: null, muted: false},
 			{label: "Old archived refactor", badge: "Archived", muted: true},
 		]);
+	});
+
+	it("joins upstream's PR #N and the time into a typed session row's secondary", async () => {
+		const mtime = new Date(Date.now() - 10 * 60_000).toISOString();
+		const dialog = await openPalette([
+			recentSession("s-pr", "Refactor with PR", "done", {pr: PR_863, mtime}),
+			recentSession("s-plain", "Refactor plain", "done", {mtime}),
+		]);
+
+		typeQuery(dialog, "refactor");
+
+		expect(
+			[...dialog.querySelectorAll('[cmdk-item][data-item-type="code_session"]')].map((item) => ({
+				label: item.querySelector("[data-palette-label]")?.textContent ?? "",
+				meta: item.querySelector("[data-palette-meta]")?.textContent ?? "",
+			})),
+		).toStrictEqual([
+			{label: "Refactor with PR", meta: "PR #863 · Past hour"},
+			{label: "Refactor plain", meta: "Past hour"},
+		]);
+	});
+
+	it("puts an archived row's PR #N and Archived badge in upstream's inline-flex secondary", async () => {
+		const mtime = new Date(Date.now() - 10 * 60_000).toISOString();
+		const archivedSession = recentSession("sess-old", "Old archived refactor", "done", {
+			pr: PR_863,
+			mtime,
+			archived: true,
+		});
+		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
+			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all").queryKey, {
+				sessions: [archivedSession],
+				nextCursor: null,
+			});
+		});
+
+		typeQuery(dialog, "archived:true old");
+
+		const meta = dialog.querySelector('[cmdk-item][data-item-type="code_session"] [data-palette-meta]');
+		const wrapper = meta?.firstElementChild;
+		expect({
+			wrapper: wrapper?.className.split(" "),
+			parts: [...(wrapper?.childNodes ?? [])].map((node) =>
+				node instanceof Element && node.hasAttribute("data-archived-badge") ? "badge" : node.textContent,
+			),
+		}).toStrictEqual({
+			wrapper: ["inline-flex", "items-center", "gap-1.5"],
+			parts: ["PR #863 · Past hour", "badge"],
+		});
 	});
 
 	it("restricts the list to Actions with actions:", async () => {

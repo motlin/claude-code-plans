@@ -77,6 +77,7 @@ import {
 	fitPaletteEmptyView,
 	PALETTE_MARK_LABELS,
 	paletteMark,
+	paletteSecondary,
 	sortLeads,
 	type PaletteGroup,
 	type PaletteMark,
@@ -206,6 +207,8 @@ interface SearchRow {
 	mark?: PaletteMark;
 	/** Only recents know it; server hits leave it unset. */
 	archived?: boolean;
+	/** The session's open PR, shown as upstream's "PR #N" secondary; recents only. */
+	prNumber?: number;
 	href: string | undefined;
 	/** Replaces the relative-time meta, e.g. a routine's next run. */
 	meta?: string;
@@ -222,6 +225,7 @@ function sessionRow(session: SessionListItem, matches: readonly TextMatch[], now
 		mtime: session.mtime,
 		...(mark === undefined ? {} : {mark}),
 		archived: session.archived,
+		...(session.pr === undefined ? {} : {prNumber: session.pr.number}),
 		href: undefined,
 	};
 }
@@ -429,12 +433,20 @@ interface LeadSession {
 	id: string;
 	title: string;
 	mark: PaletteMark;
+	prNumber?: number;
+}
+
+/** What an empty-view session row shows besides its title. */
+interface PaletteSessionRow {
+	kind: "session";
+	id: string;
+	title: string;
+	mark?: PaletteMark;
+	prNumber?: number;
 }
 
 /** A Recents row: a visited page from the per-tab MRU, or an mtime-ordered session fallback. */
-type PaletteRecent =
-	| {kind: "session"; id: string; title: string; mark?: PaletteMark}
-	| {kind: "page"; id: string; entry: PalettePageEntry; title: string};
+type PaletteRecent = PaletteSessionRow | {kind: "page"; id: string; entry: PalettePageEntry; title: string};
 
 /** The empty view's only action row, upstream's "New session". */
 interface PaletteActionRow {
@@ -462,8 +474,7 @@ function isPageEntry(entry: RecentEntry): entry is PalettePageEntry {
 function mruRecents(
 	history: readonly RecentEntry[],
 	currentKey: string | undefined,
-	sessionTitles: ReadonlyMap<string, string>,
-	marks: ReadonlyMap<string, PaletteMark>,
+	sessionRows: ReadonlyMap<string, PaletteSessionRow>,
 ): PaletteRecent[] {
 	const recents: PaletteRecent[] = [];
 	for (const entry of history) {
@@ -471,12 +482,7 @@ function mruRecents(
 		if (entry.kind === "session") {
 			const id = entry.key.slice("session:".length);
 			if (isSessionRouteAlias(id)) continue;
-			recents.push(
-				withMark(
-					{kind: "session", id, title: sessionTitles.get(id) ?? entry.title ?? "Untitled"},
-					marks.get(id),
-				),
-			);
+			recents.push(sessionRows.get(id) ?? {kind: "session", id, title: entry.title ?? "Untitled"});
 		} else if (isPageEntry(entry)) {
 			recents.push({kind: "page", id: entry.key, entry, title: entry.title ?? "Untitled"});
 		}
@@ -484,8 +490,14 @@ function mruRecents(
 	return recents;
 }
 
-function withMark(row: {kind: "session"; id: string; title: string}, mark: PaletteMark | undefined): PaletteRecent {
-	return mark === undefined ? row : {...row, mark};
+function paletteSessionRow(session: SessionListItem, mark: PaletteMark | undefined): PaletteSessionRow {
+	return {
+		kind: "session",
+		id: session.id,
+		title: session.title,
+		...(mark === undefined ? {} : {mark}),
+		...(session.pr === undefined ? {} : {prNumber: session.pr.number}),
+	};
 }
 
 /**
@@ -501,23 +513,17 @@ function paletteGroups(
 	now: number,
 ): PaletteGroup<EmptyViewRow>[] {
 	const leads: LeadSession[] = [];
-	const marks = new Map<string, PaletteMark>();
+	const sessionRows = new Map<string, PaletteSessionRow>();
 	const fallback: PaletteRecent[] = [];
 	for (const session of sessions) {
+		const marked = session.id === currentSessionId ? undefined : paletteMark(session, now);
+		const row = paletteSessionRow(session, marked?.mark);
+		sessionRows.set(session.id, row);
 		if (session.id === currentSessionId) continue;
-		const marked = paletteMark(session, now);
-		if (marked !== undefined) {
-			marks.set(session.id, marked.mark);
-			if (marked.leads) leads.push({kind: "session", id: session.id, title: session.title, mark: marked.mark});
-		}
-		fallback.push(withMark({kind: "session", id: session.id, title: session.title}, marked?.mark));
+		if (marked?.leads === true) leads.push({...row, mark: marked.mark});
+		fallback.push(row);
 	}
-	const visited = mruRecents(
-		history,
-		currentKey,
-		new Map(sessions.map((session) => [session.id, session.title])),
-		marks,
-	);
+	const visited = mruRecents(history, currentKey, sessionRows);
 	const recents = visited.length > 0 ? visited : fallback;
 	return fitPaletteEmptyView<EmptyViewRow>({
 		leads: sortLeads(leads),
@@ -2028,6 +2034,7 @@ function EmptyViewItem({
 		);
 	}
 	const {mark} = row;
+	const secondary = paletteSecondary({prNumber: row.prNumber, time: undefined});
 	return (
 		<SessionRowActions
 			onOpen={() => {
@@ -2041,6 +2048,9 @@ function EmptyViewItem({
 					onOpenSession(row.id);
 				}}
 				rowActions
+				{...(secondary === undefined
+					? {}
+					: {secondary: <PaletteSecondary text={secondary} archived={false} />})}
 			>
 				{row.title}
 				{mark !== undefined && <span className="sr-only"> {PALETTE_MARK_LABELS[mark]}</span>}
@@ -2109,6 +2119,25 @@ function SessionRowActions({children, onOpen}: {children: ReactNode; onOpen: () 
 	);
 }
 
+/** Upstream's trailing secondary: the PR/time text, then the Archived badge on an archived row; ⏎ replaces it when selected. */
+function PaletteSecondary({text, archived}: {text: string | undefined; archived: boolean}) {
+	return (
+		<span
+			data-palette-meta=""
+			className="shrink-0 text-xs text-ink-muted group-data-[selected=true]:hidden pointer-coarse:!inline"
+		>
+			{archived ? (
+				<span className="inline-flex items-center gap-1.5">
+					{text}
+					<ArchivedBadge variant="palette" />
+				</span>
+			) : (
+				text
+			)}
+		</span>
+	);
+}
+
 const ROW_ACTIONS_LABEL_CLASS = "mr-7 pointer-coarse:mr-0";
 
 /** Upstream's search row: kind icon, bold title runs, quoted snippet, bucket meta, ⏎ when selected. */
@@ -2153,13 +2182,13 @@ function SearchResultItem({
 				</span>
 				{row.mark !== undefined && <span className="sr-only"> {PALETTE_MARK_LABELS[row.mark]}</span>}
 			</span>
-			{archived && <ArchivedBadge variant="palette" />}
-			<span
-				data-palette-meta=""
-				className="shrink-0 text-xs text-ink-muted group-data-[selected=true]:hidden pointer-coarse:!inline"
-			>
-				{row.meta ?? relativeBucket(Date.parse(row.mtime), now) ?? ""}
-			</span>
+			<PaletteSecondary
+				text={paletteSecondary({
+					prNumber: row.prNumber,
+					time: row.meta ?? relativeBucket(Date.parse(row.mtime), now),
+				})}
+				archived={archived}
+			/>
 			<ReturnGlyph />
 		</Command.Item>
 	);
@@ -2209,6 +2238,7 @@ function CommandItem({
 	onSelect,
 	shortcut,
 	rowActions = false,
+	secondary,
 }: {
 	children: ReactNode;
 	value: string;
@@ -2216,6 +2246,8 @@ function CommandItem({
 	onSelect: () => void;
 	shortcut?: ShortcutKeys;
 	rowActions?: boolean;
+	/** Upstream's trailing secondary text, e.g. "PR #N". */
+	secondary?: ReactNode;
 }) {
 	const keyShortcuts = rowActions ? "Alt+Enter" : shortcut?.ariaKeyShortcuts;
 	return (
@@ -2241,6 +2273,7 @@ function CommandItem({
 					<Shortcut keys={shortcut.keys} />
 				</span>
 			)}
+			{secondary}
 			<ReturnGlyph />
 		</Command.Item>
 	);
