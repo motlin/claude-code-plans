@@ -1234,8 +1234,10 @@ function PalettePopup({
 		else if (input.getAttribute("aria-activedescendant") !== id) input.setAttribute("aria-activedescendant", id);
 	});
 
+	// Upstream's Actions mode is exclusive, so choosing any type leaves it.
 	function chooseTab(next: PaletteType) {
 		setTab(next);
+		setFilters(({actions: _actions, ...rest}) => rest);
 		setSelectedValue("");
 		pendingFirstRowRef.current = true;
 		inputRef.current?.focus();
@@ -1606,7 +1608,7 @@ function PalettePopup({
 								ref={inputRef}
 								aria-activedescendant={undefined}
 								aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
-								placeholder={label}
+								placeholder={!compose && actionsOnly ? "Search actions" : label}
 								disabled={startStep === "launching"}
 								rows={compose ? 2 : 1}
 								wrap={compose ? undefined : "off"}
@@ -1692,7 +1694,7 @@ function PalettePopup({
 							</div>
 						)}
 					</div>
-					{!compose && <TypeTabs value={tab} onChange={chooseTab} />}
+					{!compose && <TypeTabs value={actionsOnly ? null : tab} onChange={chooseTab} />}
 					<div className="h-[0.5px] w-full bg-border" />
 
 					{/* Upstream animates the scroller between its measured content height and the cap.
@@ -2003,7 +2005,8 @@ function PalettePopup({
 											]
 										: []),
 									["Filters", ["/"], "hidden md:flex items-center gap-2"],
-									["Actions", ["alt+enter"]],
+									// Actions mode lists no session rows, so upstream drops the row-actions hint.
+									...(actionsOnly ? [] : [["Actions", ["alt+enter"]] as const]),
 								]}
 								{...(entrypoint === "search"
 									? {
@@ -2208,7 +2211,8 @@ function FilterChips({chips, onClear}: {chips: PaletteChip[]; onClear: (filter: 
 }
 
 /** Upstream's 28px type tablist under the input; cloud-only tabs are replaced by local types. */
-function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: PaletteType) => void}) {
+/** `value` is null in Actions mode, where upstream shows no active tab. */
+function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type: PaletteType) => void}) {
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;
@@ -2254,7 +2258,7 @@ function TypeTabs({value, onChange}: {value: PaletteType; onChange: (type: Palet
 								role="tab"
 								aria-selected={selected}
 								data-active={selected ? "" : undefined}
-								tabIndex={selected ? 0 : -1}
+								tabIndex={selected || (value === null && type === "all") ? 0 : -1}
 								onMouseDown={(event) => {
 									event.preventDefault();
 								}}

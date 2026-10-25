@@ -2076,6 +2076,46 @@ describe("CommandPalette filter values", () => {
 		});
 	});
 
+	it("shows Actions mode like upstream: chip, Search actions placeholder, no active tab, no Actions hint", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
+		const state = () => ({
+			chips: [...dialog.querySelectorAll("[role=group][data-filter]")].map((chip) => [
+				chip.getAttribute("data-filter"),
+				chip.getAttribute("aria-label"),
+				chip.textContent,
+			]),
+			placeholder: input.placeholder,
+			selectedTabs: within(dialog)
+				.getAllByRole("tab")
+				.filter((tab) => tab.getAttribute("aria-selected") === "true" || tab.hasAttribute("data-active"))
+				.map((tab) => tab.textContent),
+			footer: [...(footer(dialog)?.querySelectorAll(":scope > div > div > div > span:first-child") ?? [])].map(
+				(span) => span.textContent,
+			),
+		});
+
+		typeQuery(dialog, "actions: ");
+		const actionsMode = state();
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
+		const afterTab = state();
+
+		expect({actionsMode, afterTab}).toStrictEqual({
+			actionsMode: {
+				chips: [["actions", "Actions", "Actions"]],
+				placeholder: "Search actions",
+				selectedTabs: [],
+				footer: ["Close", "Change type", "Filters"],
+			},
+			afterTab: {
+				chips: [],
+				placeholder: "Search",
+				selectedTabs: ["Code"],
+				footer: ["Close", "Change type", "Filters", "Actions"],
+			},
+		});
+	});
+
 	it("narrows a value list by the typed prefix and commits the chosen value", async () => {
 		const dialog = await openPalette();
 
