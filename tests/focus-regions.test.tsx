@@ -4,7 +4,7 @@ import {act, cleanup, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {useFocusRegionShortcuts} from "../src/hooks/use-focus-regions";
-import {FOCUS_REGION_ENTRY_ATTR, FOCUS_REGION_ATTR} from "../src/lib/focus-regions";
+import {FOCUS_REGION_ENTRY_ATTR, FOCUS_REGION_ATTR, focusRegionByName} from "../src/lib/focus-regions";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -126,5 +126,41 @@ describe("F6 focus regions", () => {
 
 		const sidebar = screen.getByRole("navigation", {name: "Sidebar"});
 		expect(sidebar.getAttribute("tabindex")).toBe("-1");
+	});
+});
+
+describe("focusRegionByName", () => {
+	afterEach(() => {
+		cleanup();
+	});
+
+	it("focuses the named region, or the composer's entry, and reports whether it landed", () => {
+		render(<Harness />);
+		const landed = (["navigation", "main", "composer"] as const).map((name) => [
+			focusRegionByName(document, name),
+			focusedName(),
+		]);
+
+		expect(landed).toStrictEqual([
+			[true, "Sidebar"],
+			[true, "Main"],
+			[true, "Prompt"],
+		]);
+	});
+
+	it("returns false when the region is missing or hidden", () => {
+		render(
+			<>
+				<nav aria-label="Sidebar" {...region("navigation")} hidden />
+				<button type="button">Elsewhere</button>
+			</>,
+		);
+		screen.getByRole("button", {name: "Elsewhere"}).focus();
+
+		expect({
+			navigation: focusRegionByName(document, "navigation"),
+			composer: focusRegionByName(document, "composer"),
+			focused: document.activeElement?.textContent,
+		}).toStrictEqual({navigation: false, composer: false, focused: "Elsewhere"});
 	});
 });

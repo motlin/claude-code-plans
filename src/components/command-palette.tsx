@@ -50,9 +50,12 @@ import {
 	Paperclip,
 	ArrowUp,
 	CircleHelp,
+	BookText,
+	TextCursorInput,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
-import {jumpActionKeywords, PALETTE_JUMP_ACTIONS} from "../lib/palette-jump-actions";
+import {focusRegionByName, type JumpRegionName} from "../lib/focus-regions";
+import {jumpActionKeywords, PALETTE_JUMP_ACTIONS, type PaletteJumpActionId} from "../lib/palette-jump-actions";
 import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteEntrypoint, PaletteMode} from "../hooks/use-command-palette";
@@ -909,11 +912,13 @@ function PalettePopup({
 		[hints, query, data],
 	);
 	const actionsOnly = tokens.actions === true;
-	const searchable = hints === null && valueSuggestions === null && !actionsOnly;
+	const compose = mode === "compose";
+	// A query starting with "!" searches only the jump bangs: no sessions, server search or Quick actions.
+	const bangQuery = !compose && hints === null && valueSuggestions === null && tokens.text.startsWith("!");
+	const searchable = hints === null && valueSuggestions === null && !actionsOnly && !bangQuery;
 	const type = tokens.type ?? tab;
 	const filtered =
 		type !== "all" || tokens.project !== undefined || tokens.date !== undefined || tokens.archived === true;
-	const compose = mode === "compose";
 	// Outside Compose, the New session prompt is the free text, never a filter token.
 	const startPrompt = compose ? trimmedQuery : tokens.text;
 	const canStart = startPrompt !== "" && searchable;
@@ -1327,6 +1332,21 @@ function PalettePopup({
 		});
 	}
 
+	function regionJumpAction(id: PaletteJumpActionId, icon: ReactNode, region: JumpRegionName): PaletteAction {
+		return {
+			label: PALETTE_JUMP_ACTIONS[id].label,
+			icon,
+			// Runs after the palette closes; the next frame keeps Base UI's finalFocus from taking focus back.
+			run: () => {
+				restoreFocusRef.current = false;
+				requestAnimationFrame(() => {
+					focusRegionByName(document, region);
+				});
+			},
+			keywords: jumpActionKeywords(id),
+		};
+	}
+
 	// Upstream's Actions minus the cloud-only ones; New session lives in Quick actions once text is typed.
 	const actions = (
 		[
@@ -1371,6 +1391,8 @@ function PalettePopup({
 						} satisfies PaletteAction,
 					]
 				: []),
+			regionJumpAction("jump_to_navigation", <PanelLeft />, "navigation"),
+			regionJumpAction("jump_to_main_content", <BookText />, "main"),
 			// Upstream lists an unavailable jump action nowhere, so it needs the card seen at open.
 			...(jumpCard === null
 				? []
@@ -1382,6 +1404,7 @@ function PalettePopup({
 							keywords: jumpActionKeywords("jump_to_question"),
 						} satisfies PaletteAction,
 					]),
+			regionJumpAction("jump_to_input", <TextCursorInput />, "composer"),
 		] satisfies PaletteAction[]
 	).filter((action: PaletteAction) => action.shortcut === undefined || SHORTCUTS[action.shortcut].enabled);
 
@@ -1513,7 +1536,7 @@ function PalettePopup({
 	const matchedActions =
 		actionsOnly && tokens.text === ""
 			? actions
-			: matchesCommands || actionsOnly
+			: matchesCommands || actionsOnly || bangQuery
 				? actions.filter((action) => commandMatches(action.label, tokens.text, action.keywords))
 				: [];
 	const matchedCommands = matchesCommands
@@ -1947,6 +1970,7 @@ function PalettePopup({
 										!searching &&
 										tokens.text !== "" &&
 										!actionsOnly &&
+										!bangQuery &&
 										!isClientPaletteType(type) && (
 											<CommandItem
 												value="see-all-results"

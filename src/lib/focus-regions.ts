@@ -43,3 +43,14 @@ export function cycleFocusRegion(root: Document, direction: FocusRegionDirection
 	focusRegion(target);
 	return true;
 }
+
+/** The landmarks upstream's jump bangs land on: !jn, !jm and !ji. */
+export type JumpRegionName = "navigation" | "main" | "composer";
+
+/** Focus the first available region with this name (its entry when it has one); false when there is none. */
+export function focusRegionByName(root: Document, name: JumpRegionName): boolean {
+	const region = [...root.querySelectorAll<HTMLElement>(`[${FOCUS_REGION_ATTR}="${name}"]`)].find(isAvailable);
+	if (region === undefined) return false;
+	focusRegion(region);
+	return true;
+}

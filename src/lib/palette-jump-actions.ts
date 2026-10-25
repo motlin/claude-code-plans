@@ -11,10 +11,25 @@ export interface PaletteJumpAction {
 }
 
 export const PALETTE_JUMP_ACTIONS = {
+	jump_to_navigation: {
+		label: "Jump to navigation",
+		bang: "!jn",
+		searchHints: ["sidebar"],
+	},
+	jump_to_main_content: {
+		label: "Jump to main content",
+		bang: "!jm",
+		searchHints: ["page", "conversation", "title", "header"],
+	},
 	jump_to_question: {
 		label: "Jump to question",
 		bang: "!jq",
 		searchHints: ["approval", "Enter your verification code"],
+	},
+	jump_to_input: {
+		label: "Jump to input",
+		bang: "!ji",
+		searchHints: ["composer", "prompt"],
 	},
 } as const satisfies Record<string, PaletteJumpAction>;
 

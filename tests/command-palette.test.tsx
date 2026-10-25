@@ -2262,9 +2262,19 @@ describe("CommandPalette filter values", () => {
 		const narrowed = resultLabels(dialog);
 		typeQuery(dialog, "actions:true");
 
+		// cmdk's fuzzy score also reaches "sett" through Jump to input's "composer prompt" hints.
 		expect({narrowed, all: resultLabels(dialog)}).toStrictEqual({
-			narrowed: ["Settings"],
-			all: ["Search sessions", "Keyboard shortcuts", "Toggle sidebar", "Settings", "Mark all sessions seen"],
+			narrowed: ["Settings", "Jump to input"],
+			all: [
+				"Search sessions",
+				"Keyboard shortcuts",
+				"Toggle sidebar",
+				"Settings",
+				"Mark all sessions seen",
+				"Jump to navigation",
+				"Jump to main content",
+				"Jump to input",
+			],
 		});
 	});
 
@@ -2775,7 +2785,99 @@ describe("CommandPalette pinned Jump to question row", () => {
 
 		expect({bang, actions: searchResultLabels(dialog)}).toStrictEqual({
 			bang: [],
-			actions: ["Search sessions", "Keyboard shortcuts", "Toggle sidebar", "Settings", "Mark all sessions seen"],
+			actions: [
+				"Search sessions",
+				"Keyboard shortcuts",
+				"Toggle sidebar",
+				"Settings",
+				"Mark all sessions seen",
+				"Jump to navigation",
+				"Jump to main content",
+				"Jump to input",
+			],
+		});
+	});
+
+	function jumpRows(dialog: HTMLElement) {
+		return [...dialog.querySelectorAll("[cmdk-item]")].map((item) => ({
+			label: item.querySelector("[data-palette-label]")?.textContent ?? item.textContent,
+			icon: [...(item.querySelector("svg")?.classList ?? [])].filter((name) =>
+				["lucide-panel-left", "lucide-book-text", "lucide-text-cursor-input"].includes(name),
+			),
+			selected: item.getAttribute("data-selected"),
+		}));
+	}
+
+	it("lists exactly the three jump bangs for a bare !, with row 0 selected and no New session or empty state", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Settings refactor!")]);
+		await within(dialog).findByRole("option", {name: /Settings refactor/});
+		typeQuery(dialog, "!");
+
+		await waitFor(() => {
+			expect(jumpRows(dialog)[0]?.selected).toBe("true");
+		});
+		expect({rows: jumpRows(dialog), empty: within(dialog).queryByText("No results found")}).toStrictEqual({
+			rows: [
+				{label: "Jump to navigation", icon: ["lucide-panel-left"], selected: "true"},
+				{label: "Jump to main content", icon: ["lucide-book-text"], selected: "false"},
+				{label: "Jump to input", icon: ["lucide-text-cursor-input"], selected: "false"},
+			],
+			empty: null,
+		});
+	});
+
+	it("narrows the jump bangs by bang and finds them by their search hints", async () => {
+		const dialog = await openPalette([recentSession("sess-1", "Settings refactor")]);
+		await within(dialog).findByRole("option", {name: /Settings refactor/});
+		const matches: Record<string, string[]> = {};
+		for (const query of ["!jm", "!jn", "!ji", "sidebar", "prompt", "conversation"]) {
+			typeQuery(dialog, query);
+			matches[query] = searchResultLabels(dialog).filter((label) => label.startsWith("Jump to"));
+		}
+
+		expect(matches).toStrictEqual({
+			"!jm": ["Jump to main content"],
+			"!jn": ["Jump to navigation"],
+			"!ji": ["Jump to input"],
+			sidebar: ["Jump to navigation"],
+			prompt: ["Jump to input"],
+			conversation: ["Jump to main content"],
+		});
+	});
+
+	it("searches only the jump actions for a bang query: no server search, sessions or See all row", async () => {
+		const fetchMock = vi.fn<() => Promise<never>>(async () => new Promise(() => {}));
+		vi.stubGlobal("fetch", fetchMock);
+		const dialog = await openPalette([recentSession("sess-1", "!jm notes")]);
+		await within(dialog).findByRole("option", {name: /!jm notes/});
+		fetchMock.mockClear();
+		typeQuery(dialog, "!jm");
+		await new Promise<void>((resolve) => {
+			setTimeout(resolve, 300);
+		});
+
+		expect({
+			rows: jumpRows(dialog).map((row) => row.label),
+			fetches: fetchMock.mock.calls.length,
+		}).toStrictEqual({rows: ["Jump to main content"], fetches: 0});
+	});
+
+	it("Enter on Jump to main content closes the palette and focuses the main region", async () => {
+		const main = document.createElement("main");
+		main.setAttribute("data-focus-region", "main");
+		main.setAttribute("data-test-waiting-card", "");
+		document.body.append(main);
+		const dialog = await openPalette([recentSession("sess-1", "Settings refactor")]);
+		await within(dialog).findByRole("option", {name: /Settings refactor/});
+		typeQuery(dialog, "!jm");
+		await within(dialog).findByRole("option", {name: "Jump to main content"});
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Enter", code: "Enter"});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(main);
 		});
 	});
 
