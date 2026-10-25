@@ -283,6 +283,119 @@ export function paletteValueSuggestions(
 	};
 }
 
+/** The palette's committed filter chips, kept apart from the query text like upstream's filter object. */
+export interface PaletteFilters {
+	date?: UnifiedSearchDate;
+	repo?: string;
+	project?: string;
+	archived?: true;
+	/** Actions mode is exclusive: it clears every other filter, and any other filter clears it. */
+	actions?: true;
+}
+
+export interface CommittedPaletteTokens {
+	text: string;
+	filters: PaletteFilters;
+	/** Set when a `type:` token switched the tab; type is a tab, never a chip. */
+	tab?: PaletteType;
+}
+
+/** The known value matching `value` case-insensitively, in its canonical spelling. */
+function knownValue(value: string, known: Iterable<string>): string | undefined {
+	const lower = value.toLowerCase();
+	for (const candidate of known) {
+		if (candidate.toLowerCase() === lower) return candidate;
+	}
+	return undefined;
+}
+
+type FilterChange = {filters: PaletteFilters} | {tab: PaletteType};
+
+/** Upstream's `mt`: the change one `key:value` word commits, or undefined when it doesn't parse. */
+function parseCommitToken(
+	key: string,
+	rawValue: string,
+	sessions: readonly PaletteValueSession[],
+): FilterChange | undefined {
+	const value = rawValue.toLowerCase();
+	if (key === "repo" || key === "repository") {
+		const repo = knownValue(
+			rawValue,
+			sessions.map((session) => basename(session.project)),
+		);
+		return repo === undefined ? undefined : {filters: {repo}};
+	}
+	if (key === "project") {
+		const project = knownValue(
+			rawValue,
+			sessions.map((session) => session.projectName),
+		);
+		return project === undefined ? undefined : {filters: {project}};
+	}
+	if (DATE_KEYS.has(key)) {
+		const date = UnifiedSearchDateSchema.safeParse(value);
+		return date.success ? {filters: {date: date.data}} : undefined;
+	}
+	if (key === "type") {
+		const tab = TYPE_ALIASES[value];
+		return tab === undefined ? undefined : {tab};
+	}
+	if ((key === "is" && value === "archived") || (key === "archived" && FLAG_VALUES.has(value))) {
+		return {filters: {archived: true}};
+	}
+	if (key === "actions" && FLAG_VALUES.has(value)) return {filters: {actions: true}};
+	return undefined;
+}
+
+/**
+ * Upstream's `ht`: commit each `key:value` word that a whitespace follows into `filters`
+ * (or the tab, for `type:`), stripping it and its whitespace from the text. Unknown values
+ * and the word still being typed stay as text. `sessions` supply the known repos and projects.
+ */
+export function commitPaletteTokens(
+	query: string,
+	filters: PaletteFilters,
+	sessions: readonly PaletteValueSession[],
+): CommittedPaletteTokens {
+	let next: PaletteFilters = {...filters};
+	let tab: PaletteType | undefined;
+	const text = query.replaceAll(/(?<=^|\s)([a-z]+):(\S*)\s+/giu, (word, key: string, value: string) => {
+		const change = parseCommitToken(key.toLowerCase(), value, sessions);
+		if (change === undefined) return word;
+		if ("tab" in change) {
+			tab = change.tab;
+		} else if (change.filters.actions === true) {
+			next = {actions: true};
+		} else {
+			const {actions: _actions, ...rest} = next;
+			next = {...rest, ...change.filters};
+		}
+		return "";
+	});
+	return {text, filters: next, ...(tab === undefined ? {} : {tab})};
+}
+
+/** Backspace on an empty query pops the newest filter in this order, like upstream. */
+const POP_ORDER = ["actions", "archived", "project", "repo", "date"] as const satisfies ReadonlyArray<
+	keyof PaletteFilters
+>;
+
+/**
+ * Upstream's Backspace pop: remove the first set filter in `POP_ORDER`; with none left,
+ * return to the All tab. Null when there is nothing left to pop.
+ */
+export function popPaletteFilter(
+	filters: PaletteFilters,
+	tab: PaletteType,
+): {filters: PaletteFilters; tab: PaletteType} | null {
+	const key = POP_ORDER.find((candidate) => filters[candidate] !== undefined);
+	if (key !== undefined) {
+		const {[key]: _removed, ...rest} = filters;
+		return {filters: rest, tab};
+	}
+	return tab === "all" ? null : {filters: {}, tab: "all"};
+}
+
 const DAY_MS = 24 * 60 * 60_000;
 
 /** Earliest mtime a `date:` token keeps, matching the server's `/api/search` cutoff. */

@@ -1,5 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
+	commitPaletteTokens,
+	popPaletteFilter,
 	paletteDateCutoff,
 	paletteFilterHints,
 	paletteSearchParams,
@@ -220,6 +222,100 @@ describe("paletteValueSuggestions", () => {
 			null,
 			null,
 		]);
+	});
+});
+
+describe("commitPaletteTokens", () => {
+	const sessions = [
+		{project: "/Users/dev/ccp", projectName: "claude-code-plans"},
+		{project: "/Users/dev/avalon", projectName: "avalon"},
+	];
+
+	it("commits every key:value word followed by whitespace and strips it from the text", () => {
+		expect(commitPaletteTokens("date:month archived: hello", {}, sessions)).toStrictEqual({
+			text: "hello",
+			filters: {date: "month", archived: true},
+		});
+	});
+
+	it("switches the tab for type: instead of committing a chip", () => {
+		expect(commitPaletteTokens("fix type:code ", {}, sessions)).toStrictEqual({
+			text: "fix ",
+			filters: {},
+			tab: "sessions",
+		});
+	});
+
+	it("leaves unknown values, unfinished tokens and bare value keys as text", () => {
+		expect(
+			["repo:nope ", "date:t", "date:soon ", "date: ", "type:nope ", "http://x.y "].map((query) =>
+				commitPaletteTokens(query, {}, sessions),
+			),
+		).toStrictEqual([
+			{text: "repo:nope ", filters: {}},
+			{text: "date:t", filters: {}},
+			{text: "date:soon ", filters: {}},
+			{text: "date: ", filters: {}},
+			{text: "type:nope ", filters: {}},
+			{text: "http://x.y ", filters: {}},
+		]);
+	});
+
+	it("commits known repos and projects with their canonical spelling", () => {
+		expect(commitPaletteTokens("repository:CCP project:Avalon fix", {}, sessions)).toStrictEqual({
+			text: "fix",
+			filters: {repo: "ccp", project: "avalon"},
+		});
+	});
+
+	it("accepts upstream's flag spellings and date aliases", () => {
+		expect(commitPaletteTokens("is:archived when:today ", {}, sessions)).toStrictEqual({
+			text: "",
+			filters: {archived: true, date: "today"},
+		});
+	});
+
+	it("keeps existing filters and lets a later token replace one", () => {
+		expect(commitPaletteTokens("date:today x", {date: "week", repo: "ccp"}, sessions)).toStrictEqual({
+			text: "x",
+			filters: {date: "today", repo: "ccp"},
+		});
+	});
+
+	it("makes Actions mode exclusive", () => {
+		expect({
+			actionsClears: commitPaletteTokens("actions: ", {date: "week"}, sessions),
+			otherClearsActions: commitPaletteTokens("date:week ", {actions: true}, sessions),
+		}).toStrictEqual({
+			actionsClears: {text: "", filters: {actions: true}},
+			otherClearsActions: {text: "", filters: {date: "week"}},
+		});
+	});
+});
+
+describe("popPaletteFilter", () => {
+	it("pops actions, archived, project, repo, then date", () => {
+		const steps: unknown[] = [];
+		let state: ReturnType<typeof popPaletteFilter> = {
+			filters: {actions: true, archived: true, project: "avalon", repo: "ccp", date: "week"},
+			tab: "all",
+		};
+		while (state !== null) {
+			state = popPaletteFilter(state.filters, state.tab);
+			steps.push(state);
+		}
+		expect(steps).toStrictEqual([
+			{filters: {archived: true, project: "avalon", repo: "ccp", date: "week"}, tab: "all"},
+			{filters: {project: "avalon", repo: "ccp", date: "week"}, tab: "all"},
+			{filters: {repo: "ccp", date: "week"}, tab: "all"},
+			{filters: {date: "week"}, tab: "all"},
+			{filters: {}, tab: "all"},
+			null,
+		]);
+	});
+
+	it("returns to All once no filters remain on another tab", () => {
+		expect(popPaletteFilter({}, "sessions")).toStrictEqual({filters: {}, tab: "all"});
 	});
 });
 
