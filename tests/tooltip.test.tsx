@@ -353,3 +353,30 @@ describe("TOOLTIP_CLASS", () => {
 		);
 	});
 });
+
+describe("<Tooltip> anchor display", () => {
+	function anchorClasses(className?: string): string[] {
+		const {container} = render(
+			<Tooltip content="Tip" {...(className === undefined ? {} : {className})}>
+				<button type="button">Go</button>
+			</Tooltip>,
+		);
+		return [...(container.firstElementChild?.classList ?? [])];
+	}
+
+	it("defaults the anchor to relative inline-flex", () => {
+		expect(anchorClasses()).toStrictEqual(["relative", "inline-flex"]);
+	});
+
+	it("keeps inline-flex beside a caller's non-display classes", () => {
+		expect(anchorClasses("w-full shrink-0")).toStrictEqual(["relative", "inline-flex", "w-full", "shrink-0"]);
+	});
+
+	it("lets a caller's display class replace inline-flex", () => {
+		expect(anchorClasses("flex w-full")).toStrictEqual(["relative", "flex", "w-full"]);
+	});
+
+	it("keeps inline-flex when the caller's display class is only under a variant", () => {
+		expect(anchorClasses("md:hidden")).toStrictEqual(["relative", "inline-flex", "md:hidden"]);
+	});
+});

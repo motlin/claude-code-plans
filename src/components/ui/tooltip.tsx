@@ -84,6 +84,17 @@ const TRACK_CURSOR_INSET_PX = 8;
 
 const TOOLTIP_ROW_CLASS = "inline-flex items-center gap-2";
 
+/** An unprefixed Tailwind display utility, optionally `!`-important, that should replace the anchor's default `inline-flex`. */
+const DISPLAY_CLASS =
+	/^!?(?:block|inline-block|inline|flex|inline-flex|grid|inline-grid|contents|flow-root|table|hidden)!?$/;
+
+/** The anchor's classes: `relative inline-flex` plus the caller's, dropping `inline-flex` when the caller sets its own display. */
+function anchorClass(className: string | undefined): string {
+	if (!className) return "relative inline-flex";
+	const ownDisplay = className.split(/\s+/).some((token) => DISPLAY_CLASS.test(token));
+	return ownDisplay ? `relative ${className}` : `relative inline-flex ${className}`;
+}
+
 /** One action row of a multi-action tooltip: its label and keyboard shortcut. */
 interface TooltipRow {
 	content: string;
@@ -366,7 +377,7 @@ export function Tooltip({
 		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- closes the tooltip on click; focus and blur already open and close it from the keyboard
 		<span
 			ref={anchorRef}
-			className={className ? `relative inline-flex ${className}` : "relative inline-flex"}
+			className={anchorClass(className)}
 			onPointerEnter={(event) => {
 				if (trackCursor === "y") trackPointer(event);
 				show();

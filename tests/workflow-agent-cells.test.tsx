@@ -47,7 +47,7 @@ describe("WorkflowAgentCells", () => {
 	it("draws the live 1 of 3 done, 2 running card grid exactly as upstream", () => {
 		const {container} = render(<WorkflowAgentCells counts={LIVE} wrap maxRows={8} anticipate />);
 
-		expect(grid(container).parentElement?.className).toBe("relative inline-flex flex! w-full");
+		expect(grid(container).parentElement?.className).toBe("relative flex w-full");
 		expect(grid(container).outerHTML).toBe(
 			'<span role="img" aria-label="1 of 3 agents done, 2 running, 0 stalled, 0 failed" class="grid w-full overflow-hidden" style="grid-template-columns: repeat(auto-fill, 6px); gap: 2px; max-height: 62px;">' +
 				'<span data-cell="0" class="epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--done" style="width: 6px; height: 6px;"></span>' +

@@ -162,7 +162,7 @@ export function WorkflowAgentCells({
 	const ghost = anticipate ? <AgentCell state={GHOST} cell={GHOST} /> : null;
 	const tooltipProps = {summary, cells: states, agents: labelled, hasGhost: anticipate};
 
-	// The tooltip anchor is `inline-flex`; `flex!` keeps it block-level so no line box pads the grid's height.
+	// `flex` replaces the tooltip anchor's default `inline-flex`, keeping it block-level so no line box pads the grid's height.
 	if (wrap || cols !== undefined) {
 		const style: CSSProperties = cols
 			? {gridTemplateColumns: `repeat(${cols}, ${CELL_PX}px)`, gap: GAP_PX}
@@ -175,7 +175,7 @@ export function WorkflowAgentCells({
 			<CellsTooltip
 				{...tooltipProps}
 				className={`grid ${cols ? "w-fit" : "w-full overflow-hidden"}`}
-				tooltipClassName={cols ? "flex! w-fit" : "flex! w-full"}
+				tooltipClassName={cols ? "flex w-fit" : "flex w-full"}
 				style={style}
 			>
 				{cells}
@@ -187,7 +187,7 @@ export function WorkflowAgentCells({
 		<CellsTooltip
 			{...tooltipProps}
 			className="flex items-center"
-			tooltipClassName="flex! w-full"
+			tooltipClassName="flex w-full"
 			style={{height: "var(--text-body--line-height)"}}
 		>
 			<span
