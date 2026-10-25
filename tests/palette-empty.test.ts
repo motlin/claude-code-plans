@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {paletteEmptyMessage} from "../src/lib/palette-empty";
+import {paletteEmptyKind, paletteEmptyMessage} from "../src/lib/palette-empty";
 
 describe("paletteEmptyMessage", () => {
 	it("ports upstream's zg copy, dropping queries longer than 50 characters", () => {
@@ -27,6 +27,43 @@ describe("paletteEmptyMessage", () => {
 			`No results for “${fifty}”`,
 			"No results found",
 			"No results in Code",
+		]);
+	});
+});
+
+describe("paletteEmptyKind", () => {
+	it("ports upstream's Sm: no kind while searching or with rows, then silent, failed, filtered, nothing", () => {
+		const base = {query: "zzqxvq", searching: false, rowCount: 0, filtered: false, failed: false};
+		const cases = [
+			base,
+			{...base, searching: true},
+			{...base, rowCount: 2},
+			{...base, query: "x"},
+			{...base, query: " x "},
+			{...base, query: "x", failed: true, filtered: true},
+			{...base, query: "x", searching: true},
+			{...base, failed: true},
+			{...base, failed: true, filtered: true},
+			{...base, failed: true, rowCount: 1},
+			{...base, filtered: true},
+			{...base, query: ""},
+			{...base, query: "", filtered: true},
+		];
+
+		expect(cases.map((input) => paletteEmptyKind(input))).toStrictEqual([
+			"nothing",
+			null,
+			null,
+			"silent",
+			"silent",
+			"silent",
+			null,
+			"failed",
+			"failed",
+			null,
+			"filtered",
+			"nothing",
+			"filtered",
 		]);
 	});
 });

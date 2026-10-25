@@ -104,7 +104,7 @@ import {pin, unpin, usePins} from "../lib/pin-store";
 import {toMdSlug} from "../lib/md-slug";
 import {loadRecents, resolveRecentSessions, routeToRecent, type RecentEntry} from "../lib/recents-history";
 import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
-import {paletteEmptyMessage} from "../lib/palette-empty";
+import {paletteEmptyKind, paletteEmptyMessage} from "../lib/palette-empty";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
 import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
 import {createSessionCommands} from "../lib/session-commands";
@@ -1248,6 +1248,17 @@ function PalettePopup({
 		matchedActions.length +
 		matchedCommands.length +
 		serverRows.length;
+	const emptyKind = paletteEmptyKind({
+		query: tokens.text,
+		searching,
+		rowCount: resultCount,
+		filtered: type !== "all" || hasFilterTokens,
+		failed: serverActive && serverSearch.isError,
+	});
+	const emptyMessage =
+		emptyKind === "failed"
+			? "Something went wrong"
+			: paletteEmptyMessage(tokens.text, type === "all" ? null : paletteTypeLabels[type]);
 	const idle = startStep === "idle";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all";
 	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
@@ -1674,15 +1685,14 @@ function PalettePopup({
 											<span className="h-3 flex-1 rounded bg-fill-ghost-hover motion-safe:animate-pulse" />
 										</div>
 									))}
-								{!searching && resultCount === 0 && type === "all" && (
+								{(emptyKind === "failed" ||
+									(emptyKind !== null && emptyKind !== "silent" && type === "all")) && (
 									<div
 										data-palette-empty=""
 										className="flex min-h-fit flex-1 flex-col items-center justify-center gap-3 px-6 py-6 text-center"
 									>
-										<p className="m-0 max-w-full break-words text-secondary">
-											{paletteEmptyMessage(tokens.text, null)}
-										</p>
-										{hasFilterTokens && (
+										<p className="m-0 max-w-full break-words text-secondary">{emptyMessage}</p>
+										{emptyKind === "filtered" && (
 											<button
 												type="button"
 												onClick={() => {
@@ -1695,11 +1705,9 @@ function PalettePopup({
 										)}
 									</div>
 								)}
-								{!searching && resultCount === 0 && type !== "all" && (
+								{emptyKind === "filtered" && type !== "all" && (
 									<div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
-										<span className="text-base leading-6 text-secondary">
-											{paletteEmptyMessage(tokens.text, paletteTypeLabels[type])}
-										</span>
+										<span className="text-base leading-6 text-secondary">{emptyMessage}</span>
 										<button
 											type="button"
 											onClick={searchAll}
@@ -1727,7 +1735,11 @@ function PalettePopup({
 					</Command.List>
 					{showResults && !searching && (
 						<div aria-live="polite" className="sr-only">
-							{resultCount === 0 ? "No results found" : `${resultCount} results available`}
+							{emptyKind === "failed"
+								? "Something went wrong"
+								: resultCount === 0
+									? "No results found"
+									: `${resultCount} results available`}
 						</div>
 					)}
 

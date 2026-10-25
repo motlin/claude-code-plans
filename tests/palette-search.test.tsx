@@ -56,16 +56,20 @@ function serverSession(id: string, title: string, overrides: Partial<UnifiedSear
 interface PendingSearch {
 	url: string;
 	resolve: (items: UnifiedSearchItem[]) => void;
+	reject: () => void;
 }
 
 let pending: PendingSearch[] = [];
 
 async function fetchMock(url: string): Promise<unknown> {
-	return new Promise((resolveFetch) => {
+	return new Promise((resolveFetch, rejectFetch) => {
 		pending.push({
 			url,
 			resolve: (items) => {
 				resolveFetch({ok: true, status: 200, json: async () => Promise.resolve({items})});
+			},
+			reject: () => {
+				rejectFetch(new TypeError("Failed to fetch"));
 			},
 		});
 	});
@@ -517,6 +521,34 @@ describe("⌘K palette filters", () => {
 			clear: null,
 			live: "No results found",
 		});
+	});
+
+	it("shows and announces upstream's Something went wrong when the server search fails", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "zzqxvq");
+		(await awaitRequest()).reject();
+
+		const failed = await within(dialog).findByText("Something went wrong", {selector: "p"});
+		expect({
+			block: failed.parentElement?.hasAttribute("data-palette-empty"),
+			live: dialog.querySelector("[aria-live=polite]")?.textContent,
+		}).toStrictEqual({block: true, live: "Something went wrong"});
+	});
+
+	it("keeps a 1-character no-match silent, announcing No results found only to the live region", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "ǂ");
+		(await awaitRequest()).resolve([]);
+
+		await waitFor(() => {
+			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("No results found");
+		});
+		expect({
+			empty: dialog.querySelector("[data-palette-empty]"),
+			text: [...resultsGroup(dialog).querySelectorAll("p")].map((node) => node.textContent),
+		}).toStrictEqual({empty: null, text: []});
 	});
 
 	it("offers Clear filters when the filters emptied the list, keeping the typed text", async () => {
