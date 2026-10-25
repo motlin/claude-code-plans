@@ -2,7 +2,16 @@ import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
-import {type KeyboardEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
+import {
+	type KeyboardEvent,
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {
 	FileText,
@@ -42,6 +51,7 @@ import {
 	ArrowUp,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
+import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteEntrypoint, PaletteMode} from "../hooks/use-command-palette";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
@@ -1219,6 +1229,8 @@ function PalettePopup({
 
 	const compose = mode === "compose";
 	const footerCollapsed = !compose && query.trim() !== "";
+	const coarsePointer = useCoarsePointer();
+	const [listRef, contentHeight] = useListContentHeight();
 	const now = Date.now();
 	const canSend = canStart && startStep === "idle";
 
@@ -1270,6 +1282,10 @@ function PalettePopup({
 	const idle = startStep === "idle";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all";
 	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
+	// Upstream sizes the scroller to its content, but holds it at the cap while the skeleton or empty block fills it.
+	const listCapped = showEmptyState || (showResults && (searching || emptyKind !== null));
+	const listCap = LIST_CAP_PX + (footerCollapsed && !coarsePointer ? COLLAPSED_FOOTER_PX : 0);
+	const listHeight = listCapped ? listCap : contentHeight === null ? null : contentHeight + LIST_PADDING_Y_PX;
 	const label = MODE_LABELS[mode];
 
 	return (
@@ -1412,11 +1428,23 @@ function PalettePopup({
 					{!compose && <TypeTabs value={tab} onChange={chooseTab} />}
 					<div className="h-[0.5px] w-full bg-border" />
 
-					{/* Upstream holds the list at its 440px cap outside compose, leaving unused space at the bottom.
-					    cmdk's sizer is a full-height column so the settling skeleton grows into what is left. */}
+					{/* Upstream animates the scroller between its measured content height and the cap.
+					    While capped, cmdk's sizer is a full-height column so the skeleton or empty block fills it. */}
 					<Command.List
-						className={`${compose ? "max-h-[440px]" : "h-[440px]"} overflow-y-auto p-2.5 [&_[cmdk-group]+[cmdk-group]]:mt-1 [&>[cmdk-list-sizer]]:flex [&>[cmdk-list-sizer]]:min-h-full [&>[cmdk-list-sizer]]:flex-col`}
-						{...(compose ? {} : {style: LIST_MAX_HEIGHT_STYLE})}
+						ref={listRef}
+						className={[
+							compose ? "max-h-[440px] overflow-y-auto p-2.5" : LIST_SCROLLER_CLASS,
+							"[&_[cmdk-group]+[cmdk-group]]:mt-1 [&>[cmdk-list-sizer]]:flex [&>[cmdk-list-sizer]]:flex-col",
+							...(listCapped ? ["[&>[cmdk-list-sizer]]:min-h-full"] : []),
+						].join(" ")}
+						{...(compose
+							? {}
+							: {
+									style: {
+										...LIST_MAX_HEIGHT_STYLE,
+										...(listHeight === null ? {} : {height: `${listHeight}px`}),
+									},
+								})}
 					>
 						{startStep === "launching" && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
@@ -1804,6 +1832,31 @@ function ViewHint({label, onSwitch}: {label: string; onSwitch: () => void}) {
 /** Upstream sets this on the card while the footer is collapsed, so the list cap grows by the footer's 41px. */
 const FOOTER_COLLAPSED_CARD_CLASS = "[--cp-footer-collapsed:1] pointer-coarse:[--cp-footer-collapsed:0]";
 const LIST_MAX_HEIGHT_STYLE = {maxHeight: "calc(440px + var(--cp-footer-collapsed, 0) * 41px)"} as const;
+const LIST_CAP_PX = 440;
+const COLLAPSED_FOOTER_PX = 41;
+/** The scroller's p-2.5, top and bottom, around the measured cmdk sizer. */
+const LIST_PADDING_Y_PX = 20;
+const LIST_SCROLLER_CLASS =
+	"flex flex-col min-h-0 overflow-y-auto p-2.5 transition-[height,max-height] duration-150 ease-out motion-reduce:transition-none";
+
+/** Observes cmdk's list sizer so the scroller can transition to its content height; null until measured. */
+function useListContentHeight(): [(list: HTMLDivElement | null) => void, number | null] {
+	const [height, setHeight] = useState<number | null>(null);
+	const observerRef = useRef<ResizeObserver | null>(null);
+	const ref = useCallback((list: HTMLDivElement | null) => {
+		observerRef.current?.disconnect();
+		observerRef.current = null;
+		const sizer = list?.querySelector("[cmdk-list-sizer]");
+		if (sizer == null || typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries.at(-1);
+			if (entry !== undefined) setHeight(entry.contentRect.height);
+		});
+		observer.observe(sizer);
+		observerRef.current = observer;
+	}, []);
+	return [ref, height];
+}
 
 /** Upstream collapses the footer with a grid-rows transition rather than unmounting it. */
 function FooterCollapse({open, children}: {open: boolean; children: ReactNode}) {

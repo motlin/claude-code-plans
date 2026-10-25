@@ -472,6 +472,113 @@ describe("⌘K palette live search", () => {
 	});
 });
 
+describe("⌘K palette list height", () => {
+	const reportedHeight = 200;
+	const scrollerClass =
+		"flex flex-col min-h-0 overflow-y-auto p-2.5 transition-[height,max-height] duration-150 ease-out motion-reduce:transition-none";
+
+	beforeEach(() => {
+		pending = [];
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		vi.stubGlobal("fetch", fetchMock);
+		// Every observed element reports a 200px-tall content box, as the measured sizer would.
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				readonly #callback: ResizeObserverCallback;
+				constructor(callback: ResizeObserverCallback) {
+					this.#callback = callback;
+				}
+				observe(target: Element) {
+					this.#callback(
+						[{target, contentRect: {height: reportedHeight}} as unknown as ResizeObserverEntry],
+						this,
+					);
+				}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		Element.prototype.scrollIntoView = () => {};
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	function list(dialog: HTMLElement) {
+		const element = dialog.querySelector<HTMLElement>("[cmdk-list]");
+		return {
+			classes: element?.className.split(" ").filter((name) => !name.startsWith("[&")),
+			height: element?.style.height,
+			maxHeight: element?.style.maxHeight,
+			sizerFills: element?.className.split(" ").includes("[&>[cmdk-list-sizer]]:min-h-full"),
+		};
+	}
+
+	const maxHeight = "calc(440px + var(--cp-footer-collapsed, 0) * 41px)";
+
+	it("fits settled results to their measured content plus the 20px padding", async () => {
+		const {dialog} = await openPalette();
+
+		type(dialog, "auth");
+		(await awaitRequest()).resolve([
+			serverSession("sess-2", "Auth token refresh"),
+			serverSession("sess-3", "Auth docs"),
+			serverSession("sess-4", "Auth flows"),
+		]);
+
+		await waitFor(() => {
+			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("4 results available");
+		});
+		expect(list(dialog)).toStrictEqual({
+			classes: scrollerClass.split(" "),
+			height: "220px",
+			maxHeight,
+			sizerFills: false,
+		});
+	});
+
+	it("holds the list at its cap, grown by the collapsed footer's 41px, while settling and when empty", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "zzqxvq");
+		const request = await awaitRequest();
+		const capped = {classes: scrollerClass.split(" "), height: "481px", maxHeight, sizerFills: true};
+		expect(list(dialog)).toStrictEqual(capped);
+
+		request.resolve([]);
+		await within(dialog).findByText("No results for “zzqxvq”", {selector: "p"});
+		expect(list(dialog)).toStrictEqual(capped);
+	});
+
+	it("fits the Filter by hints to their content", async () => {
+		const {dialog} = await openPalette();
+
+		type(dialog, "/");
+
+		expect(list(dialog)).toStrictEqual({
+			classes: scrollerClass.split(" "),
+			height: "220px",
+			maxHeight,
+			sizerFills: false,
+		});
+	});
+
+	it("keeps the empty-query view at its 440px cap", async () => {
+		const {dialog} = await openPalette();
+
+		expect(list(dialog)).toStrictEqual({
+			classes: scrollerClass.split(" "),
+			height: "440px",
+			maxHeight,
+			sizerFills: true,
+		});
+	});
+});
+
 describe("⌘K palette filters", () => {
 	beforeEach(() => {
 		pending = [];

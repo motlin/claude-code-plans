@@ -960,16 +960,19 @@ describe("CommandPalette shell", () => {
 		const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
 		const inputRow = classes(input.closest("div.relative.flex"));
 		const tabs = classes(within(dialog).getByRole("group", {name: "Filters"}));
-		const list = classes(dialog.querySelector("[cmdk-list]"));
+		const listElement = dialog.querySelector<HTMLElement>("[cmdk-list]");
+		const list = classes(listElement);
 
 		expect({
 			inputRow: inputRow.filter((name) => /^(pt|pb)-/.test(name)),
 			tabs: tabs.filter((name) => /^(-?mt|pb)-/.test(name)).toSorted(),
 			list: list.filter((name) => /^(h|max-h)-|cmdk-group\]\+/.test(name)),
+			listHeight: listElement?.style.height,
 		}).toStrictEqual({
 			inputRow: ["pt-[1.1rem]", "pb-[0.9rem]"],
 			tabs: ["-mt-1.5", "pb-[0.9rem]"],
-			list: ["h-[440px]", "[&_[cmdk-group]+[cmdk-group]]:mt-1"],
+			list: ["[&_[cmdk-group]+[cmdk-group]]:mt-1"],
+			listHeight: "440px",
 		});
 	});
 
