@@ -1309,6 +1309,12 @@ function PalettePopup({
 		clearFilterSelection();
 	}
 
+	// Upstream's phone-fold Clear filters drops every chip but keeps the type tab.
+	function clearFoldedFilters() {
+		setFilters({});
+		clearFilterSelection();
+	}
+
 	// Like a tab change, a chip change resets the highlight to the first row.
 	function clearFilterSelection() {
 		setSelectedValue("");
@@ -1625,7 +1631,9 @@ function PalettePopup({
 								className="pointer-events-none absolute inset-1.5 rounded-composer bg-fill-field shadow-panel-sm-cds"
 							/>
 						)}
-						{!compose && chips.length > 0 && <FilterChips chips={chips} onClear={clearFilter} />}
+						{!compose && chips.length > 0 && (
+							<FilterChips chips={chips} onClear={clearFilter} onClearAll={clearFoldedFilters} />
+						)}
 						<Command.Input asChild value={query} onValueChange={changeQuery}>
 							<textarea
 								ref={inputRef}
@@ -2178,7 +2186,19 @@ function PaletteFooter({
 }
 
 /** Upstream's committed filter chips, in a strip before the textarea. */
-function FilterChips({chips, onClear}: {chips: PaletteChip[]; onClear: (filter: PaletteChipFilter) => void}) {
+const CHIP_BADGE_CLASSES =
+	"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-upstream-tint-blue text-upstream-accent";
+
+function FilterChips({
+	chips,
+	onClear,
+	onClearAll,
+}: {
+	chips: PaletteChip[];
+	onClear: (filter: PaletteChipFilter) => void;
+	/** Upstream's phone-fold Clear filters. */
+	onClearAll: () => void;
+}) {
 	const stripRef = useRef<HTMLDivElement>(null);
 	const shownRef = useRef<ReadonlySet<PaletteChipFilter>>(new Set());
 	// Upstream's `$t`: scroll a newly set chip into view.
@@ -2189,6 +2209,10 @@ function FilterChips({chips, onClear}: {chips: PaletteChip[]; onClear: (filter: 
 		const chip = added && strip?.querySelector<HTMLElement>(`[data-filter="${added.filter}"]`);
 		if (strip && chip) scrollIntoStrip(strip, chip, getComputedStyle(strip).paddingLeft);
 	}, [chips]);
+	// Upstream's phone fold: 2+ non-action chips collapse into one "N filters" chip below `sm`.
+	// Actions mode is exclusive, so 2+ chips are never Actions.
+	const folded = chips.length > 1;
+	const foldText = `${chips.length} filters`;
 	return (
 		<div
 			ref={stripRef}
@@ -2203,6 +2227,16 @@ function FilterChips({chips, onClear}: {chips: PaletteChip[]; onClear: (filter: 
 				if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY;
 			}}
 		>
+			{folded && (
+				<span
+					role="group"
+					aria-label={`${foldText}: ${new Intl.ListFormat("en", {type: "unit"}).format(chips.map((chip) => chip.label))}`}
+					className={`${CHIP_BADGE_CLASSES} sm:hidden`}
+				>
+					<span className="pb-[0.05em]">{foldText}</span>
+					<ChipClearButton label="Clear filters" onClear={onClearAll} />
+				</span>
+			)}
 			{chips.map((chip) => (
 				<span
 					key={chip.filter}
@@ -2210,27 +2244,36 @@ function FilterChips({chips, onClear}: {chips: PaletteChip[]; onClear: (filter: 
 					aria-label={chip.label}
 					title={chip.title}
 					data-filter={chip.filter}
-					className="inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium min-w-0 max-w-[10rem] shrink-0 bg-upstream-tint-blue text-upstream-accent"
+					className={`${CHIP_BADGE_CLASSES} min-w-0 max-w-[10rem] shrink-0${folded ? " max-sm:hidden" : ""}`}
 				>
 					<span className="min-w-0 overflow-x-clip pb-[0.05em] text-ellipsis whitespace-nowrap">
 						{chip.text}
 					</span>
-					<button
-						type="button"
-						aria-label="Clear filter"
-						className="relative inline-flex size-4 shrink-0 items-center justify-center rounded-[2.5px] -ml-0.5 -mr-[5px] text-current before:absolute before:-left-0.5 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-6 hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-						onMouseDown={(event) => {
-							event.preventDefault();
-						}}
-						onClick={() => {
+					<ChipClearButton
+						label="Clear filter"
+						onClear={() => {
 							onClear(chip.filter);
 						}}
-					>
-						<X aria-hidden="true" size={16} />
-					</button>
+					/>
 				</span>
 			))}
 		</div>
+	);
+}
+
+function ChipClearButton({label, onClear}: {label: string; onClear: () => void}) {
+	return (
+		<button
+			type="button"
+			aria-label={label}
+			className="relative inline-flex size-4 shrink-0 items-center justify-center rounded-[2.5px] -ml-0.5 -mr-[5px] text-current before:absolute before:-left-0.5 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-6 hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+			onMouseDown={(event) => {
+				event.preventDefault();
+			}}
+			onClick={onClear}
+		>
+			<X aria-hidden="true" size={16} />
+		</button>
 	);
 }
 

@@ -2420,6 +2420,8 @@ describe("CommandPalette committed filter chips", () => {
 
 	const CHIP_CLASSES =
 		"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium min-w-0 max-w-[10rem] shrink-0 bg-upstream-tint-blue text-upstream-accent";
+	const FOLD_CLASSES =
+		"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-upstream-tint-blue text-upstream-accent sm:hidden";
 
 	function typeQuery(dialog: HTMLElement, value: string) {
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value}});
@@ -2462,7 +2464,7 @@ describe("CommandPalette committed filter chips", () => {
 					label: "Date Today",
 					title: "Today",
 					text: "Today",
-					classes: CHIP_CLASSES.split(" ").toSorted(),
+					classes: `${CHIP_CLASSES} max-sm:hidden`.split(" ").toSorted(),
 					clear: "button",
 				},
 				{
@@ -2470,10 +2472,55 @@ describe("CommandPalette committed filter chips", () => {
 					label: "Archived",
 					title: "Archived",
 					text: "Archived",
-					classes: CHIP_CLASSES.split(" ").toSorted(),
+					classes: `${CHIP_CLASSES} max-sm:hidden`.split(" ").toSorted(),
 					clear: "button",
 				},
 			],
+		});
+	});
+
+	it("folds two or more chips into one N filters chip at phone width", async () => {
+		const dialog = await openPalette();
+		typeQuery(dialog, "type:code date:today archived: ");
+
+		const fold = dialog.querySelector('[role=group][aria-label^="2 filters:"]');
+		if (fold === null) throw new Error("missing fold chip");
+		const before = {
+			fold: {
+				label: fold.getAttribute("aria-label"),
+				text: fold.textContent,
+				classes: fold.className.split(" ").toSorted(),
+				clear: fold.querySelector('button[aria-label="Clear filters"]')?.getAttribute("type") ?? null,
+				first: fold.parentElement?.firstElementChild === fold,
+			},
+			chips: chips(dialog).map((chip) => ({filter: chip.filter, classes: chip.classes})),
+		};
+		const clear = fold.querySelector('button[aria-label="Clear filters"]');
+		if (clear === null) throw new Error("missing Clear filters button");
+		fireEvent.click(clear);
+
+		expect({
+			before,
+			after: {
+				chips: chips(dialog),
+				fold: dialog.querySelector('[role=group][aria-label*="filters:"]'),
+				tab: within(dialog).getByRole("tab", {selected: true}).textContent,
+			},
+		}).toStrictEqual({
+			before: {
+				fold: {
+					label: "2 filters: Date Today, Archived",
+					text: "2 filters",
+					classes: FOLD_CLASSES.split(" ").toSorted(),
+					clear: "button",
+					first: true,
+				},
+				chips: [
+					{filter: "date", classes: `${CHIP_CLASSES} max-sm:hidden`.split(" ").toSorted()},
+					{filter: "archived", classes: `${CHIP_CLASSES} max-sm:hidden`.split(" ").toSorted()},
+				],
+			},
+			after: {chips: [], fold: null, tab: "Code"},
 		});
 	});
 
