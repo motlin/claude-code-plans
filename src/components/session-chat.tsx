@@ -103,6 +103,7 @@ import {findScrollContainer} from "./scroll-container";
 import {usePromptJump} from "../hooks/use-prompt-jump";
 import {useTranscriptSelectionAttach} from "../hooks/use-transcript-selection-attach";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {TranscriptTailContext} from "./transcript-tail-context";
 import {
 	readTranscriptMeasurements,
 	discardTranscriptMeasurements,
@@ -2867,6 +2868,11 @@ function buildSessionListEntries(
 	});
 }
 
+/** Reads the tail alone, so its per-second ticks re-render only this slot. */
+function TranscriptTail(): React.ReactNode {
+	return useContext(TranscriptTailContext);
+}
+
 function VirtualizedSessionEntries({
 	entries,
 	shouldScrollToEnd,
@@ -3389,59 +3395,70 @@ function VirtualizedSessionEntries({
 	const startIndex = Math.min(range.startIndex, entries.length);
 	const endIndex = Math.max(startIndex, Math.min(range.endIndex, entries.length));
 	const totalHeight = prefixHeights.at(-1) ?? 0;
+	// The last row holds the tail only while mounted; a human or marker row ends no assistant reply.
+	const lastEntry = entries.at(-1);
+	const tailInline =
+		endIndex === entries.length &&
+		lastEntry !== undefined &&
+		lastEntry.kind !== "human" &&
+		lastEntry.kind !== "marker";
 
 	return (
-		<div
-			ref={listRef}
-			role="feed"
-			aria-label="Chat messages"
-			data-testid="virtualized-transcript"
-			onClickCapture={(event) => {
-				if (event.target instanceof Element && event.target.closest("[aria-expanded],summary")) {
-					reusableRef.current = false;
-					handoffCompatibleRef.current = false;
-				}
-			}}
-		>
-			<div className="sr-only">Use the up and down arrow keys to move between messages</div>
-			<div aria-hidden="true" data-transcript-spacer="before" style={{height: prefixHeights[startIndex]}} />
-			{entries.slice(startIndex, endIndex).map((entry, offset) => {
-				const index = startIndex + offset;
-				const isLast = index === entries.length - 1;
-				return (
-					// oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- ARIA feed articles take focus and move it with the arrow keys
-					<div
-						key={entry.key}
-						role="article"
-						aria-label={`Message ${index + 1}`}
-						aria-posinset={index + 1}
-						aria-setsize={entries.length}
-						// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- ARIA feed articles are focusable
-						tabIndex={isLast ? 0 : -1}
-						onKeyDown={(event) => {
-							focusNeighbour(event, index);
-						}}
-						data-assistant-span={entry.assistantSpan?.key}
-						data-reply-boundary={entry.opensReply ? "" : undefined}
-						className={entry.opensReply ? "pt-p5" : undefined}
-						data-transcript-entry-index={index}
-						data-testid="transcript-row"
-						data-perf-row={entry.kind}
-						data-perf-line={entry.startRecordIndex}
-						data-perf-last={isLast ? "" : undefined}
-					>
-						<AssistantSpanEntryContext.Provider value={entry}>
-							{entry.element}
-						</AssistantSpanEntryContext.Provider>
-					</div>
-				);
-			})}
+		<>
 			<div
-				aria-hidden="true"
-				data-transcript-spacer="after"
-				style={{height: totalHeight - prefixHeightAt(prefixHeights, endIndex)}}
-			/>
-		</div>
+				ref={listRef}
+				role="feed"
+				aria-label="Chat messages"
+				data-testid="virtualized-transcript"
+				onClickCapture={(event) => {
+					if (event.target instanceof Element && event.target.closest("[aria-expanded],summary")) {
+						reusableRef.current = false;
+						handoffCompatibleRef.current = false;
+					}
+				}}
+			>
+				<div className="sr-only">Use the up and down arrow keys to move between messages</div>
+				<div aria-hidden="true" data-transcript-spacer="before" style={{height: prefixHeights[startIndex]}} />
+				{entries.slice(startIndex, endIndex).map((entry, offset) => {
+					const index = startIndex + offset;
+					const isLast = index === entries.length - 1;
+					return (
+						// oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- ARIA feed articles take focus and move it with the arrow keys
+						<div
+							key={entry.key}
+							role="article"
+							aria-label={`Message ${index + 1}`}
+							aria-posinset={index + 1}
+							aria-setsize={entries.length}
+							// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- ARIA feed articles are focusable
+							tabIndex={isLast ? 0 : -1}
+							onKeyDown={(event) => {
+								focusNeighbour(event, index);
+							}}
+							data-assistant-span={entry.assistantSpan?.key}
+							data-reply-boundary={entry.opensReply ? "" : undefined}
+							className={entry.opensReply ? "pt-p5" : undefined}
+							data-transcript-entry-index={index}
+							data-testid="transcript-row"
+							data-perf-row={entry.kind}
+							data-perf-line={entry.startRecordIndex}
+							data-perf-last={isLast ? "" : undefined}
+						>
+							<AssistantSpanEntryContext.Provider value={entry}>
+								{entry.element}
+							</AssistantSpanEntryContext.Provider>
+							{isLast && tailInline && <TranscriptTail />}
+						</div>
+					);
+				})}
+				<div
+					aria-hidden="true"
+					data-transcript-spacer="after"
+					style={{height: totalHeight - prefixHeightAt(prefixHeights, endIndex)}}
+				/>
+			</div>
+			{!tailInline && <TranscriptTail />}
+		</>
 	);
 }
 

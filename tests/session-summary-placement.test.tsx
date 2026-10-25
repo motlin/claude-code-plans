@@ -499,6 +499,69 @@ describe("SessionPage dock composition", () => {
 			presentation: card.getAttribute("data-approval-presentation"),
 		}).toStrictEqual({dock: ["pr", "usage", "composer"], inline: true, presentation: "card"});
 	});
+	it("nests the working line under the last assistant reply, as upstream's last AssistantMessage column", async () => {
+		await renderSessionPage(detail, [], seedUsage, [
+			{
+				type: "assistant",
+				uuid: "a1",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:01.000Z",
+				message: {role: "assistant", content: [{type: "text", text: "Fabricated reply: rebased cleanly."}]},
+			},
+		]);
+		const line = document.querySelector('[data-testid="code-working-line"]');
+		const lastRow = screen.getAllByTestId("transcript-row").at(-1);
+		expect({
+			lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
+			rowKind: lastRow?.getAttribute("data-perf-row"),
+			lastChildHoldsLine: lastRow?.lastElementChild?.firstElementChild === line,
+			slotClass: lastRow?.lastElementChild?.className,
+		}).toStrictEqual({lines: 1, rowKind: "assistant_text", lastChildHoldsLine: true, slotClass: "-mt-1"});
+	});
+	it("keeps the working line after an inline permission card, outside the transcript rows", async () => {
+		await renderSessionPage(
+			detail,
+			[],
+			(queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [
+						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
+					],
+					pageParams: [null],
+				} as never);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message: {
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_waiting",
+								name: "Bash",
+								input: {command: "gh pr create --draft", description: "Open the draft PR"},
+							},
+						],
+					},
+				},
+			],
+		);
+		const line = document.querySelector('[data-testid="code-working-line"]');
+		const card = document.querySelector("[data-inline-permission]");
+		expect({
+			lines: document.querySelectorAll('[data-testid="code-working-line"]').length,
+			inRow: line?.closest('[data-testid="transcript-row"]') !== null,
+			followsCard:
+				card !== null &&
+				line !== null &&
+				(card.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+		}).toStrictEqual({lines: 1, inRow: false, followsCard: true});
+	});
 	it("draws the stored question once, inline in the transcript, not a permission card, when the registry's permission wait is really a question", async () => {
 		await renderSessionPage(
 			{...detail, pr},

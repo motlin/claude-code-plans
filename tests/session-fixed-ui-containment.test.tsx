@@ -13,7 +13,6 @@ import {
 	type SessionDetailData,
 } from "../src/lib/api/sessions";
 import {SessionPage} from "../src/components/session-page";
-import {PERF_ANCHORS} from "../src/lib/perf/journey";
 import {ToastProvider} from "../src/components/toast";
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
@@ -242,11 +241,10 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		);
 
 		await renderSessionInScroller();
-		const marker = document.querySelector(PERF_ANCHORS.workingMarker);
 		const dockColumn = screen.getByLabelText("Scroll to bottom", {selector: "button"}).parentElement;
 
 		expect({
-			transcriptBleed: marker?.parentElement?.className,
+			transcriptBleed: screen.getByTestId("transcript-top-fade").parentElement?.className,
 			dockWrapper: dockColumn?.parentElement?.className,
 			footerBleed: [...(dockColumn?.parentElement?.parentElement?.classList ?? [])].filter((token) =>
 				/^(sm:)?-mx-/.test(token),

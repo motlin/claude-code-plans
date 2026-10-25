@@ -13,6 +13,7 @@ import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import {useSessionRailDocked} from "./session-rail/use-session-rail-docked";
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
 import {SessionChat} from "./session-chat";
+import {TranscriptTailContext} from "./transcript-tail-context";
 import {ChapterChips} from "./chapter-chips";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
@@ -1019,6 +1020,36 @@ function SessionView({
 		}
 	}
 
+	// Upstream nests the working line under the last reply; anything drawn after the transcript keeps it below that instead.
+	const workingLineFollowsTranscript =
+		pendingPermission !== null ||
+		inlinePlanId !== null ||
+		hookQuestionCardShown ||
+		chatStream.state.isStreaming ||
+		chatStream.state.isComplete ||
+		liveHerdrPrompt.state.phase === "sending" ||
+		liveHerdrPrompt.state.phase === "held" ||
+		liveHerdrPrompt.state.phase === "sent" ||
+		(promptBehavior.usesHerdr && steeredPrompts(queuedPrompts).length > 0);
+	const workingLineQuiet = tailMarkerQuiet(workingMarkerState, inFlightRow);
+	const runningTaskCount = backgroundTasks.running.length;
+	const workingLine = useCallback(
+		(inline: boolean) => (
+			<WorkingMarker
+				state={workingMarkerState}
+				quiet={workingLineQuiet}
+				waitingOnUser={workingLineWaits}
+				runningTasks={runningTaskCount}
+				inline={inline}
+			/>
+		),
+		[workingMarkerState, workingLineQuiet, workingLineWaits, runningTaskCount],
+	);
+	const transcriptTail = useMemo(
+		() => (workingLineFollowsTranscript ? null : workingLine(true)),
+		[workingLineFollowsTranscript, workingLine],
+	);
+
 	return (
 		<TerminalWritesTipProvider enableWrites={enableTerminalWrites}>
 			<div
@@ -1327,51 +1358,54 @@ function SessionView({
 												archived={data.archived}
 											>
 												<TurnUndoSendContext.Provider value={turnUndoSend}>
-													<SessionChat
-														sessionId={sessionId}
-														lines={processed.lines}
-														measurementSource={transcript.records}
-														measurementLayout={JSON.stringify([
-															settings.showDebug,
-															settings.interfaceFont,
-															settings.transcriptTextSize,
-															settings.codeFont,
-															settings.transcriptWidth,
-														])}
-														toolResultMap={processed.toolResultMap}
-														rewindCuts={chainProcessed.cutsByReplacement}
-														rewoundUuids={hiddenUuids}
-														allowedImageRoots={data.imageRoots}
-														subagents={subagents}
-														{...(workflowRuns === undefined ? null : {workflowRuns})}
-														showThinking={transcriptFlags.showThinking}
-														showTools={transcriptFlags.showTools}
-														showPassedHooks={transcriptFlags.showPassedHooks}
-														showHookWarnings={transcriptFlags.showHookWarnings}
-														showHookErrors={transcriptFlags.showHookErrors}
-														showSystemBanners={transcriptFlags.showSystemBanners}
-														showCompactSummaries={transcriptFlags.showCompactSummaries}
-														showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-														transcriptMode={transcriptMode}
-														sessionLive={sessionProcessLive({
-															hookActive: isActive,
-															summaryState: sessionSummaryState,
-														})}
-														turnInProgress={workingMarkerState.status !== "idle"}
-														archived={data.archived}
-														permissionWaitToolUseId={permissionWaitId}
-														onSendNow={requestSendNowInterrupt}
-														onFocusComposer={focusSessionComposer}
-														sideChatAvailable={true}
-														initialScrollKey={initialScrollKey}
-														scrollContentRef={scrollAnchorRef}
-														shouldScrollToEnd={
-															restoredScrollPosition === undefined && locationHash === ""
-														}
-														summary={aiSummary}
-														{...(slashCommands === undefined ? {} : {slashCommands})}
-														{...(errorRecovery !== undefined && {errorRecovery})}
-													/>
+													<TranscriptTailContext.Provider value={transcriptTail}>
+														<SessionChat
+															sessionId={sessionId}
+															lines={processed.lines}
+															measurementSource={transcript.records}
+															measurementLayout={JSON.stringify([
+																settings.showDebug,
+																settings.interfaceFont,
+																settings.transcriptTextSize,
+																settings.codeFont,
+																settings.transcriptWidth,
+															])}
+															toolResultMap={processed.toolResultMap}
+															rewindCuts={chainProcessed.cutsByReplacement}
+															rewoundUuids={hiddenUuids}
+															allowedImageRoots={data.imageRoots}
+															subagents={subagents}
+															{...(workflowRuns === undefined ? null : {workflowRuns})}
+															showThinking={transcriptFlags.showThinking}
+															showTools={transcriptFlags.showTools}
+															showPassedHooks={transcriptFlags.showPassedHooks}
+															showHookWarnings={transcriptFlags.showHookWarnings}
+															showHookErrors={transcriptFlags.showHookErrors}
+															showSystemBanners={transcriptFlags.showSystemBanners}
+															showCompactSummaries={transcriptFlags.showCompactSummaries}
+															showTranscriptOnly={transcriptFlags.showTranscriptOnly}
+															transcriptMode={transcriptMode}
+															sessionLive={sessionProcessLive({
+																hookActive: isActive,
+																summaryState: sessionSummaryState,
+															})}
+															turnInProgress={workingMarkerState.status !== "idle"}
+															archived={data.archived}
+															permissionWaitToolUseId={permissionWaitId}
+															onSendNow={requestSendNowInterrupt}
+															onFocusComposer={focusSessionComposer}
+															sideChatAvailable={true}
+															initialScrollKey={initialScrollKey}
+															scrollContentRef={scrollAnchorRef}
+															shouldScrollToEnd={
+																restoredScrollPosition === undefined &&
+																locationHash === ""
+															}
+															summary={aiSummary}
+															{...(slashCommands === undefined ? {} : {slashCommands})}
+															{...(errorRecovery !== undefined && {errorRecovery})}
+														/>
+													</TranscriptTailContext.Provider>
 												</TurnUndoSendContext.Provider>
 											</TranscriptActionsProvider>
 										</SessionBackgroundTasksOpener>
@@ -1474,12 +1508,7 @@ function SessionView({
 								/>
 							)}
 
-							<WorkingMarker
-								state={workingMarkerState}
-								quiet={tailMarkerQuiet(workingMarkerState, inFlightRow)}
-								waitingOnUser={workingLineWaits}
-								runningTasks={backgroundTasks.running.length}
-							/>
+							{workingLineFollowsTranscript && workingLine(false)}
 
 							<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 						</div>
