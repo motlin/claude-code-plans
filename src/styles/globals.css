@@ -105,6 +105,7 @@ html[data-interface-font="dyslexic"] {
 	--color-upstream-warning: var(--upstream-warning);
 	--color-upstream-accent-pressed: var(--upstream-accent-pressed);
 	--color-upstream-accent-muted: var(--upstream-accent-muted);
+	--color-upstream-tint-blue: var(--upstream-tint-blue);
 
 	/* User message bubble */
 	--color-user-msg-bg: var(--user-msg-bg);
@@ -304,6 +305,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-accent-pressed: rgb(205 226 251);
 	/* Upstream bg-accent-muted: the slash-command chip's hover highlight. */
 	--upstream-accent-muted: rgb(42 120 214 / 0.1);
+	/* Upstream bg-tint-blue: the ⌘K palette's committed filter chips. */
+	--upstream-tint-blue: rgb(118 178 251 / 0.35);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(211 72% 90%);
 
@@ -537,6 +540,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-warning: rgb(219 147 0);
 	--upstream-accent-pressed: #032042;
 	--upstream-accent-muted: rgb(42 120 214 / 0.2);
+	--upstream-tint-blue: rgb(0 36 81 / 0.75);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
 

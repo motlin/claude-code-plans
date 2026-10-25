@@ -100,7 +100,11 @@ import {requestHomeComposerFocus} from "../lib/home-composer-focus";
 import {
 	PALETTE_FILTER_TOKENS,
 	PaletteTypeSchema,
+	applyPaletteFilters,
+	commitPaletteTokens,
 	isClientPaletteType,
+	paletteChips,
+	popPaletteFilter,
 	paletteDateCutoff,
 	nextPaletteType,
 	paletteFilterHints,
@@ -110,7 +114,10 @@ import {
 	paletteTypeStep,
 	parsePaletteTokens,
 	scrollIntoStrip,
+	type PaletteChip,
+	type PaletteChipFilter,
 	type PaletteFilter,
+	type PaletteFilters,
 	type PaletteProject,
 	type PaletteTokens,
 	type PaletteType,
@@ -797,6 +804,8 @@ function PalettePopup({
 	const [rowActions, setRowActions] = useState<{session: PaletteCardSession; top: number} | null>(null);
 	const [query, setQuery] = useState("");
 	const [tab, setTab] = useState<PaletteType>("all");
+	// Upstream's filter object: committed chips, kept apart from the query text.
+	const [filters, setFilters] = useState<PaletteFilters>({});
 	const {data} = useQuery(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT));
 	const queryClient = useQueryClient();
 	const currentSessionId = useCurrentSessionId();
@@ -876,7 +885,19 @@ function PalettePopup({
 
 	const trimmedQuery = query.trim();
 	const hints = hintsFor(trimmedQuery);
-	const tokens = useMemo(() => parsePaletteTokens(trimmedQuery), [trimmedQuery]);
+	const tokens = useMemo(
+		() => applyPaletteFilters(parsePaletteTokens(trimmedQuery), filters),
+		[trimmedQuery, filters],
+	);
+	const chips = useMemo(
+		() =>
+			paletteChips(
+				filters,
+				// The repo values `repo:` commits: each session's cwd basename.
+				(data?.sessions ?? []).map((session) => session.project.replace(/\/+$/u, "").split("/").pop() ?? ""),
+			),
+		[filters, data],
+	);
 	/** Date, repo or archived narrowing, which upstream's Clear filters drops while keeping the text. */
 	const hasFilterTokens = tokens.date !== undefined || tokens.project !== undefined || tokens.archived === true;
 	// A trailing bare `key:` lists that filter's values instead of results.
@@ -942,7 +963,7 @@ function PalettePopup({
 	const debouncedQuery = useDebouncedValue(trimmedQuery, PALETTE_SEARCH_DEBOUNCE_MS);
 	const debouncedParams =
 		hintsFor(debouncedQuery) === null
-			? paletteSearchParams(parsePaletteTokens(debouncedQuery), tab, projects)
+			? paletteSearchParams(applyPaletteFilters(parsePaletteTokens(debouncedQuery), filters), tab, projects)
 			: null;
 	const serverActive =
 		searchable &&
@@ -1110,7 +1131,8 @@ function PalettePopup({
 		() =>
 			startSessionProjects(
 				projects,
-				(data?.sessions ?? []).map((session) => session.project),
+				// The repo values `repo:` commits: each session's cwd basename.
+				(data?.sessions ?? []).map((session) => session.project.replace(/\/+$/u, "").split("/").pop() ?? ""),
 				currentDetail?.projectId,
 			),
 		[projects, data, currentDetail],
@@ -1166,7 +1188,7 @@ function PalettePopup({
 		if (first === undefined) return;
 		pendingFirstRowRef.current = false;
 		setSelectedValue(first);
-	}, [tab, listing, canStart]);
+	}, [tab, filters, listing, canStart]);
 
 	// cmdk only refreshes `aria-activedescendant` when its own keys move the selection, never for a
 	// controlled value, so every commit points the textarea at the selected row itself. It writes the
@@ -1194,13 +1216,38 @@ function PalettePopup({
 	}
 
 	function chooseFilterValue(next: string) {
-		setQuery(next);
+		changeQuery(next);
 		inputRef.current?.focus();
+	}
+
+	// Upstream's `ht`: each `key:value` word a whitespace follows becomes a chip (or, for `type:`, the tab).
+	function changeQuery(next: string) {
+		if (compose) {
+			setQuery(next);
+			return;
+		}
+		const committed = commitPaletteTokens(next, filters, data?.sessions ?? []);
+		setQuery(committed.text);
+		if (committed.text === next) return;
+		setFilters(committed.filters);
+		if (committed.tab !== undefined && committed.tab !== tab) chooseTab(committed.tab);
+	}
+
+	function clearFilter(filter: PaletteChipFilter) {
+		setFilters(({[filter]: _removed, ...rest}) => rest);
+		clearFilterSelection();
+	}
+
+	// Like a tab change, a chip change resets the highlight to the first row.
+	function clearFilterSelection() {
+		setSelectedValue("");
+		pendingFirstRowRef.current = true;
 	}
 
 	// Upstream's Search all clears the type and every chip, keeping only the typed text.
 	function searchAll() {
 		setQuery(tokens.text);
+		setFilters({});
 		chooseTab("all");
 	}
 
@@ -1306,7 +1353,7 @@ function PalettePopup({
 			return;
 		}
 		if (event.key === "Backspace" || event.key === "Delete") {
-			popTypeFilter(event);
+			popFilter(event);
 			return;
 		}
 		// Upstream excludes Alt/Meta/Ctrl but not Shift, so Shift+Tab toggles too; a held Tab is
@@ -1343,14 +1390,17 @@ function PalettePopup({
 		if (next !== undefined) chooseTab(next);
 	}
 
-	// Upstream's `A_` pops the last filter on Backspace/Delete in an empty query. Local filter tokens
-	// live in the query text, so the type tab is the only thing left to pop.
-	function popTypeFilter(event: KeyboardEvent<HTMLDivElement>) {
+	// Upstream's `A_` pops the newest chip on Backspace/Delete in an empty query, then the type tab.
+	function popFilter(event: KeyboardEvent<HTMLDivElement>) {
 		const input = inputRef.current;
 		if (compose || input === null || event.target !== input) return;
-		if (query !== "" || event.repeat || isComposingKey(event) || tab === "all") return;
+		if (query !== "" || event.repeat || isComposingKey(event)) return;
+		const popped = popPaletteFilter(filters, tab);
+		if (popped === null) return;
 		event.preventDefault();
-		chooseTab("all");
+		setFilters(popped.filters);
+		if (popped.tab === tab) clearFilterSelection();
+		else chooseTab(popped.tab);
 	}
 
 	function isComposingKey(event: KeyboardEvent<HTMLDivElement>) {
@@ -1430,7 +1480,7 @@ function PalettePopup({
 				? `${resultCount} ${resultCount === 1 ? "result" : "results"} available`
 				: emptyMessage;
 	const idle = startStep === "idle";
-	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all";
+	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all" && chips.length === 0;
 	if (frozenMarks !== null && frozenView === null && showEmptyState) setFrozenView(emptyView.view);
 	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
 	// Upstream sizes the scroller to its content, but holds it at the cap while the skeleton or empty block fills it.
@@ -1485,7 +1535,8 @@ function PalettePopup({
 								className="pointer-events-none absolute inset-1.5 rounded-composer bg-fill-field shadow-panel-sm-cds"
 							/>
 						)}
-						<Command.Input asChild value={query} onValueChange={setQuery}>
+						{!compose && chips.length > 0 && <FilterChips chips={chips} onClear={clearFilter} />}
+						<Command.Input asChild value={query} onValueChange={changeQuery}>
 							<textarea
 								ref={inputRef}
 								aria-activedescendant={undefined}
@@ -1859,6 +1910,11 @@ function PalettePopup({
 					</Command.List>
 					{showResults && (
 						<div aria-live="polite" aria-atomic="true" className="sr-only">
+							{chips.length > 0 && (
+								<p data-palette-showing="">
+									Showing {[paletteTypeLabels[tab], ...chips.map((chip) => chip.label)].join(", ")}
+								</p>
+							)}
 							{searching ? "" : liveMessage}
 						</div>
 					)}
@@ -2024,6 +2080,63 @@ function PaletteFooter({
 				</div>
 				{trailing}
 			</div>
+		</div>
+	);
+}
+
+/** Upstream's committed filter chips, in a strip before the textarea. */
+function FilterChips({chips, onClear}: {chips: PaletteChip[]; onClear: (filter: PaletteChipFilter) => void}) {
+	const stripRef = useRef<HTMLDivElement>(null);
+	const shownRef = useRef<ReadonlySet<PaletteChipFilter>>(new Set());
+	// Upstream's `$t`: scroll a newly set chip into view.
+	useLayoutEffect(() => {
+		const strip = stripRef.current;
+		const added = chips.find((chip) => !shownRef.current.has(chip.filter));
+		shownRef.current = new Set(chips.map((chip) => chip.filter));
+		const chip = added && strip?.querySelector<HTMLElement>(`[data-filter="${added.filter}"]`);
+		if (strip && chip) scrollIntoStrip(strip, chip, getComputedStyle(strip).paddingLeft);
+	}, [chips]);
+	return (
+		<div
+			ref={stripRef}
+			role="presentation"
+			data-palette-own-keys=""
+			className="-mx-1 flex h-8 min-w-0 shrink items-center gap-2 self-start overflow-x-auto overscroll-x-contain scroll-px-1 px-1 [scrollbar-width:none]"
+			// Clearing a chip leaves focus and the caret in the textarea.
+			onMouseDown={(event) => {
+				event.preventDefault();
+			}}
+			onWheel={(event) => {
+				if (event.deltaX === 0) event.currentTarget.scrollLeft += event.deltaY;
+			}}
+		>
+			{chips.map((chip) => (
+				<span
+					key={chip.filter}
+					role="group"
+					aria-label={chip.label}
+					title={chip.title}
+					data-filter={chip.filter}
+					className="inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium min-w-0 max-w-[10rem] shrink-0 bg-upstream-tint-blue text-upstream-accent"
+				>
+					<span className="min-w-0 overflow-x-clip pb-[0.05em] text-ellipsis whitespace-nowrap">
+						{chip.text}
+					</span>
+					<button
+						type="button"
+						aria-label="Clear filter"
+						className="relative inline-flex size-4 shrink-0 items-center justify-center rounded-[2.5px] -ml-0.5 -mr-[5px] text-current before:absolute before:-left-0.5 before:top-1/2 before:-translate-y-1/2 before:h-6 before:w-6 hover:bg-[color-mix(in_srgb,currentColor_10%,transparent)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+						onMouseDown={(event) => {
+							event.preventDefault();
+						}}
+						onClick={() => {
+							onClear(chip.filter);
+						}}
+					>
+						<X aria-hidden="true" size={16} />
+					</button>
+				</span>
+			))}
 		</div>
 	);
 }

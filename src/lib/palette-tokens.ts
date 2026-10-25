@@ -396,6 +396,72 @@ export function popPaletteFilter(
 	return tab === "all" ? null : {filters: {}, tab: "all"};
 }
 
+/** The committed chips layered over the typed tokens; a chip wins over a token for the same facet. */
+export function applyPaletteFilters(tokens: PaletteTokens, filters: PaletteFilters): PaletteTokens {
+	const project = filters.project ?? filters.repo;
+	return {
+		...tokens,
+		...(filters.date === undefined ? {} : {date: filters.date}),
+		...(project === undefined ? {} : {project}),
+		...(filters.archived === undefined ? {} : {archived: true}),
+		...(filters.actions === undefined ? {} : {actions: true}),
+	};
+}
+
+export type PaletteChipFilter = keyof PaletteFilters;
+
+export interface PaletteChip {
+	filter: PaletteChipFilter;
+	/** The chip's aria-label: "<Name> <Value>", or the bare name for Archived and Actions. */
+	label: string;
+	/** The full value. */
+	title: string;
+	/** The visible text; a repo shortens to the name after its last "/" when that is unique. */
+	text: string;
+}
+
+/** Upstream's chip order (minus its cloud-only owner). */
+const CHIP_ORDER = ["actions", "date", "repo", "project", "archived"] as const satisfies readonly PaletteChipFilter[];
+
+function repoChipText(repo: string, repos: readonly string[]): string {
+	const name = repo.slice(repo.lastIndexOf("/") + 1);
+	if (name === repo) return repo;
+	const clashes = repos.some((other) => other !== repo && other.slice(other.lastIndexOf("/") + 1) === name);
+	return clashes ? repo : name;
+}
+
+function chipValue(filter: PaletteChipFilter, filters: PaletteFilters): string | undefined {
+	switch (filter) {
+		case "date":
+			return filters.date === undefined ? undefined : unifiedSearchDateLabels[filters.date];
+		case "repo":
+		case "project":
+			return filters[filter];
+		case "archived":
+		case "actions":
+			return filters[filter] === undefined ? undefined : paletteFilterLabels[filter];
+		default:
+			return assertNever(filter);
+	}
+}
+
+/** The chips for `filters` in upstream's order; `repos` are the known repo values. */
+export function paletteChips(filters: PaletteFilters, repos: readonly string[]): PaletteChip[] {
+	return CHIP_ORDER.flatMap((filter) => {
+		const value = chipValue(filter, filters);
+		if (value === undefined) return [];
+		const flag = filter === "archived" || filter === "actions";
+		return [
+			{
+				filter,
+				label: flag ? value : `${paletteFilterLabels[filter]} ${value}`,
+				title: value,
+				text: filter === "repo" ? repoChipText(value, repos) : value,
+			},
+		];
+	});
+}
+
 const DAY_MS = 24 * 60 * 60_000;
 
 /** Earliest mtime a `date:` token keeps, matching the server's `/api/search` cutoff. */

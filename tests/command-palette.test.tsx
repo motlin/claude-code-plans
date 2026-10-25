@@ -2031,7 +2031,10 @@ describe("CommandPalette filter values", () => {
 
 		fireEvent.click(within(dialog).getByRole("option", {name: /Past week/u}));
 
-		expect(within(dialog).getByRole("combobox")).toHaveProperty("value", "fix date:week ");
+		expect({
+			value: within(dialog).getByRole<HTMLTextAreaElement>("combobox").value,
+			chips: [...dialog.querySelectorAll("[data-filter]")].map((chip) => chip.getAttribute("aria-label")),
+		}).toStrictEqual({value: "fix ", chips: ["Date Past week"]});
 	});
 
 	it("lists the recent repos under Repo after repo:", async () => {
@@ -2199,6 +2202,148 @@ describe("CommandPalette filter values", () => {
 			})),
 			wrapper: null,
 		});
+	});
+});
+
+describe("CommandPalette committed filter chips", () => {
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		Element.prototype.scrollIntoView = () => {};
+	});
+
+	afterEach(() => {
+		cleanup();
+		localStorage.clear();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	const CHIP_CLASSES =
+		"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium min-w-0 max-w-[10rem] shrink-0 bg-upstream-tint-blue text-upstream-accent";
+
+	function typeQuery(dialog: HTMLElement, value: string) {
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value}});
+	}
+
+	function chips(dialog: HTMLElement) {
+		return [...dialog.querySelectorAll("[role=group][data-filter]")].map((chip) => ({
+			filter: chip.getAttribute("data-filter"),
+			label: chip.getAttribute("aria-label"),
+			title: chip.getAttribute("title"),
+			text: chip.textContent,
+			classes: chip.className.split(" ").toSorted(),
+			clear: chip.querySelector('button[aria-label="Clear filter"]')?.getAttribute("type") ?? null,
+		}));
+	}
+
+	it("commits key:value words into a chip strip before the textarea", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
+
+		typeQuery(dialog, "date:today archived: ");
+
+		const strip = dialog.querySelector("[role=presentation][data-palette-own-keys]");
+		expect({
+			value: input.value,
+			placeholder: input.getAttribute("placeholder"),
+			stripBeforeInput: strip?.nextElementSibling === input,
+			strip: strip?.className.split(" ").toSorted(),
+			chips: chips(dialog),
+		}).toStrictEqual({
+			value: "",
+			placeholder: "Search",
+			stripBeforeInput: true,
+			strip: "-mx-1 flex h-8 min-w-0 shrink items-center gap-2 self-start overflow-x-auto overscroll-x-contain scroll-px-1 px-1 [scrollbar-width:none]"
+				.split(" ")
+				.toSorted(),
+			chips: [
+				{
+					filter: "date",
+					label: "Date Today",
+					title: "Today",
+					text: "Today",
+					classes: CHIP_CLASSES.split(" ").toSorted(),
+					clear: "button",
+				},
+				{
+					filter: "archived",
+					label: "Archived",
+					title: "Archived",
+					text: "Archived",
+					classes: CHIP_CLASSES.split(" ").toSorted(),
+					clear: "button",
+				},
+			],
+		});
+	});
+
+	it("switches the tab for type:code without leaving a chip", async () => {
+		const dialog = await openPalette();
+
+		typeQuery(dialog, "fix type:code ");
+
+		expect({
+			value: within(dialog).getByRole<HTMLTextAreaElement>("combobox").value,
+			tab: within(dialog).getByRole("tab", {selected: true}).textContent,
+			chips: chips(dialog),
+		}).toStrictEqual({value: "fix ", tab: "Code", chips: []});
+	});
+
+	it("clears one chip with its X while focus stays in the textarea", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+		typeQuery(dialog, "date:today archived: ");
+		input.focus();
+
+		const clear = dialog.querySelector('[data-filter="date"] button[aria-label="Clear filter"]');
+		if (clear === null) throw new Error("missing Date clear button");
+		const mouseDownNotPrevented = fireEvent.mouseDown(clear);
+		fireEvent.click(clear);
+
+		expect({
+			mouseDownNotPrevented,
+			focused: document.activeElement === input,
+			chips: chips(dialog).map((chip) => chip.label),
+		}).toStrictEqual({mouseDownNotPrevented: false, focused: true, chips: ["Archived"]});
+	});
+
+	it("pops Archived, then Date, then nothing on Backspace in an empty query", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+		typeQuery(dialog, "date:today archived: ");
+
+		const steps = [1, 2, 3].map(() => {
+			const notPrevented = fireEvent.keyDown(input, {key: "Backspace", code: "Backspace"});
+			return {notPrevented, chips: chips(dialog).map((chip) => chip.label)};
+		});
+
+		expect({steps, tab: within(dialog).getByRole("tab", {selected: true}).textContent}).toStrictEqual({
+			steps: [
+				{notPrevented: false, chips: ["Date Today"]},
+				{notPrevented: false, chips: []},
+				{notPrevented: true, chips: []},
+			],
+			tab: "All",
+		});
+	});
+
+	it("announces the tab and chips in the live region", async () => {
+		const dialog = await openPalette();
+
+		typeQuery(dialog, "date:today archived: ");
+
+		expect(dialog.querySelector("[aria-live=polite] [data-palette-showing]")?.textContent).toBe(
+			"Showing All, Date Today, Archived",
+		);
 	});
 });
 

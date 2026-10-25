@@ -1,6 +1,8 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
+	applyPaletteFilters,
 	commitPaletteTokens,
+	paletteChips,
 	popPaletteFilter,
 	paletteDateCutoff,
 	paletteFilterHints,
@@ -316,6 +318,57 @@ describe("popPaletteFilter", () => {
 
 	it("returns to All once no filters remain on another tab", () => {
 		expect(popPaletteFilter({}, "sessions")).toStrictEqual({filters: {}, tab: "all"});
+	});
+});
+
+describe("applyPaletteFilters", () => {
+	it("keeps the typed tokens when no chips are committed", () => {
+		expect(applyPaletteFilters({text: "fix", date: "today"}, {})).toStrictEqual({text: "fix", date: "today"});
+	});
+
+	it("narrows by the committed chips, a repo chip naming the project", () => {
+		expect(applyPaletteFilters({text: "fix"}, {date: "week", repo: "ccp", archived: true})).toStrictEqual({
+			text: "fix",
+			date: "week",
+			project: "ccp",
+			archived: true,
+		});
+	});
+
+	it("lets a project chip win over a typed project token, and carries actions mode", () => {
+		expect(applyPaletteFilters({text: "", project: "typed"}, {project: "avalon", actions: true})).toStrictEqual({
+			text: "",
+			project: "avalon",
+			actions: true,
+		});
+	});
+});
+
+describe("paletteChips", () => {
+	it("orders chips like upstream and names all but Archived and Actions", () => {
+		expect(
+			paletteChips({archived: true, project: "avalon", repo: "acme/app", date: "today"}, [
+				"acme/app",
+				"other/lib",
+			]),
+		).toStrictEqual([
+			{filter: "date", label: "Date Today", title: "Today", text: "Today"},
+			{filter: "repo", label: "Repo acme/app", title: "acme/app", text: "app"},
+			{filter: "project", label: "Project avalon", title: "avalon", text: "avalon"},
+			{filter: "archived", label: "Archived", title: "Archived", text: "Archived"},
+		]);
+	});
+
+	it("keeps the full repo when the name after the last slash is not unique", () => {
+		expect(paletteChips({repo: "acme/app"}, ["acme/app", "other/app"])).toStrictEqual([
+			{filter: "repo", label: "Repo acme/app", title: "acme/app", text: "acme/app"},
+		]);
+	});
+
+	it("shows the lone Actions chip in actions mode", () => {
+		expect(paletteChips({actions: true}, [])).toStrictEqual([
+			{filter: "actions", label: "Actions", title: "Actions", text: "Actions"},
+		]);
 	});
 });
 
