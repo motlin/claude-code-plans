@@ -170,6 +170,10 @@ const ORGANIC_LIMIT = 7;
 /** Recents keep up to 3 of those rows, as upstream's 4 Needs attention + 3 Recents. */
 const RECENTS_RESERVED = 3;
 
+/**
+ * Upstream debounces its server search by 500ms (`Vn(query,500)`) because that search is remote
+ * and semantic. Ours is local FTS, so we keep a shorter 150ms debounce on purpose.
+ */
 export const PALETTE_SEARCH_DEBOUNCE_MS = 150;
 
 /** Server hit kinds plus the kinds the Projects, Artifacts and Scheduled tabs list client-side. */
