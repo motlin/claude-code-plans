@@ -10,7 +10,6 @@ import {
 	nextPaletteType,
 	paletteTypeStep,
 	scrollIntoStrip,
-	withoutTypeTokens,
 	type PaletteTokens,
 } from "../src/lib/palette-tokens";
 
@@ -216,12 +215,6 @@ describe("paletteValueSuggestions", () => {
 			null,
 			null,
 		]);
-	});
-});
-
-describe("withoutTypeTokens", () => {
-	it("strips every type: token and keeps the rest", () => {
-		expect(withoutTypeTokens("fix type:plans repo:ccp Type:files")).toBe("fix repo:ccp");
 	});
 });
 

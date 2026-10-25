@@ -1645,7 +1645,7 @@ describe("CommandPalette Plans, Memories and Files tabs with an empty query", ()
 			button: within(results).getByRole("button", {name: "Search all"}).textContent,
 		}).toStrictEqual({
 			rows: [],
-			empty: "text-base leading-6 text-secondary",
+			empty: "m-0 max-w-full break-words text-secondary",
 			button: "Search all",
 		});
 	});

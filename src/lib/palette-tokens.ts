@@ -291,14 +291,6 @@ export function paletteDateCutoff(date: UnifiedSearchDate, now: number): number 
 	return now - (date === "week" ? 7 : 30) * DAY_MS;
 }
 
-/** Drop the `type:` tokens so "Search all" really searches every type. */
-export function withoutTypeTokens(query: string): string {
-	return query
-		.split(/\s+/u)
-		.filter((word) => word !== "" && !/^type:/iu.test(word))
-		.join(" ");
-}
-
 type ScrollStrip = {scrollLeft: number; getBoundingClientRect: () => {left: number; right: number}};
 
 /**

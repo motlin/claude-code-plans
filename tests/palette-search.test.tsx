@@ -396,6 +396,8 @@ describe("⌘K palette filters", () => {
 		cleanup();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
+		// The Tab hint switches to Compose, which the palette persists.
+		localStorage.clear();
 	});
 
 	function tabs(dialog: HTMLElement) {
@@ -551,15 +553,52 @@ describe("⌘K palette filters", () => {
 		}).toStrictEqual({empty: null, text: []});
 	});
 
-	it("offers Clear filters when the filters emptied the list, keeping the typed text", async () => {
+	it("offers upstream's Search all when filters emptied the list, clearing chips and type but keeping text and focus", async () => {
 		const {dialog} = await openPalette([]);
 
 		type(dialog, "date:week zzqxvq");
 		(await awaitRequest()).resolve([]);
 
-		fireEvent.click(await within(dialog).findByRole("button", {name: "Clear filters"}));
+		const searchAll = await within(dialog).findByRole("button", {name: "Search all"});
+		const combobox = within(dialog).getByRole("combobox");
+		combobox.focus();
+		const mouseDown = fireEvent.mouseDown(searchAll);
+		fireEvent.click(searchAll);
 
-		expect(within(dialog).getByRole("combobox")).toHaveProperty("value", "zzqxvq");
+		expect({
+			defaultPrevented: !mouseDown,
+			value: (combobox as HTMLTextAreaElement).value,
+			tab: tabs(dialog)[0],
+			focused: document.activeElement === combobox,
+			clear: within(dialog).queryByRole("button", {name: "Clear filters"}),
+		}).toStrictEqual({
+			defaultPrevented: true,
+			value: "zzqxvq",
+			tab: {name: "All", selected: "true"},
+			focused: true,
+			clear: null,
+		});
+	});
+
+	it("hints upstream's Tab to compose on an unfiltered empty search, and its keycap switches to Compose", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "zzqxvq");
+		(await awaitRequest()).resolve([]);
+
+		const hint = await within(dialog).findByText("to compose", {exact: false, selector: "p"});
+		const keycap = hint.querySelector("kbd");
+		const button = keycap?.closest("button");
+		expect({
+			hint: hint.textContent,
+			hidden: hint.getAttribute("aria-hidden"),
+			keycap: keycap?.textContent,
+			tabIndex: button?.tabIndex,
+		}).toStrictEqual({hint: "Tab to compose", hidden: "true", keycap: "Tab", tabIndex: -1});
+
+		fireEvent.click(button as HTMLElement);
+
+		expect(await screen.findByRole("combobox", {name: "Write a message…"})).toBeDefined();
 	});
 
 	it("shows the filtered no-results copy on the Code tab and Search all resets the tab", async () => {

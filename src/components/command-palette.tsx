@@ -87,7 +87,6 @@ import {
 	paletteTypeStep,
 	parsePaletteTokens,
 	scrollIntoStrip,
-	withoutTypeTokens,
 	type PaletteFilter,
 	type PaletteProject,
 	type PaletteTokens,
@@ -105,6 +104,7 @@ import {toMdSlug} from "../lib/md-slug";
 import {loadRecents, resolveRecentSessions, routeToRecent, type RecentEntry} from "../lib/recents-history";
 import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
 import {paletteEmptyKind, paletteEmptyMessage} from "../lib/palette-empty";
+import {PaletteEmptyState} from "./palette-empty-state";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
 import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
 import {createSessionCommands} from "../lib/session-commands";
@@ -1067,8 +1067,9 @@ function PalettePopup({
 		inputRef.current?.focus();
 	}
 
+	// Upstream's Search all clears the type and every chip, keeping only the typed text.
 	function searchAll() {
-		setQuery(withoutTypeTokens(query));
+		setQuery(tokens.text);
 		chooseTab("all");
 	}
 
@@ -1685,37 +1686,15 @@ function PalettePopup({
 											<span className="h-3 flex-1 rounded bg-fill-ghost-hover motion-safe:animate-pulse" />
 										</div>
 									))}
-								{(emptyKind === "failed" ||
-									(emptyKind !== null && emptyKind !== "silent" && type === "all")) && (
-									<div
-										data-palette-empty=""
-										className="flex min-h-fit flex-1 flex-col items-center justify-center gap-3 px-6 py-6 text-center"
-									>
-										<p className="m-0 max-w-full break-words text-secondary">{emptyMessage}</p>
-										{emptyKind === "filtered" && (
-											<button
-												type="button"
-												onClick={() => {
-													setQuery(tokens.text);
-												}}
-												className="h-7 rounded-r6 px-2.5 text-sm text-primary shadow-[inset_0_0_0_1px_var(--color-border)] transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-											>
-												Clear filters
-											</button>
-										)}
-									</div>
-								)}
-								{emptyKind === "filtered" && type !== "all" && (
-									<div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
-										<span className="text-base leading-6 text-secondary">{emptyMessage}</span>
-										<button
-											type="button"
-											onClick={searchAll}
-											className="h-7 rounded-r7 px-2.5 text-sm text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-										>
-											Search all
-										</button>
-									</div>
+								{emptyKind !== null && (
+									<PaletteEmptyState
+										kind={emptyKind}
+										message={emptyMessage}
+										onSearchAll={searchAll}
+										onCompose={() => {
+											onModeChange("compose");
+										}}
+									/>
 								)}
 								{tokens.text !== "" && !actionsOnly && !isClientPaletteType(type) && (
 									<CommandItem
