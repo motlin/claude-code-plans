@@ -36,6 +36,7 @@ function recentSession(
 		mtime: string;
 		pr: {number: number; url: string; repository: string};
 		archived: boolean;
+		unseenError: true;
 	}> = {},
 ) {
 	return {
@@ -1040,6 +1041,22 @@ describe("CommandPalette shell", () => {
 			],
 			active: true,
 		});
+	});
+
+	it("labels a session blocked on an unseen error as Error and ranks it after awaiting rows", async () => {
+		const recent = new Date(Date.now() - 60_000).toISOString();
+		const dialog = await openPalette([
+			recentSession("s-errored", "Errored one", "blocked", {unseen: true, unseenError: true, mtime: recent}),
+			recentSession("s-plain", "Plain one"),
+			recentSession("s-blocked", "Blocked one", "blocked"),
+		]);
+
+		await within(dialog).findByRole("option", {name: /Errored one/});
+		expect(groupLabels(dialog)).toStrictEqual([
+			["Needs attention", ["Blocked one Awaiting input", "Errored one Error"]],
+			["Recents", ["Plain one"]],
+			["Actions", ["New session"]],
+		]);
 	});
 
 	it("marks lead icons with upstream's shared notched icon: a static accent dot for awaiting, brand for running", async () => {
