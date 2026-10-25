@@ -57,7 +57,7 @@ import {focusRegionByName, type JumpRegionName} from "../lib/focus-regions";
 import {jumpActionKeywords, PALETTE_JUMP_ACTIONS, type PaletteJumpActionId} from "../lib/palette-jump-actions";
 import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
-import type {PaletteEntrypoint, PaletteMode} from "../hooks/use-command-palette";
+import type {PaletteEntrypoint, PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
 import {type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
@@ -764,7 +764,7 @@ export interface CommandPaletteProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	mode?: PaletteMode;
-	onModeChange?: (mode: PaletteMode) => void;
+	onModeChange?: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
 	/** "search" for the sidebar Search entry, which upstream opens without the floating pill. */
 	entrypoint?: PaletteEntrypoint;
 }
@@ -798,7 +798,7 @@ function PalettePopup({
 	entrypoint,
 }: {
 	mode: PaletteMode;
-	onModeChange: (mode: PaletteMode) => void;
+	onModeChange: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
 	onOpenChange: (open: boolean) => void;
 	entrypoint: PaletteEntrypoint;
 }) {
@@ -841,9 +841,9 @@ function PalettePopup({
 		setBuffers((current) => (compose ? {...current, compose: next} : {...current, search: next}));
 	}
 
-	function switchView(next: PaletteMode) {
+	function switchView(next: PaletteMode, options?: PaletteModeChangeOptions) {
 		setBuffers((current) => switchPaletteView(next, current));
-		onModeChange(next);
+		onModeChange(next, options);
 	}
 
 	// Compose attachments land as chips here (⌘U, the paperclip); they are dropped when the palette closes.
@@ -1500,7 +1500,8 @@ function PalettePopup({
 			return;
 		}
 		if (event.key === "Backspace" || event.key === "Delete") {
-			popFilter(event);
+			if (compose) leaveEmptyCompose(event);
+			else popFilter(event);
 			return;
 		}
 		// Upstream excludes Alt/Meta/Ctrl but not Shift, so Shift+Tab toggles too; a held Tab is
@@ -1509,8 +1510,17 @@ function PalettePopup({
 			return;
 		}
 		event.preventDefault();
-		if (event.repeat) return;
+		if (event.repeat || isComposingKey(event)) return;
 		switchView(mode === "search" ? "compose" : "search");
+	}
+
+	// Upstream: Backspace/Delete on an empty Compose drops back to Search for this open only, so the
+	// next ⌘K still opens Compose. Attachments count as content here, since local Search can't show them.
+	function leaveEmptyCompose(event: KeyboardEvent<HTMLDivElement>) {
+		if (event.target !== inputRef.current || startStep !== "idle") return;
+		if (query !== "" || composeChips.length > 0 || event.repeat || isComposingKey(event)) return;
+		event.preventDefault();
+		switchView("search", {remember: false});
 	}
 
 	// ← / → at the matching edge of the input (or with no query) step through the type tabs:

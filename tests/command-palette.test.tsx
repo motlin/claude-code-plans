@@ -419,8 +419,8 @@ describe("CommandPalette shell", () => {
 		fireEvent.change(input, {target: {value: ""}});
 		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
 		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		// An empty Compose Backspace drops back to Search without also popping the type tab.
 		fireEvent.keyDown(composer, {key: "Backspace", code: "Backspace"});
-		fireEvent.keyDown(composer, {key: "Tab", code: "Tab"});
 		await within(dialog).findByRole("tab", {name: "Artifacts"});
 
 		expect({
@@ -794,6 +794,64 @@ describe("CommandPalette shell", () => {
 			shiftTab,
 			search: within(dialog).queryByRole("combobox", {name: "Search"}) !== null,
 		}).toStrictEqual({tab: false, shiftTab: false, search: true});
+	});
+
+	it("ignores a Tab during IME composition", async () => {
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab", keyCode: 229});
+
+		expect({
+			search: within(dialog).queryByRole("combobox", {name: "Search"}) !== null,
+			stored: localStorage.getItem("cmdk-mode"),
+		}).toStrictEqual({search: true, stored: null});
+	});
+
+	it("falls back to Search on Backspace or Delete in an empty Compose without remembering it", async () => {
+		localStorage.setItem("cmdk-mode", "compose");
+		const composerOutside = await renderPalette();
+		pressK(composerOutside, {metaKey: true});
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+
+		const notCancelled = fireEvent.keyDown(composer, {key: "Backspace", code: "Backspace"});
+		const search = await within(dialog).findByRole("combobox", {name: "Search"});
+		const storedAfterBackspace = localStorage.getItem("cmdk-mode");
+
+		pressK(search, {metaKey: true});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		pressK(composerOutside, {metaKey: true});
+		const reopened = await screen.findByRole("dialog", {name: "Search"});
+		const reopenedComposer = await within(reopened).findByRole("combobox", {name: "Write a message…"});
+		fireEvent.keyDown(reopenedComposer, {key: "Delete", code: "Delete"});
+		await within(reopened).findByRole("combobox", {name: "Search"});
+
+		expect({notCancelled, storedAfterBackspace, stored: localStorage.getItem("cmdk-mode")}).toStrictEqual({
+			notCancelled: false,
+			storedAfterBackspace: "compose",
+			stored: "compose",
+		});
+	});
+
+	it("keeps Compose on a held Backspace, an IME Backspace or a Backspace with text", async () => {
+		localStorage.setItem("cmdk-mode", "compose");
+		const dialog = await openPalette();
+		const composer = await within(dialog).findByRole<HTMLTextAreaElement>("combobox", {name: "Write a message…"});
+
+		const repeat = fireEvent.keyDown(composer, {key: "Backspace", code: "Backspace", repeat: true});
+		const ime = fireEvent.keyDown(composer, {key: "Backspace", code: "Backspace", keyCode: 229});
+		fireEvent.change(composer, {target: {value: "a"}});
+		const withText = fireEvent.keyDown(composer, {key: "Backspace", code: "Backspace"});
+
+		expect({
+			repeat,
+			ime,
+			withText,
+			compose: within(dialog).queryByRole("combobox", {name: "Write a message…"}) !== null,
+		}).toStrictEqual({repeat: true, ime: true, withText: true, compose: true});
 	});
 
 	it("leaves Alt+Tab and Alt+Shift+Tab alone", async () => {

@@ -31,6 +31,11 @@ function writeStoredMode(mode: PaletteMode): void {
  */
 export type PaletteSource = "sidebar_field" | "mobile";
 
+/** `remember: false` switches the view for this open only, leaving the remembered tab alone. */
+export interface PaletteModeChangeOptions {
+	remember?: boolean;
+}
+
 export interface PaletteOpenOptions {
 	source?: PaletteSource;
 }
@@ -49,16 +54,20 @@ export function useCommandPalette() {
 	const [rememberedMode, setRememberedMode] = useState<PaletteMode>(readStoredMode);
 	// A searching source forces Search for this open only, without touching the remembered tab.
 	const [forcedSearch, setForcedSearch] = useState(false);
+	// An unremembered switch (Backspace on an empty Compose) holds until the palette closes.
+	const [openOverride, setOpenOverride] = useState<PaletteMode | null>(null);
 
 	const openPalette = useCallback((next: PaletteEntrypoint, options?: PaletteOpenOptions) => {
 		setEntrypoint(next);
 		setForcedSearch(options?.source !== undefined);
+		setOpenOverride(null);
 		setOpen(true);
 	}, []);
 
 	const toggle = useCallback(() => {
 		setEntrypoint("default");
 		setForcedSearch(false);
+		setOpenOverride(null);
 		setOpen((prev) => !prev);
 	}, []);
 
@@ -90,21 +99,31 @@ export function useCommandPalette() {
 		};
 	}, [openPalette]);
 
-	const onModeChange = useCallback((mode: PaletteMode) => {
+	const onModeChange = useCallback((mode: PaletteMode, options?: PaletteModeChangeOptions) => {
 		setEntrypoint("default");
 		setForcedSearch(false);
+		if (options?.remember === false) {
+			setOpenOverride(mode);
+			return;
+		}
+		setOpenOverride(null);
 		setRememberedMode(mode);
 		writeStoredMode(mode);
 	}, []);
 
-	const mode: PaletteMode = entrypoint === "search" || forcedSearch ? "search" : rememberedMode;
+	const onOpenChange = useCallback((next: boolean) => {
+		if (!next) setOpenOverride(null);
+		setOpen(next);
+	}, []);
+
+	const mode: PaletteMode = entrypoint === "search" || forcedSearch ? "search" : (openOverride ?? rememberedMode);
 
 	return {
 		open,
 		entrypoint,
 		openPalette,
 		toggle,
-		onOpenChange: setOpen,
+		onOpenChange,
 		mode,
 		onModeChange,
 	};
