@@ -197,6 +197,65 @@ describe("fitPaletteEmptyView", () => {
 	});
 });
 
+describe("fitPaletteEmptyView with the pinned jump row", () => {
+	const JUMP: PaletteFitItem = {id: "action:jump_to_question"};
+
+	function fitWithJump(leads: PaletteFitItem[], plain: PaletteFitItem[]): PaletteGroup<PaletteFitItem>[] {
+		return fitPaletteEmptyView({
+			leads,
+			recents: [...leads, ...plain].slice(0, 7),
+			actions: NEW_SESSION,
+			jump: JUMP,
+		});
+	}
+
+	it("counts the untitled jump group toward 440px, giving up one Recents row beside 5 leads", () => {
+		const groups = fitWithJump(rows("a", 9, "awaiting"), rows("p", 5));
+
+		expect({
+			shape: shape(groups),
+			jump: groups[0],
+			height: paletteViewHeight(groups),
+		}).toStrictEqual({
+			shape: [
+				["", 1],
+				["Needs attention", 5],
+				["Recents", 1],
+				["Actions", 1],
+			],
+			jump: {id: "jump", title: "", items: [JUMP]},
+			height: 431,
+		});
+	});
+
+	it("still fits 7 Recents with no leads", () => {
+		const groups = fitWithJump([], rows("p", 9));
+
+		expect({shape: shape(groups), height: paletteViewHeight(groups)}).toStrictEqual({
+			shape: [
+				["", 1],
+				["Recents", 7],
+				["Actions", 1],
+			],
+			height: 426,
+		});
+	});
+
+	it("fits 4 leads beside 2 Recents", () => {
+		const groups = fitWithJump(rows("a", 4, "awaiting"), rows("p", 5));
+
+		expect({shape: shape(groups), height: paletteViewHeight(groups)}).toStrictEqual({
+			shape: [
+				["", 1],
+				["Needs attention", 4],
+				["Recents", 2],
+				["Actions", 1],
+			],
+			height: 431,
+		});
+	});
+});
+
 describe("paletteViewHeight", () => {
 	it("sums upstream's fm metrics: 20 padding, 37 per titled group, 36 per row, 4 between groups", () => {
 		expect({

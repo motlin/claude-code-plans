@@ -60,7 +60,7 @@ export interface PaletteFitItem {
 }
 
 export interface PaletteGroup<T> {
-	id: "attention" | "active" | "recents" | "actions";
+	id: "jump" | "attention" | "active" | "recents" | "actions";
 	title: string;
 	items: readonly T[];
 }
@@ -119,24 +119,28 @@ function promoteLeads<T extends PaletteFitItem>(
 /**
  * Upstream's `_m` over `vm`/`ym`: try 5 leads (or fewer when fewer lead) down to 0, trimming Actions
  * then Recents to a single row each, and keep the first candidate that fits the 440px list.
- * `leads` must already be rank-sorted (`sortLeads`).
+ * `leads` must already be rank-sorted (`sortLeads`). A `jump` row is pinned as an untitled group
+ * atop every candidate before measuring (upstream's `Sm` inside `vm`), so it costs one row and a gap.
  */
 export function fitPaletteEmptyView<T extends PaletteFitItem>({
 	leads,
 	recents,
 	actions,
+	jump,
 }: {
 	leads: readonly T[];
 	recents: readonly T[];
 	actions: readonly T[];
+	jump?: T | undefined;
 }): PaletteGroup<T>[] {
+	const pinned: PaletteGroup<T>[] = jump === undefined ? [] : [{id: "jump", title: "", items: [jump]}];
 	const base: PaletteGroup<T>[] = [
 		{id: "recents", title: "Recents", items: recents},
 		{id: "actions", title: "Actions", items: actions},
 	].filter((group): group is PaletteGroup<T> => group.items.length > 0);
 	let fitted: PaletteGroup<T>[] = [];
 	for (let count = Math.min(leads.length, PALETTE_LEAD_LIMIT); count >= 0; count--) {
-		fitted = trimGroup(trimGroup(promoteLeads(base, leads, count), "actions"), "recents");
+		fitted = trimGroup(trimGroup([...pinned, ...promoteLeads(base, leads, count)], "actions"), "recents");
 		if (paletteViewHeight(fitted) <= PALETTE_FIT_HEIGHT) break;
 	}
 	return fitted;

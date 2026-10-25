@@ -2233,6 +2233,27 @@ describe("CommandPalette pinned Jump to question row", () => {
 		});
 	});
 
+	it("gives up a Recents row to fit the jump row beside 5 leads, as upstream's 1 + 5 + 1 + 1", async () => {
+		addWaitingCard();
+		const dialog = await openPalette([
+			...Array.from({length: 9}, (_, index) => recentSession(`s-${index}`, `Waiting ${index}`, "blocked")),
+			...Array.from({length: 5}, (_, index) => recentSession(`r-${index}`, `Recent ${index}`)),
+		]);
+		await within(dialog).findByRole("option", {name: /Waiting 0/});
+
+		expect({
+			first: firstListChild(dialog)?.textContent,
+			groups: groupLabels(dialog).map(([heading, labels]) => [heading, labels.length]),
+		}).toStrictEqual({
+			first: "Jump to question",
+			groups: [
+				["Needs attention", 5],
+				["Recents", 1],
+				["Actions", 1],
+			],
+		});
+	});
+
 	it("offers no jump row without a waiting card", async () => {
 		const dialog = await openPalette();
 		await within(dialog).findByRole("option", {name: /Refactor auth module/});

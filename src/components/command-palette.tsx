@@ -454,10 +454,10 @@ interface PaletteSessionRow {
 /** A Recents row: a visited page from the per-tab MRU, or an mtime-ordered session fallback. */
 type PaletteRecent = PaletteSessionRow | {kind: "page"; id: string; entry: PalettePageEntry; title: string};
 
-/** The empty view's only action row, upstream's "New session". */
+/** The empty view's action rows: upstream's "New session" and the pinned "Jump to question". */
 interface PaletteActionRow {
 	kind: "action";
-	id: "new_session";
+	id: "new_session" | "jump_to_question";
 }
 
 type EmptyViewRow = LeadSession | PaletteRecent | PaletteActionRow;
@@ -517,7 +517,8 @@ interface PaletteViewSnapshot {
  * MRU, falling back to mtime-ordered sessions until the tab has visited anything else; marked
  * sessions lead by rank, and `fitPaletteEmptyView` sizes the groups to the 440px list. With a
  * frozen `view`, membership and lead order come from it and only titles follow the live sessions;
- * a frozen lead whose mark is gone drops out.
+ * a frozen lead whose mark is gone drops out. When `jumpOffered`, the pinned jump row takes its share
+ * of the fit.
  */
 function paletteGroups(
 	sessions: readonly SessionListItem[],
@@ -526,6 +527,7 @@ function paletteGroups(
 	currentSessionId: string | undefined,
 	markOf: MarkOf,
 	view: PaletteViewSnapshot | null,
+	jumpOffered: boolean,
 ): {groups: PaletteGroup<EmptyViewRow>[]; view: PaletteViewSnapshot} {
 	const leads: LeadSession[] = [];
 	const marked = new Map<string, LeadSession>();
@@ -557,6 +559,7 @@ function paletteGroups(
 			leads: leadRows,
 			recents: pool,
 			actions: [{kind: "action", id: "new_session"}],
+			jump: jumpOffered ? {kind: "action", id: "jump_to_question"} : undefined,
 		}),
 		view: view ?? {leadIds: leadRows.map((row) => row.id), recentIds: pool.map((row) => row.id)},
 	};
@@ -849,8 +852,9 @@ function PalettePopup({
 				currentSessionId,
 				markOf,
 				frozenView,
+				jumpCard !== null,
 			),
-		[data, history, pathname, currentSessionId, markOf, frozenView],
+		[data, history, pathname, currentSessionId, markOf, frozenView, jumpCard],
 	);
 
 	const trimmedQuery = query.trim();
@@ -1625,49 +1629,52 @@ function PalettePopup({
 
 						{showEmptyState && (
 							<>
-								{jumpCard !== null && emptyView.groups.length > 0 && (
-									// Upstream's pinned jump group is a bare, untitled div above Needs attention.
-									<div>
-										<CommandItem
-											value="action:jump_to_question"
-											icon={<CircleHelp />}
-											onSelect={() => {
-												restoreFocusRef.current = false;
-												select(() => {
-													requestAnimationFrame(() => {
-														if (jumpCard.isConnected) landOnWaitingCard(jumpCard);
-													});
-												});
-											}}
-										>
-											Jump to question
-										</CommandItem>
-									</div>
-								)}
-								{emptyView.groups.map((group) => (
-									<Command.Group key={group.id} heading={group.title} className={GROUP_CLASS}>
-										{group.items.map((row) => (
-											<EmptyViewItem
-												key={row.id}
-												row={row}
-												onOpenSession={(id) => {
+								{emptyView.groups.map((group) =>
+									group.id === "jump" ? (
+										// Upstream's pinned jump group is a bare, untitled div above Needs attention.
+										<div key={group.id}>
+											<CommandItem
+												value="action:jump_to_question"
+												icon={<CircleHelp />}
+												onSelect={() => {
+													restoreFocusRef.current = false;
 													select(() => {
-														openSession(id);
+														requestAnimationFrame(() => {
+															if (jumpCard?.isConnected === true)
+																landOnWaitingCard(jumpCard);
+														});
 													});
 												}}
-												onOpenRowActions={openRowActions}
-												onNavigate={(href) => {
-													select(() => void navigate({href}));
-												}}
-												onNewSession={() => {
-													select(
-														() => void navigate({to: "/"}).then(requestHomeComposerFocus),
-													);
-												}}
-											/>
-										))}
-									</Command.Group>
-								))}
+											>
+												Jump to question
+											</CommandItem>
+										</div>
+									) : (
+										<Command.Group key={group.id} heading={group.title} className={GROUP_CLASS}>
+											{group.items.map((row) => (
+												<EmptyViewItem
+													key={row.id}
+													row={row}
+													onOpenSession={(id) => {
+														select(() => {
+															openSession(id);
+														});
+													}}
+													onOpenRowActions={openRowActions}
+													onNavigate={(href) => {
+														select(() => void navigate({href}));
+													}}
+													onNewSession={() => {
+														select(
+															() =>
+																void navigate({to: "/"}).then(requestHomeComposerFocus),
+														);
+													}}
+												/>
+											))}
+										</Command.Group>
+									),
+								)}
 							</>
 						)}
 
