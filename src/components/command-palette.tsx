@@ -57,7 +57,7 @@ import {focusRegionByName, type JumpRegionName} from "../lib/focus-regions";
 import {jumpActionKeywords, PALETTE_JUMP_ACTIONS, type PaletteJumpActionId} from "../lib/palette-jump-actions";
 import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
-import type {PaletteEntrypoint, PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
+import type {PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
 import {type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
@@ -765,17 +765,9 @@ export interface CommandPaletteProps {
 	onOpenChange: (open: boolean) => void;
 	mode?: PaletteMode;
 	onModeChange?: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
-	/** "search" for the sidebar Search entry, which upstream opens without the floating pill. */
-	entrypoint?: PaletteEntrypoint;
 }
 
-export function CommandPalette({
-	open,
-	onOpenChange,
-	mode: controlledMode,
-	onModeChange,
-	entrypoint = "default",
-}: CommandPaletteProps) {
+export function CommandPalette({open, onOpenChange, mode: controlledMode, onModeChange}: CommandPaletteProps) {
 	const [uncontrolledMode, setUncontrolledMode] = useState<PaletteMode>("search");
 	const mode = controlledMode ?? uncontrolledMode;
 	const setMode = onModeChange ?? setUncontrolledMode;
@@ -784,7 +776,7 @@ export function CommandPalette({
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
-				<PalettePopup mode={mode} onModeChange={setMode} onOpenChange={onOpenChange} entrypoint={entrypoint} />
+				<PalettePopup mode={mode} onModeChange={setMode} onOpenChange={onOpenChange} />
 			</Dialog.Portal>
 		</Dialog.Root>
 	);
@@ -795,12 +787,10 @@ function PalettePopup({
 	mode,
 	onModeChange,
 	onOpenChange,
-	entrypoint,
 }: {
 	mode: PaletteMode;
 	onModeChange: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
 	onOpenChange: (open: boolean) => void;
-	entrypoint: PaletteEntrypoint;
 }) {
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
@@ -2135,18 +2125,14 @@ function PalettePopup({
 									// Actions mode lists no session rows, so upstream drops the row-actions hint.
 									...(actionsOnly ? [] : [["Actions", ["alt+enter"]] as const]),
 								]}
-								{...(entrypoint === "search"
-									? {
-											trailing: (
-												<ViewHint
-													label="Compose"
-													onSwitch={() => {
-														switchView("compose");
-													}}
-												/>
-											),
-										}
-									: {})}
+								trailing={
+									<ViewHint
+										label="Compose"
+										onSwitch={() => {
+											switchView("compose");
+										}}
+									/>
+								}
 							/>
 						)}
 					</FooterCollapse>
@@ -2201,7 +2187,7 @@ function ViewHint({
 				event.preventDefault();
 			}}
 			onClick={onSwitch}
-			className="inline-flex h-5 cursor-pointer items-center rounded-r4 px-1.5 text-xs text-ink-muted hover:bg-fill-ghost-hover hover:text-secondary disabled:pointer-events-none disabled:opacity-40"
+			className="inline-flex h-5 shrink-0 cursor-pointer items-center whitespace-nowrap rounded-r4 px-1.5 text-caption text-ink-muted hover:bg-fill-ghost-hover disabled:pointer-events-none disabled:opacity-40"
 		>
 			{label}
 			<kbd aria-hidden="true" className={`ms-1 ${WIDE_KEYCAP_CLASS}`}>
@@ -2267,7 +2253,7 @@ function PaletteFooter({
 	compose?: boolean;
 	/** Each hint's optional className replaces the default wrapper class, e.g. upstream's breakpoint hiding. */
 	hints: ReadonlyArray<readonly [label: string, keys: readonly string[], className?: string]>;
-	/** Right-aligned extra, like the Search entry's view hint. */
+	/** Right-aligned extra: upstream's Compose Tab or Search Tab view hint. */
 	trailing?: ReactNode;
 }) {
 	return (

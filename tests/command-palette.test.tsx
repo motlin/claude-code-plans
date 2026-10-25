@@ -1978,6 +1978,42 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		);
 	}
 
+	it("shows upstream's no-wrap ghost Compose Tab view hint on the default ⌘K Search open too", async () => {
+		const dialog = await openPalette();
+		const row = footer(dialog)?.children[0] as HTMLElement;
+		const hint = row.lastElementChild as HTMLButtonElement;
+		expect({
+			tag: hint.tagName,
+			name: within(row).getByRole("button", {name: "Compose"}) === hint,
+			keys: hint.getAttribute("aria-keyshortcuts"),
+			ownKeys: hint.hasAttribute("data-palette-own-keys"),
+			className: hint.className,
+			kbd: [hint.querySelector("kbd")?.textContent, hint.querySelector("kbd")?.className],
+		}).toStrictEqual({
+			tag: "BUTTON",
+			name: true,
+			keys: "Tab",
+			ownKeys: true,
+			className:
+				"inline-flex h-5 shrink-0 cursor-pointer items-center whitespace-nowrap rounded-r4 px-1.5 text-caption text-ink-muted hover:bg-fill-ghost-hover disabled:pointer-events-none disabled:opacity-40",
+			kbd: [
+				"Tab",
+				"ms-1 inline-flex shrink-0 items-center justify-center h-[calc(1em+6px)] rounded-r3 [color:var(--shortcut-cap-ink)] bg-transparent border border-[color:var(--shortcut-cap-line)] [font-family:inherit] [font-variation-settings:inherit] [line-height:1] min-w-[calc(1em+6px)] px-[3px]",
+			],
+		});
+
+		const input = within(dialog).getByRole("combobox", {name: "Search"});
+		input.focus();
+		const pressed = fireEvent.mouseDown(hint);
+		fireEvent.click(hint);
+
+		await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		expect({pressed, focused: document.activeElement?.tagName}).toStrictEqual({
+			pressed: false,
+			focused: "TEXTAREA",
+		});
+	});
+
 	it("opens the sidebar Search entry without the floating pill, with upstream's right-aligned Compose Tab footer hint", async () => {
 		const composer = await renderPalette();
 		pressK(composer, {metaKey: true, shiftKey: true});
