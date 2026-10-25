@@ -790,7 +790,10 @@ function PalettePopup({
 	const routinesQuery = useQuery({...routinesQueryOptions, enabled: type === "scheduled"});
 	const routines = routinesQuery.data ?? NO_ROUTINES;
 	const listsRecentDocs = searchable && tokens.text === "";
-	const plansQuery = useQuery({...plansQueryOptions(), enabled: listsRecentDocs && type === "plans"});
+	const plansQuery = useQuery({
+		...plansQueryOptions(),
+		enabled: listsRecentDocs && type === "plans",
+	});
 	const plans = plansQuery.data ?? NO_PLANS;
 	const memoryLists = useQueries({
 		queries: projects
@@ -1237,7 +1240,10 @@ function PalettePopup({
 	function openFilePicker() {
 		fileInputRef.current?.click();
 	}
-	useShortcut("add_files", openFilePicker, {disabled: !compose || startStep !== "idle", allowInModal: true});
+	useShortcut("add_files", openFilePicker, {
+		disabled: !compose || startStep !== "idle",
+		allowInModal: true,
+	});
 	const matchesCommands = searchable && !filtered && tokens.text !== "";
 	const matchedSessionCommands =
 		matchesCommands && currentDetail !== null
@@ -1605,111 +1611,127 @@ function PalettePopup({
 
 						{showResults && (
 							// cmdk's Group forces role=presentation, so upstream's headingless group is a plain div.
-							<div
-								role="group"
-								aria-label="Search results"
-								aria-busy={searching}
-								className="flex flex-col"
-							>
-								{listing?.map((row) => (
-									<SearchResultItem
-										key={rowKey(row)}
-										row={row}
-										now={now}
-										onSelect={() => {
-											select(() => {
-												openRow(row);
-											});
-										}}
-										onRowActions={() => {
-											openRowActions(row.id);
-										}}
-									/>
-								))}
-								{instant.map((row) => (
-									<SearchResultItem
-										key={rowKey(row)}
-										row={row}
-										now={now}
-										onSelect={() => {
-											select(() => {
-												openRow(row);
-											});
-										}}
-										onRowActions={() => {
-											openRowActions(row.id);
-										}}
-									/>
-								))}
-								{matchedSessionCommands.map((command) => (
-									<CommandItem
-										key={command.id}
-										value={`session-command:${command.id}`}
-										icon={SESSION_COMMAND_ICONS[command.id]}
-										onSelect={() => {
-											select(() => {
-												runSessionCommand(command.id);
-											});
-										}}
-									>
-										{command.label}
-									</CommandItem>
-								))}
-								{matchedActions.map((action) =>
-									action.shortcut === undefined ? (
+							<>
+								<div
+									role="group"
+									aria-label="Search results"
+									aria-busy={searching}
+									className="flex flex-col"
+								>
+									{listing?.map((row) => (
+										<SearchResultItem
+											key={rowKey(row)}
+											row={row}
+											now={now}
+											onSelect={() => {
+												select(() => {
+													openRow(row);
+												});
+											}}
+											onRowActions={() => {
+												openRowActions(row.id);
+											}}
+										/>
+									))}
+									{instant.map((row) => (
+										<SearchResultItem
+											key={rowKey(row)}
+											row={row}
+											now={now}
+											onSelect={() => {
+												select(() => {
+													openRow(row);
+												});
+											}}
+											onRowActions={() => {
+												openRowActions(row.id);
+											}}
+										/>
+									))}
+									{matchedSessionCommands.map((command) => (
 										<CommandItem
-											key={action.label}
-											value={`action:${action.label}`}
-											icon={action.icon}
+											key={command.id}
+											value={`session-command:${command.id}`}
+											icon={SESSION_COMMAND_ICONS[command.id]}
 											onSelect={() => {
-												select(action.run);
+												select(() => {
+													runSessionCommand(command.id);
+												});
 											}}
 										>
-											{action.label}
+											{command.label}
 										</CommandItem>
-									) : (
-										<ShortcutCommandItem
-											key={action.label}
-											value={`action:${action.label}`}
-											id={action.shortcut}
-											icon={action.icon}
+									))}
+									{matchedActions.map((action) =>
+										action.shortcut === undefined ? (
+											<CommandItem
+												key={action.label}
+												value={`action:${action.label}`}
+												icon={action.icon}
+												onSelect={() => {
+													select(action.run);
+												}}
+											>
+												{action.label}
+											</CommandItem>
+										) : (
+											<ShortcutCommandItem
+												key={action.label}
+												value={`action:${action.label}`}
+												id={action.shortcut}
+												icon={action.icon}
+												onSelect={() => {
+													select(action.run);
+												}}
+											>
+												{action.label}
+											</ShortcutCommandItem>
+										),
+									)}
+									{matchedCommands.map((command) => (
+										<CommandItem
+											key={command.to}
+											value={`nav:${command.to}`}
+											icon={command.icon}
 											onSelect={() => {
-												select(action.run);
+												select(() => {
+													void navigate({to: command.to});
+												});
 											}}
 										>
-											{action.label}
-										</ShortcutCommandItem>
-									),
-								)}
-								{matchedCommands.map((command) => (
-									<CommandItem
-										key={command.to}
-										value={`nav:${command.to}`}
-										icon={command.icon}
-										onSelect={() => {
-											select(() => {
-												void navigate({to: command.to});
-											});
-										}}
-									>
-										{command.label}
-									</CommandItem>
-								))}
-								{serverRows.map((row) => (
-									<SearchResultItem
-										key={rowKey(row)}
-										row={row}
-										now={now}
-										onSelect={() => {
-											select(() => {
-												openRow(row);
-											});
-										}}
-										onRowActions={() => {
-											openRowActions(row.id);
-										}}
-									/>
-								))}
+											{command.label}
+										</CommandItem>
+									))}
+									{serverRows.map((row) => (
+										<SearchResultItem
+											key={rowKey(row)}
+											row={row}
+											now={now}
+											onSelect={() => {
+												select(() => {
+													openRow(row);
+												});
+											}}
+											onRowActions={() => {
+												openRowActions(row.id);
+											}}
+										/>
+									))}
+									{!searching && tokens.text !== "" && !actionsOnly && !isClientPaletteType(type) && (
+										<CommandItem
+											value="see-all-results"
+											icon={<Search />}
+											onSelect={() => {
+												select(() => {
+													seeAllResults(type);
+												});
+											}}
+										>
+											See all results for “{tokens.text}”
+										</CommandItem>
+									)}
+								</div>
+								{/* Upstream's block follows the results listbox, so its flex-1 centres it in the capped list. */}
 								{emptyKind !== null && (
 									<PaletteEmptyState
 										kind={emptyKind}
@@ -1720,20 +1742,7 @@ function PalettePopup({
 										}}
 									/>
 								)}
-								{!searching && tokens.text !== "" && !actionsOnly && !isClientPaletteType(type) && (
-									<CommandItem
-										value="see-all-results"
-										icon={<Search />}
-										onSelect={() => {
-											select(() => {
-												seeAllResults(type);
-											});
-										}}
-									>
-										See all results for “{tokens.text}”
-									</CommandItem>
-								)}
-							</div>
+							</>
 						)}
 						{showResults && searching && <PaletteSkeleton />}
 					</Command.List>
@@ -1831,7 +1840,9 @@ function ViewHint({label, onSwitch}: {label: string; onSwitch: () => void}) {
 
 /** Upstream sets this on the card while the footer is collapsed, so the list cap grows by the footer's 41px. */
 const FOOTER_COLLAPSED_CARD_CLASS = "[--cp-footer-collapsed:1] pointer-coarse:[--cp-footer-collapsed:0]";
-const LIST_MAX_HEIGHT_STYLE = {maxHeight: "calc(440px + var(--cp-footer-collapsed, 0) * 41px)"} as const;
+const LIST_MAX_HEIGHT_STYLE = {
+	maxHeight: "calc(440px + var(--cp-footer-collapsed, 0) * 41px)",
+} as const;
 const LIST_CAP_PX = 440;
 const COLLAPSED_FOOTER_PX = 41;
 /** The scroller's p-2.5, top and bottom, around the measured cmdk sizer. */

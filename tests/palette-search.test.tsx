@@ -546,7 +546,12 @@ describe("⌘K palette list height", () => {
 
 		type(dialog, "zzqxvq");
 		const request = await awaitRequest();
-		const capped = {classes: scrollerClass.split(" "), height: "481px", maxHeight, sizerFills: true};
+		const capped = {
+			classes: scrollerClass.split(" "),
+			height: "481px",
+			maxHeight,
+			sizerFills: true,
+		};
 		expect(list(dialog)).toStrictEqual(capped);
 
 		request.resolve([]);
@@ -717,12 +722,17 @@ describe("⌘K palette filters", () => {
 			tag: empty.tagName,
 			block: empty.parentElement?.className
 				.split(" ")
-				.filter((name) => ["items-center", "justify-center", "text-center"].includes(name)),
+				.filter((name) => ["flex-1", "items-center", "justify-center", "text-center"].includes(name)),
+			// Upstream's block is a sibling after the results listbox, so flex-1 grows it through the capped list.
+			blockParent: empty.parentElement?.parentElement?.hasAttribute("cmdk-list-sizer"),
+			afterResults: empty.parentElement?.previousElementSibling === resultsGroup(dialog),
 			clear: within(dialog).queryByRole("button", {name: "Clear filters"}),
 			live: dialog.querySelector("[aria-live=polite]")?.textContent,
 		}).toStrictEqual({
 			tag: "P",
-			block: ["items-center", "justify-center", "text-center"],
+			block: ["flex-1", "items-center", "justify-center", "text-center"],
+			blockParent: true,
+			afterResults: true,
 			clear: null,
 			live: "No results for “zzqxvq”",
 		});

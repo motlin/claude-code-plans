@@ -1640,12 +1640,11 @@ describe("CommandPalette Plans, Memories and Files tabs with an empty query", ()
 		const dialog = await openPalette(undefined, "/", seedDocs);
 
 		fireEvent.click(within(dialog).getByRole("tab", {name: "Files"}));
-		const results = within(dialog).getByRole("group", {name: "Search results"});
 
 		expect({
 			rows: resultRows(dialog),
-			empty: within(results).getByText("No results in Files").className,
-			button: within(results).getByRole("button", {name: "Search all"}).textContent,
+			empty: within(dialog).getByText("No results in Files", {selector: "p"}).className,
+			button: within(dialog).getByRole("button", {name: "Search all"}).textContent,
 		}).toStrictEqual({
 			rows: [],
 			empty: "m-0 max-w-full break-words text-secondary",
