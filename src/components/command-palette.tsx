@@ -1260,6 +1260,13 @@ function PalettePopup({
 		emptyKind === "failed"
 			? "Something went wrong"
 			: paletteEmptyMessage(tokens.text, type === "all" ? null : paletteTypeLabels[type]);
+	// Upstream's live region: the empty copy ("silent" speaks the bare No results found), else the ICU count.
+	const liveMessage =
+		emptyKind === "silent"
+			? "No results found"
+			: emptyKind === null
+				? `${resultCount} ${resultCount === 1 ? "result" : "results"} available`
+				: emptyMessage;
 	const idle = startStep === "idle";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all";
 	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
@@ -1712,13 +1719,9 @@ function PalettePopup({
 							</div>
 						)}
 					</Command.List>
-					{showResults && !searching && (
-						<div aria-live="polite" className="sr-only">
-							{emptyKind === "failed"
-								? "Something went wrong"
-								: resultCount === 0
-									? "No results found"
-									: `${resultCount} results available`}
+					{showResults && (
+						<div aria-live="polite" aria-atomic="true" className="sr-only">
+							{searching ? "" : liveMessage}
 						</div>
 					)}
 

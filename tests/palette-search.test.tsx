@@ -357,6 +357,33 @@ describe("⌘K palette live search", () => {
 		await waitFor(() => {
 			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("3 results available");
 		});
+		expect(dialog.querySelector("[aria-live=polite]")?.getAttribute("aria-atomic")).toBe("true");
+	});
+
+	it("keeps the live region mounted but empty while the search is in flight", async () => {
+		const {dialog} = await openPalette();
+
+		type(dialog, "auth");
+		const request = await awaitRequest();
+
+		const live = dialog.querySelector("[aria-live=polite]");
+		expect({
+			atomic: live?.getAttribute("aria-atomic"),
+			className: live?.className,
+			text: live?.textContent,
+		}).toStrictEqual({atomic: "true", className: "sr-only", text: ""});
+		request.resolve([]);
+	});
+
+	it("announces a single result in the singular", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "zzqxvq");
+		(await awaitRequest()).resolve([serverSession("sess-2", "Zzqxvq notes")]);
+
+		await waitFor(() => {
+			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("1 result available");
+		});
 	});
 
 	it("navigates to the search page with the query and type from the last row", async () => {
@@ -521,7 +548,7 @@ describe("⌘K palette filters", () => {
 			tag: "P",
 			block: ["items-center", "justify-center", "text-center"],
 			clear: null,
-			live: "No results found",
+			live: "No results for “zzqxvq”",
 		});
 	});
 
@@ -610,7 +637,7 @@ describe("⌘K palette filters", () => {
 		expect(request.url).toBe("/api/search?query=zzqxvq&type=sessions");
 		request.resolve([]);
 
-		await within(dialog).findByText("No results for “zzqxvq” in Code");
+		await within(dialog).findByText("No results for “zzqxvq” in Code", {selector: "p"});
 		fireEvent.click(within(dialog).getByRole("button", {name: "Search all"}));
 
 		expect(tabs(dialog)[0]).toStrictEqual({name: "All", selected: "true"});
