@@ -192,7 +192,8 @@ describe("⌘K palette live search", () => {
 
 		type(dialog, "auth");
 
-		expect(optionLabels(dialog)).toStrictEqual(["Refactor auth module", "See all results for “auth”"]);
+		// Settling keeps the instant match and appends the skeleton; See all waits for the server.
+		expect(optionLabels(dialog)).toStrictEqual(["Refactor auth module"]);
 
 		const request = await awaitRequest();
 		expect(request.url).toBe("/api/search?query=auth");
@@ -345,6 +346,73 @@ describe("⌘K palette live search", () => {
 		}).toStrictEqual({skeletons: 0, busy: "false"});
 	});
 
+	it("fills the list with upstream's wave SkeletonGroup while settling, with no option rows above it", async () => {
+		const {dialog} = await openPalette();
+
+		type(dialog, "zqxvjkw");
+		const request = await awaitRequest();
+
+		const group = dialog.querySelector("[data-palette-skeleton]");
+		const rows = Array.from(group?.children ?? []);
+		const bars = (row: Element | undefined) =>
+			Array.from(row?.querySelectorAll<HTMLElement>("[data-skeleton]") ?? []).map((bar) => ({
+				width: bar.style.width,
+				height: bar.style.height,
+				index: bar.style.getPropertyValue("--skel-i"),
+			}));
+		expect({
+			group: {
+				className: group?.className,
+				hidden: group?.getAttribute("aria-hidden"),
+				motion: group?.getAttribute("data-motion"),
+			},
+			rows: rows.length,
+			rowClass: rows[0]?.className,
+			barClass: rows[0]?.querySelector("[data-skeleton]")?.className,
+			first: bars(rows[0]),
+			titleWidths: rows.map((row) => bars(row)[1]?.width),
+			lastIndices: bars(rows[12]).map((bar) => bar.index),
+			options: optionLabels(dialog),
+		}).toStrictEqual({
+			group: {
+				className: "flex min-h-0 grow basis-0 flex-col flex-wrap content-start overflow-hidden",
+				hidden: "true",
+				motion: "wave",
+			},
+			rows: 13,
+			rowClass: "flex shrink-0 items-center gap-2 px-3 py-2 box-border h-9 w-full",
+			barClass: "max-w-full rounded bg-[var(--skeleton-base)]",
+			first: [
+				{width: "20px", height: "20px", index: "0"},
+				{width: "224px", height: "14px", index: "1"},
+			],
+			titleWidths: [
+				"224px",
+				"176px",
+				"256px",
+				"200px",
+				"160px",
+				"240px",
+				"192px",
+				"224px",
+				"176px",
+				"256px",
+				"200px",
+				"160px",
+				"240px",
+			],
+			// Upstream's --cds-skel-i counts 0..21 and restarts, so row 12 (bars 24, 25) breathes with row 1.
+			lastIndices: ["2", "3"],
+			options: [],
+		});
+
+		request.resolve([]);
+		await waitFor(() => {
+			expect(dialog.querySelector("[data-palette-skeleton]")).toBeNull();
+		});
+		expect(optionLabels(dialog)).toContain("See all results for “zqxvjkw”");
+	});
+
 	it("announces the result count politely once the search settles", async () => {
 		const {dialog} = await openPalette();
 
@@ -390,7 +458,8 @@ describe("⌘K palette live search", () => {
 		const {dialog, router} = await openPalette();
 
 		type(dialog, "auth");
-		fireEvent.click(option(dialog, "See all results for “auth”"));
+		(await awaitRequest()).resolve([]);
+		fireEvent.click(await waitFor(() => option(dialog, "See all results for “auth”")));
 
 		await waitFor(() => {
 			expect(screen.queryByRole("dialog")).toBeNull();

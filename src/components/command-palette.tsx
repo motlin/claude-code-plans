@@ -105,6 +105,7 @@ import {loadRecents, resolveRecentSessions, routeToRecent, type RecentEntry} fro
 import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
 import {paletteEmptyKind, paletteEmptyMessage} from "../lib/palette-empty";
 import {PaletteEmptyState} from "./palette-empty-state";
+import {PaletteSkeleton} from "./palette-skeleton";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
 import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
 import {createSessionCommands} from "../lib/session-commands";
@@ -160,7 +161,6 @@ const ORGANIC_LIMIT = 7;
 const RECENTS_RESERVED = 3;
 
 export const PALETTE_SEARCH_DEBOUNCE_MS = 150;
-const SKELETON_ROWS = 3;
 
 /** Server hit kinds plus the kinds the Projects, Artifacts and Scheduled tabs list client-side. */
 type SearchKind = UnifiedSearchItem["kind"] | "project" | "artifact" | "routine";
@@ -1412,9 +1412,10 @@ function PalettePopup({
 					{!compose && <TypeTabs value={tab} onChange={chooseTab} />}
 					<div className="h-[0.5px] w-full bg-border" />
 
-					{/* Upstream holds the list at its 440px cap outside compose, leaving unused space at the bottom. */}
+					{/* Upstream holds the list at its 440px cap outside compose, leaving unused space at the bottom.
+					    cmdk's sizer is a full-height column so the settling skeleton grows into what is left. */}
 					<Command.List
-						className={`${compose ? "max-h-[440px]" : "h-[440px]"} overflow-y-auto p-2.5 [&_[cmdk-group]+[cmdk-group]]:mt-1`}
+						className={`${compose ? "max-h-[440px]" : "h-[440px]"} overflow-y-auto p-2.5 [&_[cmdk-group]+[cmdk-group]]:mt-1 [&>[cmdk-list-sizer]]:flex [&>[cmdk-list-sizer]]:min-h-full [&>[cmdk-list-sizer]]:flex-col`}
 						{...(compose ? {} : {style: LIST_MAX_HEIGHT_STYLE})}
 					>
 						{startStep === "launching" && (
@@ -1681,18 +1682,6 @@ function PalettePopup({
 										}}
 									/>
 								))}
-								{searching &&
-									Array.from({length: SKELETON_ROWS}, (_, index) => (
-										<div
-											key={index}
-											aria-hidden="true"
-											data-palette-skeleton=""
-											className="flex items-center gap-2 px-3 py-2"
-										>
-											<span className="size-5 shrink-0 rounded bg-fill-ghost-hover" />
-											<span className="h-3 flex-1 rounded bg-fill-ghost-hover motion-safe:animate-pulse" />
-										</div>
-									))}
 								{emptyKind !== null && (
 									<PaletteEmptyState
 										kind={emptyKind}
@@ -1703,7 +1692,7 @@ function PalettePopup({
 										}}
 									/>
 								)}
-								{tokens.text !== "" && !actionsOnly && !isClientPaletteType(type) && (
+								{!searching && tokens.text !== "" && !actionsOnly && !isClientPaletteType(type) && (
 									<CommandItem
 										value="see-all-results"
 										icon={<Search />}
@@ -1718,6 +1707,7 @@ function PalettePopup({
 								)}
 							</div>
 						)}
+						{showResults && searching && <PaletteSkeleton />}
 					</Command.List>
 					{showResults && (
 						<div aria-live="polite" aria-atomic="true" className="sr-only">

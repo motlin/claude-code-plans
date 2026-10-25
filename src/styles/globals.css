@@ -1559,6 +1559,33 @@ html[data-motion="reduced"] [data-cds="Skeleton"]::after {
 	display: none;
 }
 
+/* Upstream cds-skeleton-breathe on a data-motion=wave SkeletonGroup, staggered 90ms per bar. */
+@keyframes skeleton-breathe {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
+}
+
+[data-palette-skeleton][data-motion="wave"] [data-skeleton] {
+	animation: skeleton-breathe 2s ease-in-out calc(var(--skel-i, 0) * 90ms) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-palette-skeleton][data-motion="wave"] [data-skeleton] {
+		animation-duration: 0.01ms;
+		animation-iteration-count: 1;
+	}
+}
+
+html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-skeleton] {
+	animation-duration: 0.01ms;
+	animation-iteration-count: 1;
+}
+
 /* Upstream cds-shimmer: the Skeleton sheen sweeps across once per cycle. */
 @keyframes shimmer {
 	0% {

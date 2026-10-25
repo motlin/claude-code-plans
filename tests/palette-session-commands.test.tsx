@@ -229,7 +229,10 @@ describe("palette contextual session commands", () => {
 				expect(queryClient.getQueryState(sessionQueryKeys.identity("session_alice_100"))?.status).toBe("error");
 			});
 		fireEvent.change(input, {target: {value: "session"}});
-		await within(dialog).findByRole("option", {name: /See all results/});
+		// The search never settles here, so the settling skeleton marks the typed query as rendered.
+		await waitFor(() => {
+			expect(dialog.querySelector("[data-palette-skeleton]")).not.toBeNull();
+		});
 		expect({
 			actions: optionLabels(dialog).filter((label) =>
 				/^(Pin |Rename |Archive |Copy |Show side chat)/.test(label),
@@ -317,7 +320,10 @@ describe("palette contextual session commands", () => {
 		const {dialog, input} = await openPalette("/plans");
 		fireEvent.change(input, {target: {value: "side chat"}});
 
-		await within(dialog).findByRole("option", {name: /See all results/});
+		// The search never settles here, so the settling skeleton marks the typed query as rendered.
+		await waitFor(() => {
+			expect(dialog.querySelector("[data-palette-skeleton]")).not.toBeNull();
+		});
 		expect(optionLabels(dialog).filter((label) => label === "Show side chat")).toStrictEqual([]);
 	});
 
@@ -326,7 +332,10 @@ describe("palette contextual session commands", () => {
 
 		fireEvent.change(input, {target: {value: "copy"}});
 
-		await within(dialog).findByRole("option", {name: /See all results/});
+		// The search never settles here, so the settling skeleton marks the typed query as rendered.
+		await waitFor(() => {
+			expect(dialog.querySelector("[data-palette-skeleton]")).not.toBeNull();
+		});
 		expect(optionLabels(dialog).filter((label) => label.startsWith("Copy"))).toStrictEqual([]);
 	});
 
