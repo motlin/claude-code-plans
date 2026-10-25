@@ -2477,6 +2477,23 @@ describe("CommandPalette committed filter chips", () => {
 		});
 	});
 
+	it("lists the chip-filtered recents when the query is empty on the All tab", async () => {
+		const now = new Date().toISOString();
+		const dialog = await openPalette([
+			recentSession("sess-today", "Fix flaky test", "done", {mtime: now}),
+			recentSession("sess-old", "Old refactor"),
+		]);
+
+		typeQuery(dialog, "date:today ");
+
+		expect({
+			rows: [...dialog.querySelectorAll('[aria-label="Search results"] [cmdk-item]')].map(
+				(item) => item.querySelector("[data-palette-label]")?.textContent ?? "",
+			),
+			empty: dialog.textContent.includes("No results found"),
+		}).toStrictEqual({rows: ["Fix flaky test"], empty: false});
+	});
+
 	it("announces the tab and chips in the live region", async () => {
 		const dialog = await openPalette();
 

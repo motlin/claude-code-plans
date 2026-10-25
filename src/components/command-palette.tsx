@@ -1019,7 +1019,7 @@ function PalettePopup({
 
 	// Sessions (or All with only filter tokens) and no text lists recents; Projects, Artifacts and Scheduled are searched client-side.
 	const listing = useMemo((): SearchRow[] | null => {
-		if (!searchable || (trimmedQuery === "" && tab === "all")) return null;
+		if (!searchable || (trimmedQuery === "" && tab === "all" && chips.length === 0)) return null;
 		if (type === "projects") return projectRows(projects, tokens.text);
 		if (type === "artifacts") return artifactRows(artifacts, tokens.text);
 		if (type === "scheduled") return routineRows(routines, tokens.text, Date.now());
@@ -1033,6 +1033,7 @@ function PalettePopup({
 		searchable,
 		trimmedQuery,
 		tab,
+		chips.length,
 		type,
 		projects,
 		artifacts,
