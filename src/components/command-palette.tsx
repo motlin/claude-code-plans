@@ -1278,6 +1278,11 @@ function PalettePopup({
 			openStartPicker();
 			return;
 		}
+		// Upstream's modifiedEnterPicksNothing: while the jump is offered, ⌘/Ctrl+Enter picks no row.
+		if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !compose && jumpCard !== null) {
+			event.preventDefault();
+			return;
+		}
 		if (event.key === "Enter" && event.altKey) {
 			openSelectedRowActions(event);
 			return;

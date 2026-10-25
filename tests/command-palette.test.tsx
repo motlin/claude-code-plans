@@ -2278,6 +2278,24 @@ describe("CommandPalette pinned Jump to question row", () => {
 		});
 	});
 
+	it("ignores ⌘Enter and Ctrl+Enter while the jump is offered, as upstream's modifiedEnterPicksNothing", async () => {
+		const card = addWaitingCard();
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		const input = within(dialog).getByRole("combobox");
+		const meta = fireEvent.keyDown(input, {key: "Enter", code: "Enter", metaKey: true});
+		const ctrl = fireEvent.keyDown(input, {key: "Enter", code: "Enter", ctrlKey: true});
+
+		expect({
+			meta,
+			ctrl,
+			open: screen.queryByRole("dialog", {name: "Search"}) !== null,
+			focused: document.activeElement === input,
+			landing: card.getAttribute("data-focus-region-landing"),
+			selected: within(dialog).getByRole("option", {name: "Jump to question"}).getAttribute("data-selected"),
+		}).toStrictEqual({meta: false, ctrl: false, open: true, focused: true, landing: null, selected: "true"});
+	});
+
 	it("hides the pinned row once a query is typed, and in Compose", async () => {
 		addWaitingCard();
 		const dialog = await openPalette();
