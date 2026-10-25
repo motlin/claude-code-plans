@@ -940,8 +940,12 @@ describe("CommandPalette shell", () => {
 		await within(dialog).findByRole("option", {name: /Blocked one/});
 		expect(groupLabels(dialog)).toStrictEqual([
 			["Needs attention", ["Blocked one Awaiting input"]],
-			// An old running session and an open PR with nothing unseen do not lead, so they stay in Recents.
-			["Recents", ["Recent one", "Recent two", "Review one", "Recent three", "Recent four", "Recent five"]],
+			// An old running session and an open PR with nothing unseen do not lead, so they stay in Recents;
+			// the running one keeps its mark there.
+			[
+				"Recents",
+				["Recent one", "Recent two Running", "Review one", "Recent three", "Recent four", "Recent five"],
+			],
 			["Actions", ["New session"]],
 		]);
 		const newSession = within(dialog).getByRole("option", {name: /^New session/});
@@ -952,7 +956,7 @@ describe("CommandPalette shell", () => {
 				?.split(" ")
 				.find((name) => name.startsWith("lucide-")),
 		).toBe("lucide-circle-plus");
-		expect(dialog.querySelectorAll("[data-palette-mark-dot]").length).toBe(1);
+		expect(dialog.querySelectorAll("[data-palette-mark-dot]").length).toBe(2);
 		// Upstream's group headers are 12/17 muted, and their rows sit flush at a 36px pitch.
 		const group = dialog.querySelector("[cmdk-group]");
 		expect({
@@ -1002,7 +1006,7 @@ describe("CommandPalette shell", () => {
 					(title) => `${title} Awaiting input`,
 				),
 			],
-			["Recents", ["Waiting 5", "Waiting 6"]],
+			["Recents", ["Waiting 5 Awaiting input", "Waiting 6 Awaiting input"]],
 			["Actions", ["New session"]],
 		]);
 	});
@@ -1072,6 +1076,48 @@ describe("CommandPalette shell", () => {
 				"forced-colors:[mask-image:none]",
 			],
 			plain: {dot: null, mask: null},
+		});
+	});
+
+	it("keeps the mark on a Recents session that does not lead, as upstream's Recents row", async () => {
+		const dialog = await openPalette([
+			recentSession("s-old-run", "Old run", "working"),
+			recentSession("s-plain", "Plain one"),
+		]);
+
+		const row = await within(dialog).findByRole("option", {name: /Old run/});
+		expect({
+			groups: groupLabels(dialog),
+			dot: row.querySelector("[data-palette-mark-dot]")?.className.split(" "),
+		}).toStrictEqual({
+			groups: [
+				["Recents", ["Old run Running", "Plain one"]],
+				["Actions", ["New session"]],
+			],
+			dot: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-brand"],
+		});
+	});
+
+	it("marks an unseen finished session Unread on the Code tab", async () => {
+		const dialog = await openPalette([
+			recentSession("s-unseen", "Unseen done", "done", {unseen: true}),
+			recentSession("s-seen", "Seen done"),
+		]);
+
+		await within(dialog).findByRole("option", {name: /Unseen done/});
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
+		await waitFor(() => {
+			expect(within(dialog).getByRole("tab", {name: "Code"}).getAttribute("aria-selected")).toBe("true");
+		});
+		const unseen = within(dialog).getByRole("option", {name: /Unseen done/});
+		expect({
+			sr: unseen.querySelector(".sr-only")?.textContent,
+			dot: unseen.querySelector("[data-palette-mark-dot]")?.className.split(" "),
+			seen: within(dialog).getByRole("option", {name: "Seen done"}).querySelector("[data-palette-mark-dot]"),
+		}).toStrictEqual({
+			sr: " Unread",
+			dot: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-accent"],
+			seen: null,
 		});
 	});
 

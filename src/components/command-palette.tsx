@@ -202,7 +202,8 @@ interface SearchRow {
 	titleMatches: readonly TextMatch[];
 	snippet: Snippet | undefined;
 	mtime: string;
-	awaiting: boolean;
+	/** Upstream's row mark; server hits only know awaiting. */
+	mark?: PaletteMark;
 	/** Only recents know it; server hits leave it unset. */
 	archived?: boolean;
 	href: string | undefined;
@@ -210,7 +211,8 @@ interface SearchRow {
 	meta?: string;
 }
 
-function sessionRow(session: SessionListItem, matches: readonly TextMatch[]): SearchRow {
+function sessionRow(session: SessionListItem, matches: readonly TextMatch[], now: number): SearchRow {
+	const mark = paletteMark(session, now)?.mark;
 	return {
 		kind: "session",
 		id: session.id,
@@ -218,17 +220,17 @@ function sessionRow(session: SessionListItem, matches: readonly TextMatch[]): Se
 		titleMatches: matches,
 		snippet: undefined,
 		mtime: session.mtime,
-		awaiting: session.bucket === "blocked",
+		...(mark === undefined ? {} : {mark}),
 		archived: session.archived,
 		href: undefined,
 	};
 }
 
-function instantRows(sessions: readonly SessionListItem[], query: string): SearchRow[] {
+function instantRows(sessions: readonly SessionListItem[], query: string, now: number): SearchRow[] {
 	const rows: SearchRow[] = [];
 	for (const session of sessions) {
 		const matches = titleMatches(session.title, query);
-		if (matches !== null) rows.push(sessionRow(session, matches));
+		if (matches !== null) rows.push(sessionRow(session, matches, now));
 	}
 	return rows;
 }
@@ -269,7 +271,6 @@ function projectRows(projects: readonly PaletteProjectItem[], text: string): Sea
 			titleMatches: matches,
 			snippet: undefined,
 			mtime: project.lastActivity,
-			awaiting: false,
 			href: undefined,
 		});
 		if (rows.length === PALETTE_RECENT_LIMIT) break;
@@ -290,7 +291,6 @@ function artifactRows(artifacts: readonly ArtifactSummary[], text: string): Sear
 			titleMatches: matches,
 			snippet: undefined,
 			mtime: new Date(artifactTimestamp(artifact)).toISOString(),
-			awaiting: false,
 			href: undefined,
 		});
 		if (rows.length === PALETTE_RECENT_LIMIT) break;
@@ -317,7 +317,6 @@ function routineRows(routines: readonly Routine[], text: string, now: number): S
 				titleMatches: text === "" ? [] : (titleMatches(title, text) ?? []),
 				snippet: undefined,
 				mtime: new Date(routine.createdAt).toISOString(),
-				awaiting: false,
 				href: undefined,
 				meta:
 					routine.nextRunAt === null
@@ -380,7 +379,6 @@ function recentDocRows(
 			titleMatches: [],
 			snippet: undefined,
 			mtime: doc.mtime,
-			awaiting: false,
 			href: doc.href,
 		}));
 }
@@ -393,7 +391,7 @@ function serverRow(item: UnifiedSearchItem): SearchRow {
 		titleMatches: item.titleMatches,
 		snippet: item.snippet,
 		mtime: item.mtime,
-		awaiting: item.state === "waiting",
+		...(item.state === "waiting" ? {mark: "awaiting" as const} : {}),
 		href: item.href,
 	};
 }
@@ -874,7 +872,7 @@ function PalettePopup({
 		if (type === "plans" && tokens.text === "") return recentDocRows(planDocs(plans), tokens, projects, Date.now());
 		if (type === "memories" && tokens.text === "") return recentDocRows(memoryDocs, tokens, projects, Date.now());
 		if ((type === "sessions" || type === "all") && tokens.text === "") {
-			return visibleSessions.slice(0, PALETTE_RECENT_LIMIT).map((session) => sessionRow(session, []));
+			return visibleSessions.slice(0, PALETTE_RECENT_LIMIT).map((session) => sessionRow(session, [], Date.now()));
 		}
 		return null;
 	}, [
@@ -892,7 +890,7 @@ function PalettePopup({
 	]);
 
 	const instant = useMemo(
-		() => (!searchesSessions || tokens.text === "" ? [] : instantRows(visibleSessions, tokens.text)),
+		() => (!searchesSessions || tokens.text === "" ? [] : instantRows(visibleSessions, tokens.text, Date.now())),
 		[searchesSessions, visibleSessions, tokens.text],
 	);
 
@@ -1548,7 +1546,6 @@ function PalettePopup({
 											<EmptyViewItem
 												key={row.id}
 												row={row}
-												lead={group.id === "attention" || group.id === "active"}
 												onOpenSession={(id) => {
 													select(() => {
 														openSession(id);
@@ -1993,15 +1990,12 @@ function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mod
 /** One empty-view row: a lead or Recents session, a visited page, or the New session action. */
 function EmptyViewItem({
 	row,
-	lead,
 	onOpenSession,
 	onOpenRowActions,
 	onNavigate,
 	onNewSession,
 }: {
 	row: EmptyViewRow;
-	/** Rows in Needs attention or Active, which show their mark. */
-	lead: boolean;
 	onOpenSession: (id: string) => void;
 	onOpenRowActions: (id: string) => void;
 	onNavigate: (href: string) => void;
@@ -2033,8 +2027,7 @@ function EmptyViewItem({
 			</CommandItem>
 		);
 	}
-	// Only leads show their mark for now; Recents sessions get theirs once every session row is marked.
-	const mark = lead ? row.mark : undefined;
+	const {mark} = row;
 	return (
 		<SessionRowActions
 			onOpen={() => {
@@ -2136,7 +2129,7 @@ function SearchResultItem({
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-2 ${session ? ROW_ACTIONS_LABEL_CLASS : ""}`}>
 				<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
-					{row.awaiting ? <PaletteSessionIcon mark="awaiting" /> : KIND_ICONS[row.kind]}
+					{row.mark === undefined ? KIND_ICONS[row.kind] : <PaletteSessionIcon mark={row.mark} />}
 				</span>
 				<span className="flex min-w-0 flex-1 items-baseline gap-2">
 					<span data-palette-label="" className="truncate">
@@ -2151,7 +2144,7 @@ function SearchResultItem({
 						</span>
 					)}
 				</span>
-				{row.awaiting && <span className="sr-only"> Awaiting input</span>}
+				{row.mark !== undefined && <span className="sr-only"> {PALETTE_MARK_LABELS[row.mark]}</span>}
 			</span>
 			{archived && <ArchivedBadge variant="palette" />}
 			<span

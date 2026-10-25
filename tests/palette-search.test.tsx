@@ -20,7 +20,7 @@ import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 const YEAR_MS = 365 * 24 * 60 * 60_000;
 
-function recentSession(id: string, title: string) {
+function recentSession(id: string, title: string, bucket: "blocked" | "working" | "done" = "done") {
 	return {
 		id,
 		title,
@@ -33,7 +33,7 @@ function recentSession(id: string, title: string) {
 		gitBranch: undefined,
 		archived: false,
 		state: "unknown" as const,
-		bucket: "done" as const,
+		bucket,
 		liveAgentCount: 0,
 		unseen: false,
 		blockedSince: null,
@@ -292,6 +292,35 @@ describe("⌘K palette live search", () => {
 			now: option(dialog, "Cache now").querySelector("[data-palette-meta]")?.textContent,
 			old: option(dialog, "Cache old").querySelector("[data-palette-meta]")?.textContent,
 		}).toStrictEqual({now: "Just now", old: ""});
+	});
+
+	it("marks typed instant session results and keeps their time meta", async () => {
+		const {dialog} = await openPalette([
+			recentSession("s-wait", "Waiting 0", "blocked"),
+			recentSession("s-run", "Waiting run", "working"),
+		]);
+
+		type(dialog, "Waiting");
+		const marks = (label: string) => {
+			const row = option(dialog, label);
+			return {
+				sr: row.querySelector(".sr-only")?.textContent,
+				dot: row.querySelector("[data-palette-mark-dot]")?.className.split(" "),
+				meta: row.querySelector("[data-palette-meta]")?.textContent,
+			};
+		};
+		expect({awaiting: marks("Waiting 0"), running: marks("Waiting run")}).toStrictEqual({
+			awaiting: {
+				sr: " Awaiting input",
+				dot: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-accent"],
+				meta: "Just now",
+			},
+			running: {
+				sr: " Running",
+				dot: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-brand"],
+				meta: "Just now",
+			},
+		});
 	});
 
 	it("marks sessions awaiting input with a pulse dot", async () => {
