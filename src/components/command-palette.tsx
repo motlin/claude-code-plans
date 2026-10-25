@@ -1597,7 +1597,6 @@ function PalettePopup({
 			className={`fixed top-4 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none sm:top-[max(0px,min(15vh,max(2rem,calc((100vh-583.9px)/2))))] md:w-[calc(100vw-5rem)] lg:top-[max(0px,min(25vh,max(2rem,calc((100vh-583.9px)/2))))] ${PALETTE_RADIUS}`}
 		>
 			<Dialog.Title className="sr-only">Search</Dialog.Title>
-			{entrypoint !== "search" && <ModeSwitch mode={mode} onModeChange={onModeChange} />}
 			<div
 				ref={cardRef}
 				className={`relative overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-transform duration-150 ease-out motion-reduce:transition-none ${
@@ -2338,45 +2337,6 @@ function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type
 							>
 								{paletteTypeLabels[type]}
 							</button>
-						);
-					})}
-				</div>
-			</div>
-		</div>
-	);
-}
-
-/** Upstream's floating [Search] [Compose] segmented control, 12px above the card; Tab still toggles. */
-function ModeSwitch({mode, onModeChange}: {mode: PaletteMode; onModeChange: (mode: PaletteMode) => void}) {
-	const options: Array<{value: PaletteMode; label: string}> = [
-		{value: "search", label: "Search"},
-		{value: "compose", label: "Compose"},
-	];
-	return (
-		<div className="pointer-events-none absolute inset-x-0 bottom-full hidden justify-center pb-3 sm:flex">
-			<div className="pointer-events-auto flex items-center rounded-[calc(var(--radius-r6)+1px)] border-[0.5px] border-strong bg-surface-3 p-px shadow-pop">
-				<div
-					role="radiogroup"
-					aria-label="Search or compose"
-					className="relative inline-flex h-8 w-fit shrink-0 items-stretch rounded-r6 bg-[var(--settings-segmented-track)] p-px font-sans"
-				>
-					{options.map((option) => {
-						const checked = option.value === mode;
-						return (
-							// oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- a roving radio: the radiogroup handles the arrow keys
-							<span
-								key={option.value}
-								role="radio"
-								aria-checked={checked}
-								tabIndex={-1}
-								data-checked={checked ? "" : undefined}
-								onClick={() => {
-									onModeChange(option.value);
-								}}
-								className="relative inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-3 text-sm text-ink-muted select-none hover:text-primary data-[checked]:bg-[var(--settings-segmented-thumb)] data-[checked]:text-primary data-[checked]:shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_0_rgb(0_0_0/0.05)]"
-							>
-								{option.label}
-							</span>
 						);
 					})}
 				</div>

@@ -204,7 +204,7 @@ describe("sidebar search field", () => {
 			placeholder: input.getAttribute("placeholder"),
 			modeSwitch: within(dialog).queryByRole("radiogroup", {name: "Search or compose"}) !== null,
 			stored: localStorage.getItem("cmdk-mode"),
-		}).toStrictEqual({placeholder: "Search", modeSwitch: true, stored: "compose"});
+		}).toStrictEqual({placeholder: "Search", modeSwitch: false, stored: "compose"});
 	});
 	it("returns focus to the previously focused element after a mouse open and close", async () => {
 		await renderSidebar({palette: true});

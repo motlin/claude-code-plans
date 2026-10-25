@@ -189,18 +189,13 @@ describe("CommandPalette shell", () => {
 			placeholder: input.getAttribute("placeholder"),
 			rows: input.getAttribute("rows"),
 			close: within(dialog).getByRole("button", {name: "Close"}).tagName,
-			modes: within(dialog)
-				.getAllByRole("radio")
-				.map((radio) => [radio.textContent, radio.getAttribute("aria-checked")]),
+			modeSwitch: within(dialog).queryByRole("radiogroup", {name: "Search or compose"}),
 		}).toStrictEqual({
 			tag: "TEXTAREA",
 			placeholder: "Search",
 			rows: "1",
 			close: "BUTTON",
-			modes: [
-				["Search", "true"],
-				["Compose", "false"],
-			],
+			modeSwitch: null,
 		});
 	});
 
@@ -694,14 +689,12 @@ describe("CommandPalette shell", () => {
 			value: (composer as HTMLTextAreaElement).value,
 			placeholder: composer.getAttribute("placeholder"),
 			rows: composer.getAttribute("rows"),
-			compose: within(dialog)
-				.getByRole("radio", {name: /Compose/})
-				.getAttribute("aria-checked"),
+			modeSwitch: within(dialog).queryByRole("radiogroup", {name: "Search or compose"}),
 		}).toStrictEqual({
 			value: "fix the parser",
 			placeholder: "Write a message…",
 			rows: "2",
-			compose: "true",
+			modeSwitch: null,
 		});
 
 		fireEvent.keyDown(composer, {key: "Tab", code: "Tab"});
@@ -1690,10 +1683,12 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		});
 	});
 
-	it("names the Compose radio without a Tab keycap", async () => {
+	it("renders no floating Search/Compose segmented control in either view, like upstream", async () => {
+		localStorage.setItem("cmdk-mode", "compose");
 		const dialog = await openPalette();
+		await within(dialog).findByRole("combobox", {name: "Write a message…"});
 
-		expect(within(dialog).getByRole("radio", {name: "Compose"}).textContent).toBe("Compose");
+		expect(within(dialog).queryByRole("radiogroup", {name: "Search or compose"})).toBeNull();
 	});
 
 	it("styles every type tab muted with no own background; the active ink and pill come from data-active", async () => {
