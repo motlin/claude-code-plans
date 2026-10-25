@@ -34,7 +34,7 @@ import {
 	Puzzle,
 	File,
 	LoaderCircle,
-	ListFilter,
+	GitBranch,
 	Link,
 	Pin,
 	PinOff,
@@ -198,6 +198,20 @@ const KIND_ICONS = {
 	artifact: <Shapes />,
 	routine: <Clock />,
 } as const satisfies Record<SearchKind, ReactNode>;
+
+/** Upstream's hint-row icon map `__` (owner, a cloud facet, dropped). */
+const PALETTE_FILTER_ICONS = {
+	date: <Clock />,
+	repo: <GitBranch />,
+	project: <FolderOpen />,
+	type: <Shapes />,
+	archived: <Archive />,
+	actions: <Keyboard />,
+} as const satisfies Record<PaletteFilter, ReactNode>;
+
+/** Upstream's neutral Badge in a "Filter by" hint row. */
+const FILTER_BADGE_CLASS =
+	"inline-flex items-center gap-1 h-[22px] rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-fill-ghost-hover text-secondary shrink-0 -my-px relative top-px";
 
 /** One typed-search row: an instant title match over recents, or a server hit. */
 interface SearchRow {
@@ -1618,20 +1632,22 @@ function PalettePopup({
 							</Command.Group>
 						)}
 						{idle && !compose && hints !== null && (
-							<div role="group" aria-label="Filters" className="flex flex-col">
+							<div>
 								{hints.map((filter) => (
 									<CommandItem
 										key={filter}
 										value={`filter:${filter}`}
-										icon={<ListFilter />}
+										icon={PALETTE_FILTER_ICONS[filter]}
+										badge={
+											<span className={FILTER_BADGE_CLASS}>
+												<span className="pb-[0.05em]">{paletteFilterLabels[filter]}</span>
+											</span>
+										}
 										onSelect={() => {
 											chooseFilter(filter);
 										}}
 									>
 										Filter by{" "}
-										<span className="ml-1 rounded bg-fill-ghost-hover px-1.5 py-px text-xs text-secondary">
-											{paletteFilterLabels[filter]}
-										</span>
 									</CommandItem>
 								))}
 							</div>
@@ -2360,10 +2376,13 @@ function CommandItem({
 	shortcut,
 	rowActions = false,
 	secondary,
+	badge,
 }: {
 	children: ReactNode;
 	value: string;
 	icon?: ReactNode;
+	/** Upstream's Badge after the label, e.g. a "Filter by" hint's filter name. */
+	badge?: ReactNode;
 	onSelect: () => void;
 	shortcut?: ShortcutKeys;
 	rowActions?: boolean;
@@ -2385,6 +2404,7 @@ function CommandItem({
 				<span data-palette-label="" className="truncate">
 					{children}
 				</span>
+				{badge}
 			</span>
 			{shortcut !== undefined && (
 				<span

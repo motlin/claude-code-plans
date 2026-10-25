@@ -643,12 +643,16 @@ describe("⌘K palette filters", () => {
 			.map((tab) => ({name: tab.textContent, selected: tab.getAttribute("aria-selected")}));
 	}
 
+	function filterHints(dialog: HTMLElement): HTMLElement[] {
+		return [...dialog.querySelectorAll<HTMLElement>('[cmdk-list] [cmdk-item][data-value^="filter:"]')];
+	}
+
+	/** Each hint's "Filter by " label followed by its badge text. */
 	function filterLabels(dialog: HTMLElement): string[] {
-		return [
-			...within(dialog.querySelector<HTMLElement>("[cmdk-list]")!)
-				.getByRole("group", {name: "Filters"})
-				.querySelectorAll("[cmdk-item]"),
-		].map((item) => item.querySelector("[data-palette-label]")?.textContent ?? "");
+		return filterHints(dialog).map((item) => {
+			const label = item.querySelector("[data-palette-label]");
+			return `${label?.textContent ?? ""}${label?.nextElementSibling?.textContent ?? ""}`;
+		});
 	}
 
 	it("renders local type tabs with All selected", async () => {
@@ -672,9 +676,9 @@ describe("⌘K palette filters", () => {
 		type(dialog, "/");
 
 		expect(filterLabels(dialog)).toStrictEqual([
-			"Filter by Project",
 			"Filter by Date",
 			"Filter by Repo",
+			"Filter by Project",
 			"Filter by Type",
 			"Filter by Archived",
 			"Filter by Actions",
@@ -694,11 +698,7 @@ describe("⌘K palette filters", () => {
 		const {dialog} = await openPalette();
 
 		type(dialog, "/re");
-		const repo = [
-			...within(dialog.querySelector<HTMLElement>("[cmdk-list]")!)
-				.getByRole("group", {name: "Filters"})
-				.querySelectorAll("[cmdk-item]"),
-		].find((item) => item.textContent.includes("Repo"));
+		const repo = filterHints(dialog).find((item) => item.textContent.includes("Repo"));
 		if (repo === undefined) throw new Error("no Repo hint");
 		fireEvent.click(repo);
 

@@ -122,9 +122,14 @@ describe("paletteSearchParams", () => {
 
 describe("paletteFilterHints", () => {
 	it.each([
-		["/", ["project", "date", "repo", "type", "archived", "actions"]],
+		["/", ["date", "repo", "project", "type", "archived", "actions"]],
+		["/a", ["archived", "actions"]],
 		["/re", ["date", "repo"]],
-		["/a", ["date", "archived", "actions"]],
+		["/to", ["date"]],
+		["/we", ["date"]],
+		["/mo", ["date"]],
+		["/ki", ["type"]],
+		["/com", ["actions"]],
 		["/TY", ["type"]],
 		["/zz", []],
 	])("hints for %j", (query, expected) => {

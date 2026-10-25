@@ -32,7 +32,7 @@ export function isClientPaletteType(type: PaletteType): type is ClientPaletteTyp
 }
 
 /** The "Filter by …" hint rows shown when "/" is the whole query. */
-export const PaletteFilterSchema = z.enum(["project", "date", "repo", "type", "archived", "actions"]);
+export const PaletteFilterSchema = z.enum(["date", "repo", "project", "type", "archived", "actions"]);
 export type PaletteFilter = z.infer<typeof PaletteFilterSchema>;
 
 export interface PaletteTokens {
@@ -163,10 +163,11 @@ export function paletteSearchParams(
 	};
 }
 
+/** Upstream's hint keyword table `bt`; a hint also matches on its token prefix. */
 const FILTER_KEYWORDS = {
-	project: ["project"],
-	date: ["date", "when", "active", "recent"],
+	date: ["date", "when", "recently", "today", "week", "month"],
 	repo: ["repo", "repository"],
+	project: ["project"],
 	type: ["type", "kind"],
 	archived: ["archived"],
 	actions: ["actions", "commands"],
@@ -174,9 +175,9 @@ const FILTER_KEYWORDS = {
 
 /** The token each hint row inserts into the query. */
 export const PALETTE_FILTER_TOKENS = {
-	project: "project:",
 	date: "date:",
 	repo: "repo:",
+	project: "project:",
 	type: "type:",
 	archived: "archived:",
 	actions: "actions:",
@@ -186,8 +187,10 @@ export const PALETTE_FILTER_TOKENS = {
 export function paletteFilterHints(query: string): PaletteFilter[] | null {
 	if (!query.startsWith("/") || /\s/u.test(query)) return null;
 	const prefix = query.slice(1).toLowerCase();
-	return PaletteFilterSchema.options.filter((filter) =>
-		FILTER_KEYWORDS[filter].some((keyword) => keyword.startsWith(prefix)),
+	return PaletteFilterSchema.options.filter(
+		(filter) =>
+			PALETTE_FILTER_TOKENS[filter].startsWith(prefix) ||
+			FILTER_KEYWORDS[filter].some((keyword) => keyword.startsWith(prefix)),
 	);
 }
 

@@ -2162,6 +2162,44 @@ describe("CommandPalette filter values", () => {
 			all: ["Search sessions", "Keyboard shortcuts", "Toggle sidebar", "Settings", "Mark all sessions seen"],
 		});
 	});
+
+	it("draws upstream's per-filter hint icons and neutral badge beside the Filter by label", async () => {
+		const dialog = await openPalette();
+
+		typeQuery(dialog, "/");
+
+		const rows = [...dialog.querySelectorAll('[cmdk-item][data-value^="filter:"]')];
+		expect({
+			rows: rows.map((row) => {
+				const label = row.querySelector("[data-palette-label]");
+				const badge = label?.nextElementSibling;
+				return {
+					icon: [...(row.querySelector("svg")?.classList ?? [])].filter((name) => name !== "lucide"),
+					label: label?.textContent,
+					badge: badge?.className.split(" ").toSorted(),
+					badgeText: badge?.textContent,
+				};
+			}),
+			wrapper: rows[0]?.parentElement?.getAttribute("role") ?? null,
+		}).toStrictEqual({
+			rows: [
+				["lucide-clock", "Date"],
+				["lucide-git-branch", "Repo"],
+				["lucide-folder-open", "Project"],
+				["lucide-shapes", "Type"],
+				["lucide-archive", "Archived"],
+				["lucide-keyboard", "Actions"],
+			].map(([icon, text]) => ({
+				icon: [icon],
+				label: "Filter by ",
+				badge: "inline-flex items-center gap-1 h-[22px] rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-fill-ghost-hover text-secondary shrink-0 -my-px relative top-px"
+					.split(" ")
+					.toSorted(),
+				badgeText: text,
+			})),
+			wrapper: null,
+		});
+	});
 });
 
 describe("CommandPalette pinned Jump to question row", () => {

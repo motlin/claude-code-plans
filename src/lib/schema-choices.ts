@@ -603,9 +603,9 @@ export const paletteTypeLabels = {
 } satisfies Record<PaletteType, string>;
 
 export const paletteFilterLabels = {
-	project: "Project",
 	date: "Date",
 	repo: "Repo",
+	project: "Project",
 	type: "Type",
 	archived: "Archived",
 	actions: "Actions",
