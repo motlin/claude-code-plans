@@ -3,6 +3,7 @@ import {Link} from "@tanstack/react-router";
 import {ChevronRight, Trash2} from "lucide-react";
 import {type RefObject, useEffect, useId, useRef, useState} from "react";
 
+import type {SessionWorkflowRun} from "../../lib/api/session-workflow-runs";
 import {taskOutputQueryOptions} from "../../lib/api/task-output";
 import {
 	type BackgroundTaskFocus,
@@ -18,6 +19,9 @@ import {HighlightedCommand} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
 import {Tooltip} from "../ui/tooltip";
 import {nonEmpty} from "../../lib/non-empty";
+import {WorkflowTaskCard} from "./workflow-task-card";
+
+const NO_WORKFLOW_RUNS: readonly SessionWorkflowRun[] = [];
 
 const EMPTY_COPY = "No background tasks in this session.";
 
@@ -150,20 +154,37 @@ function BackgroundTaskCard({
 	);
 }
 
+/** The run a workflow task launched: by its harness task id, else by any of the run's launches. */
+function runOf(task: BackgroundTask, runs: readonly SessionWorkflowRun[]): SessionWorkflowRun | undefined {
+	return (
+		runs.find((run) => run.taskId === task.id) ??
+		(task.toolUseId === null ? undefined : runs.find((run) => run.toolUseIds.includes(task.toolUseId ?? "")))
+	);
+}
+
 function TaskCards({
 	tasks,
 	sessionId,
 	openRows,
 	setRowOpen,
+	workflowRuns,
 }: {
 	tasks: readonly BackgroundTask[];
 	sessionId: string | undefined;
 	openRows: ReadonlyMap<string, boolean>;
 	setRowOpen: (taskId: string, open: boolean) => void;
+	workflowRuns: readonly SessionWorkflowRun[];
 }) {
 	return (
 		<ul className="flex flex-col gap-1.5">
 			{tasks.map((task) => {
+				if (task.kind === "workflow") {
+					return (
+						<li key={task.id} data-task-id={task.id}>
+							<WorkflowTaskCard task={task} run={runOf(task, workflowRuns)} />
+						</li>
+					);
+				}
 				const expanded = openRows.get(task.id) === true;
 				return (
 					<BackgroundTaskCard
@@ -262,8 +283,11 @@ export function BackgroundTasksList({
 	groups,
 	subagents,
 	sessionId,
+	workflowRuns = NO_WORKFLOW_RUNS,
 }: {
 	groups: BackgroundTaskGroups;
+	/** The session's workflow runs, whose progress the workflow cards draw. */
+	workflowRuns?: readonly SessionWorkflowRun[];
 	/** The session whose task output files the cards may read. */
 	sessionId?: string;
 	/** The session's subagents, linked to their tree/Gantt page. */
@@ -291,6 +315,7 @@ export function BackgroundTasksList({
 						sessionId={sessionId}
 						openRows={openRows}
 						setRowOpen={setRowOpen}
+						workflowRuns={workflowRuns}
 					/>
 				</section>
 			)}
@@ -327,7 +352,13 @@ export function BackgroundTasksList({
 						</Tooltip>
 					</div>
 					{finishedOpen && (
-						<TaskCards tasks={finished} sessionId={sessionId} openRows={openRows} setRowOpen={setRowOpen} />
+						<TaskCards
+							tasks={finished}
+							sessionId={sessionId}
+							openRows={openRows}
+							setRowOpen={setRowOpen}
+							workflowRuns={workflowRuns}
+						/>
 					)}
 				</section>
 			)}

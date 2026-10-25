@@ -328,6 +328,69 @@ describe("extractBackgroundTasks", () => {
 		});
 	});
 
+	it("lists a Workflow launch as a workflow task under its harness task id, settled by its notification or a TaskStop", () => {
+		const launch = (id: string, taskId: string, name: string, at: string): TranscriptRecord[] => [
+			toolUse(id, "Workflow", {scriptPath: `/fab/${name}.js`, description: `Run ${name}`}, at),
+			toolResult(
+				id,
+				`Workflow launched in background. Task ID: ${taskId}`,
+				{
+					status: "async_launched",
+					taskId,
+					taskType: "local_workflow",
+					workflowName: name,
+					runId: `wf_${taskId}`,
+					summary: `Run ${name}`,
+					transcriptDir: "/fab/transcripts",
+					scriptPath: `/fab/${name}.js`,
+				},
+				at,
+			),
+		];
+		const records = [
+			...launch("toolu_wf_done", "wfab1done", "fab-done", "2026-09-28T10:00:00.000Z"),
+			...launch("toolu_wf_live", "wfab1live", "fab-live", "2026-09-28T10:01:00.000Z"),
+			...launch("toolu_wf_stop", "wfab1stop", "fab-stop", "2026-09-28T10:02:00.000Z"),
+			notification(
+				[
+					"<task-id>wfab1done</task-id>",
+					"<tool-use-id>toolu_wf_done</tool-use-id>",
+					"<task-type>local_workflow</task-type>",
+					"<status>completed</status>",
+					'<summary>Workflow "fab-done" completed</summary>',
+				].join("\n"),
+				"2026-09-28T10:03:00.000Z",
+			),
+			toolUse("toolu_stop", "TaskStop", {task_id: "wfab1stop"}, "2026-09-28T10:04:00.000Z"),
+			toolResult("toolu_stop", "Stopped", {message: "Stopped"}, "2026-09-28T10:04:01.000Z"),
+		];
+		const workflow = (
+			id: string,
+			toolUseId: string,
+			name: string,
+			at: string,
+			status: BackgroundTask["status"],
+		) => ({
+			id,
+			toolUseId,
+			kind: "workflow" as const,
+			description: name,
+			command: null,
+			status,
+			output: null,
+			summary: status === "completed" ? `Workflow "${name}" completed` : null,
+			outputFile: null,
+			startedAt: at,
+		});
+		expect(extractBackgroundTasks(records, {sessionActive: true})).toStrictEqual({
+			running: [workflow("wfab1live", "toolu_wf_live", "fab-live", "2026-09-28T10:01:00.000Z", "running")],
+			finished: [
+				workflow("wfab1stop", "toolu_wf_stop", "fab-stop", "2026-09-28T10:02:00.000Z", "stopped"),
+				workflow("wfab1done", "toolu_wf_done", "fab-done", "2026-09-28T10:00:00.000Z", "completed"),
+			],
+		});
+	});
+
 	it("ignores foreground bash calls", () => {
 		expect(
 			extractBackgroundTasks(

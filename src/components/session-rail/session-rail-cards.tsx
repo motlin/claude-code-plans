@@ -14,6 +14,7 @@ import {
 	Plug,
 	Server,
 	SquareTerminal,
+	Workflow,
 	type LucideIcon,
 } from "lucide-react";
 
@@ -585,6 +586,7 @@ const TASK_ICONS: Record<BackgroundTask["kind"], LucideIcon> = {
 	bash: SquareTerminal,
 	agent: Bot,
 	monitor: Gauge,
+	workflow: Workflow,
 	task: ListChecks,
 };
 

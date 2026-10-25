@@ -551,7 +551,7 @@ function SessionView({
 			hookContext?.backgroundTasks,
 		],
 	);
-	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length);
+	useRegisterBackgroundTasksPane(sessionId, backgroundTasks, subagents.length, workflowRuns);
 	const runningBackgroundLaunches = useMemo(
 		() =>
 			new Map(

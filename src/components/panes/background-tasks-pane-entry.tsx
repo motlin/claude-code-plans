@@ -1,5 +1,6 @@
 import {useEffect} from "react";
 
+import type {SessionWorkflowRun} from "../../lib/api/session-workflow-runs";
 import type {BackgroundTaskGroups} from "../../lib/background-tasks";
 import {deferredPane} from "./deferred-pane";
 import {registerPane} from "./pane-registry";
@@ -16,6 +17,7 @@ export function useRegisterBackgroundTasksPane(
 	sessionId: string,
 	groups: BackgroundTaskGroups,
 	subagentCount: number,
+	workflowRuns?: readonly SessionWorkflowRun[],
 ): void {
 	useEffect(
 		() =>
@@ -25,10 +27,15 @@ export function useRegisterBackgroundTasksPane(
 					<DeferredBackgroundTasksList
 						key={sessionId}
 						resetKey={sessionId}
-						props={{groups, sessionId, subagents: {sessionId, count: subagentCount}}}
+						props={{
+							groups,
+							sessionId,
+							subagents: {sessionId, count: subagentCount},
+							...(workflowRuns === undefined ? null : {workflowRuns}),
+						}}
 					/>
 				),
 			}),
-		[sessionId, groups, subagentCount],
+		[sessionId, groups, subagentCount, workflowRuns],
 	);
 }

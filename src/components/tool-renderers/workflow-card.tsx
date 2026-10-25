@@ -21,7 +21,7 @@ const CARD_SHELL =
 	"group/tool my-[6px] relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g5 rounded-r6 ps-3 py-2.5 text-start text-pretty";
 
 /** Re-renders every second while mounted, like upstream's ticking `now` (`W$(!0)`). */
-function useNow(): number {
+export function useNow(): number {
 	const [now, setNow] = useState(() => Date.now());
 	useEffect(() => {
 		const timer = setInterval(() => {
@@ -34,11 +34,11 @@ function useNow(): number {
 	return now;
 }
 
-/** Upstream `V$`: "N agent(s)" with the number in secondary ink. */
-function AgentCount({total}: {total: number}) {
+/** Upstream `V$`: "N agent(s)" with the number in secondary ink, unless muted. */
+export function AgentCount({total, muted = false}: {total: number; muted?: boolean}) {
 	return (
 		<span className="whitespace-nowrap">
-			<span className="text-secondary">{total}</span> {total === 1 ? "agent" : "agents"}
+			{muted ? total : <span className="text-secondary">{total}</span>} {total === 1 ? "agent" : "agents"}
 		</span>
 	);
 }

@@ -3,8 +3,9 @@ import type {HookBackgroundTaskPayload} from "./hook-events";
 import {asRecord} from "./narrow";
 import {isRunningBackgroundTask} from "./session-state";
 import type {ActiveSubagent} from "./subagents";
+import {workflowCallName} from "./workflow-name";
 
-export type BackgroundTaskKind = "bash" | "agent" | "monitor" | "task";
+export type BackgroundTaskKind = "bash" | "agent" | "monitor" | "workflow" | "task";
 export type BackgroundTaskStatus = "running" | "completed" | "failed" | "stopped";
 
 /** One row of the Background tasks pane. */
@@ -72,6 +73,7 @@ const KIND_LABELS: Record<BackgroundTaskKind, string> = {
 	bash: "Bash",
 	agent: "Agent",
 	monitor: "Monitor",
+	workflow: "Workflow",
 	task: "Task",
 };
 
@@ -268,6 +270,7 @@ function hookKind(type: string): BackgroundTaskKind {
 	if (type.includes("bash") || type.includes("shell")) return "bash";
 	if (type.includes("agent")) return "agent";
 	if (type.includes("monitor")) return "monitor";
+	if (type.includes("workflow")) return "workflow";
 	return "task";
 }
 
@@ -390,32 +393,27 @@ export function extractBackgroundTasks(
 				const background = input["run_in_background"] === true;
 				const description = asString(input["description"]);
 				const command = asString(input["command"]);
+				const launch = (kind: BackgroundTaskKind, label: string | null | undefined): void => {
+					track({
+						id,
+						toolUseId: id,
+						kind,
+						description: label ?? "",
+						command,
+						status: "running",
+						output: null,
+						summary: null,
+						outputFile: null,
+						startedAt: timestamp,
+					});
+				};
 				if (name === "Bash" && background) {
-					track({
-						id,
-						toolUseId: id,
-						kind: "bash",
-						description: description ?? command ?? "",
-						command,
-						status: "running",
-						output: null,
-						summary: null,
-						outputFile: null,
-						startedAt: timestamp,
-					});
+					launch("bash", description ?? command);
 				} else if (name === "Monitor") {
-					track({
-						id,
-						toolUseId: id,
-						kind: "monitor",
-						description: description ?? command ?? "",
-						command,
-						status: "running",
-						output: null,
-						summary: null,
-						outputFile: null,
-						startedAt: timestamp,
-					});
+					launch("monitor", description ?? command);
+				} else if (name === "Workflow") {
+					// Its launch result names the harness task id; an error result drops it.
+					launch("workflow", workflowCallName(input) ?? description);
 				} else if (name === "Agent") {
 					pendingAgents.set(id, {description: description ?? "", startedAt: timestamp});
 				} else if (name === "TaskOutput" || name === "BashOutput") {

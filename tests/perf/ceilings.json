@@ -61,10 +61,10 @@
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 614618,
+		"ceiling": 620775,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Rewind picker wiring (Esc Esc window listener, /rewind host command, the E_ open gate and turn list, 2026-10-24) is static on the session route; the picker dialog itself stays deferred until first open. Session cold JS had drifted to 613077 gzip / 1845105 raw within tolerance at da7ac3c0 and this takes it to 614618 gzip / 1848673 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Workflows in the Background tasks pane (2026-10-24): the eager task extraction tracks Workflow launches as a workflow kind and the session page hands the pane its workflow runs; the workflow task card itself loads with the deferred pane. Session cold JS had drifted to 620015 gzip within tolerance at 8fb65f6a and this takes it to 620775 gzip / 1863214 raw. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.raw": {
