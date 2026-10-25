@@ -158,7 +158,7 @@ import {HighlightRuns} from "./highlight-runs";
 import {type PaletteCardSession, PaletteRowActionsButton, PaletteRowActionsCard} from "./palette-row-actions";
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast-context";
-import {Shortcut} from "./ui/shortcut";
+import {Shortcut, WIDE_KEYCAP_CLASS} from "./ui/shortcut";
 import {Spinner} from "./ui/spinner";
 import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
@@ -1586,6 +1586,7 @@ function PalettePopup({
 	const [listRef, contentHeight] = useListContentHeight();
 	const now = Date.now();
 	const canSend = canStart && startStep === "idle";
+	const addFilesKeys = useShortcutKeys("add_files").keys;
 
 	function openFilePicker() {
 		fileInputRef.current?.click();
@@ -2100,7 +2101,22 @@ function PalettePopup({
 
 					<FooterCollapse open={!footerCollapsed}>
 						{compose ? (
-							<PaletteFooter compose hints={[["Send", ["enter"]]]} />
+							<PaletteFooter
+								compose
+								hints={[
+									["Send", ["enter"]],
+									["Add files or photos", [addFilesKeys]],
+								]}
+								trailing={
+									<ViewHint
+										label="Search"
+										disabled={startStep !== "idle"}
+										onSwitch={() => {
+											switchView("search");
+										}}
+									/>
+								}
+							/>
 						) : (
 							<PaletteFooter
 								hints={[
@@ -2164,22 +2180,32 @@ const ICON_BUTTON_BASE_CLASS =
 	"relative flex aspect-square shrink-0 items-center justify-center transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
 const ICON_BUTTON_CLASS = `${ICON_BUTTON_BASE_CLASS} h-7 w-7`;
 
-/** Upstream's keyboard-hint footer: "Close Esc · Change type ←→ · Filters / · Actions ⌥⏎", or "Send ⏎" in Compose. */
-/** Upstream's footer view hint for the sidebar Search entry: a ghost "Compose ⇥" that switches views like Tab. */
-function ViewHint({label, onSwitch}: {label: string; onSwitch: () => void}) {
+/** Upstream's footer view hint: a ghost "Compose Tab" or "Search Tab" that switches views like Tab. */
+function ViewHint({
+	label,
+	disabled = false,
+	onSwitch,
+}: {
+	label: string;
+	/** Upstream disables it while a Compose send is launching. */
+	disabled?: boolean;
+	onSwitch: () => void;
+}) {
 	return (
 		<button
 			type="button"
 			aria-keyshortcuts="Tab"
+			data-palette-own-keys=""
+			disabled={disabled}
 			onMouseDown={(event) => {
 				event.preventDefault();
 			}}
 			onClick={onSwitch}
-			className="inline-flex h-5 cursor-pointer items-center rounded-r4 px-1.5 text-xs text-ink-muted hover:bg-fill-ghost-hover hover:text-secondary"
+			className="inline-flex h-5 cursor-pointer items-center rounded-r4 px-1.5 text-xs text-ink-muted hover:bg-fill-ghost-hover hover:text-secondary disabled:pointer-events-none disabled:opacity-40"
 		>
 			{label}
-			<kbd aria-hidden="true" className="ms-1 font-sans">
-				⇥
+			<kbd aria-hidden="true" className={`ms-1 ${WIDE_KEYCAP_CLASS}`}>
+				Tab
 			</kbd>
 		</button>
 	);
@@ -2231,6 +2257,7 @@ function FooterCollapse({open, children}: {open: boolean; children: ReactNode}) 
 	);
 }
 
+/** Upstream's keyboard-hint footer: "Close Esc · Change type ←→ · Filters / · Actions ⌥⏎", or "Send ⏎ · Add files or photos ⌘U" in Compose. */
 function PaletteFooter({
 	compose = false,
 	hints,
@@ -2255,7 +2282,7 @@ function PaletteFooter({
 			<div className="flex min-h-5 items-center justify-between text-caption text-ink-muted">
 				<div className="flex items-center gap-5">
 					{hints.map(([label, keys, className]) => (
-						<div key={label} className={className ?? "flex items-center gap-2"}>
+						<div key={label} data-palette-footer-hint="" className={className ?? "flex items-center gap-2"}>
 							<span>{label}</span>
 							<span className="flex items-center gap-[2px]">
 								{keys.map((key) => (

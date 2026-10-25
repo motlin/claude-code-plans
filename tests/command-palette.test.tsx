@@ -1037,9 +1037,44 @@ describe("CommandPalette shell", () => {
 				groups: [["Quick actions", ["New session"]]],
 				results: null,
 				tabs: null,
-				footer: "Send⏎Enter",
+				footer: "Send⏎EnterAdd files or photos⌘CommandUSearchTab",
 			});
 		});
+	});
+
+	it("gives Compose upstream's footer: Send ⏎, Add files or photos ⌘U and a Search Tab view hint", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		const bar = footer(dialog) as HTMLElement;
+		const hint = within(bar).getByRole("button", {name: "Search"});
+
+		expect({
+			hints: [...bar.querySelectorAll("[data-palette-footer-hint]")].map((node) => node.textContent),
+			text: hint.textContent,
+			keys: hint.getAttribute("aria-keyshortcuts"),
+			ownKeys: hint.hasAttribute("data-palette-own-keys"),
+			disabled: (hint as HTMLButtonElement).disabled,
+			kbd: hint.querySelector("kbd")?.className,
+		}).toStrictEqual({
+			hints: ["Send⏎Enter", "Add files or photos⌘CommandU"],
+			text: "SearchTab",
+			keys: "Tab",
+			ownKeys: true,
+			disabled: false,
+			kbd: "ms-1 inline-flex shrink-0 items-center justify-center h-[calc(1em+6px)] rounded-r3 [color:var(--shortcut-cap-ink)] bg-transparent border border-[color:var(--shortcut-cap-line)] [font-family:inherit] [font-variation-settings:inherit] [line-height:1] min-w-[calc(1em+6px)] px-[3px]",
+		});
+
+		composer.focus();
+		const pressed = fireEvent.mouseDown(hint);
+		fireEvent.click(hint);
+
+		await within(dialog).findByRole("combobox", {name: "Search"});
+		expect({
+			pressed,
+			stored: localStorage.getItem("cmdk-mode"),
+			focused: document.activeElement === within(dialog).getByRole("combobox"),
+		}).toStrictEqual({pressed: false, stored: "search", focused: true});
 	});
 
 	it("gives Compose a paperclip and Send button and no Close", async () => {
@@ -1050,11 +1085,11 @@ describe("CommandPalette shell", () => {
 		expect({
 			buttons: within(dialog)
 				.getAllByRole("button")
-				.map((button) => button.getAttribute("aria-label")),
+				.map((button) => button.getAttribute("aria-label") ?? button.textContent),
 			fileInput: dialog.querySelector('input[type="file"]')?.getAttribute("aria-label"),
 			send: within(dialog).getByRole<HTMLButtonElement>("button", {name: "Send"}).disabled,
 		}).toStrictEqual({
-			buttons: ["Add files or photos", "Send"],
+			buttons: ["Add files or photos", "Send", "SearchTab"],
 			fileInput: "Add files or photos",
 			send: false,
 		});
@@ -1943,7 +1978,7 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		);
 	}
 
-	it("opens the sidebar Search entry without the floating pill, with upstream's right-aligned Compose ⇥ footer hint", async () => {
+	it("opens the sidebar Search entry without the floating pill, with upstream's right-aligned Compose Tab footer hint", async () => {
 		const composer = await renderPalette();
 		pressK(composer, {metaKey: true, shiftKey: true});
 		const dialog = await screen.findByRole("dialog", {name: "Search"});
@@ -1952,7 +1987,7 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 			pill: within(dialog).queryByRole("radiogroup", {name: "Search or compose"}),
 			keys: hint.getAttribute("aria-keyshortcuts"),
 			kbd: hint.querySelector("kbd")?.textContent,
-		}).toStrictEqual({pill: null, keys: "Tab", kbd: "⇥"});
+		}).toStrictEqual({pill: null, keys: "Tab", kbd: "Tab"});
 
 		fireEvent.click(hint);
 

@@ -356,6 +356,27 @@ describe("⌘K palette: start a new session", () => {
 		});
 	});
 
+	it("disables Compose's Search Tab view hint while launching", async () => {
+		const {dialog, input} = await openPalette();
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		fireEvent.change(composer, {target: {value: "summarize this"}});
+		fireEvent.click(within(dialog).getByRole("button", {name: "Send"}));
+		await waitFor(() => {
+			expect(headings(dialog)).toStrictEqual(["Choose a project"]);
+		});
+		const row = [...dialog.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
+			(item) => item.querySelector("[data-palette-label]")?.textContent === "older",
+		);
+		if (row === undefined) throw new Error("No project row older");
+		fireEvent.click(row);
+
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
+		expect(within(dialog).getByRole<HTMLButtonElement>("button", {name: "Search"}).disabled).toBe(true);
+	});
+
 	it("navigates to the new session when SessionStart for that cwd arrives", async () => {
 		launchResponse = async () =>
 			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));

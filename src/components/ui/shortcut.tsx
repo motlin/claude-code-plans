@@ -7,6 +7,8 @@ const KEYCAP_CLASS =
 	"inline-flex shrink-0 items-center justify-center h-[calc(1em+6px)] rounded-r3 [color:var(--shortcut-cap-ink)] bg-transparent border border-[color:var(--shortcut-cap-line)] [font-family:inherit] [font-variation-settings:inherit] [line-height:1]";
 const SQUARE_CLASS = "w-[calc(1em+6px)] px-0";
 const WIDE_CLASS = "min-w-[calc(1em+6px)] px-[3px]";
+/** A multi-letter keycap like upstream's literal "Tab" cap, which skips the Mac ⇥ glyph. */
+export const WIDE_KEYCAP_CLASS = `${KEYCAP_CLASS} ${WIDE_CLASS}`;
 
 const WRAPPER_CLASS = {
 	keycap: "inline-flex shrink-0 items-center gap-[2px] text-caption",
