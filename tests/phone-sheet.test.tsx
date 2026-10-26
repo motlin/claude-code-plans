@@ -469,7 +469,7 @@ describe("narrow viewport forced collapse", () => {
 		const root = screen.getByTestId("sidebar-collapsed");
 
 		act(() => {
-			fireEvent.pointerEnter(trigger);
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
 		});
 		fireEvent.click(trigger);
 		const afterClick = root.hasAttribute("data-hovering");

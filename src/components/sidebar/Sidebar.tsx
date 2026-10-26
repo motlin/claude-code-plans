@@ -1,6 +1,7 @@
 import {Link, useMatches} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {
+	useCallback,
 	useEffect,
 	useRef,
 	useState,
@@ -397,9 +398,46 @@ const PEEK_ID = "sidebar-peek-popover";
  * In the forced-collapse regime (640–767px) a click toggles the peek open instead of expanding
  * the persisted preference.
  */
+/** Upstream's peek close grace (ms) after the pointer leaves the trigger, bridge or body. */
+const PEEK_CLOSE_GRACE_MS = 180;
+
+/**
+ * Whether the peek must stay open past its grace, as upstream re-arms the close while its More/sort
+ * menu is open (`overflowMenuOpen`) or a text input inside the peek has focus.
+ */
+function isPeekInUse(peek: HTMLElement | null): boolean {
+	if (peek === null) return false;
+	if (peek.querySelector('[aria-haspopup][aria-expanded="true"]') !== null) return true;
+	const active = document.activeElement;
+	if (!(active instanceof HTMLElement) || !peek.contains(active)) return false;
+	if (active.isContentEditable || active instanceof HTMLTextAreaElement) return true;
+	return active instanceof HTMLInputElement && (active.type === "text" || active.type === "search");
+}
+
 function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; children: ReactNode}) {
 	const [hovering, setHovering] = useState(false);
 	const rootRef = useRef<HTMLDivElement>(null);
+	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+	const cancelClose = useCallback(() => {
+		clearTimeout(closeTimerRef.current);
+		closeTimerRef.current = undefined;
+	}, []);
+
+	// Upstream's `fu` → `RA`: leaving starts a grace that re-arms while the peek is still in use.
+	const scheduleClose = useCallback(() => {
+		cancelClose();
+		closeTimerRef.current = setTimeout(() => {
+			if (isPeekInUse(document.getElementById(PEEK_ID))) {
+				scheduleClose();
+				return;
+			}
+			closeTimerRef.current = undefined;
+			setHovering(false);
+		}, PEEK_CLOSE_GRACE_MS);
+	}, [cancelClose]);
+
+	useEffect(() => cancelClose, [cancelClose]);
 
 	// A tapped-open peek has no pointerleave to close it, so an outside press dismisses it.
 	useEffect(() => {
@@ -419,11 +457,14 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 			ref={rootRef}
 			data-testid="sidebar-collapsed"
 			data-hovering={hovering ? "" : undefined}
-			onPointerEnter={() => {
+			onPointerEnter={(event) => {
+				if (event.pointerType !== "mouse") return;
+				cancelClose();
 				setHovering(true);
 			}}
-			onPointerLeave={() => {
-				setHovering(false);
+			onPointerLeave={(event) => {
+				if (event.pointerType !== "mouse") return;
+				scheduleClose();
 			}}
 			className="group/peek absolute left-3 top-3 z-50 flex"
 		>

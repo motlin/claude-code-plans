@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
 import {Sidebar} from "../src/components/sidebar/Sidebar";
@@ -87,7 +87,22 @@ async function renderCollapsedSidebar({narrowViewport = false}: {narrowViewport?
 	return waitFor(() => screen.getByRole("button", {name: "Show sidebar"}));
 }
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.useRealTimers();
+});
+
+/** Fake only the timeout pair after render, so the router's async load still resolves. */
+function fakeTimeouts() {
+	vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+}
+
+/** Run the peek's 180ms close grace (upstream's `fu` → `RA`). */
+function runCloseGrace() {
+	act(() => {
+		vi.advanceTimersByTime(180);
+	});
+}
 
 beforeEach(() => {
 	installLocalStorage();
@@ -131,6 +146,7 @@ describe("collapsed sidebar peek", () => {
 
 	it("shows the popover while the trigger is hovered and hides it after leaving", async () => {
 		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
 		const root = screen.getByTestId("sidebar-collapsed");
 		const peek = screen.getByTestId("sidebar-peek");
 
@@ -141,7 +157,7 @@ describe("collapsed sidebar peek", () => {
 		}).toEqual({hovering: false, ariaHidden: "true", inert: true});
 
 		act(() => {
-			fireEvent.pointerEnter(trigger);
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
 		});
 		expect({
 			hovering: root.hasAttribute("data-hovering"),
@@ -151,8 +167,9 @@ describe("collapsed sidebar peek", () => {
 		}).toEqual({hovering: true, ariaHidden: null, inert: false, nav: true});
 
 		act(() => {
-			fireEvent.pointerLeave(trigger);
+			fireEvent.pointerLeave(trigger, {pointerType: "mouse"});
 		});
+		runCloseGrace();
 		expect({
 			hovering: root.hasAttribute("data-hovering"),
 			ariaHidden: peek.getAttribute("aria-hidden"),
@@ -161,12 +178,13 @@ describe("collapsed sidebar peek", () => {
 
 	it("keeps the peek open while the pointer moves across the bridge into the popover", async () => {
 		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
 		const root = screen.getByTestId("sidebar-collapsed");
 		const bridge = screen.getByTestId("sidebar-peek-bridge");
 		const peek = screen.getByTestId("sidebar-peek");
 
 		act(() => {
-			fireEvent.pointerEnter(trigger);
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
 		});
 		act(() => {
 			fireEvent.pointerOut(trigger, {relatedTarget: bridge});
@@ -179,8 +197,9 @@ describe("collapsed sidebar peek", () => {
 		expect(root.hasAttribute("data-hovering")).toBe(true);
 
 		act(() => {
-			fireEvent.pointerLeave(peek);
+			fireEvent.pointerLeave(peek, {pointerType: "mouse"});
 		});
+		runCloseGrace();
 		expect(root.hasAttribute("data-hovering")).toBe(false);
 	});
 
@@ -213,6 +232,7 @@ describe("collapsed sidebar peek", () => {
 
 	it("points the trigger at the peek with aria-controls and flips aria-expanded on hover", async () => {
 		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
 		const peek = screen.getByTestId("sidebar-peek");
 
 		expect({
@@ -222,13 +242,14 @@ describe("collapsed sidebar peek", () => {
 		expect(peek.id).not.toBe("");
 
 		act(() => {
-			fireEvent.pointerEnter(trigger);
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
 		});
 		expect(trigger.getAttribute("aria-expanded")).toBe("true");
 
 		act(() => {
-			fireEvent.pointerLeave(trigger);
+			fireEvent.pointerLeave(trigger, {pointerType: "mouse"});
 		});
+		runCloseGrace();
 		expect(trigger.getAttribute("aria-expanded")).toBe("false");
 	});
 
@@ -275,5 +296,127 @@ describe("collapsed sidebar peek", () => {
 		expect(readSidebarState().collapsed).toBe(false);
 		expect(screen.getByRole("button", {name: "Hide sidebar"}).tagName).toBe("BUTTON");
 		expect(screen.queryByTestId("sidebar-collapsed")).toBe(null);
+	});
+});
+
+describe("collapsed sidebar peek close grace", () => {
+	it("holds the peek for 180ms after the pointer leaves, then closes", async () => {
+		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
+		const root = screen.getByTestId("sidebar-collapsed");
+
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		act(() => {
+			fireEvent.pointerLeave(root, {pointerType: "mouse"});
+		});
+		act(() => {
+			vi.advanceTimersByTime(179);
+		});
+		const at179 = root.hasAttribute("data-hovering");
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+
+		expect({at179, at180: root.hasAttribute("data-hovering")}).toStrictEqual({at179: true, at180: false});
+	});
+
+	it("cancels the close when the pointer comes back within the grace", async () => {
+		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
+		const root = screen.getByTestId("sidebar-collapsed");
+
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		act(() => {
+			fireEvent.pointerLeave(root, {pointerType: "mouse"});
+		});
+		act(() => {
+			vi.advanceTimersByTime(100);
+		});
+		act(() => {
+			fireEvent.pointerEnter(root, {pointerType: "mouse"});
+		});
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
+
+		expect(root.hasAttribute("data-hovering")).toBe(true);
+	});
+
+	it("stays open while a text field inside the peek has focus and closes 180ms after it blurs", async () => {
+		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
+		const root = screen.getByTestId("sidebar-collapsed");
+		const peek = screen.getByTestId("sidebar-peek");
+
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		const field = document.createElement("input");
+		field.type = "text";
+		peek.append(field);
+		act(() => {
+			field.focus();
+			fireEvent.pointerLeave(root, {pointerType: "mouse"});
+		});
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
+		const whileFocused = root.hasAttribute("data-hovering");
+
+		act(() => {
+			field.blur();
+		});
+		act(() => {
+			vi.advanceTimersByTime(180);
+		});
+
+		expect({whileFocused, afterBlur: root.hasAttribute("data-hovering")}).toStrictEqual({
+			whileFocused: true,
+			afterBlur: false,
+		});
+		field.remove();
+	});
+
+	it("stays open while a menu opened from the peek is open", async () => {
+		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
+		const root = screen.getByTestId("sidebar-collapsed");
+		const peek = screen.getByTestId("sidebar-peek");
+
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		const more = within(peek).getByRole("button", {name: "More navigation items"});
+		act(() => {
+			fireEvent.click(more);
+		});
+		const menuOpened = more.getAttribute("aria-expanded");
+		act(() => {
+			fireEvent.pointerLeave(root, {pointerType: "mouse"});
+		});
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
+
+		expect({menuOpened, whileMenuOpen: root.hasAttribute("data-hovering")}).toStrictEqual({
+			menuOpened: "true",
+			whileMenuOpen: true,
+		});
+	});
+
+	it("ignores touch and pen hovers", async () => {
+		const trigger = await renderCollapsedSidebar();
+		const root = screen.getByTestId("sidebar-collapsed");
+
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "touch"});
+			fireEvent.pointerEnter(root, {pointerType: "pen"});
+		});
+
+		expect(root.hasAttribute("data-hovering")).toBe(false);
 	});
 });
