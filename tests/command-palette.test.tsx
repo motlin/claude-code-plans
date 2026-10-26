@@ -1047,7 +1047,7 @@ describe("CommandPalette shell", () => {
 				tabs: within(dialog).queryByRole("tablist", {name: "Type"}),
 				footer: footer(dialog)?.textContent,
 			}).toStrictEqual({
-				groups: [["Quick actions", ["New session"]]],
+				groups: [["Quick actions", ["New session“Settings”"]]],
 				results: null,
 				tabs: null,
 				footer: "Send⏎EnterAdd files or photos⌘CommandUSearchTab",

@@ -265,16 +265,37 @@ describe("⌘K palette: start a new session", () => {
 		});
 	});
 
-	it("shows the prompt and a project chip on the long-prompt New session row", async () => {
+	it("renders upstream's send_message row: ChatAdd-like icon, the quoted prompt inline at 50% opacity, and a project chip", async () => {
 		const {dialog, input} = await openPalette();
 
 		fireEvent.change(input, {target: {value: LONG_PROMPT}});
 
 		const row = newSessionRow(dialog);
 		expect({
-			prompt: row.querySelector("[data-palette-prompt]")?.textContent,
+			label: row.querySelector("[data-palette-label]")?.textContent,
+			labelClass: row.querySelector("[data-palette-label]")?.className,
+			promptClass: row.querySelector("[data-palette-prompt]")?.className,
+			promptHtml: row.querySelector("[data-palette-prompt]")?.innerHTML,
+			icon: row.querySelector("svg")?.classList.contains("lucide-message-square-plus"),
 			project: row.querySelector("[data-palette-project-chip]")?.textContent,
-		}).toStrictEqual({prompt: LONG_PROMPT, project: "it's"});
+		}).toStrictEqual({
+			label: `New session“${LONG_PROMPT}”`,
+			labelClass: "truncate",
+			promptClass: "opacity-50 ms-1.5",
+			promptHtml: `<span dir="auto"><span class="opacity-50">“</span>${LONG_PROMPT}<span class="opacity-50">”</span></span>`,
+			icon: true,
+			project: "it's",
+		});
+	});
+
+	it("quotes the raw query on the New session row, keeping a trailing space as upstream does", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {target: {value: `${"a".repeat(50)} `}});
+
+		expect(newSessionRow(dialog).querySelector("[data-palette-label]")?.textContent).toStrictEqual(
+			`New session“${"a".repeat(50)} ”`,
+		);
 	});
 
 	it("skips search above 50 characters: no /api/search request, no See all row, an empty live region", async () => {

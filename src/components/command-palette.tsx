@@ -19,6 +19,7 @@ import {
 	Brain,
 	CodeXml,
 	MessageSquare,
+	MessageSquarePlus,
 	MessagesSquare,
 	FolderOpen,
 	Search,
@@ -42,7 +43,6 @@ import {
 	Pencil,
 	Terminal,
 	GitFork,
-	Code,
 	Archive,
 	ArchiveRestore,
 	SquareSlash,
@@ -1877,7 +1877,7 @@ function PalettePopup({
 						{idle && offersNewSession && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 								<NewSessionItem
-									prompt={startPrompt}
+									prompt={query}
 									projectName={startProjectName}
 									onSelect={openStartPicker}
 								/>
@@ -2682,7 +2682,7 @@ function SearchResultItem({
 	return session ? <SessionRowActions onOpen={onRowActions}>{item}</SessionRowActions> : item;
 }
 
-/** Upstream's Quick actions "New session" row: the typed prompt plus the project it will start in. */
+/** Upstream's Quick actions send_message row: "New session", the raw prompt quoted inline, plus the project it will start in. */
 function NewSessionItem({
 	prompt,
 	projectName,
@@ -2696,13 +2696,17 @@ function NewSessionItem({
 		<Command.Item value={NEW_SESSION_VALUE} onSelect={onSelect} className={ROW_CLASS}>
 			<span className="flex min-w-0 flex-1 items-center gap-2">
 				<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
-					<Code />
+					<MessageSquarePlus />
 				</span>
-				<span data-palette-label="" className="shrink-0">
+				<span data-palette-label="" className="truncate">
 					New session
-				</span>
-				<span data-palette-prompt="" className="min-w-0 truncate text-xs text-ink-muted">
-					{prompt}
+					<span data-palette-prompt="" className="opacity-50 ms-1.5">
+						<span dir="auto">
+							<span className="opacity-50">“</span>
+							{prompt}
+							<span className="opacity-50">”</span>
+						</span>
+					</span>
 				</span>
 			</span>
 			{projectName !== undefined && (
