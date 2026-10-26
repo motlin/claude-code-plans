@@ -22,7 +22,13 @@ import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
-import {readSidebarState, SIDEBAR_STORAGE_KEY, useSidebarState, writeSidebarState} from "../src/lib/sidebar-store";
+import {
+	readSidebarState,
+	SIDEBAR_STORAGE_KEY,
+	useSidebarState,
+	useSidebarToggleShortcut,
+	writeSidebarState,
+} from "../src/lib/sidebar-store";
 import {COARSE_POINTER_QUERY, NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {readFileSync} from "node:fs";
 import {installLocalStorage} from "./fake-storage";
@@ -82,6 +88,7 @@ function DensityProbe() {
 
 function PersistedFrame() {
 	const {collapsed} = useSidebarState();
+	useSidebarToggleShortcut();
 	return (
 		<AppFrame collapsed={collapsed}>
 			<Outlet />
@@ -460,6 +467,29 @@ describe("narrow viewport forced collapse", () => {
 			hovering: screen.getByTestId("sidebar-collapsed").hasAttribute("data-hovering"),
 			stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
 		}).toStrictEqual({hovering: true, stored: storedBefore});
+	});
+
+	it("toggles the peek with Ctrl+B instead of the stored preference, as upstream's narrow toggleCollapsed", async () => {
+		mockViewport(700);
+		writeSidebarState({...readSidebarState(), collapsed: false});
+		const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+		await renderFrame();
+		const root = screen.getByTestId("sidebar-collapsed");
+		const pressToggle = () => {
+			act(() => {
+				fireEvent.keyDown(document.body, {key: "b", code: "KeyB", ctrlKey: true});
+			});
+			return {
+				hovering: root.hasAttribute("data-hovering"),
+				expanded: screen.getByRole("button", {name: "Show sidebar"}).getAttribute("aria-expanded"),
+				stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
+			};
+		};
+
+		expect({first: pressToggle(), second: pressToggle()}).toStrictEqual({
+			first: {hovering: true, expanded: "true", stored: storedBefore},
+			second: {hovering: false, expanded: "false", stored: storedBefore},
+		});
 	});
 
 	it("keeps the peek open after hover plus click and closes it on an outside press", async () => {

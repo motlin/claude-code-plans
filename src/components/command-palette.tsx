@@ -153,7 +153,7 @@ import {getSessionMenuItems, type SessionMenuCapability} from "../lib/session-me
 import {copySessionLink} from "../lib/session-open-in";
 import {requestSessionRename} from "../lib/session-rename-request";
 import {SHORTCUTS, type ShortcutId} from "../lib/shortcuts/registry";
-import {toggleSidebarCollapsed} from "../lib/sidebar-store";
+import {toggleSidebar} from "../lib/sidebar-store";
 import {type ShortcutKeys, useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {clearAll} from "../lib/unread-store";
 import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
@@ -1456,7 +1456,7 @@ function PalettePopup({
 			{
 				label: "Toggle sidebar",
 				icon: <PanelLeft />,
-				run: toggleSidebarCollapsed,
+				run: toggleSidebar,
 				shortcut: "toggle_sidebar",
 			},
 			{

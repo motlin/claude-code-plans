@@ -2,6 +2,7 @@ import {useSyncExternalStore} from "react";
 import {z} from "zod";
 
 import {useShortcut} from "../hooks/use-shortcut";
+import {NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY} from "./use-phone-sheet";
 
 export const SIDEBAR_STORAGE_KEY = "ccb-sidebar";
 
@@ -70,6 +71,30 @@ export function writeSidebarState(state: SidebarState): void {
 export function toggleSidebarCollapsed(): void {
 	const state = readSidebarState();
 	writeSidebarState({...state, collapsed: !state.collapsed});
+}
+
+const peekToggleListeners = new Set<() => void>();
+
+/** Subscribe the collapsed sidebar to peek toggles from ⌘B and the command palette. */
+export function onPeekToggle(listener: () => void): () => void {
+	peekToggleListeners.add(listener);
+	return () => peekToggleListeners.delete(listener);
+}
+
+function matches(query: string): boolean {
+	return typeof window.matchMedia === "function" && window.matchMedia(query).matches;
+}
+
+/**
+ * Upstream's `toggleCollapsed`: in the narrow forced-collapse band (640–767px) it toggles the hover
+ * peek and leaves the persisted preference alone; elsewhere it flips `collapsed`.
+ */
+export function toggleSidebar(): void {
+	if (peekToggleListeners.size > 0 && matches(NARROW_VIEWPORT_QUERY) && !matches(PHONE_SHEET_QUERY)) {
+		for (const listener of peekToggleListeners) listener();
+		return;
+	}
+	toggleSidebarCollapsed();
 }
 
 let peekSuppressedUntilLeave = false;
@@ -145,7 +170,7 @@ export function useSidebarToggleShortcut(): void {
 	useShortcut(
 		"toggle_sidebar",
 		() => {
-			toggleSidebarCollapsed();
+			toggleSidebar();
 		},
 		{allowInEditable: true},
 	);

@@ -28,6 +28,7 @@ import {activeSessionsQueryOptions} from "../../lib/api/sessions";
 import {
 	clearPeekSuppression,
 	isPeekSuppressed,
+	onPeekToggle,
 	setSidebarWidth,
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
@@ -459,6 +460,16 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 		},
 		[cancelClose],
 	);
+
+	// Narrow-band ⌘B (and the palette's Toggle sidebar) toggles the peek rather than the stored pref.
+	useEffect(() => {
+		if (!narrowViewport) return undefined;
+		return onPeekToggle(() => {
+			cancelClose();
+			setHovering((open) => !open);
+			setPeeked(true);
+		});
+	}, [narrowViewport, cancelClose]);
 
 	// A tapped-open peek has no pointerleave to close it, so an outside press dismisses it.
 	useEffect(() => {
