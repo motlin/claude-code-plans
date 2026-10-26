@@ -1,7 +1,31 @@
+import {useLayoutEffect, useRef} from "react";
+
 import {useShortcutKeys} from "../../hooks/use-shortcut";
-import {toggleSidebarCollapsed, useSidebarState} from "../../lib/sidebar-store";
+import {
+	isPeekSuppressed,
+	suppressPeekUntilLeave,
+	toggleSidebarCollapsed,
+	useSidebarState,
+} from "../../lib/sidebar-store";
 import {Tooltip} from "../ui/tooltip";
 import {SidebarToggleIcon} from "./primitives";
+
+type ToggleLabel = "Show sidebar" | "Hide sidebar";
+
+/**
+ * The toggle a button press just asked to receive focus, like upstream moving focus from Hide sidebar to
+ * the Show sidebar trigger (and back). It lives only until the next task: React commits the toggle in a
+ * microtask, and a press that doesn't swap the buttons (the forced-collapse trigger opening its peek)
+ * must never steal focus later.
+ */
+let pendingFocus: ToggleLabel | undefined;
+
+function handOffFocus(to: ToggleLabel): void {
+	pendingFocus = to;
+	setTimeout(() => {
+		pendingFocus = undefined;
+	}, 0);
+}
 
 /** The sidebar hide/show button, labelled and tooltipped like claude.ai/code. */
 export function SidebarToggleButton({
@@ -19,18 +43,40 @@ export function SidebarToggleButton({
 	const state = useSidebarState();
 	const collapsed = collapsedOverride ?? state.collapsed;
 	const {keys, ariaKeyShortcuts} = useShortcutKeys("toggle_sidebar");
-	const label = collapsed ? "Show sidebar" : "Hide sidebar";
+	const label: ToggleLabel = collapsed ? "Show sidebar" : "Hide sidebar";
+	const buttonRef = useRef<HTMLButtonElement>(null);
+
+	useLayoutEffect(() => {
+		if (pendingFocus !== label) return;
+		pendingFocus = undefined;
+		buttonRef.current?.focus();
+	}, [label]);
+
+	function toggle(): void {
+		handOffFocus(collapsed ? "Hide sidebar" : "Show sidebar");
+		onClick();
+	}
 
 	return (
-		<Tooltip content={label} shortcut={keys} side="bottom">
+		<Tooltip
+			content={label}
+			shortcut={keys}
+			side="bottom"
+			{...(collapsed ? {openWhen: () => !isPeekSuppressed()} : {})}
+		>
 			<button
+				ref={buttonRef}
 				type="button"
-				onClick={onClick}
+				onClick={(event) => {
+					// A mouse click (detail > 0) leaves the pointer over the trigger that replaces Hide.
+					if (!collapsed && event.detail > 0) suppressPeekUntilLeave();
+					toggle();
+				}}
 				onKeyDown={(event) => {
 					// Handle Enter directly (suppressing the native click) so it toggles exactly once.
 					if (event.key !== "Enter") return;
 					event.preventDefault();
-					onClick();
+					toggle();
 				}}
 				aria-label={label}
 				aria-keyshortcuts={ariaKeyShortcuts}

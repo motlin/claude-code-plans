@@ -420,3 +420,100 @@ describe("collapsed sidebar peek close grace", () => {
 		expect(root.hasAttribute("data-hovering")).toBe(false);
 	});
 });
+
+describe("collapsed sidebar peek after Hide sidebar", () => {
+	it("suppresses the peek and the trigger tooltip after a mouse click on Hide until the pointer leaves, and focuses Show sidebar", async () => {
+		const hide = await renderExpandedSidebar();
+		hide.focus();
+
+		act(() => {
+			fireEvent.click(hide, {detail: 1});
+		});
+		const trigger = screen.getByRole("button", {name: "Show sidebar"});
+		const root = screen.getByTestId("sidebar-collapsed");
+		act(() => {
+			fireEvent.pointerEnter(root, {pointerType: "mouse"});
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		await new Promise((resolve) => {
+			setTimeout(resolve, 400);
+		});
+		const suppressed = {
+			collapsed: readSidebarState().collapsed,
+			hovering: root.hasAttribute("data-hovering"),
+			focused: document.activeElement === trigger,
+			tooltip: screen.queryByRole("tooltip"),
+		};
+
+		act(() => {
+			fireEvent.pointerLeave(root, {pointerType: "mouse"});
+			fireEvent.pointerEnter(root, {pointerType: "mouse"});
+		});
+
+		expect({suppressed, reentered: root.hasAttribute("data-hovering")}).toStrictEqual({
+			suppressed: {collapsed: true, hovering: false, focused: true, tooltip: null},
+			reentered: true,
+		});
+	});
+
+	it("focuses Show sidebar when React commits the toggle on its own schedule, outside act", async () => {
+		const hide = await renderExpandedSidebar();
+		hide.focus();
+		const actEnvironment = Reflect.get(globalThis, "IS_REACT_ACT_ENVIRONMENT");
+		Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", false);
+		try {
+			hide.click();
+			await waitFor(() => screen.getByRole("button", {name: "Show sidebar"}));
+		} finally {
+			Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", actEnvironment);
+		}
+
+		expect(document.activeElement === screen.getByRole("button", {name: "Show sidebar"})).toBe(true);
+	});
+
+	it("does not suppress the peek after a keyboard Hide, but still focuses Show sidebar", async () => {
+		const hide = await renderExpandedSidebar();
+		hide.focus();
+
+		act(() => {
+			fireEvent.click(hide, {detail: 0});
+		});
+		const root = screen.getByTestId("sidebar-collapsed");
+		act(() => {
+			fireEvent.pointerEnter(root, {pointerType: "mouse"});
+		});
+
+		expect({
+			hovering: root.hasAttribute("data-hovering"),
+			focused: document.activeElement === screen.getByRole("button", {name: "Show sidebar"}),
+		}).toStrictEqual({hovering: true, focused: true});
+	});
+
+	it("focuses Hide sidebar after the collapsed trigger expands the sidebar", async () => {
+		const trigger = await renderCollapsedSidebar();
+		trigger.focus();
+
+		act(() => {
+			fireEvent.click(trigger, {detail: 1});
+		});
+
+		expect({
+			collapsed: readSidebarState().collapsed,
+			focused: document.activeElement === screen.getByRole("button", {name: "Hide sidebar"}),
+		}).toStrictEqual({collapsed: false, focused: true});
+	});
+
+	it("leaves focus alone when the sidebar is toggled by the shortcut instead of a button", async () => {
+		await renderExpandedSidebar();
+		const outside = document.createElement("button");
+		document.body.append(outside);
+		outside.focus();
+
+		act(() => {
+			writeSidebarState({...readSidebarState(), collapsed: true});
+		});
+
+		expect(document.activeElement === outside).toBe(true);
+		outside.remove();
+	});
+});

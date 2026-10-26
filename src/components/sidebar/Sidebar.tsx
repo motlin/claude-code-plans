@@ -26,6 +26,8 @@ import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
 import {activeSessionsQueryOptions} from "../../lib/api/sessions";
 import {
+	clearPeekSuppression,
+	isPeekSuppressed,
 	setSidebarWidth,
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
@@ -437,7 +439,13 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 		}, PEEK_CLOSE_GRACE_MS);
 	}, [cancelClose]);
 
-	useEffect(() => cancelClose, [cancelClose]);
+	useEffect(
+		() => () => {
+			cancelClose();
+			clearPeekSuppression();
+		},
+		[cancelClose],
+	);
 
 	// A tapped-open peek has no pointerleave to close it, so an outside press dismisses it.
 	useEffect(() => {
@@ -458,11 +466,12 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 			data-testid="sidebar-collapsed"
 			data-hovering={hovering ? "" : undefined}
 			onPointerEnter={(event) => {
-				if (event.pointerType !== "mouse") return;
+				if (event.pointerType !== "mouse" || isPeekSuppressed()) return;
 				cancelClose();
 				setHovering(true);
 			}}
 			onPointerLeave={(event) => {
+				clearPeekSuppression();
 				if (event.pointerType !== "mouse") return;
 				scheduleClose();
 			}}

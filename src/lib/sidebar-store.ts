@@ -72,6 +72,24 @@ export function toggleSidebarCollapsed(): void {
 	writeSidebarState({...state, collapsed: !state.collapsed});
 }
 
+let peekSuppressedUntilLeave = false;
+
+/**
+ * Upstream's `peekSuppressedUntilLeave` (`Gm`): a mouse click on Hide sidebar leaves the pointer over the
+ * collapsed trigger, which must not hover-open the peek (or its tooltip) until the pointer leaves it.
+ */
+export function suppressPeekUntilLeave(): void {
+	peekSuppressedUntilLeave = true;
+}
+
+export function isPeekSuppressed(): boolean {
+	return peekSuppressedUntilLeave;
+}
+
+export function clearPeekSuppression(): void {
+	peekSuppressedUntilLeave = false;
+}
+
 export function setSidebarWidth(width: number): void {
 	writeSidebarState({...readSidebarState(), width});
 }
