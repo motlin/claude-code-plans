@@ -233,21 +233,21 @@ describe("sidebar Pinned section", () => {
 		expect(toggle.getAttribute("aria-expanded")).toBe("false");
 	});
 
-	it("caps Pinned at 20 rows with Show N more", async () => {
-		const sessions = Array.from({length: 23}, (_, index) =>
+	it("caps Pinned at 5 rows and pages it 5 at a time with Show more", async () => {
+		const sessions = Array.from({length: 8}, (_, index) =>
 			session(`p${index}`, `Pinned ${index}`, "done", index + 1),
 		);
 		seedPins(sessions.map((pinned) => pinned.id));
 		const {container} = await renderGroups(sessions);
 
-		expect(rowTitles(pinnedSection(container))).toHaveLength(20);
+		expect(rowTitles(pinnedSection(container))).toHaveLength(5);
 		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Pinned"}));
 		await waitFor(() => {
-			expect(rowTitles(pinnedSection(container))).toHaveLength(23);
+			expect(rowTitles(pinnedSection(container))).toHaveLength(8);
 		});
 		fireEvent.click(screen.getByRole("button", {name: "Show less in Pinned"}));
 		await waitFor(() => {
-			expect(rowTitles(pinnedSection(container))).toHaveLength(20);
+			expect(rowTitles(pinnedSection(container))).toHaveLength(5);
 		});
 		expect(screen.getByRole("button", {name: "Show 3 more in Pinned"})).toBeTruthy();
 	});

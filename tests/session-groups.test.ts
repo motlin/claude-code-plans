@@ -119,7 +119,7 @@ describe("buildGroups state mode", () => {
 		).toStrictEqual([{head: ["child", "grandchild"]}, {}]);
 	});
 
-	it("caps Completed at 20 rows and reports the hidden count, leaving other groups uncapped", () => {
+	it("caps Completed at 5 rows and reports the hidden count, leaving other groups uncapped", () => {
 		const rows = [
 			...Array.from({length: 23}, (_, index) =>
 				row(`done-${index}`, {bucket: "done", lastActivityAt: NOW - (index + 1) * 60_000}),
@@ -139,25 +139,49 @@ describe("buildGroups state mode", () => {
 			{
 				key: "state-done",
 				label: "Completed",
-				rows: Array.from({length: 20}, (_, index) => `done-${index}`),
-				hiddenCount: 3,
+				rows: Array.from({length: 5}, (_, index) => `done-${index}`),
+				hiddenCount: 18,
 			},
 		]);
 	});
 
-	it("leaves groups whose Show N more was clicked uncapped", () => {
-		const rows = Array.from({length: 23}, (_, index) =>
+	it("pages a group 5 rows per Show more click, offering Show less only once nothing is hidden", () => {
+		const rows = Array.from({length: 45}, (_, index) =>
 			row(`done-${index}`, {bucket: "done", lastActivityAt: NOW - (index + 1) * 60_000}),
 		);
+		const page = (pages: number) => {
+			const [group] = buildGroups(rows, prefs(), NOW, pages === 0 ? {} : {"state-done": pages});
+			return {
+				shown: group?.rows.length,
+				hiddenCount: group?.hiddenCount,
+				canShowLess: group?.canShowLess,
+				hiddenAwaiting: group?.hiddenAwaiting,
+			};
+		};
 
-		expect(summarize(buildGroups(rows, prefs(), NOW, new Set(["state-done"])))).toStrictEqual([
-			{
-				key: "state-done",
-				label: "Completed",
-				rows: Array.from({length: 23}, (_, index) => `done-${index}`),
-				hiddenCount: 0,
-			},
+		expect([0, 1, 7, 8, 9].map(page)).toStrictEqual([
+			{shown: 5, hiddenCount: 40, canShowLess: false, hiddenAwaiting: false},
+			{shown: 10, hiddenCount: 35, canShowLess: false, hiddenAwaiting: false},
+			{shown: 40, hiddenCount: 5, canShowLess: false, hiddenAwaiting: false},
+			{shown: 45, hiddenCount: 0, canShowLess: true, hiddenAwaiting: false},
+			{shown: 45, hiddenCount: 0, canShowLess: true, hiddenAwaiting: false},
 		]);
+	});
+
+	it("flags a capped group whose hidden rows include one awaiting input", () => {
+		const rows = Array.from({length: 7}, (_, index) =>
+			row(`row-${index}`, {bucket: index === 6 ? "blocked" : "done", lastActivityAt: NOW - (index + 1) * 60_000}),
+		);
+		const hiddenAwaiting = (sortDirection: SessionListPrefs["sortDirection"]) =>
+			buildGroups(rows, prefs({groupBy: "none", sortBy: "name", sortDirection}), NOW).map((group) => [
+				group.hiddenCount,
+				group.hiddenAwaiting,
+			]);
+
+		expect({hidden: hiddenAwaiting("desc"), shown: hiddenAwaiting("asc")}).toStrictEqual({
+			hidden: [[2, true]],
+			shown: [[2, false]],
+		});
 	});
 
 	it("hides non-Working rows older than the Last activity window but keeps Working rows", () => {
@@ -184,7 +208,7 @@ describe("buildGroups state mode", () => {
 
 	it("keeps rows whose process still runs past the Last activity window and ahead of ended rows in their group", () => {
 		const rows = [
-			...Array.from({length: 21}, (_, index) =>
+			...Array.from({length: 6}, (_, index) =>
 				row(`ended-${index}`, {bucket: "done", lastActivityAt: NOW - (index + 1) * 60_000}),
 			),
 			row("live-day-old", {bucket: "done", live: true, lastActivityAt: NOW - DAY}),
@@ -195,7 +219,7 @@ describe("buildGroups state mode", () => {
 			{
 				key: "state-done",
 				label: "Completed",
-				rows: ["live-day-old", "live-stale", ...Array.from({length: 18}, (_, index) => `ended-${index}`)],
+				rows: ["live-day-old", "live-stale", ...Array.from({length: 3}, (_, index) => `ended-${index}`)],
 				hiddenCount: 3,
 			},
 		]);
@@ -296,8 +320,8 @@ describe("buildGroups date mode", () => {
 		]);
 	});
 
-	it("caps Older at 20 rows", () => {
-		const rows = Array.from({length: 25}, (_, index) =>
+	it("caps Older at 5 rows", () => {
+		const rows = Array.from({length: 10}, (_, index) =>
 			row(`old-${index}`, {lastActivityAt: NOW - (30 + index) * DAY}),
 		);
 
@@ -305,7 +329,7 @@ describe("buildGroups date mode", () => {
 			{
 				key: "date-older",
 				label: "Older",
-				rows: Array.from({length: 20}, (_, index) => `old-${index}`),
+				rows: Array.from({length: 5}, (_, index) => `old-${index}`),
 				hiddenCount: 5,
 			},
 		]);
@@ -368,7 +392,7 @@ describe("buildGroups custom mode", () => {
 	];
 
 	it("lists the groups in order, then Ungrouped, ordering rows manually first then by Sort by", () => {
-		expect(summarize(buildGroups(rows, prefs({groupBy: "custom"}), NOW, new Set(), custom))).toStrictEqual([
+		expect(summarize(buildGroups(rows, prefs({groupBy: "custom"}), NOW, {}, custom))).toStrictEqual([
 			{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
 			{
 				key: "custom-cg-gtd",
@@ -383,13 +407,7 @@ describe("buildGroups custom mode", () => {
 	it("shows empty groups when Show empty groups is on", () => {
 		expect(
 			summarize(
-				buildGroups(
-					rows,
-					prefs({groupBy: "custom", sortBy: "name", showEmptyGroups: true}),
-					NOW,
-					new Set(),
-					custom,
-				),
+				buildGroups(rows, prefs({groupBy: "custom", sortBy: "name", showEmptyGroups: true}), NOW, {}, custom),
 			),
 		).toStrictEqual([
 			{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
@@ -407,18 +425,24 @@ describe("buildGroups custom mode", () => {
 	it("omits Ungrouped when every row is grouped and treats unknown groups as Ungrouped", () => {
 		expect(
 			summarize(
-				buildGroups([row("blog-1"), row("stray")], prefs({groupBy: "custom"}), NOW, new Set(), {
-					...custom,
-					assignments: {"blog-1": "cg-blog", stray: "cg-deleted"},
-				}),
+				buildGroups(
+					[row("blog-1"), row("stray")],
+					prefs({groupBy: "custom"}),
+					NOW,
+					{},
+					{
+						...custom,
+						assignments: {"blog-1": "cg-blog", stray: "cg-deleted"},
+					},
+				),
 			),
 		).toStrictEqual([
 			{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
 			{key: "custom-ungrouped", label: "Ungrouped", rows: ["stray"], hiddenCount: 0},
 		]);
-		expect(
-			summarize(buildGroups([row("blog-1")], prefs({groupBy: "custom"}), NOW, new Set(), custom)),
-		).toStrictEqual([{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0}]);
+		expect(summarize(buildGroups([row("blog-1")], prefs({groupBy: "custom"}), NOW, {}, custom))).toStrictEqual([
+			{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
+		]);
 	});
 
 	it("puts every row in Ungrouped when no groups are given", () => {
@@ -430,7 +454,7 @@ describe("buildGroups custom mode", () => {
 	it("leaves pinned rows out of their group once split into the Pinned section", () => {
 		const withIds = rows.map((groupRow) => ({...groupRow, id: groupRow.sessionId}));
 		const {rest} = splitPinned(withIds, {pinnedIds: ["gtd-new", "blog-1"], pinnedOrder: []}, () => 0);
-		expect(summarize(buildGroups(rest, prefs({groupBy: "custom"}), NOW, new Set(), custom))).toStrictEqual([
+		expect(summarize(buildGroups(rest, prefs({groupBy: "custom"}), NOW, {}, custom))).toStrictEqual([
 			{key: "custom-cg-gtd", label: "GTD", rows: ["gtd-manual", "gtd-old"], hiddenCount: 0},
 			{key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0},
 		]);
@@ -438,8 +462,8 @@ describe("buildGroups custom mode", () => {
 });
 
 describe("buildGroups none mode", () => {
-	it("puts every row in Recents capped at 20", () => {
-		const rows = Array.from({length: 21}, (_, index) =>
+	it("puts every row in Recents capped at 5", () => {
+		const rows = Array.from({length: 6}, (_, index) =>
 			row(`r-${index}`, {
 				bucket: index % 2 === 0 ? "working" : "done",
 				lastActivityAt: NOW - (index + 1) * 60_000,
@@ -450,7 +474,7 @@ describe("buildGroups none mode", () => {
 			{
 				key: "recents",
 				label: "Recents",
-				rows: Array.from({length: 20}, (_, index) => `r-${index}`),
+				rows: Array.from({length: 5}, (_, index) => `r-${index}`),
 				hiddenCount: 1,
 			},
 		]);
@@ -545,14 +569,14 @@ describe("Show less", () => {
 	);
 
 	it("is offered only on a cappable group expanded past its cap", () => {
-		const states = (uncapped: ReadonlySet<string>, rows: SessionGroupRow[]) =>
-			buildGroups(rows, prefs(), NOW, uncapped).map((group) => [group.key, group.canShowLess]);
+		const states = (revealed: Readonly<Record<string, number>>, rows: SessionGroupRow[]) =>
+			buildGroups(rows, prefs(), NOW, revealed).map((group) => [group.key, group.canShowLess]);
 
 		expect({
-			capped: states(new Set(), done),
-			expanded: states(new Set(["state-done"]), done),
-			underCap: states(new Set(["state-done"]), done.slice(0, 5)),
-			project: buildGroups(done, prefs({groupBy: "project"}), NOW, new Set(["project-alpha"])).map((group) => [
+			capped: states({}, done),
+			expanded: states({"state-done": 4}, done),
+			underCap: states({"state-done": 1}, done.slice(0, 5)),
+			project: buildGroups(done, prefs({groupBy: "project"}), NOW, {"project-alpha": 4}).map((group) => [
 				group.key,
 				group.canShowLess,
 			]),
@@ -576,7 +600,7 @@ describe("shouldLoadNextPage", () => {
 	});
 
 	it("loads once every group shows all its rows", () => {
-		const groups = buildGroups(done, prefs(), NOW, new Set(["state-done"]));
+		const groups = buildGroups(done, prefs(), NOW, {"state-done": 4});
 		expect(shouldLoadNextPage(groups, done, prefs(), NOW)).toBe(true);
 	});
 

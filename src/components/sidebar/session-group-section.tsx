@@ -26,6 +26,7 @@ import {useSessionGroups} from "../../lib/session-group-store";
 import {assertNever} from "../../lib/assert-never";
 import {
 	customGroupIdOfKey,
+	GROUP_PAGE_SIZE,
 	isProjectGroupKey,
 	type SessionGroup,
 	type SessionListPrefs,
@@ -134,7 +135,7 @@ function useCollapsedBadgeKind(
 	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, getSnapshot);
 }
 
-/** A collapsible sidebar group: label row (caret on hover), session rows, "Show N more" / "Show less". */
+/** A collapsible sidebar group: label row (caret on hover), session rows, "Show more" / "Show less". */
 export function GroupSection({
 	group,
 	groupBy = "state",
@@ -144,6 +145,7 @@ export function GroupSection({
 	leadsList = false,
 	onShowMore,
 	onShowLess,
+	loadingMore = false,
 	dragRowProps,
 	pinnedIds,
 	familyHeadIds = NO_FAMILY_HEAD_IDS,
@@ -163,6 +165,8 @@ export function GroupSection({
 	leadsList?: boolean;
 	onShowMore: () => void;
 	onShowLess: () => void;
+	/** The next feed page this group's Show more asked for is loading. */
+	loadingMore?: boolean;
 	/** Makes each row a sidebar drag source (pin, reorder, unpin). */
 	dragRowProps?: (id: string) => SidebarDragRowProps;
 	/** Set for the Pinned section: its display order, which enables Move up / Move down. */
@@ -202,6 +206,7 @@ export function GroupSection({
 		sectionRef: sectionElement,
 	});
 	useSectionFocusRescue(group.key, sectionElement);
+	const [announcement, setAnnouncement] = useState("");
 	const toggle = (
 		<button
 			type="button"
@@ -305,18 +310,40 @@ export function GroupSection({
 							</Fragment>
 						);
 					})}
-					{group.hiddenCount > 0 && (
+					{loadingMore ? (
+						<OverflowRow disabled onClick={() => {}}>
+							Loading…
+						</OverflowRow>
+					) : group.hiddenCount > 0 ? (
 						<OverflowRow
-							ariaLabel={`Show ${group.hiddenCount} more in ${group.label}`}
-							onClick={onShowMore}
+							ariaLabel={`Show ${Math.min(GROUP_PAGE_SIZE, group.hiddenCount)} more in ${group.label}`}
+							onClick={() => {
+								setAnnouncement(
+									`Showing ${Math.min(GROUP_PAGE_SIZE, group.hiddenCount)} more in ${group.label}`,
+								);
+								onShowMore();
+							}}
+							awaiting={group.hiddenAwaiting}
 						>
-							Show {group.hiddenCount} more
+							Show more
 						</OverflowRow>
+					) : (
+						group.canShowLess && (
+							<OverflowRow
+								ariaLabel={`Show less in ${group.label}`}
+								onClick={() => {
+									setAnnouncement(`Showing less in ${group.label}`);
+									onShowLess();
+								}}
+							>
+								Show less
+							</OverflowRow>
+						)
 					)}
-					{group.canShowLess && (
-						<OverflowRow ariaLabel={`Show less in ${group.label}`} onClick={onShowLess}>
-							Show less
-						</OverflowRow>
+					{(loadingMore || group.hiddenCount > 0 || group.canShowLess || announcement !== "") && (
+						<span className="sr-only" role="status">
+							{announcement}
+						</span>
 					)}
 				</div>
 			)}
@@ -414,19 +441,42 @@ export function EmptyGroupSection({
 	);
 }
 
-/** A group's muted "Show N more" / "Show less" row. */
-function OverflowRow({ariaLabel, onClick, children}: {ariaLabel: string; onClick: () => void; children: ReactNode}) {
+/**
+ * A group's muted "Show more" / "Show less" / "Loading…" row (upstream `rr`): double-clicks
+ * and clicks while disabled are ignored, and `awaiting` puts an awaiting dot at the row end.
+ */
+function OverflowRow({
+	ariaLabel,
+	onClick,
+	disabled = false,
+	awaiting = false,
+	children,
+}: {
+	ariaLabel?: string;
+	onClick: () => void;
+	disabled?: boolean;
+	awaiting?: boolean;
+	children: ReactNode;
+}) {
 	return (
 		<button
 			type="button"
 			{...ROVING_ITEM_PROPS}
 			data-row
 			aria-label={ariaLabel}
-			onClick={onClick}
+			aria-disabled={disabled ? true : undefined}
+			onClick={(event) => {
+				if (disabled || event.detail > 1) return;
+				onClick();
+			}}
 			className={`${ROW_CLASS} text-ink-muted hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] hover:text-secondary`}
 		>
-			<span className="df-leading-slot" />
-			{children}
+			<span className="ps-[var(--sb-iconless-pad)]">{children}</span>
+			{awaiting && (
+				<span className="ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center">
+					<SessionStateIcon kind="awaiting" live={false} />
+				</span>
+			)}
 		</button>
 	);
 }

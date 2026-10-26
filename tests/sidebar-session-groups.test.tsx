@@ -356,29 +356,82 @@ describe("sidebar SessionGroups", () => {
 		}).toEqual({rowless: "", badges: 0});
 	});
 
-	it("caps Completed at 20 rows, expands the rest from Show N more, and folds them back with Show less", async () => {
-		const done = Array.from({length: 23}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
+	it("pages Completed 5 rows per Show more click, announcing each page, and folds back to 5 with Show less", async () => {
+		const done = Array.from({length: 45}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
 		const {container} = await renderGroups(done);
+		const overflowRows = () =>
+			[...container.querySelectorAll('[data-group-key="state-done"] button[data-row]')].map((button) => ({
+				text: button.textContent,
+				label: button.getAttribute("aria-label"),
+			}));
+		const status = () =>
+			container.querySelector('[data-group-key="state-done"] [data-group-rows] > span[role="status"]');
 
-		expect(rowTitlesIn(container, "state-done")).toHaveLength(20);
-		const showMore = screen.getByRole("button", {name: "Show 3 more in Completed"});
-		expect(showMore.textContent).toBe("Show 3 more");
-
-		fireEvent.click(showMore);
-
-		expect(rowTitlesIn(container, "state-done")).toEqual(Array.from({length: 23}, (_, index) => `Done ${index}`));
-		expect(screen.queryByRole("button", {name: /^Show \d+ more/})).toBeNull();
-		const showLess = screen.getByRole("button", {name: "Show less in Completed"});
-		expect({text: showLess.textContent, roving: showLess.hasAttribute("data-roving-item")}).toStrictEqual({
-			text: "Show less",
+		const showMore = screen.getByRole("button", {name: "Show 5 more in Completed"});
+		expect({
+			shown: rowTitlesIn(container, "state-done").length,
+			overflow: overflowRows(),
+			roving: showMore.hasAttribute("data-roving-item"),
+			labelClass: showMore.querySelector("span")?.className,
+			leadingSlot: showMore.querySelector(".df-leading-slot"),
+			status: {className: status()?.className, text: status()?.textContent},
+		}).toStrictEqual({
+			shown: 5,
+			overflow: [{text: "Show more", label: "Show 5 more in Completed"}],
 			roving: true,
+			labelClass: "ps-[var(--sb-iconless-pad)]",
+			leadingSlot: null,
+			status: {className: "sr-only", text: ""},
 		});
 
-		fireEvent.click(showLess);
+		fireEvent.click(showMore);
+		expect({shown: rowTitlesIn(container, "state-done").length, status: status()?.textContent}).toStrictEqual({
+			shown: 10,
+			status: "Showing 5 more in Completed",
+		});
 
-		expect(rowTitlesIn(container, "state-done")).toHaveLength(20);
-		expect(screen.getByRole("button", {name: "Show 3 more in Completed"})).toBeTruthy();
-		expect(screen.queryByRole("button", {name: /^Show less/})).toBeNull();
+		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}), {detail: 2});
+		expect(rowTitlesIn(container, "state-done")).toHaveLength(10);
+
+		for (let click = 0; click < 7; click++) {
+			fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}));
+		}
+		expect({shown: rowTitlesIn(container, "state-done"), overflow: overflowRows()}).toStrictEqual({
+			shown: Array.from({length: 45}, (_, index) => `Done ${index}`),
+			overflow: [{text: "Show less", label: "Show less in Completed"}],
+		});
+
+		fireEvent.click(screen.getByRole("button", {name: "Show less in Completed"}));
+
+		expect({
+			shown: rowTitlesIn(container, "state-done").length,
+			overflow: overflowRows(),
+			status: status()?.textContent,
+		}).toStrictEqual({
+			shown: 5,
+			overflow: [{text: "Show more", label: "Show 5 more in Completed"}],
+			status: "Showing less in Completed",
+		});
+	});
+
+	it("puts an awaiting dot at the end of Show more while a hidden row needs input", async () => {
+		const rows = Array.from({length: 7}, (_, index) =>
+			session(`r${index}`, `Row ${index}`, index === 6 ? "blocked" : "done", index + 1),
+		);
+		const {container} = await renderGroups(rows, {prefs: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "none"}});
+
+		const showMore = screen.getByRole("button", {name: "Show 2 more in Recents"});
+		const trailing = showMore.querySelector("span.ms-auto");
+		expect({
+			text: showMore.textContent,
+			trailingClass: trailing?.className,
+			dot: trailing?.querySelector('[role="img"]')?.getAttribute("aria-label"),
+		}).toStrictEqual({
+			text: "Show more",
+			trailingClass: "ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center",
+			dot: "Awaiting input",
+		});
+		expect(container.querySelectorAll('[data-group-key="recents"] button[data-row] span.ms-auto')).toHaveLength(1);
 	});
 
 	it("offers no Show less on a group that fits under the cap", async () => {
@@ -754,23 +807,40 @@ describe("sidebar SessionGroups", () => {
 		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
 	});
 
-	it("fetches the next page when Show N more expands the last capped group", async () => {
+	it("fetches the next page, showing Loading…, when Show more reveals the last rows of the last capped group", async () => {
 		const done = Array.from({length: 23}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
 		const older = session("d-old", "Done older page", "done", 60);
 		const requests: string[] = [];
+		let respond: () => void = () => {};
 		vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
 			requests.push(String(input));
-			return Promise.resolve(
-				new Response(JSON.stringify({sessions: [older], nextCursor: null}), {
-					status: 200,
-					headers: {"Content-Type": "application/json"},
-				}),
-			);
+			await new Promise<void>((resolve) => {
+				respond = resolve;
+			});
+			return new Response(JSON.stringify({sessions: [older], nextCursor: null}), {
+				status: 200,
+				headers: {"Content-Type": "application/json"},
+			});
 		});
 		const {container} = await renderGroups(done, {nextCursor: "cursor-2"});
 
+		for (let click = 0; click < 3; click++) {
+			fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}));
+		}
+		expect(requests).toStrictEqual([]);
 		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Completed"}));
 
+		const loading = await screen.findByRole("button", {name: "Loading…"});
+		expect({
+			text: loading.textContent,
+			disabled: loading.getAttribute("aria-disabled"),
+			showLess: screen.queryByRole("button", {name: "Show less in Completed"}),
+		}).toStrictEqual({text: "Loading…", disabled: "true", showLess: null});
+		fireEvent.click(loading);
+
+		act(() => {
+			respond();
+		});
 		await waitFor(() => {
 			expect(rowTitlesIn(container, "state-done")).toHaveLength(24);
 		});

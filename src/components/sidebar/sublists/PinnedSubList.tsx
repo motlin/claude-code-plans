@@ -3,7 +3,7 @@ import {useCallback, useState} from "react";
 
 import type {SidebarDragRowProps} from "../../../hooks/use-sidebar-drag";
 import {closeDragPinHint, useDragPinHintRequested} from "../../../lib/drag-pin-hint";
-import {PINNED_GROUP_KEY, pinnedGroup} from "../../../lib/session-groups";
+import {PINNED_GROUP_KEY, pinnedGroup, type RevealedPages} from "../../../lib/session-groups";
 import {useSidebarState} from "../../../lib/sidebar-store";
 import {CoachMark} from "../../coach-mark";
 import {useSettings} from "../../settings-context";
@@ -49,7 +49,7 @@ export function PinnedSubList({
 	dropRowRef?: (element: HTMLElement | null) => void;
 	dragRowProps?: (id: string) => SidebarDragRowProps;
 }) {
-	const [uncapped, setUncapped] = useState<ReadonlySet<string>>(() => new Set());
+	const [revealed, setRevealed] = useState<RevealedPages>({});
 	const [section, setSection] = useState<HTMLElement | null>(null);
 	const sectionRef = useCallback(
 		(element: HTMLElement | null) => {
@@ -75,15 +75,15 @@ export function PinnedSubList({
 			className={`group/section flex shrink-0 flex-col gap-px ${empty ? "df-pin-section-reveal" : ""}`}
 		>
 			<GroupSection
-				group={pinnedGroup(rows, uncapped)}
+				group={pinnedGroup(rows, revealed)}
 				expanded={expanded}
 				activeItemId={activeItemId}
 				filterSlot={null}
 				onShowMore={() => {
-					setUncapped(new Set([PINNED_GROUP_KEY]));
+					setRevealed((previous) => ({[PINNED_GROUP_KEY]: (previous[PINNED_GROUP_KEY] ?? 0) + 1}));
 				}}
 				onShowLess={() => {
-					setUncapped(new Set());
+					setRevealed({});
 				}}
 				pinnedIds={pinnedIds}
 				{...(dragRowProps === undefined ? {} : {dragRowProps})}

@@ -31,6 +31,7 @@ async function renderSection(key: string, label: string) {
 		label,
 		rows: [],
 		hiddenCount: 0,
+		hiddenAwaiting: false,
 		canShowLess: false,
 		nested: new Map(),
 	};

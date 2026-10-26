@@ -25,7 +25,9 @@ import {
 	customGroupIdOfKey,
 	DEFAULT_SESSION_LIST_PREFS,
 	EMPTY_LIST_GROUP_LABELS,
+	GROUP_PAGE_SIZE,
 	PINNED_GROUP_KEY,
+	type RevealedPages,
 	type SessionGroup,
 	sessionRowComparator,
 	type SessionListPrefs,
@@ -52,7 +54,7 @@ import {PinnedSubList} from "./sublists";
 /**
  * The sidebar session list, grouped like claude.ai/code's recents: Needs input,
  * Ready for review, Working and Completed by default. Collapsed groups persist in
- * the sidebar store; "Show N more" uncaps a group in place and "Show less" caps it again.
+ * the sidebar store; "Show more" reveals a group's next 5 rows and "Show less" folds it back to 5.
  * Once no group hides rows, expanding the last one or scrolling to the list end fetches
  * the next feed page while it can still hold sessions inside Last activity. Pinned
  * sessions move out of their group into the Pinned section above. Dragging any row
@@ -91,7 +93,8 @@ export function SessionGroups({
 		};
 	}, [hasSelection]);
 	const latestSelected = useRef<readonly string[]>([]);
-	const [uncapped, setUncapped] = useState<ReadonlySet<string>>(() => new Set());
+	const [revealed, setRevealed] = useState<RevealedPages>({});
+	const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
 	const {pinnedIds, pinnedOrder} = usePins();
 
@@ -138,12 +141,12 @@ export function SessionGroups({
 		() =>
 			split === undefined
 				? undefined
-				: buildGroups(split.rest, prefs, Date.now(), uncapped, {
+				: buildGroups(split.rest, prefs, Date.now(), revealed, {
 						groups: customGroups,
 						assignments,
 						order,
 					}),
-		[split, prefs, uncapped, customGroups, assignments, order],
+		[split, prefs, revealed, customGroups, assignments, order],
 	);
 	latestGroups.current = groups;
 
@@ -286,18 +289,22 @@ export function SessionGroups({
 								filterSlot={filterSlot}
 								leadsList={index === 0}
 								onShowMore={() => {
-									setUncapped((previous) => new Set(previous).add(group.key));
-									if (canLoadNextPage(groups.filter((other) => other.key !== group.key))) {
+									setRevealed((previous) => ({
+										...previous,
+										[group.key]: (previous[group.key] ?? 0) + 1,
+									}));
+									if (
+										group.hiddenCount <= GROUP_PAGE_SIZE &&
+										canLoadNextPage(groups.filter((other) => other.key !== group.key))
+									) {
+										setLoadingKey(group.key);
 										void fetchNextPage();
 									}
 								}}
 								onShowLess={() => {
-									setUncapped((previous) => {
-										const next = new Set(previous);
-										next.delete(group.key);
-										return next;
-									});
+									setRevealed((previous) => ({...previous, [group.key]: 0}));
 								}}
+								loadingMore={isFetchingNextPage && loadingKey === group.key}
 								dragRowProps={rowProps}
 								familyHeadIds={familyHeadIds}
 								{...(groupId === null

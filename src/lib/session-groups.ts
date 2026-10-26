@@ -66,9 +66,11 @@ export interface SessionGroup<Row extends SessionGroupRow> {
 	key: string;
 	label: string;
 	rows: Row[];
-	/** Rows past the cap, revealed by the "Show N more" row. */
+	/** Rows past the cap, revealed 5 at a time by the "Show more" row. */
 	hiddenCount: number;
-	/** The group was expanded past its cap, so a "Show less" row folds it back. */
+	/** A hidden row (or one nested under it) awaits input, so Show more carries an awaiting dot. */
+	hiddenAwaiting: boolean;
+	/** Every row of a capped group shows after Show more pages, so a "Show less" row folds it back. */
 	canShowLess: boolean;
 	/** Family head sessionId → its nested sessions in spawn-tree order, for heads in `rows`. */
 	nested: ReadonlyMap<string, Row[]>;
@@ -99,8 +101,11 @@ export function isProjectGroupKey(key: string): boolean {
 	return key.startsWith("project-");
 }
 
-/** Completed, Older and Recents show this many rows before "Show N more". */
-const GROUP_ROW_CAP = 20;
+/** Completed, Older, Recents and Pinned show this many rows, and each Show more click reveals this many more (upstream `truncateAt: 5`). */
+export const GROUP_PAGE_SIZE = 5;
+
+/** Group key → how many Show more pages the user revealed past the first 5 rows. */
+export type RevealedPages = Readonly<Record<string, number>>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Date mode gives each of the last few days its own "Sep 26" group; anything earlier is Older. */
@@ -136,12 +141,9 @@ export function sessionRowComparator(sortBy: SessionSortBy, direction: SessionSo
 
 export const PINNED_GROUP_KEY = "pinned";
 
-/** The sidebar Pinned section as a group: 20 rows, then "Show N more" unless uncapped. */
-export function pinnedGroup<Row extends SessionGroupRow>(
-	rows: Row[],
-	uncapped: ReadonlySet<string>,
-): SessionGroup<Row> {
-	return group(PINNED_GROUP_KEY, "Pinned", rows, groupCap(true, PINNED_GROUP_KEY, uncapped));
+/** The sidebar Pinned section as a group: 5 rows, plus 5 per revealed Show more page. */
+export function pinnedGroup<Row extends SessionGroupRow>(rows: Row[], revealed: RevealedPages): SessionGroup<Row> {
+	return group(PINNED_GROUP_KEY, "Pinned", rows, groupCap(true, PINNED_GROUP_KEY, revealed));
 }
 
 function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): boolean {
@@ -154,7 +156,7 @@ function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): 
 
 /**
  * Whether the next feed page could add rows the list would show: no group still hides
- * rows behind "Show N more", and the oldest loaded session (the feed runs newest first)
+ * rows behind "Show more", and the oldest loaded session (the feed runs newest first)
  * is still inside the Last activity window.
  */
 export function shouldLoadNextPage(
@@ -177,12 +179,11 @@ function liveFirst<Row extends SessionGroupRow>(rows: Row[]): Row[] {
 
 const NO_NESTED: ReadonlyMap<string, never[]> = new Map();
 
-/** "none": the group never caps; "capped": it stops at the cap; "uncapped": its Show N more was clicked. */
-type GroupCap = "none" | "capped" | "uncapped";
+/** null: the group never caps; a number: how many Show more pages it reveals past the first. */
+type GroupCap = number | null;
 
-function groupCap(cappable: boolean, key: string, uncapped: ReadonlySet<string>): GroupCap {
-	if (!cappable) return "none";
-	return uncapped.has(key) ? "uncapped" : "capped";
+function groupCap(cappable: boolean, key: string, revealed: RevealedPages): GroupCap {
+	return cappable ? (revealed[key] ?? 0) : null;
 }
 
 function group<Row extends SessionGroupRow>(
@@ -192,19 +193,24 @@ function group<Row extends SessionGroupRow>(
 	cap: GroupCap,
 	allNested: ReadonlyMap<string, Row[]> = NO_NESTED,
 ): SessionGroup<Row> {
-	const overflows = rows.length > GROUP_ROW_CAP;
-	const shown = cap === "capped" && overflows ? rows.slice(0, GROUP_ROW_CAP) : rows;
+	const shown = cap === null ? rows : rows.slice(0, GROUP_PAGE_SIZE * (cap + 1));
 	const nested = new Map<string, Row[]>();
 	for (const row of shown) {
 		const children = allNested.get(row.sessionId);
 		if (children !== undefined) nested.set(row.sessionId, children);
 	}
+	const hidden = rows.slice(shown.length);
 	return {
 		key,
 		label,
 		rows: shown,
-		hiddenCount: rows.length - shown.length,
-		canShowLess: cap === "uncapped" && overflows,
+		hiddenCount: hidden.length,
+		hiddenAwaiting: hidden.some(
+			(row) =>
+				row.bucket === "blocked" ||
+				(allNested.get(row.sessionId) ?? []).some((child) => child.bucket === "blocked"),
+		),
+		canShowLess: cap !== null && hidden.length === 0 && rows.length > GROUP_PAGE_SIZE,
 		nested,
 	};
 }
@@ -233,7 +239,7 @@ function dateGroupFor(time: number, todayStart: number): {key: string; label: st
 function buildDateGroups<Row extends SessionGroupRow>(
 	rows: Row[],
 	now: number,
-	uncapped: ReadonlySet<string>,
+	revealed: RevealedPages,
 	nested: ReadonlyMap<string, Row[]>,
 ): SessionGroup<Row>[] {
 	const todayStart = startOfLocalDay(now);
@@ -248,7 +254,7 @@ function buildDateGroups<Row extends SessionGroupRow>(
 	return [...byDay.entries()]
 		.toSorted(([, first], [, second]) => second.dayStart - first.dayStart)
 		.map(([key, entry]) =>
-			group(key, entry.label, entry.rows, groupCap(key === "date-older", key, uncapped), nested),
+			group(key, entry.label, entry.rows, groupCap(key === "date-older", key, revealed), nested),
 		);
 }
 
@@ -271,7 +277,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 				`project-${project}`,
 				project,
 				visibleRows.filter((row) => row.project === project),
-				"none",
+				null,
 				nested,
 			),
 		);
@@ -281,7 +287,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 				NO_PROJECT_KEY,
 				"Other",
 				visibleRows.filter((row) => row.project === null),
-				"none",
+				null,
 				nested,
 			),
 		);
@@ -312,17 +318,17 @@ function buildCustomGroups<Row extends SessionGroupRow>(
 		// Array.sort is stable, so rows outside the manual order keep the Sort by order.
 		const groupRows = (byGroup.get(entry.id) ?? []).toSorted((first, second) => rank(first) - rank(second));
 		if (groupRows.length === 0 && !showEmptyGroups) return [];
-		return [group(`${CUSTOM_GROUP_KEY_PREFIX}${entry.id}`, entry.name, groupRows, "none", nested)];
+		return [group(`${CUSTOM_GROUP_KEY_PREFIX}${entry.id}`, entry.name, groupRows, null, nested)];
 	});
-	if (ungrouped.length > 0) sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, "none", nested));
+	if (ungrouped.length > 0) sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, null, nested));
 	return sections;
 }
 
 /**
  * Pure model behind the sidebar session list and its Filter & group menu,
  * mirroring claude.ai/code's groupings. Empty groups are omitted except in
- * Project and Custom groups modes with Show empty groups on. Groups keyed in
- * `uncapped` (their "Show N more" was clicked) show every row. Custom groups
+ * Project and Custom groups modes with Show empty groups on. Cappable groups show
+ * 5 rows plus 5 per Show more page `revealed` under their key. Custom groups
  * mode lists `custom` groups in order, then Ungrouped; callers pass rows with
  * pinned sessions already split out. Forks nest under their family head, which
  * is placed (in State mode) by the family's most urgent member.
@@ -331,7 +337,7 @@ export function buildGroups<Row extends SessionGroupRow>(
 	rows: readonly Row[],
 	prefs: SessionListPrefs,
 	now: number,
-	uncapped: ReadonlySet<string> = new Set(),
+	revealed: RevealedPages = {},
 	custom: CustomGroups = NO_CUSTOM_GROUPS,
 ): SessionGroup<Row>[] {
 	const families = resolveFamilies(
@@ -354,12 +360,12 @@ export function buildGroups<Row extends SessionGroupRow>(
 					`state-${bucket}`,
 					sessionBucketLabels[bucket],
 					liveFirst(visible.filter((row) => familyBucket.get(row.sessionId) === bucket)),
-					groupCap(bucket === "done", `state-${bucket}`, uncapped),
+					groupCap(bucket === "done", `state-${bucket}`, revealed),
 					nested,
 				),
 			).filter((stateGroup) => stateGroup.rows.length > 0);
 		case "date":
-			return buildDateGroups(visible, now, uncapped, nested);
+			return buildDateGroups(visible, now, revealed, nested);
 		case "project":
 			return buildProjectGroups(rows, visible, prefs.showEmptyGroups, nested);
 		case "custom":
@@ -367,7 +373,7 @@ export function buildGroups<Row extends SessionGroupRow>(
 		case "none":
 			return visible.length === 0
 				? []
-				: [group("recents", "Recents", visible, groupCap(true, "recents", uncapped), nested)];
+				: [group("recents", "Recents", visible, groupCap(true, "recents", revealed), nested)];
 		default:
 			return assertNever(prefs.groupBy);
 	}

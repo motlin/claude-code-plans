@@ -61,6 +61,7 @@ async function renderGroup(groupId: string, rows: SidebarSessionRow[] = []) {
 		label: name,
 		rows,
 		hiddenCount: 0,
+		hiddenAwaiting: false,
 		canShowLess: false,
 		nested: new Map(),
 	};
