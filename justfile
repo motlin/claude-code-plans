@@ -146,6 +146,11 @@ screenshots *args: install
     vp exec playwright install --with-deps chromium
     vp exec tsx scripts/screenshots.ts {{ args }}
 
+# Check the ⌘K palette footer stays one line with upstream's hints at 390, 700 and 1200px against a running dev server. Not part of precommit
+[group('docs')]
+palette-footer-layout *args: install
+    vp exec tsx scripts/palette-footer-layout.ts {{ args }}
+
 # Build static Storybook site
 build-storybook: install
     vp run build-storybook
