@@ -14,6 +14,7 @@ import {
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
+import {rowActionsAnchorRect} from "../src/components/palette-row-actions";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
@@ -106,7 +107,7 @@ async function openPalette() {
 async function openCard() {
 	const opened = await openPalette();
 	fireEvent.keyDown(opened.input, {key: "Enter", code: "Enter", altKey: true});
-	const card = await within(opened.dialog).findByRole("menu", {name: "Actions"});
+	const card = await screen.findByRole("menu", {name: "Actions"});
 	return {...opened, card};
 }
 
@@ -150,7 +151,7 @@ describe("palette row actions card", () => {
 		const {card, input} = await openCard();
 
 		await waitFor(() => {
-			expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: /^Open1/}));
+			expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: "Open"}));
 		});
 		expect({
 			heading: card.querySelector("[data-palette-card-title]")?.textContent,
@@ -180,7 +181,7 @@ describe("palette row actions card", () => {
 		expect(buttons.length).toBe(2);
 		fireEvent.click(buttons[1]!);
 
-		const card = await within(dialog).findByRole("menu", {name: "Actions"});
+		const card = await screen.findByRole("menu", {name: "Actions"});
 		expect(card.querySelector("[data-palette-card-title]")?.textContent).toBe("Write release notes");
 	});
 
@@ -298,7 +299,7 @@ describe("palette row actions card", () => {
 		fireEvent.keyDown(card, {key: "ArrowLeft", code: "ArrowLeft"});
 
 		await waitFor(() => {
-			expect(within(dialog).queryByRole("menu")).toBeNull();
+			expect(screen.queryByRole("menu")).toBeNull();
 		});
 		expect({
 			focused: document.activeElement === input,
@@ -314,7 +315,7 @@ describe("palette row actions card", () => {
 		fireEvent.keyDown(card, {key: "Escape", code: "Escape"});
 
 		await waitFor(() => {
-			expect(within(dialog).queryByRole("menu")).toBeNull();
+			expect(screen.queryByRole("menu")).toBeNull();
 		});
 		expect(screen.getByRole("dialog", {name: "Search"})).toBe(dialog);
 		expect(document.activeElement).toBe(input);
@@ -324,5 +325,78 @@ describe("palette row actions card", () => {
 		await waitFor(() => {
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
+	});
+
+	it("renders as a 280px cds Menu beside the palette, overlapping it by upstream's 44px", async () => {
+		const {card} = await openCard();
+
+		const positioner = card.parentElement!;
+		expect({
+			width: card.classList.contains("w-[280px]"),
+			side: card.getAttribute("data-side"),
+			sideOffset: positioner.getAttribute("data-side-offset"),
+			density: positioner.getAttribute("data-density"),
+			itemClasses: within(card)
+				.getAllByRole("menuitem")
+				.map((item) => item.classList.contains("h-6") && item.classList.contains("text-[13px]/[19px]")),
+		}).toStrictEqual({
+			width: true,
+			side: "right",
+			sideOffset: "-44",
+			density: "compact",
+			itemClasses: [true, true, true, true, true, true, true],
+		});
+	});
+
+	it("freezes the palette selection while the card is open", async () => {
+		const {dialog} = await openCard();
+
+		const other = dialog.querySelector<HTMLElement>('[cmdk-item][data-value="session:sess-2"]')!;
+		fireEvent.pointerMove(other);
+
+		expect(
+			[...dialog.querySelectorAll<HTMLElement>('[cmdk-item][data-selected="true"]')].map(
+				(item) => item.dataset["value"],
+			),
+		).toStrictEqual(["session:sess-1"]);
+	});
+
+	it("a click on the palette while the card is open closes the card without opening the row", async () => {
+		const {dialog} = await openCard();
+
+		const other = dialog.querySelector<HTMLElement>('[cmdk-item][data-value="session:sess-2"]')!;
+		fireEvent.pointerDown(other);
+		fireEvent.mouseDown(other);
+		fireEvent.click(other);
+
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect({
+			// The modal palette hides the rest of the page from AT, so read the output directly.
+			location: document.querySelector('output[aria-label="Location"]')?.textContent,
+			palette: screen.queryByRole("dialog", {name: "Search"}) === dialog,
+		}).toStrictEqual({location: "/", palette: true});
+	});
+});
+
+describe("rowActionsAnchorRect", () => {
+	const list = {x: 100, y: 200, width: 600, height: 400};
+	const dialog = {x: 100, y: 150, width: 600, height: 500};
+
+	it("takes the list's x and width at the row's y, scaled .97 about the dialog centre, then lifted 4px", () => {
+		const rect = rowActionsAnchorRect({list, row: {y: 300, height: 32}, dialog, reducedMotion: false});
+
+		expect(rect).toStrictEqual({x: 109, y: 299, width: 582, height: 31.04});
+	});
+
+	it("clamps the row into the list viewport", () => {
+		const above = rowActionsAnchorRect({list, row: {y: 120, height: 32}, dialog, reducedMotion: true});
+		const below = rowActionsAnchorRect({list, row: {y: 900, height: 32}, dialog, reducedMotion: true});
+
+		expect([above, below]).toStrictEqual([
+			{x: 100, y: 196, width: 600, height: 32},
+			{x: 100, y: 564, width: 600, height: 32},
+		]);
 	});
 });

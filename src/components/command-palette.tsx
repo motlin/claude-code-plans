@@ -158,7 +158,12 @@ import {type ShortcutKeys, useShortcut, useShortcutKeys} from "../hooks/use-shor
 import {clearAll} from "../lib/unread-store";
 import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
 import {HighlightRuns} from "./highlight-runs";
-import {type PaletteCardSession, PaletteRowActionsButton, PaletteRowActionsCard} from "./palette-row-actions";
+import {
+	type PaletteCardSession,
+	PaletteRowActionsButton,
+	PaletteRowActionsCard,
+	rowActionsAnchorRect,
+} from "./palette-row-actions";
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast-context";
 import {Shortcut, WIDE_KEYCAP_CLASS} from "./ui/shortcut";
@@ -800,7 +805,10 @@ function PalettePopup({
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const popupRef = useRef<HTMLDivElement>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
-	const [rowActions, setRowActions] = useState<{session: PaletteCardSession; top: number} | null>(null);
+	const [rowActions, setRowActions] = useState<{
+		session: PaletteCardSession;
+		anchorRect: ReturnType<typeof rowActionsAnchorRect>;
+	} | null>(null);
 	// Upstream keeps separate Search and Compose drafts; `query` is the active view's.
 	const [buffers, setBuffers] = useState<PaletteBuffers>({search: "", compose: ""});
 	const [tab, setTab] = useState<PaletteType>("all");
@@ -1108,9 +1116,22 @@ function PalettePopup({
 		const row = [...popup.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
 			(item) => item.dataset["value"] === `session:${id}`,
 		);
-		const top = row === undefined ? 0 : row.getBoundingClientRect().top - popup.getBoundingClientRect().top;
-		setRowActions({session, top});
+		const list = popup.querySelector("[cmdk-list]") ?? popup;
+		const dialog = cardRef.current ?? popup;
+		// Measured before the recede starts, so the scale is applied once.
+		const anchorRect = rowActionsAnchorRect({
+			list: list.getBoundingClientRect(),
+			row: (row ?? list).getBoundingClientRect(),
+			dialog: dialog.getBoundingClientRect(),
+			reducedMotion:
+				typeof window.matchMedia === "function" &&
+				window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+		});
+		setRowActions({session, anchorRect});
 	}
+
+	// Set by a press on the palette while the card is open, so that press's click only closes the card.
+	const swallowClickRef = useRef(false);
 
 	function closeRowActions({refocus}: {refocus: boolean}) {
 		setRowActions(null);
@@ -1686,6 +1707,28 @@ function PalettePopup({
 				className={`relative overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-transform duration-150 ease-out motion-reduce:transition-none ${
 					rowActions === null ? "" : "scale-[.97]"
 				} ${footerCollapsed ? FOOTER_COLLAPSED_CARD_CLASS : ""} ${PALETTE_RADIUS}`}
+				// Upstream drops onHoverIndex while the card is open, so hovering rows can't move the selection
+				// (cmdk reads disablePointerSelection only once, at mount).
+				onPointerMoveCapture={
+					rowActions === null
+						? undefined
+						: (event) => {
+								event.stopPropagation();
+							}
+				}
+				// Upstream's modal menu backdrop eats the first click outside the card. A press that slips past it
+				// still only closes the card: its click must not reach a row, even after the press closed the card.
+				onPointerDownCapture={(event) => {
+					swallowClickRef.current = rowActions !== null;
+					if (rowActions !== null) event.stopPropagation();
+				}}
+				onClickCapture={(event) => {
+					if (rowActions === null && !swallowClickRef.current) return;
+					swallowClickRef.current = false;
+					event.preventDefault();
+					event.stopPropagation();
+					closeRowActions({refocus: true});
+				}}
 			>
 				<div
 					aria-hidden="true"
@@ -2182,7 +2225,7 @@ function PalettePopup({
 				<PaletteRowActionsCard
 					key={rowActions.session.id}
 					session={rowActions.session}
-					top={rowActions.top}
+					anchorRect={rowActions.anchorRect}
 					onOpen={(id) => {
 						select(() => {
 							openSession(id);

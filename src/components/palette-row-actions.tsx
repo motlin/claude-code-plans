@@ -1,6 +1,6 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
-import {type KeyboardEvent, useEffect, useRef} from "react";
+import {type KeyboardEvent, useEffect, useMemo} from "react";
 
 import {useSessionArchive} from "../hooks/use-session-archive";
 import {assertNever} from "../lib/assert-never";
@@ -17,7 +17,7 @@ import type {SessionBucket} from "../lib/session-state";
 import {markSeen, markUnseen} from "../lib/unread-store";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 import {useToast} from "./toast-context";
-import {Shortcut} from "./ui/shortcut";
+import {inlineEndSide, Menu, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 
 /** A session row the ⌥⏎ card can act on; `archived`/`bucket` are unknown for server-only hits. */
@@ -36,31 +36,89 @@ interface CardItem {
 	label: string;
 }
 
+interface Box {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+/** Upstream's `panelScale`: the palette recedes to this while the card is open. */
+const RECEDE_SCALE = 0.97;
+/** Upstream's `cardLift`. */
+const CARD_LIFT_PX = 4;
+/** Upstream's `cardOverlap`: the card's inline-start edge sits this far over the receded palette. */
+const CARD_OVERLAP_PX = 44;
+
 /**
- * The claude.ai/code ⌘K row-actions card: a 280px menu beside the palette with
- * the session title, "Session · <bucket>" and items numbered 1…N. ← or Esc
- * closes only the card; Delete is never offered (transcripts are never deleted).
+ * Upstream's card anchor: the results list's x and width at the selected row's y (clamped into the list
+ * viewport), scaled by the recede about the dialog's centre unless motion is reduced, then lifted 4px.
+ */
+export function rowActionsAnchorRect({
+	list,
+	row,
+	dialog,
+	reducedMotion,
+}: {
+	list: Box;
+	row: Pick<Box, "y" | "height">;
+	dialog: Box;
+	reducedMotion: boolean;
+}): Box {
+	const y = Math.min(Math.max(row.y, list.y), Math.max(list.y, list.y + list.height - row.height));
+	const scale = reducedMotion ? 1 : RECEDE_SCALE;
+	const centreX = dialog.x + dialog.width / 2;
+	const centreY = dialog.y + dialog.height / 2;
+	return {
+		x: centreX + (list.x - centreX) * scale,
+		y: centreY + (y - centreY) * scale - CARD_LIFT_PX,
+		width: list.width * scale,
+		height: row.height * scale,
+	};
+}
+
+function virtualAnchor(box: Box) {
+	return {
+		getBoundingClientRect: () => ({
+			...box,
+			top: box.y,
+			left: box.x,
+			right: box.x + box.width,
+			bottom: box.y + box.height,
+			toJSON: () => box,
+		}),
+	};
+}
+
+const SHIFT_COLLISION_AVOIDANCE = {side: "shift", align: "shift"} as const;
+
+/**
+ * The claude.ai/code ⌘K row-actions card: a 280px compact cds Menu overlapping the receded palette's
+ * inline-end edge by 44px, with the session title, "Session · <bucket>" and items numbered 1…N. Its modal
+ * backdrop eats the first click outside. ← or Esc closes only the card; Delete is never offered
+ * (transcripts are never deleted).
  */
 export function PaletteRowActionsCard({
 	session,
-	top,
+	anchorRect,
 	onOpen,
 	onRename,
 	onClose,
 }: {
 	session: PaletteCardSession;
-	top: number;
+	/** The anchor box from {@link rowActionsAnchorRect}, measured once as the card opens. */
+	anchorRect: Box;
 	onOpen: (id: string) => void;
 	/** Closes the palette and starts the session's inline rename, as ⌥⌘R does. */
 	onRename: (id: string) => void;
 	onClose: (options: {refocus: boolean}) => void;
 }) {
 	const queryClient = useQueryClient();
-	const menuRef = useRef<HTMLDivElement>(null);
 	const unseen = useHasUnseenWork(session.id);
 	const pins = usePins();
 	const toast = useToast();
 	const setArchived = useSessionArchive(session.id);
+	const anchor = useMemo(() => virtualAnchor(anchorRect), [anchorRect]);
 
 	const capabilities = new Set<SessionMenuCapability>(["pin", "rename", "readState", "ackAwaiting", "copyLink"]);
 	if (session.archived !== undefined) capabilities.add("archive");
@@ -85,8 +143,20 @@ export function PaletteRowActionsCard({
 		...sessionItems,
 	];
 
+	// Upstream focuses the first item after two frames, once Base UI has settled the popup's own focus.
 	useEffect(() => {
-		menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+		let second = 0;
+		const first = requestAnimationFrame(() => {
+			second = requestAnimationFrame(() => {
+				document
+					.querySelector<HTMLElement>('[data-palette-row-actions] [role="menuitem"]')
+					?.focus({preventScroll: true});
+			});
+		});
+		return () => {
+			cancelAnimationFrame(first);
+			cancelAnimationFrame(second);
+		};
 	}, []);
 
 	const run = (id: CardItemId): void => {
@@ -145,113 +215,66 @@ export function PaletteRowActionsCard({
 		}
 	};
 
-	function moveFocus(event: KeyboardEvent<HTMLDivElement>, delta: number | "first" | "last") {
-		const elements = [...(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
-		const current = elements.findIndex((element) => element === document.activeElement);
-		let next: number;
-		if (delta === "first") next = 0;
-		else if (delta === "last") next = elements.length - 1;
-		else next = (current + delta + elements.length) % elements.length;
-		elements[next]?.focus();
+	function handleKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
+		if (event.key !== "ArrowLeft" || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
 		event.preventDefault();
-	}
-
-	function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-		if (event.metaKey || event.ctrlKey || event.altKey) return;
-		const numbered = /^[1-9]$/.test(event.key) ? items[Number(event.key) - 1] : undefined;
-		if (numbered !== undefined) {
-			event.preventDefault();
-			run(numbered.id);
-			return;
-		}
-		switch (event.key) {
-			case "ArrowLeft":
-			case "Escape":
-				event.preventDefault();
-				event.stopPropagation();
-				onClose({refocus: true});
-				return;
-			case "ArrowDown":
-				moveFocus(event, 1);
-				return;
-			case "ArrowUp":
-				moveFocus(event, -1);
-				return;
-			case "Home":
-				moveFocus(event, "first");
-				return;
-			case "End":
-				moveFocus(event, "last");
-				return;
-			case "Tab":
-				event.preventDefault();
-				return;
-			case "Enter":
-			case " ": {
-				const active = document.activeElement;
-				const id = active instanceof HTMLElement ? active.dataset["cardItem"] : undefined;
-				const item = items.find((candidate) => candidate.id === id);
-				if (item !== undefined) {
-					event.preventDefault();
-					run(item.id);
-				}
-				return;
-			}
-			default:
-		}
+		event.stopPropagation();
+		onClose({refocus: true});
 	}
 
 	const bucket = relativeBucket(Date.parse(session.mtime), Date.now());
 
 	return (
-		// oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- focus lives on its menu items, which take it programmatically
-		<div
-			ref={menuRef}
-			role="menu"
-			aria-orientation="vertical"
-			aria-label="Actions"
-			data-palette-row-actions=""
-			onKeyDown={handleKeyDown}
-			onBlur={(event) => {
-				if (!event.currentTarget.contains(event.relatedTarget)) onClose({refocus: false});
+		<Menu
+			open
+			onOpenChange={(open) => {
+				if (!open) onClose({refocus: true});
 			}}
-			style={{top}}
-			className="absolute right-2 z-10 flex max-h-[calc(100vh-2rem)] w-[280px] flex-col overflow-hidden rounded-xl border-[0.5px] border-strong bg-surface-3 text-sm text-primary shadow-2xl outline-none animate-in fade-in slide-in-from-left-3 duration-150 motion-reduce:animate-none lg:right-auto lg:left-[calc(100%+0.5rem)]"
 		>
-			<div className="flex shrink-0 flex-col gap-0.5 px-3.5 pt-2 pb-1">
-				<div data-palette-card-title="" className="line-clamp-2 break-words">
-					{session.title}
-				</div>
-				<div data-palette-card-meta="" className="truncate text-xs text-ink-muted">
-					{bucket === null ? "Session" : `Session · ${bucket}`}
-				</div>
-			</div>
-			<div className="min-h-0 flex-1 overflow-y-auto p-1 pt-0">
-				<div role="separator" className="mx-2.5 my-1 h-px bg-border" />
+			<MenuContent
+				density="compact"
+				side={inlineEndSide()}
+				align="start"
+				sideOffset={-CARD_OVERLAP_PX}
+				collisionAvoidance={SHIFT_COLLISION_AVOIDANCE}
+				anchor={anchor}
+				finalFocus={false}
+				className="w-[280px] animate-in fade-in slide-in-from-left-3 duration-150 motion-reduce:animate-none"
+				popupProps={{
+					"aria-label": "Actions",
+					"data-palette-row-actions": "",
+					onKeyDownCapture: handleKeyDownCapture,
+				}}
+				header={
+					<div className="flex flex-col gap-0.5 px-2 pt-1 pb-1">
+						<div
+							data-palette-card-title=""
+							className="line-clamp-2 break-words text-[13px]/[19px] text-primary"
+						>
+							{session.title}
+						</div>
+						<div data-palette-card-meta="" className="truncate text-[11px]/[17px] text-[var(--menu-muted)]">
+							{bucket === null ? "Session" : `Session · ${bucket}`}
+						</div>
+					</div>
+				}
+			>
+				<MenuSeparator />
 				{items.map((item, index) => (
-					// oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- the menu container handles the arrow, number and Enter keys
-					<div
+					<MenuItem
 						key={item.id}
-						role="menuitem"
-						tabIndex={-1}
+						accelerator={String(index + 1)}
+						closeOnClick={false}
 						data-card-item={item.id}
-						aria-keyshortcuts={String(index + 1)}
-						onClick={() => {
+						onSelect={() => {
 							run(item.id);
 						}}
-						onMouseMove={(event) => {
-							event.currentTarget.focus();
-						}}
-						className="flex w-full cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 outline-none select-none hover:bg-fill-ghost-hover focus:bg-fill-ghost-hover"
 					>
-						<span className="min-w-0 flex-1 truncate">{item.label}</span>
-						<span className="ml-3 flex shrink-0 items-center text-ink-muted">
-							<Shortcut keys={String(index + 1)} />
-						</span>
-					</div>
+						{item.label}
+					</MenuItem>
 				))}
-			</div>
-		</div>
+			</MenuContent>
+		</Menu>
 	);
 }
 

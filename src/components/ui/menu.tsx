@@ -279,7 +279,15 @@ export interface MenuContentProps {
 	 * as upstream's ModelSelector does. Drilled levels follow their root.
 	 */
 	sheetSize?: SheetSize;
+	/** Extra attributes for the popup element, such as an `aria-label` or a `data-*` hook for a menu with no trigger. */
+	popupProps?: MenuPopupProps;
 }
+
+type MenuPopupProps = Omit<
+	ComponentProps<typeof BaseMenu.Popup>,
+	"className" | "children" | "finalFocus" | "onKeyDown" | "render"
+> &
+	Partial<Record<`data-${string}`, string>>;
 
 interface MenuContentInternalProps extends MenuContentProps {
 	/** A submenu level: anchored beside its trigger, or drilled into the parent's sheet. */
@@ -301,6 +309,7 @@ export function MenuContent({
 	header,
 	structurallyAnchored = false,
 	sheetSize = "lg",
+	popupProps,
 	nested = false,
 }: MenuContentInternalProps) {
 	const resolvedCollisionAvoidance =
@@ -352,6 +361,7 @@ export function MenuContent({
 						{...(collisionFallback === undefined ? {} : {"data-collision-fallback": collisionFallback})}
 					>
 						<BaseMenu.Popup
+							{...popupProps}
 							data-cds={kind}
 							{...(sheet ? {"data-presentation": "sheet"} : {})}
 							className={className ? `${popupClass} ${className}` : popupClass}
@@ -764,7 +774,7 @@ export function submenuAnchor(triggerRef: RefObject<HTMLElement | null>) {
 }
 
 /** cds resolves a submenu's logical inline-end side against the document direction. */
-function inlineEndSide(): "left" | "right" {
+export function inlineEndSide(): "left" | "right" {
 	return document.documentElement.dir === "rtl" ? "left" : "right";
 }
 

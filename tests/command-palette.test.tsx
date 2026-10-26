@@ -607,9 +607,10 @@ describe("CommandPalette shell", () => {
 
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Enter", code: "Enter", altKey: true});
 
-		const card = await within(dialog).findByRole("menu", {name: "Actions"});
+		// The card is portaled out of the palette, as upstream's cds Menu.
+		const card = await screen.findByRole("menu", {name: "Actions"});
 		await waitFor(() => {
-			expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: /^Open1/}));
+			expect(document.activeElement).toBe(within(card).getByRole("menuitem", {name: "Open"}));
 		});
 		expect({
 			keyShortcuts: row.getAttribute("aria-keyshortcuts"),
@@ -1641,13 +1642,13 @@ describe("CommandPalette shell", () => {
 			const input = within(dialog).getByRole("combobox");
 
 			fireEvent.keyDown(input, {key: "Enter", code: "Enter", altKey: true});
-			const card = await within(dialog).findByRole("menu", {name: "Actions"});
-			fireEvent.keyDown(within(card).getByRole("menuitem", {name: /^Open1/}), {
+			const card = await screen.findByRole("menu", {name: "Actions"});
+			fireEvent.keyDown(within(card).getByRole("menuitem", {name: "Open"}), {
 				key: "Escape",
 				code: "Escape",
 			});
 			await waitFor(() => {
-				expect(within(dialog).queryByRole("menu", {name: "Actions"})).toBeNull();
+				expect(screen.queryByRole("menu", {name: "Actions"})).toBeNull();
 			});
 			await changed();
 
