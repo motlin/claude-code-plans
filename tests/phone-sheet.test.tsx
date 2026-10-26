@@ -563,18 +563,13 @@ describe("phone sheet CSS", () => {
 		}).toStrictEqual({touchMedia: true, rule: "[data-group-caret] {\n\t\topacity: 1;"});
 	});
 
-	it("bands phone-sheet group labels as upstream's df-session-list: 8px + row-height label, 2px row stack, no group padding", () => {
+	it("re-resolves the row-height label band against the phone sheet's 44px rows and inherits the rest of upstream's df-session-list tokens", () => {
 		const sheet = rule("\n.phone-sheet");
 		const vars = Object.fromEntries(
 			[...sheet.matchAll(/(--sb-(?:group|row-stack)[\w-]*): ([^;]+);/g)].map((match) => [match[1], match[2]]),
 		);
 		expect(vars).toStrictEqual({
-			"--sb-row-stack-gap": "2px",
-			"--sb-group-band-mt": "calc(10px - var(--sb-row-stack-gap))",
 			"--sb-group-band-h": "var(--sb-row-h)",
-			"--sb-group-pt": "0px",
-			"--sb-group-label-pb": "0px",
-			"--sb-group-pb": "0px",
 		});
 	});
 
@@ -582,12 +577,12 @@ describe("phone sheet CSS", () => {
 		const source = readFileSync("src/components/sidebar/session-group-section.tsx", "utf8");
 		expect({
 			stackGaps: source.split("gap-[var(--sb-row-stack-gap)]").length - 1,
-			bandMargins: source.split("mt-[var(--sb-group-band-mt)] min-h-[var(--sb-group-band-h)]").length - 1,
+			bandMargins: source.split("mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)]").length - 1,
 			labelPadding:
 				source.split("pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)]")
 					.length - 1,
 			oldMinHeight: source.includes("min-h-[calc(var(--sb-group-pt)"),
-		}).toStrictEqual({stackGaps: 3, bandMargins: 2, labelPadding: 2, oldMinHeight: false});
+		}).toStrictEqual({stackGaps: 1, bandMargins: 2, labelPadding: 2, oldMinHeight: false});
 	});
 
 	it("reveals the touch kebab only on the data-touch-menu row and shifts its mark beside it, as upstream's touch: rules", () => {

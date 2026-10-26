@@ -158,16 +158,29 @@ describe("sidebar SessionGroups", () => {
 		});
 	});
 
-	it("ends each group with the upstream 10px gap before the next header (wrapper pb 4px plus label centering)", async () => {
+	// Upstream: name centre -> first row top 16px (no label gap), section bottom = last row bottom + 2px stack gap.
+	it("bands each section as upstream's df-session-list: a fixed row-height label flush on its rows, a stack-gap bottom pad", async () => {
 		const {container} = await renderGroups(FIXTURE);
 		const css = readFileSync("src/styles/globals.css", "utf8");
 
 		expect({
-			token: /--sb-group-pb: (\d+px);/.exec(css)?.[1],
-			sections: [...container.querySelectorAll("[data-group-key^=state-]")].map((section) =>
-				section.classList.contains("pb-[var(--sb-group-pb)]"),
+			token: /--sb-group-pb: ([^;]+);/.exec(css)?.[1],
+			sections: [...container.querySelectorAll("[data-group-key^=state-]")].map(
+				(section) =>
+					section.classList.contains("pb-[var(--sb-group-pb)]") &&
+					![...section.classList].some((name) => name.startsWith("gap-")),
 			),
-		}).toStrictEqual({token: "10px", sections: [true, true, true, true]});
+			labels: [...container.querySelectorAll("[data-group-key^=state-] > [data-sidebar-group-label]")].map(
+				(label) => ({
+					fixedBand: label.classList.contains("h-[var(--sb-group-band-h)]"),
+					minHeight: [...label.classList].some((name) => name.startsWith("min-h-")),
+				}),
+			),
+		}).toStrictEqual({
+			token: "var(--sb-row-stack-gap)",
+			sections: [true, true, true, true],
+			labels: Array.from({length: 4}, () => ({fixedBand: true, minHeight: false})),
+		});
 	});
 
 	it("omits empty groups", async () => {

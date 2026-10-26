@@ -91,8 +91,37 @@ describe("density sidebar geometry", () => {
 			"--sb-leading-slot": "28px",
 			"--sb-row-ctl": "24px",
 			"--sb-row-gap": "8px",
-			"--sb-group-pt": "16px",
+			"--sb-group-pt": "0px",
 			"--sb-radius": "8px",
 		});
+	});
+
+	it("bands desktop group labels with upstream's df-session-list tokens: 8px + row-height band, 2px stack, 8px iconless pad", () => {
+		const root = block(":root");
+		const names = [
+			"--sb-row-stack-gap",
+			"--sb-group-band-mt",
+			"--sb-group-band-h",
+			"--sb-group-pt",
+			"--sb-group-label-pb",
+			"--sb-group-pb",
+			"--sb-iconless-pad",
+		];
+
+		expect(Object.fromEntries(names.map((name) => [name, token(root, name)]))).toStrictEqual({
+			"--sb-row-stack-gap": "2px",
+			"--sb-group-band-mt": "calc(10px - var(--sb-row-stack-gap))",
+			"--sb-group-band-h": "var(--sb-row-h)",
+			"--sb-group-pt": "0px",
+			"--sb-group-label-pb": "0px",
+			"--sb-group-pb": "var(--sb-row-stack-gap)",
+			"--sb-iconless-pad": "8px",
+		});
+	});
+
+	it("insets group labels by the row padding plus upstream's iconless pad (10px), as .df-label-inset", () => {
+		expect(token(block("\n.df-label-inset").replaceAll(/\s+/g, " "), "padding-left")).toBe(
+			"calc(var(--sb-row-px) + var(--sb-iconless-pad, calc((var(--sb-leading-slot) - var(--sb-icon)) / 2)))",
+		);
 	});
 });

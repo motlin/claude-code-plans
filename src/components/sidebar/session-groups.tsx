@@ -524,7 +524,7 @@ function UngroupDropRow({ref, hot}: {ref: (element: HTMLElement | null) => void;
 			ref={ref}
 			data-ungroup-drop-row
 			data-hot={hot ? "" : undefined}
-			className={`${ROW_CLASS} mt-[var(--sb-group-pt)] ${hot ? "bg-[var(--sb-hover)] text-secondary" : "text-ink-muted opacity-80"}`}
+			className={`${ROW_CLASS} mt-[var(--sb-group-band-mt)] ${hot ? "bg-[var(--sb-hover)] text-secondary" : "text-ink-muted opacity-80"}`}
 		>
 			<span className="df-leading-slot">
 				<Ungroup aria-hidden="true" />

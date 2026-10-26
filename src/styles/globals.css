@@ -433,14 +433,16 @@ html[data-interface-font="dyslexic"] {
 	--sb-row-gap: 8px;
 	--sb-row-font: 14px;
 	--sb-group-font: 13px;
-	--sb-group-pt: 16px;
-	/* Upstream's group wrapper (padding 16px 4px 4px 6px) leaves ~30px from a group's last row to the next label */
-	--sb-group-pb: 10px;
-	/* Desktop label band: 16px top pad + a row-height label (less the 4px bottom pad) and 1px row stack */
-	--sb-group-band-mt: 0px;
-	--sb-group-band-h: calc(var(--sb-group-pt) + var(--sb-row-h) - 4px);
-	--sb-group-label-pb: 4px;
-	--sb-row-stack-gap: 1px;
+	/* Upstream .df-session-list: an 8px + row-height label band flush on its rows, a 2px row stack */
+	--sb-group-pt: 0px;
+	/* Upstream ends a section 2px (one stack gap) below its last row */
+	--sb-group-pb: var(--sb-row-stack-gap);
+	--sb-group-band-mt: calc(10px - var(--sb-row-stack-gap));
+	--sb-group-band-h: var(--sb-row-h);
+	--sb-group-label-pb: 0px;
+	--sb-row-stack-gap: 2px;
+	/* Upstream .df-session-list --df-iconless-pad: group labels sit 2 + 8 = 10px in */
+	--sb-iconless-pad: 8px;
 	--sb-icon: 20px;
 	--sb-leading-slot: 28px;
 	--sb-row-ctl: 24px;
@@ -1111,13 +1113,8 @@ html[data-interface-font="dyslexic"] {
 	--sb-row-h: 44px;
 	--sb-row-ctl: 36px;
 	--sb-row-ctl-inset: 4px;
-	/* Upstream .df-session-list: an 8px + row-height label band, a 2px row stack, sections back to back */
-	--sb-row-stack-gap: 2px;
-	--sb-group-band-mt: calc(10px - var(--sb-row-stack-gap));
+	/* :root resolves the row-height label band at 32px; re-resolve it against the 44px rows */
 	--sb-group-band-h: var(--sb-row-h);
-	--sb-group-pt: 0px;
-	--sb-group-label-pb: 0px;
-	--sb-group-pb: 0px;
 	transform: translate(-100%);
 	transition:
 		transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1),
@@ -1881,9 +1878,9 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 	height: var(--sb-icon);
 }
 
-/* Upstream .df-label-inset: group labels line up with the row icons (6px at comfortable density). */
+/* Upstream .df-label-inset: the row padding plus .df-session-list's iconless pad (10px), else the icon inset. */
 .df-label-inset {
-	padding-left: calc(var(--sb-row-px) + (var(--sb-leading-slot) - var(--sb-icon)) / 2);
+	padding-left: calc(var(--sb-row-px) + var(--sb-iconless-pad, calc((var(--sb-leading-slot) - var(--sb-icon)) / 2)));
 }
 
 /* Upstream .dframe-fade-label: an overflowing row title fades out instead of ending in an ellipsis. */
