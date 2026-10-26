@@ -409,6 +409,57 @@ describe("collapsed sidebar peek close grace", () => {
 		});
 	});
 
+	it("returns focus to Show sidebar when a menu opened from the peek closes after the pointer left", async () => {
+		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
+		const root = screen.getByTestId("sidebar-collapsed");
+		const peek = screen.getByTestId("sidebar-peek");
+
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		const more = within(peek).getByRole("button", {name: "More navigation items"});
+		act(() => {
+			more.focus();
+			fireEvent.click(more);
+		});
+		const menu = screen.getByRole("menu");
+		act(() => {
+			fireEvent.pointerLeave(root, {pointerType: "mouse"});
+		});
+		act(() => {
+			fireEvent.keyDown(menu, {key: "Escape"});
+		});
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
+
+		expect({
+			closed: !root.hasAttribute("data-hovering"),
+			focused: document.activeElement === screen.getByRole("button", {name: "Show sidebar"}),
+		}).toStrictEqual({closed: true, focused: true});
+	});
+
+	it("leaves focus alone when the peek closes without focus inside it", async () => {
+		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
+		const root = screen.getByTestId("sidebar-collapsed");
+		const outside = document.createElement("button");
+		document.body.append(outside);
+		outside.focus();
+
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		act(() => {
+			fireEvent.pointerLeave(root, {pointerType: "mouse"});
+		});
+		runCloseGrace();
+
+		expect(document.activeElement === outside).toBe(true);
+		outside.remove();
+	});
+
 	it("ignores touch and pen hovers", async () => {
 		const trigger = await renderCollapsedSidebar();
 		const root = screen.getByTestId("sidebar-collapsed");

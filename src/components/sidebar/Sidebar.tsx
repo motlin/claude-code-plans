@@ -423,6 +423,11 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 	const rootRef = useRef<HTMLDivElement>(null);
 	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+	// Upstream lands focus on the trigger when the peek hides around it (e.g. after a peek menu closes), not on BODY.
+	const focusTrigger = useCallback(() => {
+		rootRef.current?.querySelector<HTMLElement>(`[aria-controls="${PEEK_ID}"]`)?.focus();
+	}, []);
+
 	const openPeek = useCallback(() => {
 		setHovering(true);
 		setPeeked(true);
@@ -442,9 +447,10 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 				return;
 			}
 			closeTimerRef.current = undefined;
+			if (document.getElementById(PEEK_ID)?.contains(document.activeElement) === true) focusTrigger();
 			setHovering(false);
 		}, PEEK_CLOSE_GRACE_MS);
-	}, [cancelClose]);
+	}, [cancelClose, focusTrigger]);
 
 	useEffect(
 		() => () => {
