@@ -377,6 +377,45 @@ describe("⌘K palette: start a new session", () => {
 		expect(within(dialog).getByRole<HTMLButtonElement>("button", {name: "Search"}).disabled).toBe(true);
 	});
 
+	it("styles Compose's launching state: dimmed textarea, busy Send, live region, no list row", async () => {
+		const {dialog, input} = await openPalette();
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		fireEvent.change(composer, {target: {value: "summarize this"}});
+		fireEvent.click(within(dialog).getByRole("button", {name: "Send"}));
+		await waitFor(() => {
+			expect(headings(dialog)).toStrictEqual(["Choose a project"]);
+		});
+		const row = [...dialog.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
+			(item) => item.querySelector("[data-palette-label]")?.textContent === "older",
+		);
+		if (row === undefined) throw new Error("No project row older");
+		fireEvent.click(row);
+
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
+		const send = within(dialog).getByRole<HTMLButtonElement>("button", {name: "Send"});
+		const live = dialog.querySelector('[aria-live="polite"]');
+		expect({
+			textareaClasses: ["opacity-50", "cursor-not-allowed"].filter((name) => composer.classList.contains(name)),
+			textareaDisabled: (composer as HTMLTextAreaElement).disabled,
+			sendBusy: send.getAttribute("aria-busy"),
+			sendDisabled: send.disabled,
+			live: live?.textContent,
+			headings: headings(dialog),
+			listHidden: dialog.querySelector("[cmdk-list]")?.classList.contains("hidden"),
+		}).toStrictEqual({
+			textareaClasses: ["opacity-50", "cursor-not-allowed"],
+			textareaDisabled: true,
+			sendBusy: "true",
+			sendDisabled: true,
+			live: "Starting session…",
+			headings: [],
+			listHidden: true,
+		});
+	});
+
 	it("navigates to the new session when SessionStart for that cwd arrives", async () => {
 		launchResponse = async () =>
 			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));

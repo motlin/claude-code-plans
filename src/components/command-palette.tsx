@@ -1645,7 +1645,9 @@ function PalettePopup({
 				? `${resultCount} ${resultCount === 1 ? "result" : "results"} available`
 				: emptyMessage;
 	const idle = startStep === "idle";
-	const composeAtRest = compose && idle;
+	const launching = startStep === "launching";
+	// Upstream's sending Compose keeps the list hidden: the busy Send and the live region carry the state.
+	const composeAtRest = compose && startStep !== "picker";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all" && chips.length === 0;
 	if (frozenMarks !== null && frozenView === null && showEmptyState) setFrozenView(emptyView.view);
 	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
@@ -1722,12 +1724,12 @@ function PalettePopup({
 									aria-activedescendant={undefined}
 									aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
 									placeholder={!compose && actionsOnly ? "Search actions" : label}
-									disabled={startStep === "launching"}
+									disabled={launching}
 									rows={compose ? 2 : 1}
 									wrap={compose ? undefined : "off"}
 									className={`relative max-h-24 min-w-[5rem] flex-1 resize-none border-none bg-transparent py-1.5 text-sm leading-5 text-primary outline-none placeholder:text-ink-muted ${
 										compose ? "overflow-y-auto" : "overflow-x-auto overflow-y-hidden"
-									}`}
+									}${launching ? " cursor-not-allowed opacity-50" : ""}`}
 								/>
 							</Command.Input>
 							{!compose && (
@@ -1792,7 +1794,7 @@ function PalettePopup({
 											<button
 												type="button"
 												aria-label="Send"
-												aria-busy={startStep === "launching" ? true : undefined}
+												aria-busy={launching ? true : undefined}
 												disabled={startStep !== "idle"}
 												onMouseDown={(event) => {
 													event.preventDefault();
@@ -1800,7 +1802,7 @@ function PalettePopup({
 												onClick={onSend}
 												className={`${ICON_BUTTON_CLASS} me-0.5 rounded-r7 bg-fill-brand text-white hover:bg-fill-brand-hover`}
 											>
-												{startStep === "launching" ? (
+												{launching ? (
 													<LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
 												) : (
 													<CornerDownLeft aria-hidden="true" className="size-4" />
@@ -1835,7 +1837,7 @@ function PalettePopup({
 									},
 								})}
 					>
-						{startStep === "launching" && (
+						{launching && !compose && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 								<CommandItem
 									value={NEW_SESSION_VALUE}
@@ -2105,6 +2107,12 @@ function PalettePopup({
 								</p>
 							)}
 							{searching ? "" : liveMessage}
+						</div>
+					)}
+
+					{compose && (
+						<div aria-live="polite" aria-atomic="true" className="sr-only">
+							{launching ? "Starting session…" : ""}
 						</div>
 					)}
 
