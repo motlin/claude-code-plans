@@ -150,8 +150,7 @@ describe("palette contextual session commands", () => {
 		fireEvent.change(input, {target: {value: "copy"}});
 
 		await within(dialog).findByRole("option", {name: `Copy link to ${QUOTED}`});
-		expect(optionLabels(dialog).slice(0, 4)).toStrictEqual([
-			"New session",
+		expect(optionLabels(dialog).slice(0, 3)).toStrictEqual([
 			`Copy link to ${QUOTED}`,
 			"Copy resume command",
 			"Copy fork command",
@@ -250,8 +249,7 @@ describe("palette contextual session commands", () => {
 		fireEvent.change(input, {target: {value: "session"}});
 
 		await within(dialog).findByRole("option", {name: `Pin ${QUOTED}`});
-		expect(optionLabels(dialog).slice(0, 7)).toStrictEqual([
-			"New session",
+		expect(optionLabels(dialog).slice(0, 6)).toStrictEqual([
 			`Pin ${QUOTED}`,
 			`Rename ${QUOTED}`,
 			`Copy link to ${QUOTED}`,

@@ -60,6 +60,7 @@ import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
 import {PASTE_ATTACH_CHARS, type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
+import {offersQuickNewSession} from "../lib/palette-quick-action";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {useSessionIdentity} from "../hooks/use-session-identity";
@@ -917,13 +918,18 @@ function PalettePopup({
 	const actionsOnly = tokens.actions === true;
 	// A query starting with "!" searches only the jump bangs: no sessions, server search or Quick actions.
 	const bangQuery = !compose && hints === null && valueSuggestions === null && tokens.text.startsWith("!");
-	const searchable = hints === null && valueSuggestions === null && !actionsOnly && !bangQuery;
+	// Upstream's `nn`: a raw query over 50 characters is a prompt, so Search offers only New session and skips search.
+	const longPrompt = !compose && hints === null && valueSuggestions === null && offersQuickNewSession(query);
+	const startable = hints === null && valueSuggestions === null && !actionsOnly && !bangQuery;
+	const searchable = startable && !longPrompt;
 	const type = tokens.type ?? tab;
 	const filtered =
 		type !== "all" || tokens.project !== undefined || tokens.date !== undefined || tokens.archived === true;
 	// Outside Compose, the New session prompt is the free text, never a filter token.
 	const startPrompt = compose ? trimmedQuery : tokens.text;
-	const canStart = startPrompt !== "" && searchable;
+	const canStart = startPrompt !== "" && startable;
+	// Compose always offers its Quick actions row; Search only for a long prompt (⌘⏎ still starts from any query).
+	const offersNewSession = canStart && (compose || longPrompt);
 	// Upstream's inline "Filter by <Name>: <Value>" rows for values the last words name, minus facets already set.
 	const inlineSuggestions = useMemo(
 		() =>
@@ -1222,11 +1228,15 @@ function PalettePopup({
 	const pendingFirstRowRef = useRef(false);
 	useEffect(() => {
 		if (!pendingFirstRowRef.current) return;
-		const first = canStart ? NEW_SESSION_VALUE : listing?.[0] === undefined ? undefined : rowKey(listing[0]);
+		const first = offersNewSession
+			? NEW_SESSION_VALUE
+			: listing?.[0] === undefined
+				? undefined
+				: rowKey(listing[0]);
 		if (first === undefined) return;
 		pendingFirstRowRef.current = false;
 		setSelectedValue(first);
-	}, [tab, filters, listing, canStart]);
+	}, [tab, filters, listing, offersNewSession]);
 
 	// cmdk only refreshes `aria-activedescendant` when its own keys move the selection, never for a
 	// controlled value, so every commit points the textarea at the selected row itself. It writes the
@@ -1608,8 +1618,9 @@ function PalettePopup({
 					commandMatches(command.label, tokens.text, SESSION_COMMAND_KEYWORDS[command.id]),
 				)
 			: [];
-	const matchedActions =
-		actionsOnly && tokens.text === ""
+	const matchedActions = longPrompt
+		? []
+		: actionsOnly && tokens.text === ""
 			? actions
 			: matchesCommands || actionsOnly || bangQuery
 				? actions.filter((action) => commandMatches(action.label, tokens.text, action.keywords))
@@ -1650,7 +1661,8 @@ function PalettePopup({
 	const composeAtRest = compose && startStep !== "picker";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all" && chips.length === 0;
 	if (frozenMarks !== null && frozenView === null && showEmptyState) setFrozenView(emptyView.view);
-	const showResults = idle && !compose && hints === null && valueSuggestions === null && !showEmptyState;
+	const showResults =
+		idle && !compose && hints === null && valueSuggestions === null && !showEmptyState && !longPrompt;
 	// Upstream sizes the scroller to its content, but holds it at the cap while the skeleton or empty block fills it.
 	const listCapped = showEmptyState || (showResults && (searching || emptyKind !== null));
 	const listCap = LIST_CAP_PX + (footerCollapsed && !coarsePointer ? COLLAPSED_FOOTER_PX : 0);
@@ -1862,7 +1874,7 @@ function PalettePopup({
 								))}
 							</Command.Group>
 						)}
-						{idle && canStart && (
+						{idle && offersNewSession && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 								<NewSessionItem
 									prompt={startPrompt}
@@ -2099,14 +2111,15 @@ function PalettePopup({
 						)}
 						{showResults && searching && <PaletteSkeleton />}
 					</Command.List>
-					{showResults && (
+					{/* Upstream's live region stays empty beside the long-prompt New session row: search never ran. */}
+					{(showResults || (idle && longPrompt)) && (
 						<div aria-live="polite" aria-atomic="true" className="sr-only">
-							{chips.length > 0 && (
+							{showResults && chips.length > 0 && (
 								<p data-palette-showing="">
 									Showing {[paletteTypeLabels[tab], ...chips.map((chip) => chip.label)].join(", ")}
 								</p>
 							)}
-							{searching ? "" : liveMessage}
+							{showResults && !searching ? liveMessage : ""}
 						</div>
 					)}
 

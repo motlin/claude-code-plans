@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
+import {CommandPalette, PALETTE_RECENT_LIMIT, PALETTE_SEARCH_DEBOUNCE_MS} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
@@ -90,10 +90,15 @@ interface LaunchCall {
 	init: RequestInit | undefined;
 }
 
+// Upstream offers the Quick actions New session row only above 50 raw characters.
+const LONG_PROMPT = "fix the flaky test in the palette search spec please now";
+
 let launchCalls: LaunchCall[] = [];
+let fetchedUrls: string[] = [];
 let launchResponse: () => Promise<Response> = async () => new Promise<Response>(() => {});
 
 async function fetchMock(url: string, init?: RequestInit): Promise<Response> {
+	fetchedUrls.push(url);
 	if (url === "/api/herdr/launch") {
 		launchCalls.push({url, init});
 		return launchResponse();
@@ -207,6 +212,7 @@ describe("⌘K palette: start a new session", () => {
 
 	beforeEach(() => {
 		launchCalls = [];
+		fetchedUrls = [];
 		launchResponse = async () => new Promise<Response>(() => {});
 		TestEventSource.current = null;
 		vi.stubGlobal("EventSource", TestEventSource);
@@ -239,19 +245,76 @@ describe("⌘K palette: start a new session", () => {
 		expect(headings(dialog)).toStrictEqual(["Recents", "Actions"]);
 	});
 
-	it("prepends a selected New session row with the prompt and a project chip once text is typed", async () => {
+	it("offers a selected New session row only once the query is longer than 50 characters", async () => {
 		const {dialog, input} = await openPalette();
 
 		fireEvent.change(input, {target: {value: "fix the flaky test"}});
+		const shortHeadings = headings(dialog);
+		fireEvent.change(input, {target: {value: "x".repeat(51)}});
 
-		expect(headings(dialog)[0]).toBe("Quick actions");
-		expect(groupLabels(dialog, "Quick actions")).toStrictEqual(["New session"]);
+		expect({
+			shortHasQuickActions: shortHeadings.includes("Quick actions"),
+			longHeadings: headings(dialog),
+			longItems: [...dialog.querySelectorAll("[cmdk-item]")].map((item) => item.getAttribute("data-value")),
+			selected: newSessionRow(dialog).getAttribute("data-selected"),
+		}).toStrictEqual({
+			shortHasQuickActions: false,
+			longHeadings: ["Quick actions"],
+			longItems: ["start:new-session"],
+			selected: "true",
+		});
+	});
+
+	it("shows the prompt and a project chip on the long-prompt New session row", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {target: {value: LONG_PROMPT}});
+
 		const row = newSessionRow(dialog);
 		expect({
 			prompt: row.querySelector("[data-palette-prompt]")?.textContent,
 			project: row.querySelector("[data-palette-project-chip]")?.textContent,
-			selected: row.getAttribute("data-selected"),
-		}).toStrictEqual({prompt: "fix the flaky test", project: "it's", selected: "true"});
+		}).toStrictEqual({prompt: LONG_PROMPT, project: "it's"});
+	});
+
+	it("skips search above 50 characters: no /api/search request, no See all row, an empty live region", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {target: {value: `auth ${"x".repeat(46)}`}});
+		await new Promise((resolve) => {
+			setTimeout(resolve, PALETTE_SEARCH_DEBOUNCE_MS * 3);
+		});
+
+		expect({
+			searches: fetchedUrls.filter((url) => url.startsWith("/api/search")),
+			seeAll: dialog.querySelector('[data-value^="see-all"]'),
+			live: dialog.querySelector("[aria-live]")?.textContent,
+			items: [...dialog.querySelectorAll("[cmdk-item]")].map((item) => item.getAttribute("data-value")),
+		}).toStrictEqual({searches: [], seeAll: null, live: "", items: ["start:new-session"]});
+	});
+
+	it("counts the raw query: 50 letters plus a trailing space offers the row, 50 letters do not", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {target: {value: "a".repeat(50)}});
+		const at50 = dialog.querySelector('[data-value="start:new-session"]');
+		fireEvent.change(input, {target: {value: `${"a".repeat(50)} `}});
+
+		expect({at50, withSpace: newSessionRow(dialog).getAttribute("data-value")}).toStrictEqual({
+			at50: null,
+			withSpace: "start:new-session",
+		});
+	});
+
+	it("keeps only the New session row for a long prompt on a type tab", async () => {
+		const {dialog, input} = await openPalette();
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+
+		fireEvent.change(input, {target: {value: LONG_PROMPT}});
+
+		expect(
+			[...dialog.querySelectorAll("[cmdk-item]")].map((item) => item.getAttribute("data-value")),
+		).toStrictEqual(["start:new-session"]);
 	});
 
 	it("does not offer New session for the / filter hints", async () => {
@@ -264,7 +327,7 @@ describe("⌘K palette: start a new session", () => {
 
 	it("opens a project picker with recents' projects first on Enter", async () => {
 		const {dialog, input} = await openPalette();
-		fireEvent.change(input, {target: {value: "fix the flaky test"}});
+		fireEvent.change(input, {target: {value: LONG_PROMPT}});
 
 		fireEvent.keyDown(input, {key: "Enter", code: "Enter"});
 
@@ -290,7 +353,7 @@ describe("⌘K palette: start a new session", () => {
 
 	it("returns from the picker to the results on Escape", async () => {
 		const {dialog, input} = await openPalette();
-		fireEvent.change(input, {target: {value: "fix the flaky test"}});
+		fireEvent.change(input, {target: {value: LONG_PROMPT}});
 		fireEvent.keyDown(input, {key: "Enter", code: "Enter"});
 		await waitFor(() => {
 			expect(headings(dialog)).toStrictEqual(["Choose a project"]);
@@ -309,7 +372,7 @@ describe("⌘K palette: start a new session", () => {
 
 	it("posts the prompt and project to the herdr launch API and shows Starting session…", async () => {
 		const {dialog, input} = await openPalette();
-		fireEvent.change(input, {target: {value: "fix the flaky test"}});
+		fireEvent.change(input, {target: {value: LONG_PROMPT}});
 
 		await pickProject(dialog, input, "older");
 
@@ -321,7 +384,7 @@ describe("⌘K palette: start a new session", () => {
 			body: launchBody(launchCalls[0]),
 		}).toStrictEqual({
 			method: "POST",
-			body: {cwd: "/users/dev/older", prompt: "fix the flaky test"},
+			body: {cwd: "/users/dev/older", prompt: LONG_PROMPT},
 		});
 		expect(groupLabels(dialog, "Quick actions")).toStrictEqual(["Starting session…"]);
 		expect(within(dialog).getByRole("combobox")).toHaveProperty("disabled", true);
@@ -420,7 +483,7 @@ describe("⌘K palette: start a new session", () => {
 		launchResponse = async () =>
 			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));
 		const {dialog, input, router, eventSource} = await openPalette();
-		fireEvent.change(input, {target: {value: "fix the flaky test"}});
+		fireEvent.change(input, {target: {value: LONG_PROMPT}});
 		await pickProject(dialog, input, "older");
 		await waitFor(() => {
 			expect(launchCalls.length).toBe(1);
@@ -455,13 +518,15 @@ describe("⌘K palette: start a new session", () => {
 		launchResponse = async () =>
 			Promise.resolve(Response.json({error: "herdr writes are disabled"}, {status: 403}));
 		const {dialog, input} = await openPalette();
-		fireEvent.change(input, {target: {value: "don't break $HOME"}});
+		fireEvent.change(input, {target: {value: "don't break $HOME, and keep the quoting intact for the shell"}});
 
 		await pickProject(dialog, input, "it's");
 
 		await waitFor(() => {
 			expect(writeText.mock.calls).toStrictEqual([
-				[`cd '/users/dev/it'\\''s' && claude 'don'\\''t break $HOME'`],
+				[
+					`cd '/users/dev/it'\\''s' && claude 'don'\\''t break $HOME, and keep the quoting intact for the shell'`,
+				],
 			]);
 		});
 		expect((await screen.findByRole("status")).textContent).toContain("Copied command — no terminal to launch in");
@@ -470,12 +535,14 @@ describe("⌘K palette: start a new session", () => {
 	it("falls back to copying when the launch request itself fails", async () => {
 		launchResponse = async () => Promise.reject(new TypeError("Failed to fetch"));
 		const {dialog, input} = await openPalette();
-		fireEvent.change(input, {target: {value: "hello"}});
+		fireEvent.change(input, {target: {value: "hello there, please say hello back to me from the new session"}});
 
 		await pickProject(dialog, input, "newest");
 
 		await waitFor(() => {
-			expect(writeText.mock.calls).toStrictEqual([["cd '/users/dev/newest' && claude 'hello'"]]);
+			expect(writeText.mock.calls).toStrictEqual([
+				["cd '/users/dev/newest' && claude 'hello there, please say hello back to me from the new session'"],
+			]);
 		});
 	});
 });

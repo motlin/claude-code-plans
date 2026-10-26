@@ -2372,12 +2372,12 @@ describe("CommandPalette Plans, Memories and Files tabs with an empty query", ()
 		});
 	});
 
-	it("keeps New session selected over row 0 when a tab change keeps Quick actions on top", async () => {
+	it("keeps New session selected over row 0 when a tab change keeps a long prompt's Quick actions on top", async () => {
 		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
 			queryClient.setQueryData(artifactsQueryOptions.queryKey, [artifact("art-new", "New report", 0)]);
 		});
 		const input = within(dialog).getByRole("combobox");
-		fireEvent.change(input, {target: {value: "re"}});
+		fireEvent.change(input, {target: {value: `re ${"x".repeat(50)}`}});
 
 		fireEvent.click(within(dialog).getByRole("tab", {name: "Artifacts"}));
 		const selected = dialog.querySelector('[cmdk-item][data-selected="true"]');
