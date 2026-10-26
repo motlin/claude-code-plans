@@ -132,7 +132,7 @@ describe("sidebar session list roving focus", () => {
 	});
 });
 
-async function renderSidebar(path = "/") {
+async function renderSidebar(path = "/", sessions: readonly ReturnType<typeof session>[] = FIXTURE) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -150,7 +150,7 @@ async function renderSidebar(path = "/") {
 	});
 	queryClient.setQueryData(
 		recentSessionsInfiniteQueryOptions(undefined, DEFAULTS.sessionListPrefs.statusFilter).queryKey,
-		{pages: [RecentSessionsResponse.parse({sessions: FIXTURE, nextCursor: null})], pageParams: [null]},
+		{pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})], pageParams: [null]},
 	);
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -358,6 +358,27 @@ describe("sidebar body roving focus", () => {
 				.getAllByRole("button", {name: "Group and sort"})
 				.map((button) => button.getAttribute("tabindex")),
 		}).toStrictEqual({stops: ["Search field", "New", "Completed"], groupAndSort: ["-1"]});
+	});
+
+	it("keeps every group header button out of the tab order across several groups", async () => {
+		await renderSidebar("/", [
+			{...session("s1", "First row", 1), state: "waiting", bucket: "blocked"},
+			{...session("s2", "Second row", 2), state: "working", bucket: "working"},
+			session("s3", "Third row", 3),
+		]);
+
+		screen.getByRole("link", {name: "New"}).focus();
+		expect({
+			toggles: [...document.querySelectorAll("[data-group-toggle]")].map(name),
+			stops: bodyTabStops(),
+			groupAndSort: screen
+				.getAllByRole("button", {name: "Group and sort"})
+				.map((button) => button.getAttribute("tabindex")),
+		}).toStrictEqual({
+			toggles: ["Pinned", "Needs input", "Working", "Completed"],
+			stops: ["Search field", "New", "Needs input"],
+			groupAndSort: ["-1", "-1", "-1"],
+		});
 	});
 
 	it("keeps the last focused nav row as the nav stop after focus moves into the list", async () => {
