@@ -1,6 +1,13 @@
 import {Link, useMatches} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
-import {useEffect, useRef, useState, type ReactNode} from "react";
+import {
+	useEffect,
+	useRef,
+	useState,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type PointerEvent as ReactPointerEvent,
+	type ReactNode,
+} from "react";
 import type {Section} from "./types";
 import {activeSectionFor} from "./hooks";
 import {MoreNavMenu, type NavBadge} from "./more-menu";
@@ -22,8 +29,10 @@ import {
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
 	SIDEBAR_RESIZE_STEP,
+	readSidebarState,
 	toggleSidebarCollapsed,
 	useSidebarState,
+	writeSidebarState,
 } from "../../lib/sidebar-store";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
@@ -268,8 +277,78 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
 /**
  * Upstream's collapsed-sidebar edge (`.dframe-sidebar-edge`): an 8px `separator` at the frame's left
  * edge whose hover fades in a 3x48 grip pill after 200ms (accent and full height when focus-visible),
- * with a cursor-tracking "Show sidebar ⌘B / Drag to resize" tooltip on its right.
+ * with a cursor-tracking "Show sidebar ⌘B / Drag to resize" tooltip on its right. A click expands
+ * the sidebar, a drag past half the floor expands it live, and ArrowRight expands it and focuses Hide.
  */
+/** Upstream's `mF`: pointer travel (px) below which a press on the edge is a click. */
+const EDGE_CLICK_THRESHOLD_PX = 3;
+/** Upstream keeps at least this much width (px) for the content when committing a drag. */
+const EDGE_DRAG_CONTENT_RESERVE_PX = 330;
+
+/** Expand or re-collapse live from an edge drag of `distance` px, like upstream's `aK`. */
+function applyEdgeDrag(distance: number): void {
+	const state = readSidebarState();
+	if (distance < SIDEBAR_MIN_WIDTH / 2) {
+		if (!state.collapsed) writeSidebarState({...state, collapsed: true});
+		return;
+	}
+	const max = Math.max(
+		SIDEBAR_MIN_WIDTH,
+		Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - EDGE_DRAG_CONTENT_RESERVE_PX),
+	);
+	const width = Math.round(Math.min(max, Math.max(SIDEBAR_MIN_WIDTH, distance)));
+	if (state.collapsed || state.width !== width) writeSidebarState({...state, collapsed: false, width});
+}
+
+/**
+ * Track an edge press on window listeners, since a drag that passes the threshold expands the
+ * sidebar and unmounts the edge mid-gesture.
+ */
+function startEdgeGesture(event: ReactPointerEvent<HTMLElement>): void {
+	const {pointerId, clientX: startX} = event;
+	const frame = event.currentTarget.closest<HTMLElement>('[data-testid="app-frame"]');
+	let dragging = false;
+
+	function onMove(moveEvent: PointerEvent): void {
+		if (moveEvent.pointerId !== pointerId) return;
+		const distance = moveEvent.clientX - startX;
+		if (!dragging && Math.abs(distance) < EDGE_CLICK_THRESHOLD_PX) return;
+		if (!dragging) {
+			dragging = true;
+			frame?.setAttribute("data-resizing", "");
+		}
+		applyEdgeDrag(distance);
+	}
+
+	function finish(endEvent: PointerEvent): void {
+		if (endEvent.pointerId !== pointerId) return;
+		window.removeEventListener("pointermove", onMove);
+		window.removeEventListener("pointerup", finish);
+		window.removeEventListener("pointercancel", finish);
+		frame?.removeAttribute("data-resizing");
+		if (!dragging && endEvent.type === "pointerup") toggleSidebarCollapsed();
+	}
+
+	window.addEventListener("pointermove", onMove);
+	window.addEventListener("pointerup", finish);
+	window.addEventListener("pointercancel", finish);
+}
+
+function onEdgePointerDown(event: ReactPointerEvent<HTMLElement>): void {
+	if (event.button !== 0) return;
+	event.preventDefault();
+	startEdgeGesture(event);
+}
+
+function onEdgeKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
+	if (event.key !== "ArrowRight") return;
+	event.preventDefault();
+	writeSidebarState({...readSidebarState(), collapsed: false});
+	requestAnimationFrame(() => {
+		document.querySelector<HTMLElement>('button[aria-label="Hide sidebar"]')?.focus();
+	});
+}
+
 export function SidebarEdgeHandle() {
 	const {keys} = useShortcutKeys("toggle_sidebar");
 	return (
@@ -290,6 +369,8 @@ export function SidebarEdgeHandle() {
 				aria-valuemax={SIDEBAR_MAX_WIDTH}
 				tabIndex={0}
 				data-sidebar-edge=""
+				onPointerDown={onEdgePointerDown}
+				onKeyDown={onEdgeKeyDown}
 				className="group/resize absolute inset-y-0 left-0 z-[21] w-2 cursor-col-resize touch-none outline-none select-none"
 			>
 				<div

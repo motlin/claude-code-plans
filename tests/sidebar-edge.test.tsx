@@ -156,3 +156,105 @@ describe("collapsed sidebar edge handle", () => {
 		expect(tooltip.textContent).toContain("Drag to resize");
 	});
 });
+
+describe("collapsed sidebar edge click, drag-out and keyboard", () => {
+	function requireEdge(): HTMLElement {
+		const edge = edgeHandle();
+		if (!edge) throw new Error("edge handle missing");
+		return edge;
+	}
+
+	function press(clientX: number) {
+		fireEvent.pointerDown(requireEdge(), {button: 0, clientX, pointerId: 1, pointerType: "mouse"});
+	}
+
+	function move(clientX: number) {
+		fireEvent.pointerMove(window, {clientX, pointerId: 1, pointerType: "mouse"});
+	}
+
+	function release(clientX: number) {
+		fireEvent.pointerUp(window, {clientX, pointerId: 1, pointerType: "mouse"});
+	}
+
+	it("expands on a press that moves less than 3px, without moving focus", async () => {
+		await renderFrame({collapsed: true});
+		const focused = document.activeElement;
+		press(3);
+		release(4);
+		expect(readSidebarState().collapsed).toBe(false);
+		expect(document.activeElement).toBe(focused);
+	});
+
+	it("ignores non-primary buttons", async () => {
+		await renderFrame({collapsed: true});
+		fireEvent.pointerDown(requireEdge(), {button: 2, clientX: 3, pointerId: 1, pointerType: "mouse"});
+		release(3);
+		expect(readSidebarState().collapsed).toBe(true);
+	});
+
+	it("stays collapsed after a drag shorter than half the sidebar floor", async () => {
+		await renderFrame({collapsed: true});
+		press(3);
+		move(80);
+		expect(screen.getByTestId("app-frame").hasAttribute("data-resizing")).toBe(true);
+		release(80);
+		expect(readSidebarState().collapsed).toBe(true);
+		expect(screen.getByTestId("app-frame").hasAttribute("data-resizing")).toBe(false);
+	});
+
+	it("expands live once the drag reaches half the floor and commits the dragged width", async () => {
+		await renderFrame({collapsed: true});
+		press(3);
+		move(200);
+		expect(readSidebarState().collapsed).toBe(false);
+		expect(screen.getByTestId("app-frame").hasAttribute("data-resizing")).toBe(true);
+		move(291);
+		release(291);
+		expect({collapsed: readSidebarState().collapsed, width: readSidebarState().width}).toStrictEqual({
+			collapsed: false,
+			width: 288,
+		});
+		expect(screen.getByTestId("app-frame").hasAttribute("data-resizing")).toBe(false);
+	});
+
+	it("clamps the dragged width to the floor and to min(420, innerWidth - 330)", async () => {
+		await renderFrame({collapsed: true});
+		press(3);
+		move(150);
+		expect(readSidebarState().width).toBe(232);
+		move(1000);
+		release(1000);
+		expect(readSidebarState().width).toBe(Math.min(420, window.innerWidth - 330));
+	});
+
+	it("re-collapses live when the drag returns under the threshold", async () => {
+		await renderFrame({collapsed: true});
+		press(3);
+		move(200);
+		expect(readSidebarState().collapsed).toBe(false);
+		move(50);
+		expect(readSidebarState().collapsed).toBe(true);
+		release(50);
+		expect(readSidebarState().collapsed).toBe(true);
+	});
+
+	it("expands on ArrowRight and moves focus to Hide sidebar", async () => {
+		await renderFrame({collapsed: true});
+		const edge = requireEdge();
+		edge.focus();
+		fireEvent.keyDown(edge, {key: "ArrowRight"});
+		expect(readSidebarState().collapsed).toBe(false);
+		await waitFor(() => {
+			expect(document.activeElement?.getAttribute("aria-label")).toBe("Hide sidebar");
+		});
+	});
+
+	it("does nothing on ArrowLeft, Home or End", async () => {
+		await renderFrame({collapsed: true});
+		const edge = requireEdge();
+		for (const key of ["ArrowLeft", "Home", "End"]) {
+			expect(fireEvent.keyDown(edge, {key})).toBe(true);
+		}
+		expect(readSidebarState().collapsed).toBe(true);
+	});
+});
