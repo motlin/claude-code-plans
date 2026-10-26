@@ -1,5 +1,8 @@
+import {createReadStream} from "node:fs";
 import {readdir, stat} from "node:fs/promises";
 import {join} from "node:path";
+import {createInterface} from "node:readline";
+import {JsonlRecordSchema} from "../src/lib/schemas";
 
 /**
  * Enumeration and selection of the on-disk JSONL corpus under `~/.claude/projects`.
@@ -14,6 +17,7 @@ export interface JsonlFile {
 	path: string;
 	relativePath: string;
 	modifiedAtMilliseconds: number;
+	sizeBytes: number;
 }
 
 export interface FileSelection {
@@ -45,6 +49,80 @@ export function selectFilesForScan(
 		skippedForAge: newestFirst.length - recentFiles.length,
 		skippedForLimit: Math.max(0, recentFiles.length - fileLimit),
 	};
+}
+
+/** Bytes a scan reads: each file's tail when `tailBytes` caps it, otherwise the whole file. */
+export function scanByteCount(files: readonly JsonlFile[], tailBytes: number | undefined): number {
+	return files.reduce(
+		(total, file) => total + (tailBytes === undefined ? file.sizeBytes : Math.min(file.sizeBytes, tailBytes)),
+		0,
+	);
+}
+
+/**
+ * A minute of headroom plus one second per 2 MiB. An idle machine validates
+ * roughly 20 MiB/s, so the 2 MiB/s floor tolerates a tenfold slowdown under
+ * load while a hung scan still fails.
+ */
+export function scanTimeoutMilliseconds(bytes: number): number {
+	const bytesPerSecond = 2 * 1024 * 1024;
+	return 60_000 + Math.ceil((bytes / bytesPerSecond) * 1000);
+}
+
+export interface FileValidation {
+	failures: string[];
+	toolInputMismatches: number;
+	parsedLines: number;
+	skippedUnparseableLines: number;
+}
+
+/**
+ * Validates every record in `file`, or only its last `tailBytes` bytes. New
+ * records are appended, so the tail of a transcript holds the newest shapes
+ * Claude Code writes, which is where schema drift appears. A tail read starts
+ * mid-record, so its first line is dropped, and its failures are located as
+ * `tail+<line>` because absolute line numbers are unknown.
+ */
+export async function validateJsonlFile(file: JsonlFile, tailBytes: number | undefined): Promise<FileValidation> {
+	const start = tailBytes === undefined ? 0 : Math.max(0, file.sizeBytes - tailBytes);
+	const linePrefix = start > 0 ? "tail+" : "";
+	const failures: string[] = [];
+	let toolInputMismatches = 0;
+	let parsedLines = 0;
+	let skippedUnparseableLines = 0;
+	let lineNumber = 0;
+	const lines = createInterface({
+		input: createReadStream(file.path, {encoding: "utf8", start}),
+		crlfDelay: Infinity,
+	});
+
+	for await (const rawLine of lines) {
+		lineNumber++;
+		if (start > 0 && lineNumber === 1) continue;
+		const line = rawLine.trim();
+		if (line === "") continue;
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(line);
+		} catch {
+			skippedUnparseableLines++;
+			continue;
+		}
+
+		parsedLines++;
+		const result = JsonlRecordSchema.safeParse(parsed);
+		if (result.success) continue;
+
+		const {recordIssues, toolInputIssues} = partitionIssues(result.error.issues);
+		if (toolInputIssues.length > 0) toolInputMismatches++;
+		if (recordIssues.length > 0) {
+			const issues = recordIssues.map((issue) => `  ${issue}`).join("\n");
+			failures.push(`${file.relativePath}:${linePrefix}${lineNumber}\n${issues}`);
+		}
+	}
+
+	return {failures, toolInputMismatches, parsedLines, skippedUnparseableLines};
 }
 
 /**
@@ -100,6 +178,7 @@ async function statJsonlFiles(
 					path: filePath,
 					relativePath: join(relativeDirectory, entry.name),
 					modifiedAtMilliseconds: fileStat.mtimeMs,
+					sizeBytes: fileStat.size,
 				});
 			} catch {
 				skippedUnavailablePaths++;
