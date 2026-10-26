@@ -182,14 +182,49 @@ describe("sidebar Group and sort menu", () => {
 		}).toStrictEqual({groupAndSort: [1, 1], newSession: [1, 0], revealed: ["w-0", "group-hover/labelrow:w-auto"]});
 	});
 
-	it("styles the trigger like upstream: radius 6 (r5), secondary ink", async () => {
+	it("styles the trigger like upstream: radius 6 (r5)", async () => {
 		await renderSidebarGroups();
 
 		const classes = filterButton().className.split(" ");
+		expect(classes.filter((token) => token.startsWith("rounded"))).toStrictEqual(["rounded-r5"]);
+	});
+
+	// Upstream: the whole header rests in --df-heading-ink (muted), turns secondary on header hover, and a
+	// chrome button goes primary on its own hover or while its menu is open.
+	it("inks the header like upstream: muted at rest, secondary on header hover, primary on a hovered or open button", async () => {
+		const {container} = await renderSidebarGroups();
+		const inkTokens = (element: Element | null | undefined) =>
+			(element?.className ?? "")
+				.split(" ")
+				.filter(
+					(token) =>
+						/(^|:)(text-|\[--sb-heading-ink)/.test(token) &&
+						token !== "text-left" &&
+						!token.startsWith("text-[length"),
+				);
+		const label = container.querySelector('[data-testid="sidebar-recents"] [data-sidebar-group-label]');
+		const buttonInk = [
+			"text-[color:var(--sb-heading-ink,var(--color-secondary))]",
+			"hover:text-primary",
+			"data-[popup-open]:text-primary",
+			"aria-expanded:text-primary",
+		];
+
 		expect({
-			radius: classes.filter((token) => token.startsWith("rounded")),
-			ink: classes.filter((token) => /^text-(primary|secondary|ink-muted|muted)$/.test(token)),
-		}).toStrictEqual({radius: ["rounded-r5"], ink: ["text-secondary"]});
+			label: inkTokens(label),
+			toggle: inkTokens(label?.querySelector("[data-group-toggle]")),
+			groupAndSort: inkTokens(label?.querySelector('button[aria-label="Group and sort"]')),
+			newSession: inkTokens(label?.querySelector('button[aria-label="New session"]')),
+		}).toStrictEqual({
+			label: [
+				"[--sb-heading-ink:var(--color-ink-muted)]",
+				"hover:[--sb-heading-ink:var(--color-secondary)]",
+				"text-[color:var(--sb-heading-ink)]",
+			],
+			toggle: [],
+			groupAndSort: buttonInk,
+			newSession: buttonInk,
+		});
 	});
 
 	it("lists upstream's top level: Group by, Sort by, Show, New section, Reset to defaults and View all", async () => {

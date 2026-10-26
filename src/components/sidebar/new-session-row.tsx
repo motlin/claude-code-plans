@@ -70,7 +70,7 @@ export function NewSessionHeaderButton() {
 				// The list keeps one roving tab stop; the New row and ⇧⌘O reach the same action by keyboard.
 				tabIndex={-1}
 				onClick={() => void navigate({to: "/"}).then(requestHomeComposerFocus)}
-				className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+				className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-[color:var(--sb-heading-ink,var(--color-secondary))] hover:text-primary data-[popup-open]:text-primary aria-expanded:text-primary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 			>
 				<Plus aria-hidden="true" className="size-4" />
 			</button>
