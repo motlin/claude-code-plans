@@ -11,6 +11,7 @@ import {
 	useParams,
 	useRouterState,
 } from "@tanstack/react-router";
+import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
@@ -457,6 +458,102 @@ describe("palette row actions card", () => {
 			sideOffset: "-44",
 			density: "compact",
 			itemClasses: [true, true, true, true, true, true, true],
+		});
+	});
+
+	it("recedes the palette from its top over 200ms like upstream, and not under reduced motion", async () => {
+		const motion = [
+			"origin-top",
+			"transition-[scale]",
+			"duration-200",
+			"ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+			"motion-reduce:transition-none",
+			"scale-[.97]",
+			"motion-reduce:scale-100",
+		];
+		const veilMotion = [
+			"bg-surface-0",
+			"after:absolute",
+			"after:inset-0",
+			"after:rounded-[inherit]",
+			"after:bg-backdrop",
+			"transition-opacity",
+			"ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+			"opacity-0",
+			"duration-[120ms]",
+			"opacity-20",
+			"duration-200",
+		];
+		const read = () => {
+			const veil = document.querySelector<HTMLElement>("[data-palette-recede-veil]")!;
+			return {
+				dialog: motion.filter((name) => veil.parentElement!.classList.contains(name)),
+				veil: veilMotion.filter((name) => veil.classList.contains(name)),
+			};
+		};
+
+		const {input} = await openPalette();
+		const closed = read();
+		fireEvent.keyDown(input, {key: "Enter", code: "Enter", altKey: true});
+		const card = await screen.findByRole("menu", {name: "Actions"});
+
+		expect({
+			closed,
+			open: read(),
+			card: {
+				animation: card.classList.contains("animate-palette-card-in"),
+				reduced: card.classList.contains("motion-reduce:animate-none"),
+				slide: card.style.getPropertyValue("--cp-card-slide"),
+			},
+		}).toStrictEqual({
+			closed: {
+				dialog: [
+					"origin-top",
+					"transition-[scale]",
+					"duration-200",
+					"ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+					"motion-reduce:transition-none",
+					"motion-reduce:scale-100",
+				],
+				veil: [
+					"bg-surface-0",
+					"after:absolute",
+					"after:inset-0",
+					"after:rounded-[inherit]",
+					"after:bg-backdrop",
+					"transition-opacity",
+					"ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+					"opacity-0",
+					"duration-[120ms]",
+				],
+			},
+			open: {
+				dialog: motion,
+				veil: [
+					"bg-surface-0",
+					"after:absolute",
+					"after:inset-0",
+					"after:rounded-[inherit]",
+					"after:bg-backdrop",
+					"transition-opacity",
+					"ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+					"opacity-20",
+					"duration-200",
+				],
+			},
+			card: {animation: true, reduced: true, slide: "-12px"},
+		});
+	});
+
+	it("defines upstream's palette-card-in keyframes and 200ms ease-out animation", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		expect({
+			animation: /--animate-palette-card-in: [^;]*;/.exec(styles)?.[0],
+			keyframes: /@keyframes palette-card-in \{[^}]*\}\n\}/.exec(styles)?.[0],
+		}).toStrictEqual({
+			animation: "--animate-palette-card-in: palette-card-in 200ms cubic-bezier(0.165, 0.84, 0.44, 1);",
+			keyframes:
+				"@keyframes palette-card-in {\n\t0% {\n\t\topacity: 0;\n\t\ttransform: translateX(var(--cp-card-slide));\n\t}\n}",
 		});
 	});
 

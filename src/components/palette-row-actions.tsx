@@ -290,10 +290,12 @@ export function PaletteRowActionsCard({
 				collisionAvoidance={SHIFT_COLLISION_AVOIDANCE}
 				anchor={anchor}
 				finalFocus={false}
-				className="w-[280px] animate-in fade-in slide-in-from-left-3 duration-150 motion-reduce:animate-none"
+				className="w-[280px] animate-palette-card-in motion-reduce:animate-none"
 				popupProps={{
 					"aria-label": "Actions",
 					"data-palette-row-actions": "",
+					// Upstream's cardSlide: the enter starts 12px back toward the palette (mirrored in RTL).
+					style: {"--cp-card-slide": inlineEndSide() === "left" ? "12px" : "-12px"},
 					onKeyDownCapture: handleKeyDownCapture,
 				}}
 				header={

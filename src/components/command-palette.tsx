@@ -1717,7 +1717,8 @@ function PalettePopup({
 			<Dialog.Title className="sr-only">Search</Dialog.Title>
 			<div
 				ref={cardRef}
-				className={`relative overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-transform duration-150 ease-out motion-reduce:transition-none ${
+				// Upstream's recede: origin-top, duration-base with --cds-ease-out, none under reduced motion.
+				className={`relative origin-top overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-[scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none motion-reduce:scale-100 ${
 					rowActions === null ? "" : "scale-[.97]"
 				} ${footerCollapsed ? FOOTER_COLLAPSED_CARD_CLASS : ""} ${PALETTE_RADIUS}`}
 				// Upstream drops onHoverIndex while the card is open, so hovering rows can't move the selection
@@ -1746,8 +1747,9 @@ function PalettePopup({
 				<div
 					aria-hidden="true"
 					data-palette-recede-veil=""
-					className={`pointer-events-none absolute inset-0 z-10 bg-backdrop transition-opacity duration-150 ease-out ${
-						rowActions === null ? "opacity-0" : "opacity-20"
+					// Upstream fades the veil in over duration-base and out over duration-snap.
+					className={`pointer-events-none absolute inset-0 z-10 bg-surface-0 transition-opacity ease-[cubic-bezier(0.165,0.84,0.44,1)] after:absolute after:inset-0 after:rounded-[inherit] after:bg-backdrop ${
+						rowActions === null ? "opacity-0 duration-[120ms]" : "opacity-20 duration-200"
 					}`}
 				/>
 				<Command
