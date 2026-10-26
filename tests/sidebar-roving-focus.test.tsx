@@ -130,31 +130,6 @@ describe("sidebar session list roving focus", () => {
 		fireEvent.click(kebabs[0]!);
 		expect(await screen.findByRole("menu")).toBeTruthy();
 	});
-
-	it("opens the focused row's menu with Shift+F10", async () => {
-		await renderGroups();
-
-		rowLink("Second row").focus();
-		fireEvent.keyDown(document.activeElement!, {key: "F10", shiftKey: true});
-
-		const menu = await screen.findByRole("menu");
-		expect(menu).toBeTruthy();
-		expect(screen.getByRole("button", {name: "More options for Second row"}).getAttribute("aria-expanded")).toBe(
-			"true",
-		);
-	});
-
-	it("opens the focused row's menu with the Menu key", async () => {
-		await renderGroups();
-
-		rowLink("Third row").focus();
-		fireEvent.keyDown(document.activeElement!, {key: "ContextMenu"});
-
-		expect(await screen.findByRole("menu")).toBeTruthy();
-		expect(screen.getByRole("button", {name: "More options for Third row"}).getAttribute("aria-expanded")).toBe(
-			"true",
-		);
-	});
 });
 
 async function renderSidebar(path = "/") {
@@ -421,5 +396,131 @@ describe("sidebar body roving focus", () => {
 		const before = rovingTabIndexes();
 		rowLink("Second row").focus();
 		expect(rovingTabIndexes()).toStrictEqual(before);
+	});
+});
+
+describe("sidebar row context menu keys", () => {
+	const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
+	const LINUX_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36";
+
+	function stubUserAgent(userAgent: string): void {
+		vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue(userAgent);
+	}
+
+	beforeEach(() => {
+		installLocalStorage();
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		Element.prototype.scrollIntoView = () => {};
+		Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+			configurable: true,
+			get(this: HTMLElement) {
+				return this.parentElement;
+			},
+		});
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+		Reflect.deleteProperty(HTMLElement.prototype, "offsetParent");
+	});
+
+	async function contextMenuState(notPrevented: boolean) {
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeTruthy();
+		});
+		return {
+			notPrevented,
+			menu: screen.queryByRole("menu") !== null,
+			kebabExpanded: screen
+				.getByRole("button", {name: "More options for Second row", hidden: true})
+				.getAttribute("aria-expanded"),
+		};
+	}
+
+	it("opens the row's context menu, not its kebab menu, with Shift+F10 on macOS", async () => {
+		stubUserAgent(MAC_UA);
+		await renderSidebar();
+
+		rowLink("Second row").focus();
+		const notPrevented = fireEvent.keyDown(document.activeElement!, {key: "F10", shiftKey: true});
+		expect(await contextMenuState(notPrevented)).toStrictEqual({
+			notPrevented: false,
+			menu: true,
+			kebabExpanded: "false",
+		});
+	});
+
+	it("opens the row's context menu with the Menu key on macOS", async () => {
+		stubUserAgent(MAC_UA);
+		await renderSidebar();
+
+		rowLink("Second row").focus();
+		const notPrevented = fireEvent.keyDown(document.activeElement!, {key: "ContextMenu"});
+		expect(await contextMenuState(notPrevented)).toStrictEqual({
+			notPrevented: false,
+			menu: true,
+			kebabExpanded: "false",
+		});
+	});
+
+	it("leaves Shift+F10 to the browser's native contextmenu event off macOS", async () => {
+		stubUserAgent(LINUX_UA);
+		await renderSidebar();
+
+		rowLink("Second row").focus();
+		const notPrevented = fireEvent.keyDown(document.activeElement!, {key: "F10", shiftKey: true});
+		expect({notPrevented, menu: screen.queryByRole("menu") !== null, focused: focused()}).toStrictEqual({
+			notPrevented: true,
+			menu: false,
+			focused: "Second row",
+		});
+	});
+
+	it("opens the row's context menu with Ctrl+Enter on macOS without following the link", async () => {
+		stubUserAgent(MAC_UA);
+		await renderSidebar();
+
+		rowLink("Second row").focus();
+		const notPrevented = fireEvent.keyDown(document.activeElement!, {key: "Enter", ctrlKey: true});
+		// Prevented, so the link's Enter activation doesn't follow it.
+		expect(await contextMenuState(notPrevented)).toStrictEqual({
+			notPrevented: false,
+			menu: true,
+			kebabExpanded: "false",
+		});
+	});
+
+	it("swallows a held Enter while a menu is open, and on its menu items, on macOS", async () => {
+		stubUserAgent(MAC_UA);
+		await renderSidebar();
+
+		rowLink("Second row").focus();
+		const withoutMenu = fireEvent.keyDown(document.activeElement!, {key: "Enter", repeat: true});
+		fireEvent.keyDown(document.activeElement!, {key: "Enter", ctrlKey: true});
+		// Base UI moves focus into the menu a frame after it mounts; wait for that to settle.
+		await waitFor(() => {
+			expect(document.activeElement?.getAttribute("role")).toBe("menu");
+		});
+		// The handler judges the focused element, as upstream does, so the held Enter must come from the row.
+		rowLink("Second row").focus();
+		const rowFocusedWithMenu = {focused: focused(), menu: screen.queryByRole("menu") !== null};
+		const withMenu = fireEvent.keyDown(document.activeElement!, {key: "Enter", repeat: true});
+		const onMenuItem = fireEvent.keyDown(screen.getAllByRole("menuitem")[0]!, {key: "Enter", repeat: true});
+		expect({withoutMenu, rowFocusedWithMenu, withMenu, onMenuItem}).toStrictEqual({
+			withoutMenu: true,
+			rowFocusedWithMenu: {focused: "Second row", menu: true},
+			withMenu: false,
+			onMenuItem: false,
+		});
 	});
 });

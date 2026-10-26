@@ -81,6 +81,7 @@ export function Sidebar({
 			<div
 				ref={roving.ref}
 				onKeyDown={roving.onKeyDown}
+				onKeyDownCapture={roving.onKeyDownCapture}
 				data-sidebar-body=""
 				className="flex min-h-0 flex-1 flex-col px-2"
 			>

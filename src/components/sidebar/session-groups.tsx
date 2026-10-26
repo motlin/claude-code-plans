@@ -48,7 +48,6 @@ import {EmptyGroupSection, type EmptyListReason, GroupSection, ROW_CLASS} from "
 import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {PinnedSubList} from "./sublists";
-import {useRowMenuKey} from "./use-roving-focus";
 
 /**
  * The sidebar session list, grouped like claude.ai/code's recents: Needs input,
@@ -114,7 +113,6 @@ export function SessionGroups({
 	const latestGroups = useRef<SessionGroup<SidebarSessionRow>[] | undefined>(undefined);
 	const custom = prefs.groupBy === "custom";
 	const recentsRef = useRef<HTMLDivElement>(null);
-	const rowMenuKey = useRowMenuKey();
 	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag({
 		onDrop: (drop) => {
 			const sectionGroupId = sectionOfDragId(drop.srcId);
@@ -254,12 +252,7 @@ export function SessionGroups({
 	return (
 		// oxlint-disable-next-line react/jsx-no-constructed-context-values -- built after the loading early return, where hooks cannot run, from selection state that changes whenever the rows re-render anyway
 		<SidebarSelectionContext.Provider value={selectionApi}>
-			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- the Menu key and Shift+F10 open the focused row's menu */}
-			<div
-				onKeyDown={rowMenuKey.onKeyDown}
-				data-sidebar-selecting={selectedIds.length > 0 ? "" : undefined}
-				className="contents"
-			>
+			<div data-sidebar-selecting={selectedIds.length > 0 ? "" : undefined} className="contents">
 				<PinnedSubList
 					rows={split.pinned}
 					expanded={!collapsed.has(PINNED_GROUP_KEY)}

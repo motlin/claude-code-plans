@@ -1,10 +1,10 @@
 import type {BaseUIEvent} from "@base-ui/react/types";
 import {type KeyboardEvent, useEffect, useRef} from "react";
 
+import {isEditableTarget} from "../../lib/shortcuts/match";
+
 /** Marks an element as one stop of the sidebar session list's roving focus. */
 export const ROVING_ITEM_PROPS = {"data-roving-item": ""} as const;
-
-const ITEM_SELECTOR = "[data-roving-item]";
 
 /** Marks the session list while rows are selected; upstream's `sectionTabStops:!editing` then stops re-choosing tab stops. */
 const SELECTING_ATTRIBUTE = "data-sidebar-selecting";
@@ -124,6 +124,76 @@ function moveWithinRow(active: Element, step: 1 | -1, event: KeyboardEvent<HTMLE
 	target.focus();
 }
 
+/** Upstream's `K9`: macOS, where the keyboard context-menu keys need a synthetic event. */
+function isMac(): boolean {
+	return /(macintosh|macintel|macppc|mac68k|macos)/i.test(navigator.userAgent);
+}
+
+/** Upstream's `So`: the Menu key, or Shift+F10 without other modifiers. */
+function isMenuKey(event: KeyboardEvent): boolean {
+	return (
+		event.key === "ContextMenu" ||
+		(event.key === "F10" && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey)
+	);
+}
+
+/** Upstream's `vR`: macOS Ctrl+Enter, or a held Enter. */
+function isMenuEnter(event: KeyboardEvent): boolean {
+	return event.key === "Enter" && (event.ctrlKey || event.repeat) && isMac();
+}
+
+/**
+ * Upstream's `YB`: open `item`'s context menu anchored at its start-bottom with a synthetic
+ * contextmenu event; true when a context menu took it.
+ */
+function openContextMenu(item: HTMLElement): boolean {
+	const rect = item.getBoundingClientRect();
+	const style = getComputedStyle(item);
+	const clientX =
+		style.direction === "rtl"
+			? rect.right - (Number.parseFloat(style.paddingRight) || 0)
+			: rect.left + (Number.parseFloat(style.paddingLeft) || 0);
+	return !item.dispatchEvent(
+		new PointerEvent("contextmenu", {
+			bubbles: true,
+			cancelable: true,
+			button: -1,
+			pointerType: "mouse",
+			clientX,
+			clientY: rect.bottom,
+		}),
+	);
+}
+
+/**
+ * Upstream's `vr`: the context-menu keys. A fresh macOS Ctrl+Enter opens the row's context menu,
+ * a held Enter is swallowed while a menu is open, and the Menu key or Shift+F10 opens it on macOS
+ * (elsewhere the browser's native contextmenu event does). True when the key is handled and must
+ * not rove.
+ */
+function handleMenuKeys(event: KeyboardEvent<HTMLElement>, item: HTMLElement | null): boolean {
+	if (isMenuEnter(event)) {
+		if (item === null || isEditableTarget(event.target)) return false;
+		const fresh = !event.repeat && !event.metaKey && !event.shiftKey && !event.altKey && !event.defaultPrevented;
+		const handled = fresh ? openContextMenu(item) : document.querySelector('[role="menu"][data-open]') !== null;
+		if (handled) event.preventDefault();
+		return handled;
+	}
+	if (!isMenuKey(event)) return false;
+	if (item !== null && isMac()) {
+		event.preventDefault();
+		openContextMenu(item);
+	}
+	return true;
+}
+
+/** Upstream's `aU`: holding Enter on a menu item opened from the sidebar doesn't fire it. */
+function swallowMenuItemEnter(event: KeyboardEvent<HTMLElement>): void {
+	if (isMenuEnter(event) && event.target instanceof Element && event.target.matches('[role^="menuitem"]')) {
+		event.preventDefault();
+	}
+}
+
 /**
  * Upstream's `oa` trigger handler: a sidebar menu trigger (More, a row kebab) skips Base UI's
  * open-on-arrow so ArrowUp/Down keep roving the sidebar body.
@@ -137,7 +207,8 @@ export function keepArrowsRoving(event: BaseUIEvent<KeyboardEvent<HTMLElement>>)
  * claude.ai/code's sidebar body keyboard container (upstream `L$`): ArrowUp/Down (wrapping) and
  * Home/End rove across the Search field, New, the nav rows and every session-list row and group
  * toggle; ArrowRight/Left move along a row's or group header's controls (kebab, Group and sort,
- * New session). Shift is ignored, as upstream does; Meta, Ctrl and Alt opt out. Each tab section is one
+ * New session); the Menu key, Shift+F10 and macOS Ctrl+Enter open the row's context menu. Shift is
+ * ignored, as upstream does; Meta, Ctrl and Alt opt out. Each tab section is one
  * Tab stop, re-chosen on Tab and whenever focus moves inside the body, except while rows are selected.
  */
 export function useSidebarBodyRoving() {
@@ -170,12 +241,12 @@ export function useSidebarBodyRoving() {
 		const container = ref.current;
 		const active = document.activeElement;
 		if (container === null || active === null || !container.contains(active)) return;
-		if (event.metaKey || event.ctrlKey || event.altKey) return;
+		const item = owningItem(active);
+		if (handleMenuKeys(event, item) || event.metaKey || event.ctrlKey || event.altKey) return;
 		if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
 			moveWithinRow(active, event.key === "ArrowRight" ? 1 : -1, event);
 			return;
 		}
-		const item = owningItem(active);
 		if (item === null) return;
 		const items = bodyItems(container);
 		if (items.length === 0) return;
@@ -188,27 +259,5 @@ export function useSidebarBodyRoving() {
 		target.scrollIntoView({block: "nearest"});
 	};
 
-	return {ref, onKeyDown};
-}
-
-function isMenuKey(event: KeyboardEvent): boolean {
-	return event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey);
-}
-
-/**
- * The session list's Menu key and Shift+F10, which open the focused row's menu. Arrow keys and
- * Tab stops belong to the whole sidebar body (`useSidebarBodyRoving`).
- */
-export function useRowMenuKey() {
-	const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-		if (!isMenuKey(event) || !(event.target instanceof HTMLElement)) return;
-		const item = event.target.closest<HTMLElement>(ITEM_SELECTOR);
-		if (item === null || event.target !== item) return;
-		const kebab = item.closest("[data-session-actions]")?.querySelector<HTMLElement>("[data-row-action]");
-		if (kebab === undefined || kebab === null) return;
-		event.preventDefault();
-		kebab.click();
-	};
-
-	return {onKeyDown};
+	return {ref, onKeyDown, onKeyDownCapture: swallowMenuItemEnter};
 }
