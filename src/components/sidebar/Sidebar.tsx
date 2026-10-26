@@ -78,7 +78,12 @@ export function Sidebar({
 	const body = (
 		<>
 			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- upstream's sidebar-body keyboard container: arrow keys rove across the field, New, the nav rows and the session list */}
-			<div ref={roving.ref} onKeyDown={roving.onKeyDown} className="flex min-h-0 flex-1 flex-col px-2">
+			<div
+				ref={roving.ref}
+				onKeyDown={roving.onKeyDown}
+				data-sidebar-body=""
+				className="flex min-h-0 flex-1 flex-col px-2"
+			>
 				<div className="shrink-0">
 					{/* Upstream's phone sheet swaps the field for its header Search button. */}
 					{onPhoneSheetClose === undefined && <SidebarSearchField />}

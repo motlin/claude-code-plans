@@ -68,6 +68,7 @@ export function PinnedSubList({
 			ref={sectionRef}
 			data-testid="sidebar-pinned"
 			data-pinned-list=""
+			data-tab-section=""
 			data-perf-region="sidebar_pinned"
 			data-stub={stub ? "" : undefined}
 			inert={stub}

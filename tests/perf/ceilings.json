@@ -420,7 +420,7 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.small.mutations": {
-		"ceiling": 42,
+		"ceiling": 40,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
@@ -456,7 +456,7 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.mutations": {
-		"ceiling": 42,
+		"ceiling": 40,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
@@ -495,7 +495,7 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.mutations": {
-		"ceiling": 49,
+		"ceiling": 47,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
@@ -534,7 +534,7 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.mutations": {
-		"ceiling": 49,
+		"ceiling": 47,
 		"unit": "count",
 		"tolerance": 0,
 		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",

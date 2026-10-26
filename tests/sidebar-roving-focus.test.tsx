@@ -101,14 +101,6 @@ function rowLink(title: string): HTMLElement {
 	return link;
 }
 
-/** Every element Tab would stop on inside the list, in DOM order. */
-function tabStops(): HTMLElement[] {
-	const list = screen.getByTestId("list");
-	return [...list.querySelectorAll<HTMLElement>("a[href], button, input, [tabindex]")].filter(
-		(element) => element.tabIndex >= 0 && element.closest("[inert]") === null && !element.hasAttribute("disabled"),
-	);
-}
-
 function label(element: Element | null): string {
 	return element?.getAttribute("aria-label") ?? element?.textContent ?? "";
 }
@@ -120,18 +112,6 @@ describe("sidebar session list roving focus", () => {
 
 	afterEach(() => {
 		cleanup();
-	});
-
-	it("has exactly one tab stop: the first item when nothing is selected", async () => {
-		await renderGroups();
-
-		expect(tabStops().map(label)).toEqual([label(screen.getByRole("button", {name: "Completed"}))]);
-	});
-
-	it("puts the tab stop on the selected row", async () => {
-		await renderGroups("s2");
-
-		expect(tabStops()).toEqual([rowLink("Second row")]);
 	});
 
 	it("takes row kebabs out of the tab order but keeps them clickable, and draws unread marks as plain status", async () => {
@@ -177,7 +157,7 @@ describe("sidebar session list roving focus", () => {
 	});
 });
 
-async function renderSidebar() {
+async function renderSidebar(path = "/") {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -217,7 +197,7 @@ async function renderSidebar() {
 	});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
+		history: createMemoryHistory({initialEntries: [path]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -226,11 +206,35 @@ async function renderSidebar() {
 	});
 }
 
+/** An element's label, or the title of the session row whose link it is. */
+function name(element: Element | null): string {
+	if (element?.matches("button.df-search-field") === true) return "Search field";
+	const row = FIXTURE.find(({title}) => element === rowLink(title));
+	return row?.title ?? label(element);
+}
+
 /** The focused element's label, or the title of the session row whose link holds focus. */
 function focused(): string {
-	if (document.activeElement?.matches("button.df-search-field") === true) return "Search field";
-	const row = FIXTURE.find(({title}) => document.activeElement === rowLink(title));
-	return row?.title ?? label(document.activeElement);
+	return name(document.activeElement);
+}
+
+/** Every element Tab would stop on inside the sidebar body, in DOM order. */
+function bodyTabStops(): string[] {
+	const body = screen.getByRole("link", {name: "New"}).closest("[data-sidebar-body]");
+	if (body === null) throw new Error("no sidebar body");
+	return [...body.querySelectorAll<HTMLElement>("a[href], button, input, [tabindex]")]
+		.filter(
+			(element) =>
+				element.tabIndex >= 0 && element.closest("[inert]") === null && !element.hasAttribute("disabled"),
+		)
+		.map(name);
+}
+
+/** Every roving item's tabindex attribute, keyed by label. */
+function rovingTabIndexes(): Record<string, string | null> {
+	return Object.fromEntries(
+		[...document.querySelectorAll("[data-roving-item]")].map((item) => [name(item), item.getAttribute("tabindex")]),
+	);
 }
 
 /** Presses `key` on the focused element and returns the newly focused element's label. */
@@ -325,5 +329,64 @@ describe("sidebar body roving focus", () => {
 
 		screen.getByRole("button", {name: "More options for First row"}).focus();
 		expect(press("ArrowDown")).toBe("Second row");
+	});
+
+	it("leaves tabindexes alone until focus first enters the body", async () => {
+		await renderSidebar();
+
+		expect([
+			screen.getByRole("link", {name: "New"}).getAttribute("tabindex"),
+			screen.getByRole("link", {name: "Projects"}).getAttribute("tabindex"),
+		]).toEqual([null, null]);
+	});
+
+	it("gives the field, the nav rows and the session list one tab stop each", async () => {
+		await renderSidebar();
+
+		screen.getByRole("link", {name: "New"}).focus();
+		expect({
+			stops: bodyTabStops(),
+			groupAndSort: screen
+				.getAllByRole("button", {name: "Group and sort"})
+				.map((button) => button.getAttribute("tabindex")),
+		}).toStrictEqual({stops: ["Search field", "New", "Completed"], groupAndSort: ["-1"]});
+	});
+
+	it("keeps the last focused nav row as the nav stop after focus moves into the list", async () => {
+		await renderSidebar();
+
+		screen.getByRole("link", {name: "New"}).focus();
+		press("ArrowDown");
+		press("ArrowDown");
+		press("ArrowDown");
+		rowLink("First row").focus();
+		expect(bodyTabStops()).toEqual(["Search field", "More navigation items", "First row"]);
+	});
+
+	it("keeps the first item as the tab stop when a row is selected", async () => {
+		await renderSidebar("/session/s2");
+
+		expect(rowLink("Second row").dataset["selected"]).toBe("focused");
+		screen.getByRole("link", {name: "New"}).focus();
+		expect(bodyTabStops()).toEqual(["Search field", "New", "Completed"]);
+	});
+
+	it("re-chooses the tab stops when Tab is pressed", async () => {
+		await renderSidebar();
+
+		screen.getByRole("link", {name: "New"}).focus();
+		screen.getByRole("button", {name: "Completed"}).setAttribute("tabindex", "-1");
+		fireEvent.keyDown(document.activeElement!, {key: "Tab"});
+		expect(bodyTabStops()).toEqual(["Search field", "New", "Completed"]);
+	});
+
+	it("leaves the tab stops alone while rows are selected", async () => {
+		await renderSidebar();
+
+		screen.getByRole("link", {name: "New"}).focus();
+		fireEvent.click(rowLink("First row"), {metaKey: true});
+		const before = rovingTabIndexes();
+		rowLink("Second row").focus();
+		expect(rovingTabIndexes()).toStrictEqual(before);
 	});
 });

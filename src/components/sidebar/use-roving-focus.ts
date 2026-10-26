@@ -1,17 +1,13 @@
 import type {BaseUIEvent} from "@base-ui/react/types";
-import {type KeyboardEvent, useCallback, useLayoutEffect, useRef} from "react";
+import {type KeyboardEvent, useEffect, useRef} from "react";
 
 /** Marks an element as one stop of the sidebar session list's roving focus. */
 export const ROVING_ITEM_PROPS = {"data-roving-item": ""} as const;
 
 const ITEM_SELECTOR = "[data-roving-item]";
 
-/** The list's items in DOM order, skipping inert subtrees such as the empty Pinned stub. */
-function rovingItems(container: HTMLElement): HTMLElement[] {
-	return [...container.querySelectorAll<HTMLElement>(ITEM_SELECTOR)].filter(
-		(item) => item.closest("[inert]") === null,
-	);
-}
+/** Marks the session list while rows are selected; upstream's `sectionTabStops:!editing` then stops re-choosing tab stops. */
+const SELECTING_ATTRIBUTE = "data-sidebar-selecting";
 
 /** Upstream's sidebar-body roving set: rows' main items plus group toggles. */
 const BODY_ITEM_SELECTOR = "[data-roving-item], [data-group-toggle]";
@@ -58,6 +54,65 @@ function bodyTargetIndex(key: string, current: number, count: number): number | 
 	}
 }
 
+/** Sets `element`'s tabindex, writing the attribute only when it changes. */
+function setTabIndex(element: HTMLElement, tabIndex: number): void {
+	if (element.getAttribute("tabindex") !== String(tabIndex)) element.tabIndex = tabIndex;
+}
+
+/**
+ * The items' runs of consecutive items sharing a `[data-tab-section]` ancestor (items with none
+ * form runs too), each run being one Tab stop.
+ */
+function tabGroups(items: readonly HTMLElement[]): HTMLElement[][] {
+	const groups: HTMLElement[][] = [];
+	let section: Element | null | undefined;
+	for (const item of items) {
+		const itemSection = item.closest(SECTION_SELECTOR);
+		const last = groups.at(-1);
+		if (last !== undefined && itemSection === section) last.push(item);
+		else groups.push([item]);
+		section = itemSection;
+	}
+	return groups;
+}
+
+/** The row's other focusable controls, which only ArrowRight reaches (upstream `C1`). */
+function rowControls(item: HTMLElement): HTMLElement[] {
+	const row = item.closest(ROW_SELECTOR);
+	if (row === null) return [];
+	if (row.matches("[data-sidebar-group-label]")) {
+		const section = item.closest(SECTION_SELECTOR);
+		return [...row.querySelectorAll<HTMLElement>("button:enabled")].filter(
+			(button) => button.offsetParent !== null && button.closest(SECTION_SELECTOR) === section,
+		);
+	}
+	return [...row.querySelectorAll<HTMLElement>("[data-roving-item], [data-row-action]")];
+}
+
+/**
+ * Upstream's `LW`: one Tab stop per tab section, the focused item, else the one last focused in
+ * that section, else its first. Every other item and row control leaves the Tab order.
+ */
+function assignTabStops(container: HTMLElement, remembered: WeakSet<HTMLElement>): void {
+	const items = bodyItems(container);
+	const active = document.activeElement;
+	const focusedItem = active !== null && container.contains(active) ? owningItem(active) : null;
+	for (const group of tabGroups(items)) {
+		const stop =
+			group.find((item) => item === focusedItem) ?? group.find((item) => remembered.has(item)) ?? group[0];
+		for (const item of group) {
+			if (item === stop) remembered.add(item);
+			else remembered.delete(item);
+			setTabIndex(item, item === stop ? 0 : -1);
+		}
+	}
+	for (const item of items) {
+		for (const control of rowControls(item)) {
+			if (control !== item) setTabIndex(control, -1);
+		}
+	}
+}
+
 /**
  * Upstream's `oa` trigger handler: a sidebar menu trigger (More, a row kebab) skips Base UI's
  * open-on-arrow so ArrowUp/Down keep roving the sidebar body.
@@ -70,10 +125,34 @@ export function keepArrowsRoving(event: BaseUIEvent<KeyboardEvent<HTMLElement>>)
 /**
  * claude.ai/code's sidebar body keyboard container (upstream `L$`): ArrowUp/Down (wrapping) and
  * Home/End rove across the Search field, New, the nav rows and every session-list row and group
- * toggle. Shift is ignored, as upstream does; Meta, Ctrl and Alt opt out.
+ * toggle. Shift is ignored, as upstream does; Meta, Ctrl and Alt opt out. Each tab section is one
+ * Tab stop, re-chosen on Tab and whenever focus moves inside the body, except while rows are selected.
  */
 export function useSidebarBodyRoving() {
 	const ref = useRef<HTMLDivElement | null>(null);
+
+	useEffect(() => {
+		const remembered = new WeakSet<HTMLElement>();
+		const sync = () => {
+			const container = ref.current;
+			if (container === null) return;
+			if (container.querySelector(`[${SELECTING_ATTRIBUTE}]`) !== null) return;
+			assignTabStops(container, remembered);
+		};
+		const onKeyDown = (event: globalThis.KeyboardEvent) => {
+			if (event.key === "Tab") sync();
+		};
+		const onFocusIn = () => {
+			const active = document.activeElement;
+			if (active !== null && ref.current?.contains(active) === true) sync();
+		};
+		document.addEventListener("keydown", onKeyDown, true);
+		document.addEventListener("focusin", onFocusIn);
+		return () => {
+			document.removeEventListener("keydown", onKeyDown, true);
+			document.removeEventListener("focusin", onFocusIn);
+		};
+	}, []);
 
 	const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
 		const container = ref.current;
@@ -101,59 +180,10 @@ function isMenuKey(event: KeyboardEvent): boolean {
 }
 
 /**
- * claude.ai/code's recents list tab stop: one tab stop (the last focused item, else the selected
- * row, else the first), and the Menu key or Shift+F10 to open the focused row's menu. Arrow keys
- * belong to the whole sidebar body (`useSidebarBodyRoving`).
+ * The session list's Menu key and Shift+F10, which open the focused row's menu. Arrow keys and
+ * Tab stops belong to the whole sidebar body (`useSidebarBodyRoving`).
  */
-export function useRovingFocus() {
-	const containerRef = useRef<HTMLDivElement | null>(null);
-	const lastFocused = useRef<HTMLElement | null>(null);
-	const observer = useRef<MutationObserver | null>(null);
-
-	const sync = useCallback(() => {
-		const container = containerRef.current;
-		if (container === null) return;
-		const items = rovingItems(container);
-		const remembered = lastFocused.current;
-		const stop =
-			(remembered !== null && items.includes(remembered) ? remembered : undefined) ??
-			items.find((item) => item.dataset["selected"] === "focused") ??
-			items[0];
-		for (const item of items) {
-			const tabIndex = item === stop ? 0 : -1;
-			// Rewriting an unchanged tabindex is still a DOM mutation, so only touch the ones that move.
-			if (item.getAttribute("tabindex") !== String(tabIndex)) item.tabIndex = tabIndex;
-		}
-	}, []);
-
-	useLayoutEffect(sync);
-
-	// Rows mount and unmount from child re-renders too (a family or group toggling), so
-	// the tab stop is re-chosen whenever the list's DOM changes.
-	const ref = useCallback(
-		(element: HTMLDivElement | null) => {
-			observer.current?.disconnect();
-			observer.current = null;
-			containerRef.current = element;
-			if (element === null || typeof MutationObserver === "undefined") return;
-			observer.current = new MutationObserver(sync);
-			observer.current.observe(element, {
-				childList: true,
-				subtree: true,
-				attributes: true,
-				attributeFilter: ["data-selected", "inert"],
-			});
-			sync();
-		},
-		[sync],
-	);
-
-	const onFocus = (event: {target: EventTarget}) => {
-		if (!(event.target instanceof HTMLElement) || !event.target.matches(ITEM_SELECTOR)) return;
-		lastFocused.current = event.target;
-		sync();
-	};
-
+export function useRowMenuKey() {
 	const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
 		if (!isMenuKey(event) || !(event.target instanceof HTMLElement)) return;
 		const item = event.target.closest<HTMLElement>(ITEM_SELECTOR);
@@ -164,5 +194,5 @@ export function useRovingFocus() {
 		kebab.click();
 	};
 
-	return {ref, onFocus, onKeyDown};
+	return {onKeyDown};
 }
