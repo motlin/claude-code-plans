@@ -434,6 +434,43 @@ describe("sidebar SessionGroups", () => {
 		expect(container.querySelectorAll('[data-group-key="recents"] button[data-row] span.ms-auto')).toHaveLength(1);
 	});
 
+	it("holds Show less, described and ignoring clicks, while folding back would hide the open session", async () => {
+		const done = Array.from({length: 12}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
+		const {container} = await renderGroups(done, {activeItemId: "d10"});
+		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show 2 more in Completed"}));
+
+		const showLess = screen.getByRole("button", {name: "Show less in Completed"});
+		const describedBy = showLess.getAttribute("aria-describedby");
+		const description = describedBy === null ? null : document.getElementById(describedBy);
+		expect({
+			disabled: showLess.getAttribute("aria-disabled"),
+			held: showLess.getAttribute("data-held"),
+			description: {className: description?.className, text: description?.textContent},
+		}).toStrictEqual({
+			disabled: "true",
+			held: "",
+			description: {className: "sr-only", text: "You have something open near the end of this list."},
+		});
+
+		fireEvent.click(showLess);
+		expect(rowTitlesIn(container, "state-done")).toHaveLength(12);
+	});
+
+	it("leaves Show less live when the open session stays inside the first 5 rows", async () => {
+		const done = Array.from({length: 12}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
+		await renderGroups(done, {activeItemId: "d4"});
+		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show 2 more in Completed"}));
+
+		const showLess = screen.getByRole("button", {name: "Show less in Completed"});
+		expect({
+			disabled: showLess.getAttribute("aria-disabled"),
+			held: showLess.getAttribute("data-held"),
+			describedBy: showLess.getAttribute("aria-describedby"),
+		}).toStrictEqual({disabled: null, held: null, describedBy: null});
+	});
+
 	it("offers no Show less on a group that fits under the cap", async () => {
 		await renderGroups(FIXTURE);
 		expect(screen.queryByRole("button", {name: /^Show less/})).toBeNull();

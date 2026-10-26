@@ -207,6 +207,17 @@ export function GroupSection({
 	});
 	useSectionFocusRescue(group.key, sectionElement);
 	const [announcement, setAnnouncement] = useState("");
+	const heldHintId = useId();
+	// Upstream `rr` held: folding back to the first page would hide the open session.
+	const showLessHeld =
+		group.canShowLess &&
+		group.rows
+			.slice(GROUP_PAGE_SIZE)
+			.some(
+				(row) =>
+					row.sessionId === activeItemId ||
+					(group.nested.get(row.sessionId) ?? []).some((child) => child.sessionId === activeItemId),
+			);
 	const toggle = (
 		<button
 			type="button"
@@ -331,6 +342,7 @@ export function GroupSection({
 						group.canShowLess && (
 							<OverflowRow
 								ariaLabel={`Show less in ${group.label}`}
+								held={showLessHeld ? heldHintId : undefined}
 								onClick={() => {
 									setAnnouncement(`Showing less in ${group.label}`);
 									onShowLess();
@@ -443,41 +455,54 @@ export function EmptyGroupSection({
 
 /**
  * A group's muted "Show more" / "Show less" / "Loading…" row (upstream `rr`): double-clicks
- * and clicks while disabled are ignored, and `awaiting` puts an awaiting dot at the row end.
+ * and clicks while disabled or held are ignored, and `awaiting` puts an awaiting dot at the row end.
+ * `held` (the id for its sr-only reason) marks a Show less that would hide the open session.
  */
 function OverflowRow({
 	ariaLabel,
 	onClick,
 	disabled = false,
+	held,
 	awaiting = false,
 	children,
 }: {
 	ariaLabel?: string;
 	onClick: () => void;
 	disabled?: boolean;
+	held?: string | undefined;
 	awaiting?: boolean;
 	children: ReactNode;
 }) {
+	const inert = disabled || held !== undefined;
 	return (
-		<button
-			type="button"
-			{...ROVING_ITEM_PROPS}
-			data-row
-			aria-label={ariaLabel}
-			aria-disabled={disabled ? true : undefined}
-			onClick={(event) => {
-				if (disabled || event.detail > 1) return;
-				onClick();
-			}}
-			className={`${ROW_CLASS} text-ink-muted hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] hover:text-secondary`}
-		>
-			<span className="ps-[var(--sb-iconless-pad)]">{children}</span>
-			{awaiting && (
-				<span className="ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center">
-					<SessionStateIcon kind="awaiting" live={false} />
+		<>
+			<button
+				type="button"
+				{...ROVING_ITEM_PROPS}
+				data-row
+				aria-label={ariaLabel}
+				aria-disabled={inert ? true : undefined}
+				aria-describedby={held}
+				data-held={held === undefined ? undefined : ""}
+				onClick={(event) => {
+					if (inert || event.detail > 1) return;
+					onClick();
+				}}
+				className={`${ROW_CLASS} text-ink-muted hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] hover:text-secondary`}
+			>
+				<span className="ps-[var(--sb-iconless-pad)]">{children}</span>
+				{awaiting && (
+					<span className="ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center">
+						<SessionStateIcon kind="awaiting" live={false} />
+					</span>
+				)}
+			</button>
+			{held !== undefined && (
+				<span id={held} className="sr-only">
+					You have something open near the end of this list.
 				</span>
 			)}
-		</button>
+		</>
 	);
 }
 
