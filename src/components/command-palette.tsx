@@ -1144,6 +1144,15 @@ function PalettePopup({
 		if (refocus) inputRef.current?.focus();
 	}
 
+	// Upstream's `Sa===null → _a(null)`: the card closes once its row is no longer in the list.
+	// Runs after every commit because rows come from several queries and filters.
+	const rowActionsId = rowActions?.session.id;
+	useEffect(() => {
+		if (rowActionsId === undefined) return;
+		const row = popupRef.current?.querySelector(`[cmdk-item][data-value="session:${CSS.escape(rowActionsId)}"]`);
+		if (row === null || row === undefined) closeRowActions({refocus: true});
+	});
+
 	function openSession(id: string) {
 		void navigate({to: "/session/$id", params: {id}});
 	}

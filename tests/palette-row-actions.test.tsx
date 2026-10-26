@@ -654,6 +654,20 @@ describe("palette row actions card", () => {
 			palette: screen.queryByRole("dialog", {name: "Search"}) === dialog,
 		}).toStrictEqual({location: "/", palette: true});
 	});
+
+	it("closes the card when its row leaves the list", async () => {
+		const {dialog, input} = await openCard();
+
+		fireEvent.change(input, {target: {value: "release"}});
+
+		await waitFor(() => {
+			expect(dialog.querySelector('[cmdk-item][data-value="session:sess-1"]')).toBeNull();
+		});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(document.activeElement).toBe(input);
+	});
 });
 
 describe("rowActionsAnchorRect", () => {
