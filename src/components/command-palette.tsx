@@ -159,9 +159,12 @@ import {clearAll} from "../lib/unread-store";
 import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
 import {HighlightRuns} from "./highlight-runs";
 import {
+	isAltEnter,
 	type PaletteCardSession,
 	PaletteRowActionsButton,
 	PaletteRowActionsCard,
+	type RowActionsCloseOptions,
+	type RowActionsRepeatKey,
 	rowActionsAnchorRect,
 } from "./palette-row-actions";
 import {AttachedContextChips} from "./attached-context-chips";
@@ -1133,8 +1136,12 @@ function PalettePopup({
 	// Set by a press on the palette while the card is open, so that press's click only closes the card.
 	const swallowClickRef = useRef(false);
 
-	function closeRowActions({refocus}: {refocus: boolean}) {
+	// Upstream's `Na`/`Ea`: once ⌥⏎ or ← has opened or closed the card, that key's auto-repeats are swallowed.
+	const swallowRepeatRef = useRef<RowActionsRepeatKey | null>(null);
+
+	function closeRowActions({refocus, swallowRepeat}: RowActionsCloseOptions) {
 		setRowActions(null);
+		swallowRepeatRef.current = swallowRepeat ?? null;
 		if (refocus) inputRef.current?.focus();
 	}
 
@@ -1494,6 +1501,12 @@ function PalettePopup({
 	}
 
 	function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+		if (event.repeat && event.key === swallowRepeatRef.current) {
+			event.preventDefault();
+			event.stopPropagation();
+			return;
+		}
+		if (!event.repeat) swallowRepeatRef.current = null;
 		if (!compose && event.target === inputRef.current) startPaletteSearchJourney(event.nativeEvent);
 		if (event.key === "Escape" && startStep === "picker") {
 			event.preventDefault();
@@ -1513,7 +1526,7 @@ function PalettePopup({
 			event.preventDefault();
 			return;
 		}
-		if (event.key === "Enter" && event.altKey) {
+		if (isAltEnter(event)) {
 			openSelectedRowActions(event);
 			return;
 		}
@@ -1605,10 +1618,10 @@ function PalettePopup({
 	// ⌥⏎ opens the row-actions card for the selected session row.
 	function openSelectedRowActions(event: KeyboardEvent<HTMLDivElement>) {
 		const input = inputRef.current;
-		if (event.metaKey || event.ctrlKey || event.shiftKey) return;
 		if (input === null || event.target !== input) return;
 		// Never fall through to cmdk's Enter, which would run a non-session row.
 		event.preventDefault();
+		swallowRepeatRef.current = "Enter";
 		const selected = cardRef.current?.querySelector<HTMLElement>('[cmdk-item][data-selected="true"]')?.dataset[
 			"value"
 		];

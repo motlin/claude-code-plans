@@ -11,14 +11,14 @@ import {
 	useParams,
 	useRouterState,
 } from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {rowActionsAnchorRect} from "../src/components/palette-row-actions";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
-import {readPinState} from "../src/lib/pin-store";
+import {pin, readPinState} from "../src/lib/pin-store";
 import {useSessionRenameRequest} from "../src/lib/session-rename-request";
 import {clearAll, hasUnseenWork} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
@@ -324,6 +324,100 @@ describe("palette row actions card", () => {
 
 		await waitFor(() => {
 			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+	});
+
+	it("⌥⏎ inside the card closes it and returns focus to the Search input", async () => {
+		const {card, input} = await openCard();
+
+		fireEvent.keyDown(card, {key: "Enter", code: "Enter", altKey: true});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(document.activeElement).toBe(input);
+	});
+
+	it("AltGraph+Enter opens the card, and Ctrl doesn't block it", async () => {
+		const {input} = await openPalette();
+
+		fireEvent.keyDown(input, {key: "Enter", code: "Enter", ctrlKey: true, modifierAltGraph: true});
+
+		expect(await screen.findByRole("menu", {name: "Actions"})).toBeTruthy();
+	});
+
+	it("held-Enter repeats on the input after ⌥⏎ don't run the selected row", async () => {
+		const {input} = await openPalette();
+
+		fireEvent.keyDown(input, {key: "Enter", code: "Enter", altKey: true});
+		fireEvent.keyDown(input, {key: "Enter", code: "Enter", altKey: true, repeat: true});
+		fireEvent.keyDown(input, {key: "Enter", code: "Enter", repeat: true});
+
+		expect({
+			location: document.querySelector('output[aria-label="Location"]')?.textContent,
+			card: screen.queryByRole("menu", {name: "Actions"}) !== null,
+		}).toStrictEqual({location: "/", card: true});
+	});
+
+	it("a repeated Enter inside the card closes it without running the item", async () => {
+		const {card} = await openCard();
+		const [open] = within(card).getAllByRole("menuitem");
+		open!.focus();
+
+		fireEvent.keyDown(open!, {key: "Enter", code: "Enter", repeat: true});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect({
+			location: document.querySelector('output[aria-label="Location"]')?.textContent,
+			palette: screen.queryByRole("dialog", {name: "Search"}) !== null,
+		}).toStrictEqual({location: "/", palette: true});
+	});
+
+	it("Tab closes the card", async () => {
+		const {card} = await openCard();
+
+		fireEvent.keyDown(card, {key: "Tab", code: "Tab"});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(screen.queryByRole("dialog", {name: "Search"})).not.toBeNull();
+	});
+
+	it("a repeated digit does nothing", async () => {
+		const {card} = await openCard();
+
+		fireEvent.keyDown(card, {key: "3", code: "Digit3", repeat: true});
+
+		expect({
+			copied: writeText.mock.calls,
+			card: screen.queryByRole("menu", {name: "Actions"}) !== null,
+		}).toStrictEqual({copied: [], card: true});
+	});
+
+	it("ignores digits for 300ms after the item list changes", async () => {
+		let now = 1000;
+		vi.spyOn(performance, "now").mockImplementation(() => now);
+		const {card} = await openCard();
+
+		now = 2000;
+		act(() => {
+			pin("sess-1");
+		});
+		await within(card).findByRole("menuitem", {name: /^Unpin/});
+		now = 2299;
+		fireEvent.keyDown(card, {key: "4", code: "Digit4"});
+		const guarded = readPinState();
+		now = 2300;
+		fireEvent.keyDown(card, {key: "4", code: "Digit4"});
+
+		await waitFor(() => {
+			expect({guarded, after: readPinState()}).toStrictEqual({
+				guarded: {pinnedIds: ["sess-1"], pinnedOrder: []},
+				after: {pinnedIds: [], pinnedOrder: []},
+			});
 		});
 	});
 

@@ -1,6 +1,6 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
-import {type KeyboardEvent, useEffect, useMemo} from "react";
+import {type KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef} from "react";
 
 import {useSessionArchive} from "../hooks/use-session-archive";
 import {assertNever} from "../lib/assert-never";
@@ -92,10 +92,35 @@ function virtualAnchor(box: Box) {
 
 const SHIFT_COLLISION_AVOIDANCE = {side: "shift", align: "shift"} as const;
 
+/** Upstream's `Ze`: digits are ignored this long after the item list changes, so a late item isn't mis-hit. */
+const ROW_ACTIONS_DIGIT_GUARD_MS = 300;
+
+const DIGIT_KEY = /^(?:Digit|Numpad)?([1-9])$/;
+
+/** A held key whose auto-repeats the palette swallows after the card opens or closes on its first press. */
+export type RowActionsRepeatKey = "Enter" | "ArrowLeft";
+
+export interface RowActionsCloseOptions {
+	refocus: boolean;
+	swallowRepeat?: RowActionsRepeatKey;
+}
+
+/** Upstream's `Cs`: Enter with Alt or AltGraph, no Shift or Meta, not mid-IME composition. */
+export function isAltEnter(event: KeyboardEvent<HTMLElement>): boolean {
+	return (
+		event.key === "Enter" &&
+		(event.altKey || event.getModifierState("AltGraph")) &&
+		!event.shiftKey &&
+		!event.metaKey &&
+		!event.nativeEvent.isComposing
+	);
+}
+
 /**
  * The claude.ai/code ⌘K row-actions card: a 280px compact cds Menu overlapping the receded palette's
  * inline-end edge by 44px, with the session title, "Session · <bucket>" and items numbered 1…N. Its modal
- * backdrop eats the first click outside. ← or Esc closes only the card; Delete is never offered
+ * backdrop eats the first click outside. ←, Esc, Tab, ⌥⏎ again or a held Enter close only the card; digits
+ * ignore repeats and the first 300ms after the item list changes. Delete is never offered
  * (transcripts are never deleted).
  */
 export function PaletteRowActionsCard({
@@ -111,7 +136,7 @@ export function PaletteRowActionsCard({
 	onOpen: (id: string) => void;
 	/** Closes the palette and starts the session's inline rename, as ⌥⌘R does. */
 	onRename: (id: string) => void;
-	onClose: (options: {refocus: boolean}) => void;
+	onClose: (options: RowActionsCloseOptions) => void;
 }) {
 	const queryClient = useQueryClient();
 	const unseen = useHasUnseenWork(session.id);
@@ -142,6 +167,16 @@ export function PaletteRowActionsCard({
 		{id: "open-new-tab", label: "Open in new tab"},
 		...sessionItems,
 	];
+
+	// When the live item list last changed after opening; digits are ignored for ROW_ACTIONS_DIGIT_GUARD_MS after it.
+	const itemsKey = items.map((item) => item.id).join(" ");
+	const itemsKeyRef = useRef(itemsKey);
+	const itemsChangedAtRef = useRef(Number.NEGATIVE_INFINITY);
+	useLayoutEffect(() => {
+		if (itemsKeyRef.current === itemsKey) return;
+		itemsKeyRef.current = itemsKey;
+		itemsChangedAtRef.current = performance.now();
+	}, [itemsKey]);
 
 	// Upstream focuses the first item after two frames, once Base UI has settled the popup's own focus.
 	useEffect(() => {
@@ -215,11 +250,27 @@ export function PaletteRowActionsCard({
 		}
 	};
 
-	function handleKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
-		if (event.key !== "ArrowLeft" || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+	function closeFromKey(event: KeyboardEvent<HTMLDivElement>, options: RowActionsCloseOptions) {
 		event.preventDefault();
 		event.stopPropagation();
-		onClose({refocus: true});
+		onClose(options);
+	}
+
+	function handleKeyDownCapture(event: KeyboardEvent<HTMLDivElement>) {
+		const plain = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey;
+		if (isAltEnter(event) || (event.key === "Enter" && event.repeat)) {
+			closeFromKey(event, {refocus: true, swallowRepeat: "Enter"});
+		} else if (event.key === "ArrowLeft" && plain && !event.repeat) {
+			closeFromKey(event, {refocus: true, swallowRepeat: "ArrowLeft"});
+		} else if (event.key === "Tab") {
+			closeFromKey(event, {refocus: true});
+		} else if (
+			DIGIT_KEY.test(event.code) &&
+			performance.now() - itemsChangedAtRef.current < ROW_ACTIONS_DIGIT_GUARD_MS
+		) {
+			// The accelerator handler skips default-prevented keys.
+			event.preventDefault();
+		}
 	}
 
 	const bucket = relativeBucket(Date.parse(session.mtime), Date.now());
