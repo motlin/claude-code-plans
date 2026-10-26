@@ -1,12 +1,24 @@
 import {Link} from "@tanstack/react-router";
 import {useQueryClient} from "@tanstack/react-query";
 import {ChevronRight} from "lucide-react";
-import {Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode} from "react";
+import {
+	Fragment,
+	useCallback,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useRef,
+	useState,
+	useSyncExternalStore,
+	type ReactNode,
+} from "react";
 
 import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
 import {prGlyph} from "../../lib/pr-status";
+import {sessionRowIconKind, type SessionStateKind} from "../../lib/session-state";
+import {hasUnseenWork, subscribeUnseenWork} from "../../lib/unread-store";
 import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {useSessionGroups} from "../../lib/session-group-store";
@@ -24,7 +36,7 @@ import {SessionHoverCard} from "../session-hover-card";
 import {QUICK_REPLY_HINT} from "../session-hover-card-classes";
 import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control";
 import {useSettings} from "../settings-context";
-import {PrTailGlyph} from "../status-dot";
+import {PrTailGlyph, SessionStateIcon} from "../status-dot";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
 import {GroupAppearanceMark} from "./group-appearance";
@@ -67,6 +79,37 @@ function HeaderControls({filterSlot, leadsList}: {filterSlot: ReactNode; leadsLi
 			{leadsList && <NewSessionHeaderButton />}
 		</div>
 	);
+}
+
+/** Collapsed-header badge precedence, most urgent first: needs input (or its error), unread, running. */
+const BADGE_KIND_RANK: readonly SessionStateKind[] = ["error", "awaiting", "ready", "running"];
+
+/**
+ * The most urgent status among a collapsed section's hidden rows (nested family members included),
+ * or null when every hidden row is settled and read. Re-derived when the unread store changes.
+ */
+function useCollapsedBadgeKind(group: SessionGroup<SidebarSessionRow>, collapsed: boolean): SessionStateKind | null {
+	const {settings} = useSettings();
+	const showPrStatus = settings.sessionListPrefs.showPrStatus;
+	const getSnapshot = useCallback((): SessionStateKind | null => {
+		if (!collapsed) return null;
+		let best: number = BADGE_KIND_RANK.length;
+		for (const row of group.rows.flatMap((head) => [head, ...(group.nested.get(head.sessionId) ?? [])])) {
+			const {session} = row;
+			const kind = sessionRowIconKind({
+				bucket: session.bucket,
+				unseen: hasUnseenWork(session.id),
+				serverUnseen: session.unseen,
+				unseenError: session.unseenError === true,
+				prStatus: session.prStatus,
+				showPrStatus,
+			});
+			const rank = BADGE_KIND_RANK.indexOf(kind);
+			if (rank !== -1 && rank < best) best = rank;
+		}
+		return BADGE_KIND_RANK[best] ?? null;
+	}, [collapsed, group, showPrStatus]);
+	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, getSnapshot);
 }
 
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show N more" / "Show less". */
@@ -117,6 +160,7 @@ export function GroupSection({
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
+	const badgeKind = useCollapsedBadgeKind(group, !expanded);
 	const toggle = (
 		<button
 			type="button"
@@ -141,6 +185,15 @@ export function GroupSection({
 						: "opacity-100"
 				}`}
 			/>
+			{badgeKind !== null && (
+				<span data-group-badge className="-my-1 ms-auto flex size-6 shrink-0 items-center justify-center">
+					<SessionStateIcon
+						kind={badgeKind}
+						live={false}
+						{...(badgeKind === "ready" ? {label: "Unread response"} : {})}
+					/>
+				</span>
+			)}
 		</button>
 	);
 	return (
@@ -154,7 +207,8 @@ export function GroupSection({
 				ref={headerRef}
 				data-sidebar-group-label
 				data-drop-hot={dropHot ? "" : undefined}
-				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] flex mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 [--sb-heading-ink:var(--color-ink-muted)] hover:[--sb-heading-ink:var(--color-secondary)] text-[color:var(--sb-heading-ink)]"
+				data-rowless={expanded ? undefined : ""}
+				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] data-[rowless]:mb-[var(--sb-row-stack-gap)] flex mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 [--sb-heading-ink:var(--color-ink-muted)] hover:[--sb-heading-ink:var(--color-secondary)] text-[color:var(--sb-heading-ink)]"
 			>
 				{customGroupId === null ? (
 					isProject ? (

@@ -279,7 +279,8 @@ describe("sidebar SessionGroups", () => {
 		first.unmount();
 		await renderGroups(FIXTURE);
 
-		const remounted = screen.getByRole("button", {name: "Working"});
+		// The collapsed toggle carries the hidden Working row's badge, which joins its name.
+		const remounted = screen.getByRole("button", {name: /^Working/});
 		expect(remounted.getAttribute("aria-expanded")).toBe("false");
 		expect(screen.queryByRole("link", {name: /Working one/})).toBeNull();
 
@@ -288,6 +289,71 @@ describe("sidebar SessionGroups", () => {
 		expect(remounted.getAttribute("aria-expanded")).toBe("true");
 		expect(screen.getByRole("link", {name: /^Working one/})).toBeTruthy();
 		expect(readSidebarState().collapsedGroups).toEqual([]);
+	});
+
+	// Upstream `SH`/`sP`: a collapsed header is `data-rowless` and carries `[data-group-badge]` with the most urgent hidden state.
+	it("badges a collapsed header with its hidden rows' most urgent state and marks it rowless", async () => {
+		const rows = [
+			session("d1", "Done read", "done", 5),
+			{...session("d2", "Done unread", "done", 6), unseen: true},
+			session("d3", "Done read too", "done", 7),
+			session("w1", "Working one", "working", 1),
+		];
+		__unreadStoreTesting.reset();
+		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
+		const {container} = await renderGroups(rows);
+		const header = (key: string) => {
+			const label = container.querySelector(`[data-group-key="${key}"] > [data-sidebar-group-label]`);
+			if (!(label instanceof HTMLElement)) throw new Error(`no ${key} header`);
+			return label;
+		};
+		const snapshot = (key: string) => {
+			const label = header(key);
+			const badge = label.querySelector("[data-group-toggle] > [data-group-badge]");
+			return {
+				rowless: label.getAttribute("data-rowless"),
+				rowlessGap: label.classList.contains("data-[rowless]:mb-[var(--sb-row-stack-gap)]"),
+				badgeClass: badge?.getAttribute("class") ?? null,
+				badge: [...(badge?.querySelectorAll("[role=img]") ?? [])].map((mark) =>
+					mark.getAttribute("aria-label"),
+				),
+			};
+		};
+
+		expect(snapshot("state-done")).toEqual({rowless: null, rowlessGap: true, badgeClass: null, badge: []});
+
+		fireEvent.click(within(header("state-done")).getByRole("button", {name: /^Completed/}));
+		fireEvent.click(within(header("state-working")).getByRole("button", {name: /^Working/}));
+
+		expect({done: snapshot("state-done"), working: snapshot("state-working")}).toEqual({
+			done: {
+				rowless: "",
+				rowlessGap: true,
+				badgeClass: "-my-1 ms-auto flex size-6 shrink-0 items-center justify-center",
+				badge: ["Unread response"],
+			},
+			working: {
+				rowless: "",
+				rowlessGap: true,
+				badgeClass: "-my-1 ms-auto flex size-6 shrink-0 items-center justify-center",
+				badge: ["Running"],
+			},
+		});
+	});
+
+	it("leaves a collapsed header unbadged when every hidden row is settled and read", async () => {
+		const rows = [session("d1", "Done read", "done", 5), session("d2", "Done read too", "done", 6)];
+		__unreadStoreTesting.reset();
+		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
+		const {container} = await renderGroups(rows);
+
+		fireEvent.click(screen.getByRole("button", {name: "Completed"}));
+
+		const label = container.querySelector('[data-group-key="state-done"] > [data-sidebar-group-label]');
+		expect({
+			rowless: label?.getAttribute("data-rowless"),
+			badges: label?.querySelectorAll("[data-group-badge]").length,
+		}).toEqual({rowless: "", badges: 0});
 	});
 
 	it("caps Completed at 20 rows, expands the rest from Show N more, and folds them back with Show less", async () => {
