@@ -323,6 +323,19 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("hides every footer keycap group on touch, like upstream's touch:hidden Shortcut", async () => {
+		const dialog = await openPalette();
+		const groups = [...(footer(dialog)?.querySelectorAll("[data-palette-footer-hint] [data-cds=Shortcut]") ?? [])];
+
+		expect(groups.map((group) => group.className)).toStrictEqual([
+			"inline-flex shrink-0 items-center gap-[2px] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse touch:hidden",
+			"inline-flex shrink-0 items-center gap-[2px] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse touch:hidden",
+			"inline-flex shrink-0 items-center gap-[2px] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse touch:hidden",
+			"inline-flex shrink-0 items-center gap-[2px] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse touch:hidden",
+			"inline-flex shrink-0 items-center gap-[2px] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse touch:hidden",
+		]);
+	});
+
 	it("← and → step through the type tabs and wrap when the query is empty", async () => {
 		const dialog = await openPalette();
 		await within(dialog).findByRole("option", {name: /Refactor auth module/});

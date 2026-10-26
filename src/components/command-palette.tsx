@@ -2299,7 +2299,7 @@ function PaletteFooter({
 							<span>{label}</span>
 							<span className="flex items-center gap-[2px]">
 								{keys.map((key) => (
-									<Shortcut key={key} keys={key} />
+									<Shortcut key={key} keys={key} className="touch:hidden" />
 								))}
 							</span>
 						</div>
