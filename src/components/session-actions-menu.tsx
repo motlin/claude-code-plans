@@ -57,6 +57,7 @@ import {
 import {useSessionMenuRunner} from "./use-session-menu-runner";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 import {type SessionMenuRun} from "./use-session-menu-runner";
+import {keepArrowsRoving} from "./sidebar/use-roving-focus";
 
 /** Actions wired locally so far; the rest appear as their features land. */
 export const SESSION_MENU_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set<SessionMenuCapability>([
@@ -457,6 +458,7 @@ export function SessionActionsMenu({
 		<RowRenameContext.Provider value={rowRename}>
 			<div
 				ref={rowRef}
+				data-row=""
 				data-session-actions=""
 				data-touch-menu={touchMenu ? "" : undefined}
 				data-menu-open={menuOpen ? "true" : undefined}
@@ -473,6 +475,7 @@ export function SessionActionsMenu({
 					<MenuTrigger
 						aria-label={`More options for ${rename.title}`}
 						data-row-action=""
+						onKeyDown={keepArrowsRoving}
 						{...(kebabTabIndex === undefined ? {} : {tabIndex: kebabTabIndex})}
 						className={KEBAB_CLASS}
 					>

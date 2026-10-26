@@ -8,6 +8,7 @@ import type {NavSection} from "../../lib/nav-sections";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 import {navItems, type NavItem} from "./navigation";
 import type {Section} from "./types";
+import {keepArrowsRoving} from "./use-roving-focus";
 
 export interface NavBadge {
 	count: number;
@@ -45,6 +46,9 @@ export function MoreNavMenu({
 				<Menu>
 					<MenuTrigger
 						aria-label="More navigation items"
+						data-row=""
+						data-roving-item=""
+						onKeyDown={keepArrowsRoving}
 						data-selected={active === undefined ? undefined : "focused"}
 						className={NAV_ROW_CLASS}
 					>

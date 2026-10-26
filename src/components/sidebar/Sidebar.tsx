@@ -10,6 +10,7 @@ import {NewSessionRow} from "./new-session-row";
 import {SidebarFooter} from "./sidebar-footer";
 import {SidebarSearchField} from "./sidebar-search-field";
 import {SidebarToggleButton} from "./sidebar-toggle";
+import {useSidebarBodyRoving} from "./use-roving-focus";
 import {Search, X} from "lucide-react";
 import {openCommandPalette} from "../../hooks/use-command-palette";
 import {SidebarSessionGroups} from "./session-filter-menu";
@@ -58,6 +59,7 @@ export function Sidebar({
 	const {settings} = useSettings();
 	const {data: activeSessions} = useQuery(activeSessionsQueryOptions(settings.activeTimeoutSec * 1000));
 	const activeCount = activeSessions?.length ?? 0;
+	const roving = useSidebarBodyRoving();
 
 	function badgeFor(section: Section): NavBadge | null {
 		if (section === "active") return {count: activeCount, title: `${activeCount} active`};
@@ -75,7 +77,8 @@ export function Sidebar({
 
 	const body = (
 		<>
-			<div className="flex min-h-0 flex-1 flex-col px-2">
+			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- upstream's sidebar-body keyboard container: arrow keys rove across the field, New, the nav rows and the session list */}
+			<div ref={roving.ref} onKeyDown={roving.onKeyDown} className="flex min-h-0 flex-1 flex-col px-2">
 				<div className="shrink-0">
 					{/* Upstream's phone sheet swaps the field for its header Search button. */}
 					{onPhoneSheetClose === undefined && <SidebarSearchField />}
@@ -90,6 +93,8 @@ export function Sidebar({
 								<Link
 									key={item.to}
 									to={item.to}
+									data-row=""
+									data-roving-item=""
 									data-selected={item.section === activeSection ? "focused" : undefined}
 									className="group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 								>

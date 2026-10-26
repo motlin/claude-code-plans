@@ -10,11 +10,21 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {DEFAULTS} from "../src/components/settings-context";
+import {SettingsProvider} from "../src/components/settings-provider";
+import {Sidebar} from "../src/components/sidebar/Sidebar";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
+import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
+import {approvalsQueryOptions} from "../src/lib/api/approvals";
+import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {ToastProvider} from "../src/components/toast";
-import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
+import {
+	activeSessionsQueryOptions,
+	RecentSessionsResponse,
+	recentSessionsInfiniteQueryOptions,
+} from "../src/lib/api/sessions";
 import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
@@ -124,33 +134,6 @@ describe("sidebar session list roving focus", () => {
 		expect(tabStops()).toEqual([rowLink("Second row")]);
 	});
 
-	it("moves focus between rows and group toggles with the arrow keys, Home and End", async () => {
-		await renderGroups();
-		const toggle = screen.getByRole("button", {name: "Completed"});
-
-		rowLink("First row").focus();
-		fireEvent.keyDown(document.activeElement!, {key: "ArrowDown"});
-		expect(document.activeElement).toBe(rowLink("Second row"));
-		expect(tabStops()).toEqual([rowLink("Second row")]);
-
-		fireEvent.keyDown(document.activeElement!, {key: "ArrowUp"});
-		fireEvent.keyDown(document.activeElement!, {key: "ArrowUp"});
-		expect(document.activeElement).toBe(toggle);
-
-		fireEvent.keyDown(document.activeElement!, {key: "ArrowDown"});
-		expect(document.activeElement).toBe(rowLink("First row"));
-
-		fireEvent.keyDown(document.activeElement!, {key: "End"});
-		expect(document.activeElement).toBe(rowLink("Third row"));
-
-		fireEvent.keyDown(document.activeElement!, {key: "ArrowDown"});
-		expect(document.activeElement).toBe(rowLink("Third row"));
-
-		fireEvent.keyDown(document.activeElement!, {key: "Home"});
-		expect(document.activeElement).toBe(toggle);
-		expect(tabStops()).toEqual([toggle]);
-	});
-
 	it("takes row kebabs out of the tab order but keeps them clickable, and draws unread marks as plain status", async () => {
 		__unreadStoreTesting.reset();
 		syncUnseenFromSummaries(FIXTURE.map(({id}) => ({id, unseen: true})));
@@ -191,5 +174,156 @@ describe("sidebar session list roving focus", () => {
 		expect(screen.getByRole("button", {name: "More options for Third row"}).getAttribute("aria-expanded")).toBe(
 			"true",
 		);
+	});
+});
+
+async function renderSidebar() {
+	const queryClient = new QueryClient({
+		defaultOptions: {
+			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+		},
+	});
+	queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
+	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
+	queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
+		terminalWritesEnabled: false,
+		terminalHost: "auto",
+		shellPaneEnabled: true,
+		visibleNavSections: ["projects", "plans"],
+		ignoredDirs: ["node_modules"],
+	});
+	queryClient.setQueryData(
+		recentSessionsInfiniteQueryOptions(undefined, DEFAULTS.sessionListPrefs.statusFilter).queryKey,
+		{pages: [RecentSessionsResponse.parse({sessions: FIXTURE, nextCursor: null})], pageParams: [null]},
+	);
+	const rootRoute = createRootRoute({
+		component: () => (
+			<QueryClientProvider client={queryClient}>
+				<ToastProvider>
+					<SettingsProvider>
+						<Sidebar collapsed={false} />
+						<Outlet />
+					</SettingsProvider>
+				</ToastProvider>
+			</QueryClientProvider>
+		),
+	});
+	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/", component: () => null});
+	const sessionRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "/session/$id",
+		component: () => null,
+	});
+	const router = createRouter({
+		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
+		history: createMemoryHistory({initialEntries: ["/"]}),
+	});
+	await router.load();
+	render(<RouterProvider router={router} />);
+	await waitFor(() => {
+		expect(document.querySelector("a[data-row-main-button]")).toBeTruthy();
+	});
+}
+
+/** The focused element's label, or the title of the session row whose link holds focus. */
+function focused(): string {
+	if (document.activeElement?.matches("button.df-search-field") === true) return "Search field";
+	const row = FIXTURE.find(({title}) => document.activeElement === rowLink(title));
+	return row?.title ?? label(document.activeElement);
+}
+
+/** Presses `key` on the focused element and returns the newly focused element's label. */
+function press(key: string, init: {shiftKey?: boolean; metaKey?: boolean} = {}): string {
+	fireEvent.keyDown(document.activeElement!, {key, ...init});
+	return focused();
+}
+
+describe("sidebar body roving focus", () => {
+	const scrollIntoView = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>();
+
+	beforeEach(() => {
+		installLocalStorage();
+		vi.stubGlobal("fetch", async () => new Promise(() => {}));
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		scrollIntoView.mockClear();
+		Element.prototype.scrollIntoView = scrollIntoView;
+		// jsdom lays nothing out, so every element's offsetParent is null; treat attached elements as rendered.
+		Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+			configurable: true,
+			get(this: HTMLElement) {
+				return this.parentElement;
+			},
+		});
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
+		Reflect.deleteProperty(HTMLElement.prototype, "offsetParent");
+	});
+
+	it("roves down from New through the nav rows and More into the session list", async () => {
+		await renderSidebar();
+
+		screen.getByRole("link", {name: "New"}).focus();
+		expect([
+			press("ArrowDown"),
+			press("ArrowDown"),
+			press("ArrowDown"),
+			press("ArrowDown"),
+			press("ArrowDown"),
+		]).toEqual(["Projects", "Plans", "More navigation items", "Completed", "First row"]);
+		expect(scrollIntoView).toHaveBeenLastCalledWith({block: "nearest"});
+	});
+
+	it("roves up from the first group toggle to More", async () => {
+		await renderSidebar();
+
+		screen.getByRole("button", {name: "Completed"}).focus();
+		expect(press("ArrowUp")).toBe("More navigation items");
+	});
+
+	it("wraps around both ends and jumps with Home and End", async () => {
+		await renderSidebar();
+
+		rowLink("Second row").focus();
+		expect({
+			end: press("End"),
+			wrapDown: press("ArrowDown"),
+			down: press("ArrowDown"),
+			wrapUp: [press("ArrowUp"), press("ArrowUp")],
+			home: (rowLink("First row").focus(), press("Home")),
+		}).toStrictEqual({
+			end: "Third row",
+			wrapDown: "Search field",
+			down: "New",
+			wrapUp: ["Search field", "Third row"],
+			home: "Search field",
+		});
+	});
+
+	it("roves with Shift held but not with Meta", async () => {
+		await renderSidebar();
+
+		rowLink("First row").focus();
+		expect([press("ArrowDown", {shiftKey: true}), press("ArrowDown", {metaKey: true})]).toEqual([
+			"Second row",
+			"Second row",
+		]);
+	});
+
+	it("roves from a row's kebab to the next row", async () => {
+		await renderSidebar();
+
+		screen.getByRole("button", {name: "More options for First row"}).focus();
+		expect(press("ArrowDown")).toBe("Second row");
 	});
 });
