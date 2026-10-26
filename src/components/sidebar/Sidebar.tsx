@@ -418,8 +418,15 @@ function isPeekInUse(peek: HTMLElement | null): boolean {
 
 function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; children: ReactNode}) {
 	const [hovering, setHovering] = useState(false);
+	// Upstream's `peeked`: set on the first open so the peek's transition never runs on the collapse frame.
+	const [peeked, setPeeked] = useState(false);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+	const openPeek = useCallback(() => {
+		setHovering(true);
+		setPeeked(true);
+	}, []);
 
 	const cancelClose = useCallback(() => {
 		clearTimeout(closeTimerRef.current);
@@ -465,10 +472,11 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 			ref={rootRef}
 			data-testid="sidebar-collapsed"
 			data-hovering={hovering ? "" : undefined}
+			data-peeked={peeked ? "" : undefined}
 			onPointerEnter={(event) => {
 				if (event.pointerType !== "mouse" || isPeekSuppressed()) return;
 				cancelClose();
-				setHovering(true);
+				openPeek();
 			}}
 			onPointerLeave={(event) => {
 				clearPeekSuppression();
@@ -488,7 +496,7 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 				{...(narrowViewport
 					? {
 							onClick: () => {
-								setHovering(true);
+								openPeek();
 							},
 						}
 					: {})}
@@ -501,7 +509,7 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}
 				inert={!hovering}
-				className="pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-full flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover pt-12 pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100"
+				className="pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-1 flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover pt-12 pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100"
 			>
 				{/* The header row: the trigger stays put over the empty 32px slot, the wordmark sits beside it. */}
 				<div data-testid="sidebar-peek-header" className="absolute inset-x-0 top-0 flex h-11 items-center px-2">

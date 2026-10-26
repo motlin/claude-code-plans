@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
@@ -515,5 +516,69 @@ describe("collapsed sidebar peek after Hide sidebar", () => {
 
 		expect(document.activeElement === outside).toBe(true);
 		outside.remove();
+	});
+});
+
+describe("collapsed sidebar peek motion", () => {
+	it("nudges the resting peek 4px instead of sliding the full width", async () => {
+		await renderCollapsedSidebar();
+		const peek = screen.getByTestId("sidebar-peek");
+
+		expect({
+			nudge: peek.classList.contains("-translate-x-1"),
+			fullSlide: peek.classList.contains("-translate-x-full"),
+			open: ["group-data-[hovering]/peek:translate-x-0", "group-data-[hovering]/peek:opacity-100"].filter(
+				(token) => peek.classList.contains(token),
+			),
+		}).toStrictEqual({
+			nudge: true,
+			fullSlide: false,
+			open: ["group-data-[hovering]/peek:translate-x-0", "group-data-[hovering]/peek:opacity-100"],
+		});
+	});
+
+	it("marks the root data-peeked on the first open and keeps it after the peek closes", async () => {
+		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
+		const root = screen.getByTestId("sidebar-collapsed");
+		const beforeHover = root.hasAttribute("data-peeked");
+
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		const whileOpen = root.hasAttribute("data-peeked");
+		act(() => {
+			fireEvent.pointerLeave(root, {pointerType: "mouse"});
+		});
+		runCloseGrace();
+
+		expect({
+			beforeHover,
+			whileOpen,
+			afterClose: root.hasAttribute("data-peeked"),
+			hovering: root.hasAttribute("data-hovering"),
+		}).toStrictEqual({beforeHover: false, whileOpen: true, afterClose: true, hovering: false});
+	});
+
+	it("transitions only once peeked, and keeps the opacity fade without the nudge under reduced motion", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const rule = (selector: string, from = 0) => {
+			const start = styles.indexOf(`${selector} {`, from);
+			return start === -1 ? null : styles.slice(start, styles.indexOf("}", start) + 1).replace(/\s+/g, " ");
+		};
+		const reducedMotion = styles.indexOf(
+			"@media (prefers-reduced-motion: reduce) {",
+			styles.indexOf("[data-peeked] .sidebar-peek-motion"),
+		);
+
+		expect({
+			resting: rule("\n.sidebar-peek-motion"),
+			peeked: rule("[data-peeked] .sidebar-peek-motion"),
+			reducedMotion: rule(".sidebar-peek-motion", reducedMotion),
+		}).toStrictEqual({
+			resting: null,
+			peeked: "[data-peeked] .sidebar-peek-motion { transition: opacity 0.14s ease, translate 0.18s cubic-bezier(0.32, 0.72, 0, 1); }",
+			reducedMotion: ".sidebar-peek-motion { translate: none; }",
+		});
 	});
 });

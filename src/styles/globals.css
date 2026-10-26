@@ -1072,16 +1072,20 @@ html[data-interface-font="dyslexic"] {
 	height: 0;
 }
 
-/* Upstream claude.ai/code — collapsed sidebar peek fades and slides in from the left edge. */
-.sidebar-peek-motion {
+/*
+ * Upstream claude.ai/code — the collapsed sidebar peek fades in with a 4px nudge. The transition
+ * applies only once the root is `[data-peeked]`, so the first frame after collapse doesn't animate,
+ * and reduced motion drops the nudge but keeps the fade.
+ */
+[data-peeked] .sidebar-peek-motion {
 	transition:
-		opacity 0.14s,
+		opacity 0.14s ease,
 		translate 0.18s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
 	.sidebar-peek-motion {
-		transition: none;
+		translate: none;
 	}
 }
 
