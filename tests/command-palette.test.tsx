@@ -639,6 +639,42 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("Escape returns focus to the opener", async () => {
+		const composer = await renderPalette();
+		pressK(composer, {metaKey: true});
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Escape", code: "Escape"});
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(composer);
+		});
+	});
+
+	it("opening a session row closes without refocusing the opener, as upstream's Open", async () => {
+		const composer = await renderPalette();
+		pressK(composer, {metaKey: true});
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const focusSpy = vi.spyOn(composer, "focus");
+
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Enter", code: "Enter"});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 50);
+			});
+		});
+		expect({
+			path: currentRouter?.state.location.pathname,
+			openerFocusCalls: focusSpy.mock.calls.length,
+			openerFocused: document.activeElement === composer,
+		}).toStrictEqual({path: "/session/sess-1", openerFocusCalls: 0, openerFocused: false});
+	});
+
 	it("closes on the Close button", async () => {
 		const dialog = await openPalette();
 

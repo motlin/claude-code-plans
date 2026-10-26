@@ -1153,7 +1153,9 @@ function PalettePopup({
 		if (row === null || row === undefined) closeRowActions({refocus: true});
 	});
 
+	// Upstream's Open closes without refocusing the opener; the session page focuses its own composer.
 	function openSession(id: string) {
+		restoreFocusRef.current = false;
 		void navigate({to: "/session/$id", params: {id}});
 	}
 
@@ -1251,6 +1253,7 @@ function PalettePopup({
 		if (pendingLaunch === null) return;
 		const id = findLaunchedSession(activeSessions.values(), pendingLaunch);
 		if (id === null) return;
+		restoreFocusRef.current = false;
 		onOpenChange(false);
 		void navigate({to: "/session/$id", params: {id}});
 	}, [pendingLaunch, activeSessions, onOpenChange, navigate]);
@@ -2261,7 +2264,6 @@ function PalettePopup({
 						});
 					}}
 					onRename={(id) => {
-						restoreFocusRef.current = false;
 						select(() => {
 							openSession(id);
 							requestSessionRename(id);
