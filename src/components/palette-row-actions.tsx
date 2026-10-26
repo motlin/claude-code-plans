@@ -118,7 +118,7 @@ export function isAltEnter(event: KeyboardEvent<HTMLElement>): boolean {
 
 /**
  * The claude.ai/code ⌘K row-actions card: a 280px compact cds Menu overlapping the receded palette's
- * inline-end edge by 44px, with the session title, "Session · <bucket>" and items numbered 1…N. Its modal
+ * inline-end edge by 44px, with the session title, "Code session · <bucket>" and items numbered 1…N. Its modal
  * backdrop eats the first click outside. ←, Esc, Tab, ⌥⏎ again or a held Enter close only the card; digits
  * ignore repeats and the first 300ms after the item list changes. Delete is never offered
  * (transcripts are never deleted).
@@ -305,7 +305,7 @@ export function PaletteRowActionsCard({
 							{session.title}
 						</div>
 						<div data-palette-card-meta="" className="truncate text-[11px]/[17px] text-[var(--menu-muted)]">
-							{bucket === null ? "Session" : `Session · ${bucket}`}
+							{bucket === null ? "Code session" : `Code session · ${bucket}`}
 						</div>
 					</div>
 				}

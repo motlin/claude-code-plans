@@ -69,10 +69,12 @@ function Harness() {
 	);
 }
 
-async function openPalette() {
+async function openPalette(
+	sessions = [recentSession("sess-1", "Refactor auth module"), recentSession("sess-2", "Write release notes")],
+) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, {
-		sessions: [recentSession("sess-1", "Refactor auth module"), recentSession("sess-2", "Write release notes")],
+		sessions,
 		nextCursor: null,
 	});
 	const rootRoute = createRootRoute({
@@ -160,7 +162,7 @@ describe("palette row actions card", () => {
 			inputFocused: document.activeElement === input,
 		}).toStrictEqual({
 			heading: "Refactor auth module",
-			meta: "Session · Just now",
+			meta: "Code session · Just now",
 			items: [
 				["Open1", "1"],
 				["Open in new tab2", "2"],
@@ -172,6 +174,22 @@ describe("palette row actions card", () => {
 			],
 			inputFocused: false,
 		});
+	});
+
+	it('reads just "Code session" in the meta when the session is older than a year', async () => {
+		const ancient = {
+			...recentSession("sess-2", "Write release notes"),
+			mtime: new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString(),
+		};
+		const {dialog} = await openPalette([recentSession("sess-1", "Refactor auth module"), ancient]);
+
+		fireEvent.click(dialog.querySelectorAll("[data-palette-row-actions-button]")[1]!);
+
+		const card = await screen.findByRole("menu", {name: "Actions"});
+		expect({
+			heading: card.querySelector("[data-palette-card-title]")?.textContent,
+			meta: card.querySelector("[data-palette-card-meta]")?.textContent,
+		}).toStrictEqual({heading: "Write release notes", meta: "Code session"});
 	});
 
 	it("opens from the row's hover … button", async () => {
