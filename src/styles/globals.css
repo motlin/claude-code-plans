@@ -1591,10 +1591,16 @@ html[data-motion="reduced"] .animate-pulse,
 html[data-motion="reduced"] .animate-ping,
 html[data-motion="reduced"] .animate-approval-inline-enter,
 html[data-motion="reduced"] .animate-question-receipt-enter,
+html[data-motion="reduced"] .animate-palette-card-in,
 html[data-motion="reduced"] .status-dot[data-kind="running"],
 html[data-motion="reduced"] .terminal-caret,
 html[data-motion="reduced"] [data-spinner] * {
 	animation: none !important;
+}
+
+/* The ⌘K palette doesn't recede behind the row-actions card, as motion-reduce:scale-100 does. */
+html[data-motion="reduced"] [data-palette-recede-card] {
+	scale: none !important;
 }
 
 html[data-motion="reduced"] [data-cds-shimmer-clone] {

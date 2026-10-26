@@ -15,7 +15,7 @@ import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
-import {rowActionsAnchorRect} from "../src/components/palette-row-actions";
+import {motionReduced, rowActionsAnchorRect} from "../src/components/palette-row-actions";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
@@ -487,6 +487,7 @@ describe("palette row actions card", () => {
 		const read = () => {
 			const veil = document.querySelector<HTMLElement>("[data-palette-recede-veil]")!;
 			return {
+				recedeCard: veil.parentElement!.hasAttribute("data-palette-recede-card"),
 				dialog: motion.filter((name) => veil.parentElement!.classList.contains(name)),
 				veil: veilMotion.filter((name) => veil.classList.contains(name)),
 			};
@@ -507,6 +508,7 @@ describe("palette row actions card", () => {
 			},
 		}).toStrictEqual({
 			closed: {
+				recedeCard: true,
 				dialog: [
 					"origin-top",
 					"transition-[scale]",
@@ -528,6 +530,7 @@ describe("palette row actions card", () => {
 				],
 			},
 			open: {
+				recedeCard: true,
 				dialog: motion,
 				veil: [
 					"bg-surface-0",
@@ -607,5 +610,30 @@ describe("rowActionsAnchorRect", () => {
 			{x: 100, y: 196, width: 600, height: 32},
 			{x: 100, y: 564, width: 600, height: 32},
 		]);
+	});
+});
+
+describe("motionReduced", () => {
+	afterEach(() => {
+		delete document.documentElement.dataset["motion"];
+		vi.unstubAllGlobals();
+	});
+
+	function stubOsReducedMotion(matches: boolean) {
+		vi.stubGlobal("matchMedia", (query: string) => ({
+			matches: matches && query === "(prefers-reduced-motion: reduce)",
+		}));
+	}
+
+	it("follows the OS reduced-motion setting and Settings ▸ Motion ▸ Reduced", () => {
+		stubOsReducedMotion(false);
+		const neither = motionReduced();
+		document.documentElement.dataset["motion"] = "reduced";
+		const inApp = motionReduced();
+		delete document.documentElement.dataset["motion"];
+		stubOsReducedMotion(true);
+		const os = motionReduced();
+
+		expect({neither, inApp, os}).toStrictEqual({neither: false, inApp: true, os: true});
 	});
 });

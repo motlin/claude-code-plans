@@ -50,6 +50,12 @@ const CARD_LIFT_PX = 4;
 /** Upstream's `cardOverlap`: the card's inline-start edge sits this far over the receded palette. */
 const CARD_OVERLAP_PX = 44;
 
+/** True under the OS reduced-motion setting or Settings ▸ Motion ▸ Reduced (`html[data-motion=reduced]`). */
+export function motionReduced(): boolean {
+	if (document.documentElement.dataset["motion"] === "reduced") return true;
+	return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 /**
  * Upstream's card anchor: the results list's x and width at the selected row's y (clamped into the list
  * viewport), scaled by the recede about the dialog's centre unless motion is reduced, then lifted 4px.

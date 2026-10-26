@@ -165,6 +165,7 @@ import {
 	PaletteRowActionsCard,
 	type RowActionsCloseOptions,
 	type RowActionsRepeatKey,
+	motionReduced,
 	rowActionsAnchorRect,
 } from "./palette-row-actions";
 import {AttachedContextChips} from "./attached-context-chips";
@@ -1126,9 +1127,7 @@ function PalettePopup({
 			list: list.getBoundingClientRect(),
 			row: (row ?? list).getBoundingClientRect(),
 			dialog: dialog.getBoundingClientRect(),
-			reducedMotion:
-				typeof window.matchMedia === "function" &&
-				window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+			reducedMotion: motionReduced(),
 		});
 		setRowActions({session, anchorRect});
 	}
@@ -1717,6 +1716,7 @@ function PalettePopup({
 			<Dialog.Title className="sr-only">Search</Dialog.Title>
 			<div
 				ref={cardRef}
+				data-palette-recede-card=""
 				// Upstream's recede: origin-top, duration-base with --cds-ease-out, none under reduced motion.
 				className={`relative origin-top overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-[scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none motion-reduce:scale-100 ${
 					rowActions === null ? "" : "scale-[.97]"

@@ -20,10 +20,17 @@ describe("Settings ▸ Motion ▸ Reduced", () => {
 				'html[data-motion="reduced"] .animate-ping,\n' +
 				'html[data-motion="reduced"] .animate-approval-inline-enter,\n' +
 				'html[data-motion="reduced"] .animate-question-receipt-enter,\n' +
+				'html[data-motion="reduced"] .animate-palette-card-in,\n' +
 				'html[data-motion="reduced"] .status-dot[data-kind="running"],\n' +
 				'html[data-motion="reduced"] .terminal-caret,\n' +
 				'html[data-motion="reduced"] [data-spinner] * {\n' +
 				"\tanimation: none !important;\n}",
+		]);
+	});
+
+	it("holds the ⌘K palette at full size instead of receding behind the row-actions card", () => {
+		expect(rulesFor("[data-palette-recede-card]")).toStrictEqual([
+			'html[data-motion="reduced"] [data-palette-recede-card] {\n\tscale: none !important;\n}',
 		]);
 	});
 
