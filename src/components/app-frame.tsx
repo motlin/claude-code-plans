@@ -2,7 +2,7 @@ import {useCallback, useRef, useState, type ReactNode} from "react";
 import {topLeftClearanceStyle} from "../lib/top-left-clearance";
 import {useNarrowViewport, usePhoneSheet} from "../lib/use-phone-sheet";
 import {DensityProvider, useScopeDensity} from "./ui/density";
-import {Sidebar} from "./sidebar/index";
+import {Sidebar, SidebarEdgeHandle} from "./sidebar/index";
 import {PHONE_SHEET_TRANSITION_MS, PhoneSheet, PhoneSheetTrigger} from "./sidebar/phone-sheet";
 
 /**
@@ -39,8 +39,9 @@ export function AppFrame({
 		<div
 			data-testid="app-frame"
 			data-phone-sheet={phoneSheet ? "left" : undefined}
-			className="flex h-[var(--app-visual-viewport-height,100dvh)]"
+			className="relative flex h-[var(--app-visual-viewport-height,100dvh)]"
 		>
+			{collapsed && !narrowViewport && !phoneSheet && <SidebarEdgeHandle />}
 			{phoneSheet ? (
 				<>
 					<PhoneSheetTrigger ref={triggerRef} open={sheetOpen} onOpen={openSheet} />

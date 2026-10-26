@@ -265,6 +265,47 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
 	);
 }
 
+/**
+ * Upstream's collapsed-sidebar edge (`.dframe-sidebar-edge`): an 8px `separator` at the frame's left
+ * edge whose hover fades in a 3x48 grip pill after 200ms (accent and full height when focus-visible),
+ * with a cursor-tracking "Show sidebar ⌘B / Drag to resize" tooltip on its right.
+ */
+export function SidebarEdgeHandle() {
+	const {keys} = useShortcutKeys("toggle_sidebar");
+	return (
+		<Tooltip
+			content="Show sidebar"
+			shortcut={keys}
+			description="Drag to resize"
+			side="right"
+			trackCursor="y"
+			className="absolute! inset-y-0 left-0 z-[21] w-2"
+		>
+			<div
+				role="separator"
+				aria-orientation="vertical"
+				aria-label="Resize sidebar"
+				aria-valuenow={0}
+				aria-valuemin={0}
+				aria-valuemax={SIDEBAR_MAX_WIDTH}
+				tabIndex={0}
+				data-sidebar-edge=""
+				className="group/resize absolute inset-y-0 left-0 z-[21] w-2 cursor-col-resize touch-none outline-none select-none"
+			>
+				<div
+					aria-hidden="true"
+					className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 cursor-col-resize rounded-full transition-shadow duration-150 group-focus-visible/resize:shadow-focus"
+				/>
+				<div
+					aria-hidden="true"
+					data-resize-pill=""
+					className="absolute top-1/2 left-1/2 h-full max-h-12 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-current text-ink-muted opacity-0 transition-[opacity,color,background-color] delay-200 duration-200 group-hover/resize:opacity-100 group-focus-visible/resize:max-h-none group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100 group-focus-visible/resize:delay-0"
+				/>
+			</div>
+		</Tooltip>
+	);
+}
+
 const PEEK_ID = "sidebar-peek-popover";
 
 /**
