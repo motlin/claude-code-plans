@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -728,17 +728,13 @@ describe("transcript file ref menus", () => {
 		});
 	});
 
-	/** Answer `/api/file-refs` for `/repo/src/app.ts` with `status`, after `delayMs` when given. */
-	function answerAppStatus(status: "exists" | "missing", delayMs?: number): void {
+	/** Answer `/api/file-refs` for `/repo/src/app.ts` with `status`, once `answered` settles when given. */
+	function answerAppStatus(status: "exists" | "missing", answered?: Promise<unknown>): void {
 		vi.mocked(fetch).mockImplementation(async (input, init) => {
 			if (String(input) !== "/api/file-refs")
 				return Promise.resolve(Response.json({error: "not found"}, {status: 404}));
 			const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
-			if (delayMs !== undefined) {
-				await new Promise((resolve) => {
-					setTimeout(resolve, delayMs);
-				});
-			}
+			await answered;
 			return Response.json({
 				statuses: Object.fromEntries(
 					paths.map((path) => [path, path === "/repo/src/app.ts" ? status : "missing"]),
@@ -759,23 +755,36 @@ describe("transcript file ref menus", () => {
 	it("opens after upstream's 150ms on a slow existence check, then hides the rows once the file proves gone", async () => {
 		const container = renderChat(withFileRefs("/repo"), FILE_RECORDS);
 		const ref = await findFileRef(container, ".prose-link[data-file-ref]");
-		answerAppStatus("missing", 400);
-		fireEvent.contextMenu(ref, {clientX: 10, clientY: 10});
-		const closedAt100 = await new Promise<boolean>((resolve) => {
-			setTimeout(() => {
-				resolve(screen.queryAllByRole("menu").length === 0);
-			}, 100);
-		});
-		const menu = await vi.waitFor(() => screen.getByRole("menu"), {timeout: 300});
-		const before = menuRows(menu);
+		// The check stays pending until the test answers it, so the menu can only open on the 150ms wait.
+		let answer = (_value?: unknown): void => {};
+		answerAppStatus(
+			"missing",
+			new Promise((resolve) => {
+				answer = resolve;
+			}),
+		);
+		// Fake setTimeout so the 150ms wait is measured from the right-click, however slow its render.
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		let closedAt149: boolean;
+		let before: string[];
+		try {
+			fireEvent.contextMenu(ref, {clientX: 10, clientY: 10});
+			await act(async () => vi.advanceTimersByTimeAsync(149));
+			closedAt149 = screen.queryAllByRole("menu").length === 0;
+			await act(async () => vi.advanceTimersByTimeAsync(1));
+			before = menuRows(screen.getByRole("menu"));
+		} finally {
+			vi.useRealTimers();
+		}
+		answer();
 		await vi.waitFor(
 			() => {
 				expect(menuRows(screen.getByRole("menu"))).toStrictEqual(["Attach as context", "Copy"]);
 			},
-			{timeout: 1000},
+			{timeout: 5000},
 		);
 
-		expect({closedAt100, before}).toStrictEqual({closedAt100: true, before: FILE_ROWS});
+		expect({closedAt149, before}).toStrictEqual({closedAt149: true, before: FILE_ROWS});
 	});
 
 	it("keeps Copy code on plain inline code beside a file ref", async () => {
