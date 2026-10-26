@@ -288,6 +288,28 @@ describe("⌘K palette: start a new session", () => {
 		});
 	});
 
+	it("puts upstream's 24px brand-filled enter cap on the selected New session row", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {target: {value: LONG_PROMPT}});
+
+		const row = newSessionRow(dialog);
+		const cap = row.querySelector("[data-palette-enter-cap]");
+		expect({
+			selected: row.getAttribute("data-selected"),
+			wrapperClass: cap?.parentElement?.parentElement?.className,
+			coarseClass: cap?.parentElement?.className,
+			capClass: cap?.className,
+			glyph: cap?.querySelector("svg")?.getAttribute("class"),
+		}).toStrictEqual({
+			selected: "true",
+			wrapperClass: "hidden shrink-0 items-center text-xs text-ink-muted group-data-[selected=true]:flex",
+			coarseClass: "pointer-coarse:hidden",
+			capClass: "-my-1 -me-1.5 flex size-6 items-center justify-center rounded-r5 bg-brand-100 text-oncolor-100",
+			glyph: "lucide lucide-corner-down-left size-4",
+		});
+	});
+
 	it("quotes the raw query on the New session row, keeping a trailing space as upstream does", async () => {
 		const {dialog, input} = await openPalette();
 

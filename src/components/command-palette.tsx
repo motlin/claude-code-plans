@@ -2596,6 +2596,22 @@ function ReturnGlyph() {
 	);
 }
 
+/** Upstream's selected send_message enter cap: the 24px brand-filled `accent-badge` instead of the plain glyph. */
+function AccentReturnCap() {
+	return (
+		<span className="hidden shrink-0 items-center text-xs text-ink-muted group-data-[selected=true]:flex">
+			<span className="pointer-coarse:hidden">
+				<span
+					data-palette-enter-cap=""
+					className="-my-1 -me-1.5 flex size-6 items-center justify-center rounded-r5 bg-brand-100 text-oncolor-100"
+				>
+					<CornerDownLeft aria-hidden="true" className="size-4" />
+				</span>
+			</span>
+		</span>
+	);
+}
+
 /** A session row with upstream's hover "…" that opens the → row-actions card. */
 function SessionRowActions({children, onOpen}: {children: ReactNode; onOpen: () => void}) {
 	return (
@@ -2717,7 +2733,7 @@ function NewSessionItem({
 					{projectName}
 				</span>
 			)}
-			<ReturnGlyph />
+			<AccentReturnCap />
 		</Command.Item>
 	);
 }
