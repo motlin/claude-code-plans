@@ -16,6 +16,7 @@ import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {PIN_STORAGE_KEY, readPinState} from "../src/lib/pin-store";
+import {readSidebarState} from "../src/lib/sidebar-store";
 import {SESSION_GROUP_STORAGE_KEY, readSessionGroupState} from "../src/lib/session-group-store";
 import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {__unreadStoreTesting, hasUnseenWork} from "../src/lib/unread-store";
@@ -63,21 +64,26 @@ function archiveCalls(): Array<{url: string; method: string | undefined}> {
 		.filter((call) => call.url.endsWith("/archived"));
 }
 
-async function renderGroups({groupBy = "custom"}: {groupBy?: "custom" | "state"} = {}) {
+async function renderGroups({
+	groupBy = "custom",
+	sessions = FIXTURE,
+	path = "/",
+	activeItemId = null,
+}: {groupBy?: "custom" | "state"; sessions?: typeof FIXTURE; path?: string; activeItemId?: string | null} = {}) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
 		},
 	});
 	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions: FIXTURE, nextCursor: null})],
+		pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})],
 		pageParams: [null],
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy}} />
+					<SessionGroups activeItemId={activeItemId} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy}} />
 					<Outlet />
 				</ToastProvider>
 			</QueryClientProvider>
@@ -95,7 +101,7 @@ async function renderGroups({groupBy = "custom"}: {groupBy?: "custom" | "state"}
 	});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
+		history: createMemoryHistory({initialEntries: [path]}),
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
@@ -228,25 +234,141 @@ describe("sidebar multi-select", () => {
 	});
 });
 
-describe("sidebar group header Select all", () => {
+async function openCompletedHeaderMenu(): Promise<HTMLElement> {
+	const header = screen.getByText("Completed").closest("[data-group-toggle]");
+	if (!(header instanceof HTMLElement)) throw new Error("no Completed header");
+	fireEvent.contextMenu(header, {clientX: 40, clientY: 50});
+	await flush();
+	return await waitFor(() => screen.getByRole("menu"));
+}
+
+/** Each header menu item with its disabled reason, or null while it is enabled. */
+function headerMenuItems(menu: HTMLElement): Array<{label: string | null; disabledReason: string | null}> {
+	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) => {
+		if (node.getAttribute("role") === "separator") return {label: "---", disabledReason: null};
+		const describedBy = node.getAttribute("aria-describedby");
+		return {
+			label: node.textContent,
+			disabledReason:
+				node.getAttribute("aria-disabled") === "true"
+					? (document.getElementById(describedBy ?? "")?.textContent ?? "")
+					: null,
+		};
+	});
+}
+
+describe("sidebar group header context menu", () => {
+	it("offers New session, Select all, Collapse all / Expand all and Archive all (N) like upstream", async () => {
+		await renderGroups({groupBy: "state"});
+
+		expect(headerMenuItems(await openCompletedHeaderMenu())).toStrictEqual([
+			{label: "New session", disabledReason: null},
+			{label: "---", disabledReason: null},
+			{label: "Select all", disabledReason: null},
+			{label: "---", disabledReason: null},
+			{label: "Collapse all", disabledReason: null},
+			{label: "Expand all", disabledReason: "Everything is already expanded."},
+			{label: "---", disabledReason: null},
+			{label: "Archive all (5)", disabledReason: null},
+		]);
+	});
+
 	it("selects every row in a state group from the header's context menu", async () => {
 		const {container} = await renderGroups({groupBy: "state"});
 
-		const header = screen.getByText("Completed").closest("[data-group-toggle]");
-		if (!(header instanceof HTMLElement)) throw new Error("no Completed header");
-		fireEvent.contextMenu(header, {clientX: 40, clientY: 50});
-		await flush();
-		const menu = await waitFor(() => screen.getByRole("menu"));
-		const outline = menuOutline(menu);
+		await openCompletedHeaderMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Select all"}));
 		await flush();
 
-		expect({outline, selected: selectedTitles(container)}).toStrictEqual({
-			outline: ["Select all"],
-			selected: ["Alpha one", "Beta one", "Loose one", "Loose two", "Loose three"],
+		expect(selectedTitles(container)).toStrictEqual([
+			"Alpha one",
+			"Beta one",
+			"Loose one",
+			"Loose two",
+			"Loose three",
+		]);
+	});
+
+	it("disables Select all under two visible sessions and Archive all with nothing to archive", async () => {
+		await renderGroups({groupBy: "state", sessions: [session("a1", "Alpha one", 1)], activeItemId: "a1"});
+
+		expect(headerMenuItems(await openCompletedHeaderMenu())).toStrictEqual([
+			{label: "New session", disabledReason: null},
+			{label: "---", disabledReason: null},
+			{label: "Select all", disabledReason: "Select all needs at least two visible sessions in this group."},
+			{label: "---", disabledReason: null},
+			{label: "Collapse all", disabledReason: null},
+			{label: "Expand all", disabledReason: "Everything is already expanded."},
+			{label: "---", disabledReason: null},
+			{
+				label: "Archive all (0)",
+				disabledReason:
+					"Every item here is pinned, open in a pane or window, already archived, or can\u2019t be archived from here.",
+			},
+		]);
+	});
+
+	it("Collapse all collapses every shown group, then Expand all expands them again", async () => {
+		await renderGroups({groupBy: "state"});
+
+		fireEvent.click(menuItemByLabel(await openCompletedHeaderMenu(), "Collapse all"));
+		await flush();
+		const collapsed = readSidebarState().collapsedGroups;
+		const collapsedMenu = headerMenuItems(await openCompletedHeaderMenu()).slice(4, 6);
+		fireEvent.click(screen.getByRole("menuitem", {name: "Expand all"}));
+		await flush();
+
+		expect({collapsed, collapsedMenu, expanded: readSidebarState().collapsedGroups}).toStrictEqual({
+			collapsed: ["state-done"],
+			collapsedMenu: [
+				{label: "Collapse all", disabledReason: "Everything shown is already collapsed."},
+				{label: "Expand all", disabledReason: null},
+			],
+			expanded: [],
+		});
+	});
+
+	it("Archive all asks to confirm, then archives every unpinned row that is not open", async () => {
+		await renderGroups({groupBy: "state", activeItemId: "u3"});
+
+		fireEvent.click(menuItemByLabel(await openCompletedHeaderMenu(), "Archive all (4)"));
+		await flush();
+		const dialog = await waitFor(() => screen.getByRole("alertdialog"));
+		const title = dialog.querySelector("h2")?.textContent;
+		fireEvent.click(screen.getByRole("button", {name: "Archive"}));
+
+		await waitFor(() => {
+			expect(archiveCalls()).toHaveLength(4);
+		});
+		expect({title, calls: archiveCalls()}).toStrictEqual({
+			title: "Archive all sessions in \u201cCompleted\u201d?",
+			calls: [
+				{url: "/api/sessions/a1/archived", method: "PUT"},
+				{url: "/api/sessions/b1/archived", method: "PUT"},
+				{url: "/api/sessions/u1/archived", method: "PUT"},
+				{url: "/api/sessions/u2/archived", method: "PUT"},
+			],
+		});
+	});
+
+	it("New session goes home", async () => {
+		const {router} = await renderGroups({groupBy: "state", path: "/session/a1"});
+
+		fireEvent.click(menuItemByLabel(await openCompletedHeaderMenu(), "New session"));
+
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/");
 		});
 	});
 });
+
+function menuItemByLabel(menu: HTMLElement, label: string): HTMLElement {
+	const item = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+		(node) => node.textContent === label,
+	);
+	if (item === undefined) throw new Error(`No menu item ${label}`);
+	return item;
+}
 
 describe("sidebar bulk menu", () => {
 	it("offers only the bulk actions on a selected row, with no Delete", async () => {

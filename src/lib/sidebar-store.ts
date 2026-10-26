@@ -135,6 +135,16 @@ export function expandSidebarGroup(key: string): void {
 	writeSidebarState({...state, collapsedGroups: state.collapsedGroups.filter((collapsed) => collapsed !== key)});
 }
 
+/** Collapse or expand several session-list groups at once (upstream's header Collapse all / Expand all). */
+export function setSidebarGroupsCollapsed(keys: readonly string[], collapsed: boolean): void {
+	const state = readSidebarState();
+	const targets = new Set(keys);
+	const collapsedGroups = collapsed
+		? [...new Set([...state.collapsedGroups, ...targets])]
+		: state.collapsedGroups.filter((key) => !targets.has(key));
+	writeSidebarState({...state, collapsedGroups});
+}
+
 export function familyKey(headSessionId: string): string {
 	return `code:${headSessionId}`;
 }

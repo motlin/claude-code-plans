@@ -47,18 +47,18 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 412071,
+		"ceiling": 415677,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "The /workflows built-in (2026-10-24): the composer reads the Background tasks opener context to route /workflows and /workflow to the pane, and the slash list gains the workflows row. Home cold JS had drifted to just under the 1% tolerance since ba320e97 and this takes it to 412071 gzip / 1250441 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-24"
+		"reason": "Sidebar group header context menu (2026-10-26): non-custom headers gain upstream's New session, Collapse all / Expand all and Archive all (N) items with their disabled reasons and the Archive all confirm. Home cold JS had drifted to just under the 1% tolerance (1262311 raw at 442badf3) and this takes it to 415677 gzip / 1264139 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-26"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1250441,
+		"ceiling": 1264139,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "The /workflows built-in (2026-10-24): the composer reads the Background tasks opener context to route /workflows and /workflow to the pane, and the slash list gains the workflows row. Home cold JS had drifted to just under the 1% tolerance since ba320e97 and this takes it to 412071 gzip / 1250441 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-24"
+		"reason": "Sidebar group header context menu (2026-10-26): non-custom headers gain upstream's New session, Collapse all / Expand all and Archive all (N) items with their disabled reasons and the Archive all confirm. Home cold JS had drifted to just under the 1% tolerance (1262311 raw at 442badf3) and this takes it to 415677 gzip / 1264139 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-26"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 620775,

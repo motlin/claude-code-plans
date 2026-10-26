@@ -46,11 +46,11 @@ import {useSettings} from "../settings-context";
 import {PrTailGlyph, SessionStateIcon} from "../status-dot";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
+import {GroupHeaderContextMenu} from "./group-header-context-menu";
 import {GroupAppearanceMark} from "./group-appearance";
 import {useOpenRowAutoExpand, useSectionFocusRescue} from "./group-section-focus";
 import {NewSessionHeaderButton} from "./new-session-row";
 import {ProjectGroupHeader} from "./project-group-header";
-import {SelectAllGroupHeader} from "./select-all-group-header";
 import {useSidebarSelection} from "./selection-context";
 import type {SidebarSessionRow} from "./sidebar-session-row";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
@@ -154,6 +154,7 @@ export function GroupSection({
 	rowsRef,
 	sectionRef,
 	dropHot = false,
+	sectionKeys,
 }: {
 	group: SessionGroup<SidebarSessionRow>;
 	/** The list's grouping: grouped by status, the open session moving into a collapsed section expands it. */
@@ -183,6 +184,8 @@ export function GroupSection({
 	sectionRef?: (element: HTMLElement | null) => void;
 	/** A dragged row or header is over this section's header or rows. */
 	dropHot?: boolean;
+	/** Every section shown in the list, for the header menu's Collapse all / Expand all; defaults to this one. */
+	sectionKeys?: readonly string[];
 }) {
 	const customGroupId = customGroupIdOfKey(group.key);
 	const isProject = isProjectGroupKey(group.key);
@@ -276,7 +279,14 @@ export function GroupSection({
 							{toggle}
 						</ProjectGroupHeader>
 					) : (
-						<SelectAllGroupHeader group={group}>{toggle}</SelectAllGroupHeader>
+						<GroupHeaderContextMenu
+							group={group}
+							sectionKeys={sectionKeys ?? [group.key]}
+							activeItemId={activeItemId}
+							pinned={pinnedIds !== undefined}
+						>
+							{toggle}
+						</GroupHeaderContextMenu>
 					)
 				) : (
 					<CustomGroupHeader

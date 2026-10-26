@@ -241,6 +241,7 @@ export function SessionGroups({
 		/>
 	) : null;
 
+	const sectionKeys = groups.map((group) => group.key);
 	const emptyListReason: EmptyListReason =
 		(data?.pages.every((page) => page.sessions.length === 0) ?? false) &&
 		prefs.statusFilter === DEFAULT_SESSION_LIST_PREFS.statusFilter &&
@@ -307,6 +308,7 @@ export function SessionGroups({
 								loadingMore={isFetchingNextPage && loadingKey === group.key}
 								dragRowProps={rowProps}
 								familyHeadIds={familyHeadIds}
+								sectionKeys={sectionKeys}
 								{...(groupId === null
 									? {}
 									: {
