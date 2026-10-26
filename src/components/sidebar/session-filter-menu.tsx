@@ -37,6 +37,7 @@ import {
 import {NewGroupDialog} from "../new-group-dialog";
 import {Tooltip} from "../ui/tooltip";
 import {SessionGroups} from "./session-groups";
+import {keepArrowsRoving} from "./use-roving-focus";
 
 function RadioSubmenu<Value extends string>({
 	label,
@@ -144,6 +145,7 @@ function SessionFilterMenu({
 					<MenuTrigger
 						aria-label="Group and sort"
 						data-row-action=""
+						onKeyDown={keepArrowsRoving}
 						className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-secondary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-[var(--sb-hover)]"
 					>
 						<SlidersVertical aria-hidden="true" className="size-4" />

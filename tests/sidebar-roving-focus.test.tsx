@@ -331,6 +331,39 @@ describe("sidebar body roving focus", () => {
 		expect(press("ArrowDown")).toBe("Second row");
 	});
 
+	it("moves along a group header's buttons with ArrowRight and ArrowLeft, clamping at the end", async () => {
+		await renderSidebar();
+
+		screen.getByRole("button", {name: "Completed"}).focus();
+		expect([
+			press("ArrowRight"),
+			press("ArrowRight"),
+			press("ArrowRight"),
+			press("ArrowLeft"),
+			press("ArrowDown"),
+		]).toEqual(["Group and sort", "New session", "New session", "Group and sort", "First row"]);
+	});
+
+	it("moves between a session row's link and its kebab with ArrowRight and ArrowLeft", async () => {
+		await renderSidebar();
+
+		rowLink("Second row").focus();
+		expect([press("ArrowRight"), press("ArrowLeft"), press("ArrowLeft")]).toEqual([
+			"More options for Second row",
+			"Second row",
+			"Second row",
+		]);
+	});
+
+	it("leaves ArrowRight alone on a nav row without actions", async () => {
+		await renderSidebar();
+
+		const projects = screen.getByRole("link", {name: "Projects"});
+		projects.focus();
+		const notPrevented = fireEvent.keyDown(projects, {key: "ArrowRight"});
+		expect({focused: focused(), notPrevented}).toStrictEqual({focused: "Projects", notPrevented: true});
+	});
+
 	it("leaves tabindexes alone until focus first enters the body", async () => {
 		await renderSidebar();
 

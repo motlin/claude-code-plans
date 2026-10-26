@@ -76,12 +76,12 @@ function tabGroups(items: readonly HTMLElement[]): HTMLElement[][] {
 	return groups;
 }
 
-/** The row's other focusable controls, which only ArrowRight reaches (upstream `C1`). */
-function rowControls(item: HTMLElement): HTMLElement[] {
-	const row = item.closest(ROW_SELECTOR);
+/** The focusable controls of `element`'s row or group header, which ArrowLeft/Right move along (upstream `C1`). */
+function rowControls(element: Element): HTMLElement[] {
+	const row = element.closest(ROW_SELECTOR);
 	if (row === null) return [];
 	if (row.matches("[data-sidebar-group-label]")) {
-		const section = item.closest(SECTION_SELECTOR);
+		const section = element.closest(SECTION_SELECTOR);
 		return [...row.querySelectorAll<HTMLElement>("button:enabled")].filter(
 			(button) => button.offsetParent !== null && button.closest(SECTION_SELECTOR) === section,
 		);
@@ -113,6 +113,17 @@ function assignTabStops(container: HTMLElement, remembered: WeakSet<HTMLElement>
 	}
 }
 
+/** ArrowRight/Left: focus the next or previous control in the focused element's row, clamping at the ends. */
+function moveWithinRow(active: Element, step: 1 | -1, event: KeyboardEvent<HTMLElement>): void {
+	const controls = rowControls(active);
+	if (controls.length < 2) return;
+	const index = controls.findIndex((control) => control === active);
+	const target = controls[Math.min(Math.max(index + step, 0), controls.length - 1)];
+	if (target === undefined || target === active) return;
+	event.preventDefault();
+	target.focus();
+}
+
 /**
  * Upstream's `oa` trigger handler: a sidebar menu trigger (More, a row kebab) skips Base UI's
  * open-on-arrow so ArrowUp/Down keep roving the sidebar body.
@@ -125,7 +136,8 @@ export function keepArrowsRoving(event: BaseUIEvent<KeyboardEvent<HTMLElement>>)
 /**
  * claude.ai/code's sidebar body keyboard container (upstream `L$`): ArrowUp/Down (wrapping) and
  * Home/End rove across the Search field, New, the nav rows and every session-list row and group
- * toggle. Shift is ignored, as upstream does; Meta, Ctrl and Alt opt out. Each tab section is one
+ * toggle; ArrowRight/Left move along a row's or group header's controls (kebab, Group and sort,
+ * New session). Shift is ignored, as upstream does; Meta, Ctrl and Alt opt out. Each tab section is one
  * Tab stop, re-chosen on Tab and whenever focus moves inside the body, except while rows are selected.
  */
 export function useSidebarBodyRoving() {
@@ -159,6 +171,10 @@ export function useSidebarBodyRoving() {
 		const active = document.activeElement;
 		if (container === null || active === null || !container.contains(active)) return;
 		if (event.metaKey || event.ctrlKey || event.altKey) return;
+		if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+			moveWithinRow(active, event.key === "ArrowRight" ? 1 : -1, event);
+			return;
+		}
 		const item = owningItem(active);
 		if (item === null) return;
 		const items = bodyItems(container);
