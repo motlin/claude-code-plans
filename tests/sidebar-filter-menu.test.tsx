@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {ToastProvider} from "../src/components/toast";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SettingsProvider} from "../src/components/settings-provider";
 import {SidebarSessionGroups} from "../src/components/sidebar/session-filter-menu";
@@ -180,6 +180,34 @@ describe("sidebar Group and sort menu", () => {
 				?.className.split(" ")
 				.filter((name) => name === "w-0" || name === "group-hover/labelrow:w-auto"),
 		}).toStrictEqual({groupAndSort: [1, 1], newSession: [1, 0], revealed: ["w-0", "group-hover/labelrow:w-auto"]});
+	});
+
+	// Upstream: the header + carries aria-keyshortcuts="Shift+Meta+o" and its tooltip reads "New session ⇧⌘O".
+	it("gives the header New session + upstream's ⇧⌘O shortcut in its tooltip and aria-keyshortcuts", async () => {
+		const userAgent = vi
+			.spyOn(navigator, "userAgent", "get")
+			.mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36");
+		try {
+			await renderSidebarGroups();
+			const button = screen.getByRole("button", {name: "New session"});
+
+			fireEvent.pointerEnter(button);
+			const tooltip = await screen.findByRole("tooltip", {}, {timeout: 2000});
+
+			expect({
+				ariaKeyShortcuts: button.getAttribute("aria-keyshortcuts"),
+				tooltip: tooltip.textContent,
+				keycaps: [...tooltip.querySelectorAll('[data-cds="Shortcut"] kbd > [aria-hidden="true"]')].map(
+					(cap) => cap.textContent,
+				),
+			}).toStrictEqual({
+				ariaKeyShortcuts: "Shift+Meta+o",
+				tooltip: "New session⇧Shift⌘CommandO",
+				keycaps: ["⇧", "⌘"],
+			});
+		} finally {
+			userAgent.mockRestore();
+		}
 	});
 
 	it("styles the trigger like upstream: radius 6 (r5)", async () => {

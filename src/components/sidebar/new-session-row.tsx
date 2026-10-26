@@ -57,15 +57,17 @@ export function NewSessionRow() {
 
 /**
  * Upstream's "+" New session button on the first sidebar section header: always visible, it goes
- * home and focuses the composer like the New row.
+ * home and focuses the composer like the New row, with the same ⇧⌘O in its tooltip.
  */
 export function NewSessionHeaderButton() {
 	const navigate = useNavigate();
+	const shortcut = useShortcutKeys("new_session");
 	return (
-		<Tooltip content="New session" className="-my-1 shrink-0">
+		<Tooltip content="New session" shortcut={shortcut.keys} className="-my-1 shrink-0">
 			<button
 				type="button"
 				aria-label="New session"
+				aria-keyshortcuts={shortcut.ariaKeyShortcuts}
 				data-row-action=""
 				// The list keeps one roving tab stop; the New row and ⇧⌘O reach the same action by keyboard.
 				tabIndex={-1}
