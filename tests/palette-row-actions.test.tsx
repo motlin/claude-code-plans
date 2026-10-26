@@ -114,6 +114,13 @@ async function openCard() {
 	return {...opened, card};
 }
 
+/** The cmdk values of the rows whose wrapper currently holds the "…" button. */
+function rowsWithActionsButton(dialog: HTMLElement) {
+	return [...dialog.querySelectorAll("[cmdk-item]")]
+		.filter((row) => row.parentElement?.querySelector("[data-palette-row-actions-button]") !== null)
+		.map((row) => row.getAttribute("data-value"));
+}
+
 function menuItems(card: HTMLElement) {
 	return within(card)
 		.getAllByRole("menuitem")
@@ -182,9 +189,13 @@ describe("palette row actions card", () => {
 			...recentSession("sess-2", "Write release notes"),
 			mtime: new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000).toISOString(),
 		};
-		const {dialog} = await openPalette([recentSession("sess-1", "Refactor auth module"), ancient]);
+		const {dialog, input} = await openPalette([recentSession("sess-1", "Refactor auth module"), ancient]);
 
-		fireEvent.click(dialog.querySelectorAll("[data-palette-row-actions-button]")[1]!);
+		fireEvent.keyDown(input, {key: "ArrowDown", code: "ArrowDown"});
+		await waitFor(() => {
+			expect(rowsWithActionsButton(dialog)).toStrictEqual(["session:sess-2"]);
+		});
+		fireEvent.click(dialog.querySelector("[data-palette-row-actions-button]")!);
 
 		const card = await screen.findByRole("menu", {name: "Actions"});
 		expect({
@@ -193,12 +204,37 @@ describe("palette row actions card", () => {
 		}).toStrictEqual({heading: "Write release notes", meta: "Code session"});
 	});
 
-	it("opens from the row's hover … button", async () => {
-		const {dialog} = await openPalette();
+	it("renders the row … button only on the selected row, in upstream's end-9 own-keys wrapper", async () => {
+		const {dialog, input} = await openPalette();
+		expect(rowsWithActionsButton(dialog)).toStrictEqual(["session:sess-1"]);
+		const wrapper = dialog.querySelector("[data-palette-row-actions-button]")?.closest("span[aria-hidden]");
+		expect({
+			ariaHidden: wrapper?.getAttribute("aria-hidden"),
+			ownKeys: wrapper?.getAttribute("data-palette-own-keys"),
+			className: wrapper?.className,
+		}).toStrictEqual({
+			ariaHidden: "true",
+			ownKeys: "",
+			className: "pointer-events-none absolute inset-y-0 end-9 flex items-center *:pointer-events-auto",
+		});
 
-		const buttons = dialog.querySelectorAll("[data-palette-row-actions-button]");
-		expect(buttons.length).toBe(2);
-		fireEvent.click(buttons[1]!);
+		fireEvent.keyDown(input, {key: "ArrowDown", code: "ArrowDown"});
+
+		await waitFor(() => {
+			expect(rowsWithActionsButton(dialog)).toStrictEqual(["session:sess-2"]);
+		});
+	});
+
+	it("opens from the selected row's … button", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.keyDown(input, {key: "ArrowDown", code: "ArrowDown"});
+		const buttons = await waitFor(() => {
+			const found = dialog.querySelectorAll("[data-palette-row-actions-button]");
+			expect(found.length).toBe(1);
+			return found;
+		});
+		fireEvent.click(buttons[0]!);
 
 		const card = await screen.findByRole("menu", {name: "Actions"});
 		expect(card.querySelector("[data-palette-card-title]")?.textContent).toBe("Write release notes");

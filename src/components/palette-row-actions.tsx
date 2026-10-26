@@ -342,7 +342,8 @@ export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
 	return (
 		<span
 			aria-hidden="true"
-			className="pointer-events-none absolute inset-y-0 right-9 flex items-center opacity-0 group-hover/palette-row:opacity-100 peer-data-[selected=true]:opacity-100 pointer-coarse:hidden *:pointer-events-auto"
+			data-palette-own-keys=""
+			className="pointer-events-none absolute inset-y-0 end-9 flex items-center *:pointer-events-auto"
 		>
 			<Tooltip content="Actions" side="left">
 				<button
@@ -354,7 +355,7 @@ export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
 						event.preventDefault();
 					}}
 					onClick={onOpen}
-					className="flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"
+					className="flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover pointer-coarse:hidden"
 				>
 					<Ellipsis aria-hidden="true" className="size-4" />
 				</button>

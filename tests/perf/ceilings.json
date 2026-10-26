@@ -365,11 +365,11 @@
 		"tolerance": 0
 	},
 	"client.palette.open.mutations": {
-		"ceiling": 42,
+		"ceiling": 43,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The composer now always mounts upstream's skill-chip hint live region (role=status aria-live=polite). Base UI's markOthers keeps every [aria-live] element reachable when the palette opens, so it walks down to the twin and writes aria-hidden on the siblings along that path instead of on one composer ancestor.",
-		"raisedAt": "2026-10-23"
+		"reason": "The composer now always mounts upstream's skill-chip hint live region (role=status aria-live=polite). Base UI's markOthers keeps every [aria-live] element reachable when the palette opens, so it walks down to the twin and writes aria-hidden on the siblings along that path instead of on one composer ancestor. Upstream renders the row \"…\" button only on the selected row, so it mounts once cmdk settles the first selection instead of with every session row (42 to 43).",
+		"raisedAt": "2026-10-25"
 	},
 	"client.palette.search.commitsPerKeystroke": {
 		"ceiling": 3.3333333333333335,
@@ -379,10 +379,10 @@
 		"raisedAt": "2026-10-25"
 	},
 	"client.palette.search.mutations": {
-		"ceiling": 77,
+		"ceiling": 78,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "Upstream's cds Spinner delays its ring 150ms and mounts the sr-only Searching deeper... label 100ms after that, so a search adds two timed commits (ring, then label) inside the reserved slot. Plus one aria-activedescendant write when typing moves the selection to New session (upstream points the textarea at the selected row; cmdk does not for a controlled value). The footer now collapses like upstream instead of unmounting: typing writes the wrapper's class, aria-hidden and inert plus the card's --cp-footer-collapsed class (114 to 118). Upstream's aria-atomic live region stays mounted but empty while searching, so typing now mounts it once instead of after the search settles (118 to 119). Upstream's settling SkeletonGroup mounts as one block after the results group instead of three rows inside it, and See all results waits for the search to settle (119 to 106). The scroller now animates between its measured content height and the cap like upstream, so typing writes its inline height and toggles the sizer's min-h-full class when it enters and leaves the capped skeleton (106 to 109). Upstream's keyless jump actions (Jump to navigation, main content, input) join the matched actions, so the early keystrokes of \"sqlite\" fuzzy-match their \"sidebar\" and \"composer prompt\" hints and mount and unmount those rows (109 to 118). Upstream offers the Quick actions New session row only above 50 characters, so typing a short query no longer mounts that group and row (118 to 77).",
+		"reason": "Upstream's cds Spinner delays its ring 150ms and mounts the sr-only Searching deeper... label 100ms after that, so a search adds two timed commits (ring, then label) inside the reserved slot. Plus one aria-activedescendant write when typing moves the selection to New session (upstream points the textarea at the selected row; cmdk does not for a controlled value). The footer now collapses like upstream instead of unmounting: typing writes the wrapper's class, aria-hidden and inert plus the card's --cp-footer-collapsed class (114 to 118). Upstream's aria-atomic live region stays mounted but empty while searching, so typing now mounts it once instead of after the search settles (118 to 119). Upstream's settling SkeletonGroup mounts as one block after the results group instead of three rows inside it, and See all results waits for the search to settle (119 to 106). The scroller now animates between its measured content height and the cap like upstream, so typing writes its inline height and toggles the sizer's min-h-full class when it enters and leaves the capped skeleton (106 to 109). Upstream's keyless jump actions (Jump to navigation, main content, input) join the matched actions, so the early keystrokes of \"sqlite\" fuzzy-match their \"sidebar\" and \"composer prompt\" hints and mount and unmount those rows (109 to 118). Upstream offers the Quick actions New session row only above 50 characters, so typing a short query no longer mounts that group and row (118 to 77). Upstream renders the row \"…\" button only on the selected row, so it remounts when the selection lands on a search result (77 to 78).",
 		"raisedAt": "2026-10-25"
 	},
 	"client.palette.search.serverSearchFetches": {

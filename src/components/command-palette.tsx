@@ -1,6 +1,6 @@
 import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {Dialog} from "@base-ui/react/dialog";
-import {Command, defaultFilter} from "cmdk";
+import {Command, defaultFilter, useCommandState} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
 import {
 	type ClipboardEvent,
@@ -2582,6 +2582,7 @@ function EmptyViewItem({
 	const secondary = paletteSecondary({prNumber: row.prNumber, time: undefined});
 	return (
 		<SessionRowActions
+			value={`session:${row.id}`}
 			onOpen={() => {
 				onOpenRowActions(row.id);
 			}}
@@ -2670,12 +2671,13 @@ function AccentReturnCap() {
 	);
 }
 
-/** A session row with upstream's hover "…" that opens the → row-actions card. */
-function SessionRowActions({children, onOpen}: {children: ReactNode; onOpen: () => void}) {
+/** A session row with upstream's "…" (`tr`), rendered only while the row is cmdk-selected, that opens the row-actions card. */
+function SessionRowActions({value, children, onOpen}: {value: string; children: ReactNode; onOpen: () => void}) {
+	const selected = useCommandState((state) => state.value === value);
 	return (
 		<div className="group/palette-row relative">
 			{children}
-			<PaletteRowActionsButton onOpen={onOpen} />
+			{selected && <PaletteRowActionsButton onOpen={onOpen} />}
 		</div>
 	);
 }
@@ -2699,7 +2701,7 @@ function PaletteSecondary({text, archived}: {text: string | undefined; archived:
 	);
 }
 
-const ROW_ACTIONS_LABEL_CLASS = "mr-7 pointer-coarse:mr-0";
+const ROW_ACTIONS_LABEL_CLASS = "me-7 pointer-coarse:me-0";
 
 /** Upstream's search row: kind icon, bold title runs, quoted snippet, bucket meta, ⏎ when selected. */
 function SearchResultItem({
@@ -2753,7 +2755,13 @@ function SearchResultItem({
 			<ReturnGlyph />
 		</Command.Item>
 	);
-	return session ? <SessionRowActions onOpen={onRowActions}>{item}</SessionRowActions> : item;
+	return session ? (
+		<SessionRowActions value={rowKey(row)} onOpen={onRowActions}>
+			{item}
+		</SessionRowActions>
+	) : (
+		item
+	);
 }
 
 /** Upstream's Quick actions send_message row: "New session", the raw prompt quoted inline, plus the project it will start in. */
