@@ -9,7 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
 import type {ReactNode} from "react";
@@ -116,7 +116,7 @@ async function renderGroups(
 	await waitFor(() => {
 		expect(result.container.querySelector("[data-group-toggle], [role=alert]")).toBeTruthy();
 	});
-	return result;
+	return {...result, queryClient};
 }
 
 function groupNames(container: HTMLElement): string[] {
@@ -881,5 +881,92 @@ describe("SessionGroups hover cards", () => {
 		const {container} = await renderGroups([session("b1", "Blocked one", "blocked", 3)]);
 		const card = await hoverRow(container, "Blocked one");
 		expect(card.getAttribute("data-kind")).toBe("blocked");
+	});
+});
+
+// Upstream `sP` (`Me`), `$y` and `gb`: the open session stays visible under a collapsed header, a collapsed
+// group expands when the open session moves into it, and focus in an unmounting section lands on a toggle.
+describe("SessionGroups open row and focus rescue", () => {
+	function setSessions(queryClient: QueryClient, sessions: unknown[]) {
+		act(() => {
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})],
+				pageParams: [null],
+			});
+		});
+	}
+	function toggleOf(container: HTMLElement, key: string): HTMLElement {
+		const toggle = container.querySelector(`[data-group-key="${key}"] [data-group-toggle]`);
+		if (!(toggle instanceof HTMLElement)) throw new Error(`no ${key} toggle`);
+		return toggle;
+	}
+
+	it("keeps the open session's row under its collapsed header and badges only the hidden rows", async () => {
+		const rows = [
+			{...session("od1", "Open done", "done", 5), unseen: true},
+			session("od2", "Other done", "done", 6),
+		];
+		__unreadStoreTesting.reset();
+		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
+		const {container} = await renderGroups(rows, {activeItemId: "od1"});
+
+		fireEvent.click(toggleOf(container, "state-done"));
+
+		const label = container.querySelector('[data-group-key="state-done"] > [data-sidebar-group-label]');
+		expect({
+			expanded: toggleOf(container, "state-done").getAttribute("aria-expanded"),
+			rows: rowTitlesIn(container, "state-done"),
+			selected: container
+				.querySelector('[data-group-key="state-done"] a[data-row-main-button]')
+				?.getAttribute("data-selected"),
+			rowless: label?.getAttribute("data-rowless") ?? null,
+			badges: label?.querySelectorAll("[data-group-badge]").length,
+		}).toStrictEqual({expanded: "false", rows: ["Open done"], selected: "focused", rowless: null, badges: 0});
+	});
+
+	it("expands a collapsed group when the open session moves into it and keeps focus on its row", async () => {
+		const rows = [session("mw1", "Moving one", "working", 1), session("md1", "Done one", "done", 5)];
+		const {container, queryClient} = await renderGroups(rows, {activeItemId: "mw1"});
+		fireEvent.click(toggleOf(container, "state-done"));
+		expect(toggleOf(container, "state-done").getAttribute("aria-expanded")).toBe("false");
+		const link = container.querySelector<HTMLElement>('[data-group-key="state-working"] a[data-row-main-button]');
+		link?.focus();
+
+		setSessions(queryClient, [session("mw1", "Moving one", "done", 1), session("md1", "Done one", "done", 5)]);
+
+		await waitFor(() => {
+			expect({
+				expanded: toggleOf(container, "state-done").getAttribute("aria-expanded"),
+				rows: rowTitlesIn(container, "state-done"),
+				collapsed: readSidebarState().collapsedGroups,
+				focused: document.activeElement?.closest("[data-row-key]")?.getAttribute("data-row-key") ?? null,
+			}).toStrictEqual({
+				expanded: "true",
+				rows: ["Moving one", "Done one"],
+				collapsed: [],
+				focused: "mw1",
+			});
+		});
+	});
+
+	it("moves focus from an unmounting section to the next group's toggle, else the previous one", async () => {
+		const rows = [
+			session("fb1", "Blocked one", "blocked", 3),
+			session("fw1", "Working one", "working", 1),
+			session("fd1", "Done one", "done", 5),
+		];
+		const {container, queryClient} = await renderGroups(rows);
+		container.querySelector<HTMLElement>('[data-group-key="state-working"] a[data-row-main-button]')?.focus();
+
+		setSessions(queryClient, [rows[0], rows[2]]);
+		await waitFor(() => {
+			expect(document.activeElement).toBe(toggleOf(container, "state-done"));
+		});
+
+		container.querySelector<HTMLElement>('[data-group-key="state-done"] a[data-row-main-button]')?.focus();
+		setSessions(queryClient, [rows[0]]);
+		await waitFor(() => {
+			expect(document.activeElement).toBe(toggleOf(container, "state-blocked"));
+		});
 	});
 });

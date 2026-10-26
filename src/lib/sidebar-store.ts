@@ -128,6 +128,13 @@ export function toggleSidebarGroup(key: string): void {
 	writeSidebarState({...state, collapsedGroups});
 }
 
+/** Expand one session-list group (upstream's `expandGroup`); a no-op when it is already expanded. */
+export function expandSidebarGroup(key: string): void {
+	const state = readSidebarState();
+	if (!state.collapsedGroups.includes(key)) return;
+	writeSidebarState({...state, collapsedGroups: state.collapsedGroups.filter((collapsed) => collapsed !== key)});
+}
+
 export function familyKey(headSessionId: string): string {
 	return `code:${headSessionId}`;
 }

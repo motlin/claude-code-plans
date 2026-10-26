@@ -7,6 +7,7 @@ import {
 	useEffect,
 	useId,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 	useSyncExternalStore,
@@ -23,7 +24,12 @@ import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {useSessionGroups} from "../../lib/session-group-store";
 import {assertNever} from "../../lib/assert-never";
-import {customGroupIdOfKey, isProjectGroupKey, type SessionGroup} from "../../lib/session-groups";
+import {
+	customGroupIdOfKey,
+	isProjectGroupKey,
+	type SessionGroup,
+	type SessionListPrefs,
+} from "../../lib/session-groups";
 import {
 	familyKey,
 	setFamiliesCollapsed,
@@ -40,6 +46,7 @@ import {PrTailGlyph, SessionStateIcon} from "../status-dot";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
 import {GroupAppearanceMark} from "./group-appearance";
+import {useOpenRowAutoExpand, useSectionFocusRescue} from "./group-section-focus";
 import {NewSessionHeaderButton} from "./new-session-row";
 import {ProjectGroupHeader} from "./project-group-header";
 import {SelectAllGroupHeader} from "./select-all-group-header";
@@ -51,9 +58,18 @@ const NO_FAMILY_HEAD_IDS: readonly string[] = [];
 
 /** The section's unarchived sessions, family members included, for Archive all. */
 function archivableIds(group: SessionGroup<SidebarSessionRow>): string[] {
-	const rows = group.rows.flatMap((row) => [row, ...(group.nested.get(row.sessionId) ?? [])]);
-	return rows.filter((row) => !row.archived).map((row) => row.sessionId);
+	return allRows(group)
+		.filter((row) => !row.archived)
+		.map((row) => row.sessionId);
 }
+
+/** The section's rows with each family's nested sessions after its head. */
+function allRows(group: SessionGroup<SidebarSessionRow>): SidebarSessionRow[] {
+	return group.rows.flatMap((row) => [row, ...(group.nested.get(row.sessionId) ?? [])]);
+}
+
+/** A section's rows, stacked with the row gap. */
+const ROWS_CLASS = "flex flex-col gap-[var(--sb-row-stack-gap)]";
 
 export const ROW_CLASS =
 	"flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] no-underline";
@@ -85,16 +101,22 @@ function HeaderControls({filterSlot, leadsList}: {filterSlot: ReactNode; leadsLi
 const BADGE_KIND_RANK: readonly SessionStateKind[] = ["error", "awaiting", "ready", "running"];
 
 /**
- * The most urgent status among a collapsed section's hidden rows (nested family members included),
- * or null when every hidden row is settled and read. Re-derived when the unread store changes.
+ * The most urgent status among a collapsed section's hidden rows (nested family members included,
+ * the open rows it still shows left out), or null when every hidden row is settled and read.
+ * Re-derived when the unread store changes.
  */
-function useCollapsedBadgeKind(group: SessionGroup<SidebarSessionRow>, collapsed: boolean): SessionStateKind | null {
+function useCollapsedBadgeKind(
+	group: SessionGroup<SidebarSessionRow>,
+	collapsed: boolean,
+	openKeys: readonly string[],
+): SessionStateKind | null {
 	const {settings} = useSettings();
 	const showPrStatus = settings.sessionListPrefs.showPrStatus;
 	const getSnapshot = useCallback((): SessionStateKind | null => {
 		if (!collapsed) return null;
 		let best: number = BADGE_KIND_RANK.length;
-		for (const row of group.rows.flatMap((head) => [head, ...(group.nested.get(head.sessionId) ?? [])])) {
+		for (const row of allRows(group)) {
+			if (openKeys.includes(row.sessionId)) continue;
 			const {session} = row;
 			const kind = sessionRowIconKind({
 				bucket: session.bucket,
@@ -108,13 +130,14 @@ function useCollapsedBadgeKind(group: SessionGroup<SidebarSessionRow>, collapsed
 			if (rank !== -1 && rank < best) best = rank;
 		}
 		return BADGE_KIND_RANK[best] ?? null;
-	}, [collapsed, group, showPrStatus]);
+	}, [collapsed, group, openKeys, showPrStatus]);
 	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, getSnapshot);
 }
 
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show N more" / "Show less". */
 export function GroupSection({
 	group,
+	groupBy = "state",
 	expanded,
 	activeItemId,
 	filterSlot,
@@ -131,6 +154,8 @@ export function GroupSection({
 	dropHot = false,
 }: {
 	group: SessionGroup<SidebarSessionRow>;
+	/** The list's grouping: grouped by status, the open session moving into a collapsed section expands it. */
+	groupBy?: SessionListPrefs["groupBy"];
 	expanded: boolean;
 	activeItemId: string | null;
 	filterSlot: ReactNode;
@@ -160,7 +185,23 @@ export function GroupSection({
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
-	const badgeKind = useCollapsedBadgeKind(group, !expanded);
+	const sectionElement = useRef<HTMLDivElement | null>(null);
+	const rows = useMemo(() => allRows(group), [group]);
+	const rowKeys = useMemo(() => rows.map((row) => row.sessionId), [rows]);
+	const openKeys = useMemo(() => (activeItemId === null ? [] : [activeItemId]), [activeItemId]);
+	// Upstream `sP` (`Me`): open rows stay visible under a collapsed header.
+	const openRows = expanded ? [] : rows.filter((row) => openKeys.includes(row.sessionId));
+	const badgeKind = useCollapsedBadgeKind(group, !expanded, openKeys);
+	useOpenRowAutoExpand({
+		groupBy,
+		groupKey: group.key,
+		rowKeys,
+		openKeys,
+		collapsed: !expanded,
+		customGroup: customGroupId !== null,
+		sectionRef: sectionElement,
+	});
+	useSectionFocusRescue(group.key, sectionElement);
 	const toggle = (
 		<button
 			type="button"
@@ -198,7 +239,10 @@ export function GroupSection({
 	);
 	return (
 		<div
-			ref={sectionRef}
+			ref={(element) => {
+				sectionElement.current = element;
+				sectionRef?.(element);
+			}}
 			data-group-key={group.key}
 			className="group/section relative isolate flex flex-col pb-[var(--sb-group-pb)]"
 		>
@@ -207,7 +251,7 @@ export function GroupSection({
 				ref={headerRef}
 				data-sidebar-group-label
 				data-drop-hot={dropHot ? "" : undefined}
-				data-rowless={expanded ? undefined : ""}
+				data-rowless={expanded || openRows.length > 0 ? undefined : ""}
 				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] data-[rowless]:mb-[var(--sb-row-stack-gap)] flex mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 [--sb-heading-ink:var(--color-ink-muted)] hover:[--sb-heading-ink:var(--color-secondary)] text-[color:var(--sb-heading-ink)]"
 			>
 				{customGroupId === null ? (
@@ -231,12 +275,16 @@ export function GroupSection({
 				<HeaderControls filterSlot={filterSlot} leadsList={leadsList} />
 			</div>
 			{expanded && (
-				<div ref={rowsRef} data-group-rows className="flex flex-col gap-[var(--sb-row-stack-gap)]">
+				<div ref={rowsRef} data-group-rows className={ROWS_CLASS}>
 					{group.rows.map((row) => {
 						const nested = group.nested.get(row.sessionId);
 						return (
 							<Fragment key={row.sessionId}>
-								<div {...dragRowProps?.(row.sessionId)} className="df-drag-shiftable relative">
+								<div
+									{...dragRowProps?.(row.sessionId)}
+									data-row-key={row.sessionId}
+									className="df-drag-shiftable relative"
+								>
 									<SessionRowLink
 										row={row}
 										selected={row.sessionId === activeItemId}
@@ -270,6 +318,20 @@ export function GroupSection({
 							Show less
 						</OverflowRow>
 					)}
+				</div>
+			)}
+			{openRows.length > 0 && (
+				<div data-group-rows className={ROWS_CLASS}>
+					{openRows.map((row) => (
+						<div key={row.sessionId} data-row-key={row.sessionId} className="relative">
+							<SessionRowLink
+								row={row}
+								selected={row.sessionId === activeItemId}
+								pinnedIds={pinnedIds}
+								envGlyph={envGlyph}
+							/>
+						</div>
+					))}
 				</div>
 			)}
 		</div>
@@ -460,6 +522,7 @@ function SessionFamily({
 						<div
 							key={child.sessionId}
 							data-family-child
+							data-row-key={child.sessionId}
 							{...dragRowProps?.(child.sessionId)}
 							className="df-drag-shiftable relative pl-5"
 						>

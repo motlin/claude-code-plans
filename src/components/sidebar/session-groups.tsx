@@ -280,6 +280,7 @@ export function SessionGroups({
 							<GroupSection
 								key={group.key}
 								group={group}
+								groupBy={prefs.groupBy}
 								expanded={!collapsed.has(group.key)}
 								activeItemId={activeItemId}
 								filterSlot={filterSlot}
