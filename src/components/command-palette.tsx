@@ -1630,6 +1630,11 @@ function PalettePopup({
 		openRowActions(id);
 	}
 
+	// Actions mode lists no session rows; checking it too avoids a stale selection flashing the hint.
+	const selectedRowHasActions =
+		!actionsOnly &&
+		selectedValue.startsWith("session:") &&
+		cardSessions.has(selectedValue.slice("session:".length));
 	const footerCollapsed = !compose && query.trim() !== "";
 	const coarsePointer = useCoarsePointer();
 	const [listRef, contentHeight] = useListContentHeight();
@@ -2220,8 +2225,8 @@ function PalettePopup({
 											]
 										: []),
 									["Filters", ["/"], "hidden md:flex items-center gap-2"],
-									// Actions mode lists no session rows, so upstream drops the row-actions hint.
-									...(actionsOnly ? [] : [["Actions", ["alt+enter"]] as const]),
+									// Upstream shows the hint only while the selected row supports the ⌥⏎ card.
+									...(selectedRowHasActions ? [["Actions", ["alt+enter"]] as const] : []),
 								]}
 								trailing={
 									<ViewHint

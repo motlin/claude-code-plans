@@ -225,6 +225,34 @@ describe("palette row actions card", () => {
 		});
 	});
 
+	it("shows the footer Actions ⌥⏎ hint only while the selected row supports actions", async () => {
+		const {dialog, input} = await openPalette();
+		const footerLabels = () =>
+			[...dialog.querySelectorAll("[data-palette-footer-hint]")].map(
+				(hint) => hint.querySelector("span")?.textContent,
+			);
+		const selected = () => dialog.querySelector("[cmdk-item][data-selected=true]")?.getAttribute("data-value");
+		const step = async (key: "ArrowDown" | "ArrowUp", value: string) => {
+			fireEvent.keyDown(input, {key, code: key});
+			await waitFor(() => {
+				expect(selected()).toBe(value);
+			});
+			return {selected: value, footer: footerLabels()};
+		};
+
+		const first = {selected: selected(), footer: footerLabels()};
+		const second = await step("ArrowDown", "session:sess-2");
+		const newSession = await step("ArrowDown", "action:New session");
+		const back = await step("ArrowUp", "session:sess-2");
+
+		expect({first, second, newSession, back}).toStrictEqual({
+			first: {selected: "session:sess-1", footer: ["Close", "Change type", "Filters", "Actions"]},
+			second: {selected: "session:sess-2", footer: ["Close", "Change type", "Filters", "Actions"]},
+			newSession: {selected: "action:New session", footer: ["Close", "Change type", "Filters"]},
+			back: {selected: "session:sess-2", footer: ["Close", "Change type", "Filters", "Actions"]},
+		});
+	});
+
 	it("opens from the selected row's … button", async () => {
 		const {dialog, input} = await openPalette();
 
