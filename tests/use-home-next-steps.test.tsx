@@ -87,7 +87,11 @@ async function renderHook(
 			</QueryClientProvider>
 		),
 	});
-	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/", component: () => wrap(<Probe />)});
+	const homeRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "/",
+		component: () => wrap(<Probe />),
+	});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([homeRoute]),
 		history: createMemoryHistory({initialEntries: ["/"]}),
@@ -98,7 +102,9 @@ async function renderHook(
 }
 
 function seededClient(): QueryClient {
-	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false, staleTime: Infinity}}});
+	const queryClient = new QueryClient({
+		defaultOptions: {queries: {retry: false, staleTime: Infinity}},
+	});
 	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
 		pages: [{sessions: [listItem("waiting")], nextCursor: null}],
 		pageParams: [null],
@@ -261,7 +267,14 @@ describe("useHomeNextSteps", () => {
 		}
 
 		function errored(id: string, erroredAt: string, project = "-projects-alpha"): SessionListItem {
-			return {...listItem(id), project, state: "ended", bucket: "blocked", unseenError: true, erroredAt};
+			return {
+				...listItem(id),
+				project,
+				state: "ended",
+				bucket: "blocked",
+				unseenError: true,
+				erroredAt,
+			};
 		}
 
 		const describeRow = (candidate: NextStepCandidate) =>
@@ -297,6 +310,105 @@ describe("useHomeNextSteps", () => {
 			await waitFor(() => {
 				expect(frames.at(-1)).toStrictEqual([]);
 			});
+		});
+	});
+
+	describe("folder PR", () => {
+		const FOLDER_PR_URL = "/api/home/folder-pr?path=%2Fprojects%2Falpha&branch=feat";
+
+		function prClient(headBranch: string): QueryClient {
+			const queryClient = seededClient();
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [
+					{
+						sessions: [
+							{
+								...listItem("elsewhere"),
+								project: "-projects-beta",
+								state: "ended",
+								bucket: "done",
+								prStatus: {
+									number: 3,
+									state: "open",
+									url: "https://github.com/owner/beta/pull/3",
+									title: "Other PR",
+									checks: {passed: 0, failed: 1, pending: 0},
+									failingChecks: ["build"],
+									unresolvedReviewThreads: 2,
+								},
+							},
+						],
+						nextCursor: null,
+					},
+				],
+				pageParams: [null],
+			});
+			queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+			queryClient.setQueryData(projectsQueryOptions().queryKey, [
+				{
+					id: "-projects-alpha",
+					name: "alpha",
+					projectPath: "/projects/alpha",
+					sessionCount: 0,
+					memoryCount: 0,
+					planCount: 0,
+					taskCount: 0,
+					activeCount: 0,
+					lastActivity: new Date().toISOString(),
+				},
+			]);
+			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+				isGitRepo: true,
+				headBranch,
+				defaultBranch: "main",
+				uncommittedFiles: 0,
+			});
+			return queryClient;
+		}
+
+		const fetchFolderPr = vi.fn<(url: string) => Promise<Response>>(async (url) =>
+			Promise.resolve(
+				url === FOLDER_PR_URL
+					? Response.json({
+							status: "found",
+							pr: {
+								repo: "owner/alpha",
+								number: 9,
+								title: "Alpha PR",
+								branch: "feat",
+								failing: true,
+								failureStamp: "sha",
+								unansweredReviewComments: 1,
+								newestReviewCommentId: 4,
+							},
+						})
+					: new Response("{}", {status: 404}),
+			),
+		);
+
+		const describeRow = (candidate: NextStepCandidate) =>
+			`${candidate.id} ${candidate.title} · ${candidate.detail}`;
+
+		it("shows only the launch folder branch's PR rows, not other sessions' PRs", async () => {
+			fetchFolderPr.mockClear();
+			vi.stubGlobal("fetch", fetchFolderPr);
+			const frames = await renderHook(prClient("feat"), describeRow);
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual([
+					"pr-ci-failed Fix the failing checks · null",
+					"pr-review-comments Answer 1 review comment · Alpha PR",
+				]);
+			});
+		});
+
+		it("doesn't look up a PR for the default branch", async () => {
+			fetchFolderPr.mockClear();
+			vi.stubGlobal("fetch", fetchFolderPr);
+			const frames = await renderHook(prClient("main"), describeRow);
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual([]);
+			});
+			expect(fetchFolderPr.mock.calls.filter(([url]) => url.startsWith("/api/home/folder-pr"))).toStrictEqual([]);
 		});
 	});
 

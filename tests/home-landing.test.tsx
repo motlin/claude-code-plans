@@ -142,7 +142,8 @@ describe("HomeLanding", () => {
 			regions: screen.queryAllByRole("region").map((region) => region.getAttribute("aria-label")),
 		}).toStrictEqual({
 			title: "New session",
-			nextSteps: 2,
+			// Only the waiting session: a session's PR no longer makes a row (PR rows come from the launch folder).
+			nextSteps: 1,
 			startCard: true,
 			scroller: true,
 			wrapperClass: "flex min-h-full w-full flex-col pb-6",

@@ -1,14 +1,17 @@
 import {describe, expect, it} from "vite-plus/test";
 
+import type {FolderPr} from "../src/lib/api/home-folder-pr";
+
 import {
 	blockedDismissLabel,
 	blockedRestTitle,
 	folderNextStepCandidates,
+	folderPrBranch,
+	folderPrNextStepCandidates,
 	type FolderNextStepSource,
+	type FolderPrNextStepSource,
 	nextStepKey,
-	prNextStepCandidates,
 	reviewCommentsTitle,
-	type PrNextStepSource,
 	selectNextSteps,
 	sessionRunningIn,
 	type NextStepCandidate,
@@ -113,101 +116,154 @@ describe("selectNextSteps", () => {
 	});
 });
 
-describe("PR next steps", () => {
-	function pr(sessionId: string, failedChecks: number, overrides: Partial<PrNextStepSource> = {}): PrNextStepSource {
-		return {
-			sessionId,
-			lastActivityAt: 500,
-			title: `PR ${sessionId}`,
-			failedChecks,
-			failingChecks: [],
-			unresolvedReviewThreads: 0,
-			headBranch: null,
+describe("folder PR next steps", () => {
+	const GIT = {isGitRepo: true, headBranch: "feat", defaultBranch: "main", uncommittedFiles: 0};
+	const PR: NonNullable<FolderPr["pr"]> = {
+		repo: "owner/repo",
+		number: 7,
+		title: "Add the thing",
+		branch: "feat",
+		failing: true,
+		failingCheckName: "lint",
+		failureStamp: "s\nlint",
+		unansweredReviewComments: 0,
+		newestReviewCommentId: 0,
+	};
+	const CI: NextStepCandidate = {
+		id: "pr-ci-failed",
+		kind: "prefill",
+		subject: "owner/repo#7\u0000s\nlint",
+		stamp: 0,
+		title: "Fix the failing checks",
+		detail: "lint",
+		tooltipText: "lint is failing on feat.",
+		dismissLabel: "Dismiss the failing checks",
+		prefill: "Fix the failing CI checks on feat: find out why they fail and fix them.",
+	};
+	const REVIEW: NextStepCandidate = {
+		id: "pr-review-comments",
+		kind: "prefill",
+		subject: "owner/repo#7\u000012",
+		stamp: 0,
+		title: "Answer 2 review comments",
+		detail: "Add the thing",
+		tooltipText: "Add the thing",
+		dismissLabel: "Dismiss the review comments",
+		prefill:
+			"Read the unresolved review comments on owner/repo#7 and address each one: make the change, or reply with why not.",
+	};
+
+	function prRows(overrides: Partial<FolderPrNextStepSource> = {}): NextStepCandidate[] {
+		return folderPrNextStepCandidates({
+			git: GIT,
+			pr: {status: "found", pr: PR},
+			worktreeOn: false,
+			used: new Set(),
+			launching: false,
 			...overrides,
-		};
+		});
 	}
 
-	it("ranks a failing PR after a blocked session", () => {
-		const rows = selectNextSteps({
-			candidates: [...prNextStepCandidates([pr("p1", 2)]), ...blocked(1)],
-			dismissed: {},
-		});
+	it("looks up the PR only for a git folder on a non-default branch with Worktree off", () => {
+		expect([
+			folderPrBranch(GIT, false),
+			folderPrBranch({...GIT, headBranch: "main"}, false),
+			folderPrBranch({...GIT, headBranch: null}, false),
+			folderPrBranch(GIT, true),
+			folderPrBranch({...GIT, isGitRepo: false}, false),
+			folderPrBranch(undefined, false),
+		]).toStrictEqual(["feat", null, null, null, null, null]);
+	});
+
+	it("offers to fix a named failing check, prefilling upstream's prompt", () => {
+		expect(prRows()).toStrictEqual([CI]);
+	});
+
+	it("has no detail and a generic tooltip when no failing check is named", () => {
+		const {failingCheckName: _, ...unnamed} = PR;
+		expect(prRows({pr: {status: "found", pr: unnamed}})).toStrictEqual([
+			{...CI, detail: null, tooltipText: "Checks are failing on feat."},
+		]);
+	});
+
+	it("offers to answer unresolved review comments, in the singular and plural", () => {
+		const review = {
+			...PR,
+			failing: false,
+			unansweredReviewComments: 2,
+			newestReviewCommentId: 12,
+		};
+		expect(prRows({pr: {status: "found", pr: review}})).toStrictEqual([REVIEW]);
 		expect(
-			rows.map((row) => (row.type === "row" ? [row.candidate.id, row.candidate.title] : row.title)),
-		).toStrictEqual([
-			["waiting-session", "s1"],
-			["pr-ci-failed", "Fix the failing checks"],
-		]);
-	});
-
-	it("turns each PR with failing checks into a 'Fix the failing checks' candidate", () => {
-		expect(prNextStepCandidates([pr("p1", 1), pr("p2", 0), pr("p3", 3)])).toStrictEqual([
-			{id: "pr-ci-failed", subject: "p1", stamp: 500, title: "Fix the failing checks", detail: "1 failing check"},
-			{
-				id: "pr-ci-failed",
-				subject: "p3",
-				stamp: 500,
-				title: "Fix the failing checks",
-				detail: "3 failing checks",
-			},
-		]);
-	});
-
-	it("ranks an 'Answer 2 review comments' row after 'Fix the failing checks'", () => {
-		const rows = selectNextSteps({
-			candidates: prNextStepCandidates([pr("p1", 0, {unresolvedReviewThreads: 2}), pr("p2", 1)]),
-			dismissed: {},
-		});
-		expect(rows).toStrictEqual([
-			{
-				type: "row",
-				candidate: {
-					id: "pr-ci-failed",
-					subject: "p2",
-					stamp: 500,
-					title: "Fix the failing checks",
-					detail: "1 failing check",
-				},
-			},
-			{
-				type: "row",
-				candidate: {
-					id: "pr-review-comments",
-					subject: "p1",
-					stamp: 500,
-					title: "Answer 2 review comments",
-					detail: "PR p1",
-				},
-			},
-		]);
-	});
-
-	it("names the failing check in the detail and says where it fails in the tooltip", () => {
-		expect(
-			prNextStepCandidates([
-				pr("p1", 2, {failingChecks: ["test", "lint"], headBranch: "feature"}),
-				pr("p2", 1, {failingChecks: ["build"]}),
-			]),
-		).toStrictEqual([
-			{
-				id: "pr-ci-failed",
-				subject: "p1",
-				stamp: 500,
-				title: "Fix the failing checks",
-				detail: "test",
-				tooltip: "test is failing on feature.",
-			},
-			{id: "pr-ci-failed", subject: "p2", stamp: 500, title: "Fix the failing checks", detail: "build"},
-		]);
-	});
-
-	it("titles review comments in the singular and plural", () => {
+			prRows({pr: {status: "found", pr: {...review, unansweredReviewComments: 1}}}).map((c) => c.title),
+		).toStrictEqual(["Answer 1 review comment"]);
 		expect([1, 4].map(reviewCommentsTitle)).toStrictEqual(["Answer 1 review comment", "Answer 4 review comments"]);
+	});
+
+	it("leaves out the review row's detail and tooltip for an empty PR title", () => {
+		const review = {
+			...PR,
+			title: "",
+			failing: false,
+			unansweredReviewComments: 2,
+			newestReviewCommentId: 12,
+		};
+		const {tooltipText: _, ...untitled} = REVIEW;
+		expect(prRows({pr: {status: "found", pr: review}})).toStrictEqual([{...untitled, detail: null}]);
+	});
+
+	it("seats the CI row before the review row, after blocked sessions", () => {
+		const both = prRows({
+			pr: {
+				status: "found",
+				pr: {...PR, unansweredReviewComments: 2, newestReviewCommentId: 12},
+			},
+		});
+		expect(seats([...both.toReversed(), ...blocked(1)])).toStrictEqual(["s1", CI.subject, REVIEW.subject]);
+	});
+
+	it("has no rows on the default branch, detached, with Worktree on, while launching, or without a found PR", () => {
+		expect(
+			[
+				prRows({git: {...GIT, headBranch: "main"}}),
+				prRows({git: {...GIT, headBranch: null}}),
+				prRows({git: undefined}),
+				prRows({worktreeOn: true}),
+				prRows({launching: true}),
+				prRows({pr: {status: "none"}}),
+				prRows({pr: {status: "off"}}),
+				prRows({pr: undefined}),
+				prRows({pr: {status: "found", pr: {...PR, branch: "other"}}}),
+				prRows({used: new Set([nextStepKey(CI)])}),
+			].map((candidates) => candidates.length),
+		).toStrictEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+	});
+
+	it("brings a dismissed CI row back on a new failure and a review row back on a newer comment", () => {
+		const dismissed = {[nextStepKey(CI)]: 1_000, [nextStepKey(REVIEW)]: 1_000};
+		const review = {...PR, unansweredReviewComments: 2, newestReviewCommentId: 12};
+		expect(seats(prRows({pr: {status: "found", pr: review}}), dismissed)).toStrictEqual([]);
+		expect(
+			seats(
+				prRows({
+					pr: {
+						status: "found",
+						pr: {...review, failureStamp: "t\nlint", newestReviewCommentId: 13},
+					},
+				}),
+				dismissed,
+			),
+		).toStrictEqual(["owner/repo#7\u0000t\nlint", "owner/repo#7\u000013"]);
 	});
 });
 
 describe("folder next steps", () => {
-	const DIRTY = {isGitRepo: true, headBranch: "feat/x", defaultBranch: "main", uncommittedFiles: 3};
+	const DIRTY = {
+		isGitRepo: true,
+		headBranch: "feat/x",
+		defaultBranch: "main",
+		uncommittedFiles: 3,
+	};
 	const PROMPT =
 		"Continue the work in progress on feat/x: look at the uncommitted changes, tell me what state they\u2019re in, and finish what\u2019s started.";
 	const WORKTREE: NextStepCandidate = {
@@ -262,7 +318,12 @@ describe("folder next steps", () => {
 
 	it("keeps a pressed Worktree row as taken, and drops it when Worktree was turned on elsewhere", () => {
 		expect(
-			folder({git: {...DIRTY, uncommittedFiles: 0}, runningHere: true, worktreeOn: true, worktreeTaken: true}),
+			folder({
+				git: {...DIRTY, uncommittedFiles: 0},
+				runningHere: true,
+				worktreeOn: true,
+				worktreeTaken: true,
+			}),
 		).toStrictEqual([{...WORKTREE, taken: true}]);
 		expect(folder({git: {...DIRTY, uncommittedFiles: 0}, runningHere: true, worktreeOn: true})).toStrictEqual([]);
 	});
@@ -326,7 +387,11 @@ describe("folder next steps", () => {
 
 	it("emits no folder rows while the draft is launching", () => {
 		expect(
-			folder({runningHere: true, failed: {sessionId: "s9", title: "Fix bug", failedAt: 700}, launching: true}),
+			folder({
+				runningHere: true,
+				failed: {sessionId: "s9", title: "Fix bug", failedAt: 700},
+				launching: true,
+			}),
 		).toStrictEqual([]);
 	});
 

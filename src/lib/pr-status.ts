@@ -9,7 +9,6 @@ export const GhPrReviewDecisionSchema = z.enum(["APPROVED", "CHANGES_REQUESTED",
 const PrChecksSchema = z
 	.object({passed: z.number().int(), failed: z.number().int(), pending: z.number().int()})
 	.strict();
-export type PrChecks = z.infer<typeof PrChecksSchema>;
 
 /**
  * A session's pull request: its number and a normalized state, plus the url, title, CI checks

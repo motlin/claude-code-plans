@@ -5,17 +5,18 @@ import {useRef} from "react";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {blockedDetail} from "../../lib/blocked-detail";
 import {homeDismissalsQueryOptions, postHomeDismissal, type HomeDismissals} from "../../lib/api/home-dismissals";
+import {homeFolderPrQueryOptions} from "../../lib/api/home-folder-pr";
 import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
 import {
 	folderNextStepCandidates,
+	folderPrBranch,
+	folderPrNextStepCandidates,
 	nextStepKey,
-	prNextStepCandidates,
 	selectNextSteps,
 	sessionRunningIn,
 	type NextStepCandidate,
 } from "../../lib/home-next-steps";
-import {selectHomePrs} from "../../lib/home-prs";
 import {toGroupRow} from "../sidebar/sidebar-session-row";
 import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import type {NextStepsListProps} from "./start-card";
@@ -62,8 +63,8 @@ function newestFailedSession(
 }
 
 /**
- * The start card's Next steps list, fed by the sidebar's recent sessions, their PRs, the pending
- * approvals, the launch folder (read under `HomeLaunchFolderProvider`) and the home dismissals. Like
+ * The start card's Next steps list, fed by the sidebar's recent sessions, the pending approvals, the
+ * launch folder and its branch's PR (read under `HomeLaunchFolderProvider`) and the home dismissals. Like
  * upstream, it is undefined until every source has settled (so a permission prompt never first renders
  * as "Asked a question"), then latched: a later reset or refetch that drops a source's data keeps the
  * last list instead of unmounting it.
@@ -78,6 +79,8 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const folder = selected?.projectPath;
 	const {data: git} = useQuery(homeFolderStatusQueryOptions(folder));
 	const worktree = useHomeWorktree(git?.isGitRepo);
+	// Upstream's `yce` runs only for a git folder on a non-default branch with Worktree off.
+	const {data: folderPr} = useQuery(homeFolderPrQueryOptions(folder, folderPrBranch(git, worktree.enabled)));
 	const {used} = useHomeDraftUsed();
 	const latched = useRef<NextStepsListProps | undefined>(undefined);
 
@@ -97,17 +100,6 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const approvalTools = new Map(
 		(approvals?.approvals ?? []).map((approval) => [approval.sessionId, approval.toolName]),
 	);
-	const prs = selectHomePrs(
-		sessions
-			.filter((session) => !session.archived)
-			.map((session) => ({
-				sessionId: session.id,
-				sessionTitle: session.title,
-				lastActivityAt: Date.parse(session.mtime),
-				pr: session.prStatus,
-			})),
-	);
-
 	const folderCandidates = folderNextStepCandidates({
 		folder,
 		git,
@@ -124,7 +116,13 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 			candidates: [
 				...waitingSessionCandidates(sessions, approvalTools),
 				...folderCandidates,
-				...prNextStepCandidates(prs),
+				...folderPrNextStepCandidates({
+					git,
+					pr: folderPr,
+					worktreeOn: worktree.enabled,
+					used,
+					launching,
+				}),
 			],
 			dismissed: dismissals.dismissals,
 		}),

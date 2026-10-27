@@ -1,4 +1,5 @@
 import type {FolderGitStatus} from "./api/home-folder-status";
+import type {FolderPr} from "./api/home-folder-pr";
 
 /** Upstream's /code start-card "Next steps" candidate ids, in priority order. */
 const NEXT_STEP_PRIORITY = [
@@ -115,17 +116,6 @@ export function selectNextSteps<C extends NextStepCandidate>({
 	});
 }
 
-/** The PR fields a Next steps row needs, from the home Pull requests rows. */
-export interface PrNextStepSource {
-	sessionId: string;
-	lastActivityAt: number;
-	title: string;
-	failedChecks: number;
-	failingChecks: readonly string[];
-	unresolvedReviewThreads: number;
-	headBranch: string | null;
-}
-
 function plural(count: number, one: string, other: string): string {
 	return `${count} ${count === 1 ? one : other}`;
 }
@@ -135,39 +125,74 @@ export function reviewCommentsTitle(count: number): string {
 	return `Answer ${plural(count, "review comment", "review comments")}`;
 }
 
-function ciFailedCandidate(pr: PrNextStepSource): NextStepCandidate {
-	const candidate: NextStepCandidate = {
-		id: "pr-ci-failed",
-		subject: pr.sessionId,
-		stamp: pr.lastActivityAt,
-		title: "Fix the failing checks",
-		detail: pr.failingChecks[0] ?? plural(pr.failedChecks, "failing check", "failing checks"),
-	};
-	const [check] = pr.failingChecks;
-	if (check !== undefined && pr.headBranch !== null) candidate.tooltip = `${check} is failing on ${pr.headBranch}.`;
-	return candidate;
+/**
+ * The branch upstream's folder PR query (`yce`) looks up: the git folder's checked-out branch, unless it is
+ * detached, the default branch, or Worktree is on (the draft won't run on that checkout). Null turns it off.
+ */
+export function folderPrBranch(git: FolderGitStatus | undefined, worktreeOn: boolean): string | null {
+	if (git?.isGitRepo !== true || worktreeOn) return null;
+	const {headBranch, defaultBranch} = git;
+	return headBranch === null || headBranch === defaultBranch ? null : headBranch;
+}
+
+/** The launch folder's branch PR, as upstream's PR rows (`Oce`) read it. */
+export interface FolderPrNextStepSource {
+	git: FolderGitStatus | undefined;
+	/** The folder branch's PR lookup, undefined while loading or off. */
+	pr: FolderPr | undefined;
+	worktreeOn: boolean;
+	/** The keys of the `prefill` rows already pressed for this draft. */
+	used: ReadonlySet<string>;
+	launching: boolean;
 }
 
 /**
- * Upstream's PR rows, each opening the PR's session: "Fix the failing checks" for a PR with a failing
- * check, detailed by the first failing check's name (its count until the review details fetch names
- * it), and "Answer N review comments" for a PR with unresolved review threads, detailed by its title.
+ * Upstream's folder-scoped PR rows, each prefilling the composer: "Fix the failing checks" for the launch
+ * folder branch's PR with a failing check, and "Answer N review comments" for its unresolved review threads.
+ * Each subject carries upstream's stamp (failure stamp, newest comment id), so a dismissed or pressed row
+ * returns once it changes.
  */
-export function prNextStepCandidates(prs: readonly PrNextStepSource[]): NextStepCandidate[] {
-	return prs.flatMap((pr): NextStepCandidate[] => [
-		...(pr.failedChecks > 0 || pr.failingChecks.length > 0 ? [ciFailedCandidate(pr)] : []),
-		...(pr.unresolvedReviewThreads > 0
-			? [
-					{
-						id: "pr-review-comments",
-						subject: pr.sessionId,
-						stamp: pr.lastActivityAt,
-						title: reviewCommentsTitle(pr.unresolvedReviewThreads),
-						detail: pr.title,
-					} satisfies NextStepCandidate,
-				]
-			: []),
-	]);
+export function folderPrNextStepCandidates({
+	git,
+	pr: lookup,
+	worktreeOn,
+	used,
+	launching,
+}: FolderPrNextStepSource): NextStepCandidate[] {
+	const branch = folderPrBranch(git, worktreeOn);
+	const pr = lookup?.status === "found" ? lookup.pr : undefined;
+	if (launching || branch === null || pr === undefined || pr.branch !== branch) return [];
+	const ref = `${pr.repo}#${pr.number}`;
+	const candidates: NextStepCandidate[] = [];
+	if (pr.failing) {
+		const check = pr.failingCheckName;
+		candidates.push({
+			id: "pr-ci-failed",
+			kind: "prefill",
+			subject: `${ref}\0${pr.failureStamp}`,
+			stamp: 0,
+			title: "Fix the failing checks",
+			detail: check ?? null,
+			tooltipText: check === undefined ? `Checks are failing on ${branch}.` : `${check} is failing on ${branch}.`,
+			dismissLabel: "Dismiss the failing checks",
+			prefill: `Fix the failing CI checks on ${branch}: find out why they fail and fix them.`,
+		});
+	}
+	if (pr.unansweredReviewComments > 0) {
+		const review: NextStepCandidate = {
+			id: "pr-review-comments",
+			kind: "prefill",
+			subject: `${ref}\0${pr.newestReviewCommentId}`,
+			stamp: 0,
+			title: reviewCommentsTitle(pr.unansweredReviewComments),
+			detail: pr.title === "" ? null : pr.title,
+			dismissLabel: "Dismiss the review comments",
+			prefill: `Read the unresolved review comments on ${ref} and address each one: make the change, or reply with why not.`,
+		};
+		if (pr.title !== "") review.tooltipText = pr.title;
+		candidates.push(review);
+	}
+	return candidates.filter((candidate) => !used.has(nextStepKey(candidate)));
 }
 
 /**
