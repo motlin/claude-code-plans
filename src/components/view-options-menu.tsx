@@ -71,7 +71,7 @@ function ViewOptionsMenu({
 					<EllipsisVertical aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>
-			<MenuContent align="end">
+			<MenuContent align="end" sideOffset={6}>
 				{railFolded && <SessionRailMenuItem />}
 				{entries.map((entry) => {
 					const binding = entry.shortcut === undefined ? undefined : bindingsFor(entry.shortcut, isMac)[0];

@@ -320,6 +320,14 @@ describe("SessionPaneControls", () => {
 		expect(onExpandChat).toHaveBeenCalledTimes(1);
 	});
 
+	it("opens the View options popup 6px below the trigger, as upstream does", async () => {
+		renderControls({}, vi.fn<() => void>());
+		await openViewOptions();
+		const positioner = screen.getByRole("menu").closest("[data-side-offset]");
+
+		expect(positioner?.getAttribute("data-side-offset")).toBe("6");
+	});
+
 	it("keeps Changes and Files as titlebar icons while the titlebar hides nothing", () => {
 		registerKinds("terminal", "changes", "files");
 		renderControls();
