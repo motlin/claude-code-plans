@@ -47,7 +47,13 @@ describe("rankSettingsSections grouping", () => {
 		// A keyword-only section hit has no rows.
 		["tmux", [{tab: "application", rows: []}]],
 		// A section-name match outranks row matches elsewhere.
-		["sessions", [{tab: "sessions", rows: [["sessions-page-grouping", "Sessions page grouping"]]}]],
+		[
+			"sessions",
+			[
+				{tab: "sessions", rows: [["sessions-page-grouping", "Sessions page grouping"]]},
+				{tab: "claude-code", rows: [["archive-inactive-sessions", "Archive inactive sessions"]]},
+			],
+		],
 		// Case-insensitive, and title-only: section headings ("Code appearance") are not indexed.
 		["THEME", [{tab: "general", rows: [["theme", "Theme"]]}]],
 		["appearance", []],
@@ -283,7 +289,12 @@ describe("buildSettingsResultRows", () => {
 				{kind: "hit", tab: "ai-features", via: "Summary button", rowSlug: "summary-button"},
 				{kind: "hit", tab: "application", via: "Shell tabs", rowSlug: "shell-tabs"},
 				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
-				{kind: "hit", tab: "claude-code", via: "Output style", rowSlug: "output-style"},
+				{
+					kind: "hit",
+					tab: "claude-code",
+					via: "Archive inactive sessions",
+					rowSlug: "archive-inactive-sessions",
+				},
 				{
 					kind: "hit",
 					tab: "claude-config",

@@ -40,6 +40,8 @@ import {ThemedCombobox} from "./themed-combobox";
 import {outputStylesQueryOptions} from "../../lib/api/output-styles";
 import {DEFAULT_OUTPUT_STYLE, outputStyleOptions} from "../../lib/output-style-options";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../../lib/api/application-settings";
+import {autoArchiveQueryOptions, useSaveAutoArchiveDays} from "../../lib/api/auto-archive";
+import {autoArchiveDayOptions} from "../../lib/auto-archive-options";
 
 /**
  * The Settings dialog's tab panels, built from the sections the old full-page
@@ -983,6 +985,45 @@ function OutputStyleRow() {
 }
 
 /**
+ * Upstream's Archive inactive sessions select. An app setting (config.json), not settings.json:
+ * the server's sweeper archives sessions with no JSONL activity for that many days, never one that
+ * is running, waiting, in a live pane, pinned or open.
+ */
+function ArchiveInactiveSessionsRow() {
+	const setting = useQuery(autoArchiveQueryOptions);
+	const save = useSaveAutoArchiveDays();
+	const days = setting.data?.days ?? 0;
+
+	return (
+		<SettingsRow
+			slug="archive-inactive-sessions"
+			title="Archive inactive sessions"
+			description={
+				setting.isPending
+					? "Loading…"
+					: "Automatically archive local sessions after a period of no activity. Sessions that are running or have background work are never archived, and a worktree with uncommitted changes is kept on disk."
+			}
+			below={save.isError ? WRITE_FAILED_ALERT : undefined}
+		>
+			<div className="w-[160px]">
+				<ThemedCombobox
+					aria-label="Archive inactive sessions"
+					value={String(days)}
+					options={autoArchiveDayOptions(days)}
+					disabled={setting.data === undefined}
+					onValueChange={(next) => {
+						const nextDays = Number(next);
+						if (nextDays === days) return;
+						save.mutate(nextDays);
+					}}
+					className="w-full"
+				/>
+			</div>
+		</SettingsRow>
+	);
+}
+
+/**
  * Upstream's desktop Sessions section (`#local-sessions`), whose rows write Claude Code's own
  * settings.json. Local sessions are Claude Code CLIs on this computer, so the rows apply here too.
  */
@@ -1024,6 +1065,7 @@ function LocalSessionsSection() {
 				isOn={(value) => value !== false}
 				valueFor={(on) => (on ? undefined : false)}
 			/>
+			<ArchiveInactiveSessionsRow />
 			<OutputStyleRow />
 			<ClaudeCodeSwitchRow
 				slug="local-sandbox"

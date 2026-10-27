@@ -21,15 +21,25 @@ interface Posted {
 function fakeEndpoint(
 	initial: ClaudeCodeSettingsState,
 	styles: OutputStyles = {builtIns: ["Explanatory", "Learning"], customs: []},
+	autoArchiveDays = 0,
 ) {
 	let state = initial;
 	const posts: Posted[] = [];
+	const archivePuts: unknown[] = [];
 	const pending: Array<(reply: "ok" | "conflict" | "fail") => void> = [];
 	const json = (body: unknown, status = 200) =>
 		new Response(JSON.stringify(body), {status, headers: {"Content-Type": "application/json"}});
 
 	const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async (input, init) => {
 		if (input.endsWith("/api/output-styles")) return json(styles);
+		if (input.endsWith("/api/auto-archive")) {
+			if (init?.method === "PUT") {
+				const body = JSON.parse(String(init.body)) as {days: number};
+				archivePuts.push(body);
+				autoArchiveDays = body.days;
+			}
+			return json({days: autoArchiveDays});
+		}
 		if (!input.endsWith("/api/claude-code-settings")) return new Promise<Response>(() => {});
 		if (init?.method !== "POST") return json(state);
 		const body = JSON.parse(String(init.body)) as Posted;
@@ -57,6 +67,7 @@ function fakeEndpoint(
 	return {
 		fetchMock,
 		posts,
+		archivePuts,
 		/** Answer the index-th POST once it has been sent (writes go out on a microtask). */
 		async reply(index: number, reply: "ok" | "conflict" | "fail") {
 			await waitFor(() => {
@@ -151,6 +162,12 @@ describe("Claude Code settings ▸ Sessions", () => {
 					title: "Dynamic workflows",
 					description:
 						"Let Claude run multiple agents in parallel for complex tasks. Workflows can use a lot of your usage limit quickly.",
+				},
+				{
+					slug: "archive-inactive-sessions",
+					title: "Archive inactive sessions",
+					description:
+						"Automatically archive local sessions after a period of no activity. Sessions that are running or have background work are never archived, and a worktree with uncommitted changes is kept on disk.",
 				},
 				{
 					slug: "output-style",
@@ -519,5 +536,88 @@ describe("Claude Code settings ▸ Sessions ▸ Output style", () => {
 		await act(async () => {});
 
 		expect(endpoint.posts).toStrictEqual([]);
+	});
+});
+
+describe("Claude Code settings ▸ Sessions ▸ Archive inactive sessions", () => {
+	function trigger(): HTMLElement {
+		return within(row("archive-inactive-sessions")).getByRole("combobox");
+	}
+
+	function openOptions() {
+		fireEvent.click(trigger());
+		return within(row("archive-inactive-sessions"))
+			.getAllByRole("option")
+			.map((option) => ({label: option.textContent, selected: option.getAttribute("aria-selected")}));
+	}
+
+	async function loaded() {
+		await waitFor(() => {
+			expect(trigger().getAttribute("aria-disabled")).toBeNull();
+		});
+	}
+
+	it("offers Never through 30 days in a 160px select, defaulting to Never", async () => {
+		vi.stubGlobal("fetch", fakeEndpoint({mtimeMs: 1, values: {}}).fetchMock);
+		await renderTab();
+		await loaded();
+
+		expect({
+			trigger: trigger().textContent,
+			width: trigger().closest(".w-\\[160px\\]") !== null,
+			options: openOptions(),
+		}).toStrictEqual({
+			trigger: "Never",
+			width: true,
+			options: [
+				{label: "Never", selected: "true"},
+				{label: "1 day", selected: "false"},
+				{label: "2 days", selected: "false"},
+				{label: "7 days", selected: "false"},
+				{label: "14 days", selected: "false"},
+				{label: "30 days", selected: "false"},
+			],
+		});
+	});
+
+	it("inserts a stored non-listed value in sorted order and shows it", async () => {
+		vi.stubGlobal("fetch", fakeEndpoint({mtimeMs: 1, values: {}}, undefined, 3).fetchMock);
+		await renderTab();
+		await loaded();
+
+		expect({trigger: trigger().textContent, options: openOptions().map((option) => option.label)}).toStrictEqual({
+			trigger: "3 days",
+			options: ["Never", "1 day", "2 days", "3 days", "7 days", "14 days", "30 days"],
+		});
+	});
+
+	it("disables the select and reads Loading… while the setting loads", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Promise<Response>(() => {})),
+		);
+		await renderTab();
+
+		expect({
+			disabled: trigger().getAttribute("aria-disabled"),
+			description: row("archive-inactive-sessions").querySelector("[data-settings-desc]")?.textContent,
+		}).toStrictEqual({disabled: "true", description: "Loading…"});
+	});
+
+	it("saves the picked window and does not save an unchanged pick", async () => {
+		const endpoint = fakeEndpoint({mtimeMs: 1, values: {}});
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await loaded();
+
+		fireEvent.click(trigger());
+		fireEvent.click(within(row("archive-inactive-sessions")).getByRole("option", {name: "Never"}));
+		fireEvent.click(trigger());
+		fireEvent.click(within(row("archive-inactive-sessions")).getByRole("option", {name: "7 days"}));
+		await waitFor(() => {
+			expect(trigger().textContent).toBe("7 days");
+		});
+
+		expect(endpoint.archivePuts).toStrictEqual([{days: 7}]);
 	});
 });

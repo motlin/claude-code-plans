@@ -14,6 +14,7 @@ import {
 } from "./lib/watcher";
 import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
+import {startAutoArchive, stopAutoArchive} from "./lib/auto-archive-service";
 import {SESSION_REGISTRY_DIR} from "./lib/session-registry";
 import {startSessionRegistryMonitor, stopSessionRegistryMonitor} from "./lib/session-registry-store";
 import {persistBridgePushedTitlesTo} from "./lib/bridge-pushed-title-store";
@@ -66,6 +67,7 @@ void (async () => {
 	// so a restarted dev server's scan never races this instance's.
 	await takeOverServerShutdown(async () => {
 		stopSweep();
+		stopAutoArchive();
 		stopSessionRegistryMonitor();
 		stopNotificationsSweep();
 		stopLiveSubagentSweep();
@@ -156,6 +158,8 @@ void (async () => {
 		} satisfies SubagentStoppedPayload);
 	});
 	stopHerdrEventBridge = startTerminalHostEvents();
+	// Archive inactive sessions: a no-op until the setting leaves its default of Never.
+	startAutoArchive();
 	initPrStatusService(rebroadcastProjectSessions);
 })();
 

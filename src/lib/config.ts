@@ -11,6 +11,7 @@ import {migrateLegacyNavFlags, renameLegacyNavSections, VisibleNavSectionsSchema
 import {defined} from "./defined";
 import {nonEmpty} from "./non-empty";
 import {DEFAULT_TERMINAL_HOST_SETTING, TerminalHostSettingSchema} from "./terminal-host-setting";
+import {AutoArchiveDaysSchema, DEFAULT_AUTO_ARCHIVE_DAYS} from "./auto-archive-options";
 
 /**
  * Directory holding this application's own configuration. Follows the XDG
@@ -59,6 +60,8 @@ const AppConfigObjectSchema = z
 		show_herdr_section: z.boolean().optional(),
 		/** Retired by `visible_nav_sections`; read only to migrate, dropped on the next save. */
 		show_tmux_section: z.boolean().optional(),
+		/** Archive inactive sessions: days without JSONL activity before the sweeper archives a session; 0 is Never. */
+		auto_archive_inactive_days: AutoArchiveDaysSchema.optional(),
 	})
 	.strict();
 
@@ -232,6 +235,19 @@ export async function updateApplicationSettings(
 		configPath,
 	);
 	return readApplicationSettings(configPath);
+}
+
+/** The Archive inactive sessions setting in days; Never (0) unless a valid config sets it. */
+export function readAutoArchiveInactiveDays(configPath: string = getConfigPath()): number {
+	return readConfig(configPath)?.auto_archive_inactive_days ?? DEFAULT_AUTO_ARCHIVE_DAYS;
+}
+
+export async function updateAutoArchiveInactiveDays(
+	days: number,
+	configPath: string = getConfigPath(),
+): Promise<number> {
+	await updateConfig({auto_archive_inactive_days: AutoArchiveDaysSchema.parse(days)}, configPath);
+	return readAutoArchiveInactiveDays(configPath);
 }
 
 function isContainedPath(path: string, root: string): boolean {
