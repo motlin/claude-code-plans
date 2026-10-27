@@ -88,7 +88,7 @@ function HeaderControls({filterSlot, leadsList}: {filterSlot: ReactNode; leadsLi
 			{hasFilter && (
 				<span
 					data-header-reveal=""
-					className="flex w-0 overflow-hidden group-hover/labelrow:w-auto group-hover/labelrow:overflow-visible group-has-[:focus-visible]/labelrow:w-auto group-has-[:focus-visible]/labelrow:overflow-visible has-[[data-popup-open]]:w-auto has-[[data-popup-open]]:overflow-visible pointer-coarse:w-auto pointer-coarse:overflow-visible"
+					className="flex w-0 overflow-hidden group-hover/labelrow:w-auto group-hover/labelrow:overflow-visible group-has-[:focus-visible]/labelrow:w-auto group-has-[:focus-visible]/labelrow:overflow-visible has-[[data-popup-open]]:w-auto has-[[data-popup-open]]:overflow-visible touch:w-auto touch:overflow-visible"
 				>
 					{filterSlot}
 				</span>
@@ -233,13 +233,13 @@ export function GroupSection({
 			className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-[var(--sb-radius)] py-1 pl-1 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 		>
 			<GroupAppearanceMark appearance={appearance} />
-			<span data-group-name className="min-w-0 truncate">
-				{group.label}
+			<span data-group-name className="min-w-0">
+				<FadeLabel text={group.label} />
 			</span>
 			<ChevronRight
 				aria-hidden="true"
 				data-group-caret
-				className={`h-3 w-3 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${
+				className={`h-3 w-3 shrink-0 transition-transform duration-[60ms] motion-reduce:transition-none ${
 					expanded
 						? "rotate-90 opacity-0 group-hover/section:opacity-100 group-focus-visible/label:opacity-100"
 						: "opacity-100"

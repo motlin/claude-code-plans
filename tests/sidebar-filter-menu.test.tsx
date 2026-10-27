@@ -498,6 +498,43 @@ describe("sidebar Group and sort menu", () => {
 		});
 	});
 
+	// Upstream: the caret rotates in 60ms (duration-fast), and the reveal span's `touch:` variant is coarse OR hover:none.
+	it("rotates the header caret in 60ms and reveals Group and sort on any touch device, like upstream", async () => {
+		const {container} = await renderSidebarGroups();
+		const header = container.querySelector('[data-testid="sidebar-recents"] [data-sidebar-group-label]');
+		const classes = (selector: string) => header?.querySelector(selector)?.getAttribute("class")?.split(" ") ?? [];
+
+		expect({
+			caret: classes("[data-group-caret]").filter((name) => name.startsWith("duration-")),
+			reveal: classes("[data-header-reveal]").filter((name) => /^(touch|pointer-coarse):/.test(name)),
+		}).toStrictEqual({
+			caret: ["duration-[60ms]"],
+			reveal: ["touch:w-auto", "touch:overflow-visible"],
+		});
+	});
+
+	it("fades a long group name instead of ending it in an ellipsis, like upstream", async () => {
+		const longName = "x".repeat(200);
+		storePrefs({groupBy: "project"});
+		const scrollWidth = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(2000);
+		const clientWidth = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(200);
+		try {
+			const {container} = await renderSidebarGroups([session("l1", "Long one", "done", longName)]);
+			const name = container.querySelector('[data-testid="sidebar-recents"] [data-group-name]');
+			const label = name?.querySelector<HTMLElement>(".dframe-fade-label");
+
+			expect({
+				truncate: name?.classList.contains("truncate"),
+				overflowing: label?.hasAttribute("data-overflowing"),
+				dir: label?.getAttribute("dir"),
+				text: name?.textContent,
+			}).toStrictEqual({truncate: false, overflowing: true, dir: "auto", text: longName});
+		} finally {
+			scrollWidth.mockRestore();
+			clientWidth.mockRestore();
+		}
+	});
+
 	it("angles the overflow fade by direction with upstream's --df-label-fade-angle", () => {
 		const css = readFileSync("src/styles/globals.css", "utf8");
 		const rule = (selector: string) =>
