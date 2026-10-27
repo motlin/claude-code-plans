@@ -126,10 +126,21 @@ function pressK(target: Element, init: KeyboardEventInit) {
 
 const PR_863 = {number: 863, url: "https://github.com/acme/app/pull/863", repository: "acme/app"};
 
+/**
+ * Opens the palette with ⌘K and waits for Base UI's initial focus, which lands a frame after the dialog mounts.
+ * Keys sent before then would race it: the opener keeps focus and a later close finds nothing to restore.
+ */
+async function pressOpen(opener: Element) {
+	pressK(opener, {metaKey: true});
+	const dialog = await screen.findByRole("dialog", {name: "Search"});
+	await waitFor(() => {
+		expect(dialog.contains(document.activeElement)).toBe(true);
+	});
+	return dialog;
+}
+
 async function openPalette(...args: Parameters<typeof renderPalette>) {
-	const composer = await renderPalette(...args);
-	pressK(composer, {metaKey: true});
-	return screen.findByRole("dialog", {name: "Search"});
+	return pressOpen(await renderPalette(...args));
 }
 
 /** Each group heading mapped to its option labels, in DOM order. */
@@ -641,8 +652,7 @@ describe("CommandPalette shell", () => {
 
 	it("Escape returns focus to the opener", async () => {
 		const composer = await renderPalette();
-		pressK(composer, {metaKey: true});
-		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const dialog = await pressOpen(composer);
 
 		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Escape", code: "Escape"});
 
@@ -653,8 +663,7 @@ describe("CommandPalette shell", () => {
 
 	it("opening a session row closes without refocusing the opener, as upstream's Open", async () => {
 		const composer = await renderPalette();
-		pressK(composer, {metaKey: true});
-		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const dialog = await pressOpen(composer);
 		await within(dialog).findByRole("option", {name: /Refactor auth module/});
 		const focusSpy = vi.spyOn(composer, "focus");
 
@@ -861,8 +870,7 @@ describe("CommandPalette shell", () => {
 	it("falls back to Search on Backspace or Delete in an empty Compose without remembering it", async () => {
 		localStorage.setItem("cmdk-mode", "compose");
 		const composerOutside = await renderPalette();
-		pressK(composerOutside, {metaKey: true});
-		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const dialog = await pressOpen(composerOutside);
 		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
 
 		const notCancelled = fireEvent.keyDown(composer, {key: "Backspace", code: "Backspace"});
@@ -873,8 +881,7 @@ describe("CommandPalette shell", () => {
 		await waitFor(() => {
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
-		pressK(composerOutside, {metaKey: true});
-		const reopened = await screen.findByRole("dialog", {name: "Search"});
+		const reopened = await pressOpen(composerOutside);
 		const reopenedComposer = await within(reopened).findByRole("combobox", {name: "Write a message…"});
 		fireEvent.keyDown(reopenedComposer, {key: "Delete", code: "Delete"});
 		await within(reopened).findByRole("combobox", {name: "Search"});
@@ -1030,8 +1037,7 @@ describe("CommandPalette shell", () => {
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
 
-		pressK(outside, {metaKey: true});
-		const reopened = await screen.findByRole("dialog", {name: "Search"});
+		const reopened = await pressOpen(outside);
 		await within(reopened).findByRole("combobox", {name: "Write a message…"});
 	});
 
@@ -1656,8 +1662,7 @@ describe("CommandPalette shell", () => {
 			await waitFor(() => {
 				expect(screen.queryByRole("dialog")).toBeNull();
 			});
-			pressK(document.body, {metaKey: true});
-			const reopened = await screen.findByRole("dialog", {name: "Search"});
+			const reopened = await pressOpen(document.body);
 			await within(reopened).findByRole("option", {name: /Gamma task/});
 
 			expect({frozen, typed, cleared, reopened: groupLabels(reopened)}).toStrictEqual({
@@ -3226,8 +3231,7 @@ describe("CommandPalette pinned Jump to question row", () => {
 	it("decides the row once per open: a card removed while open keeps it, and Enter then just closes", async () => {
 		const card = addWaitingCard();
 		const composer = await renderPalette();
-		pressK(composer, {metaKey: true});
-		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const dialog = await pressOpen(composer);
 		await within(dialog).findByRole("option", {name: "Jump to question"});
 		card.remove();
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "x"}});
@@ -3243,8 +3247,7 @@ describe("CommandPalette pinned Jump to question row", () => {
 
 	it("shows no row for a card that arrives while open, until the palette is reopened", async () => {
 		const composer = await renderPalette();
-		pressK(composer, {metaKey: true});
-		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const dialog = await pressOpen(composer);
 		await within(dialog).findByRole("option", {name: /Refactor auth module/});
 		addWaitingCard();
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "x"}});
@@ -3255,8 +3258,7 @@ describe("CommandPalette pinned Jump to question row", () => {
 		await waitFor(() => {
 			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
 		});
-		pressK(composer, {metaKey: true});
-		const reopened = await screen.findByRole("dialog", {name: "Search"});
+		const reopened = await pressOpen(composer);
 
 		expect({
 			whileOpen,
