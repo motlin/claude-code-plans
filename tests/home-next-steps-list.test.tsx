@@ -383,6 +383,48 @@ describe("NextStepsList", () => {
 		}
 	});
 
+	it("uses a row's own dismiss label and text-only tooltip", () => {
+		vi.useFakeTimers();
+		try {
+			const worktree: NextStepCandidate = {
+				id: "worktree-apart",
+				kind: "worktree",
+				subject: "/p",
+				stamp: 0,
+				title: "Turn on Worktree",
+				detail: "Session running here",
+				tooltipText: "Another session is running in this folder.",
+				dismissLabel: "Dismiss the Worktree suggestion",
+			};
+			const {container} = render(
+				<NextStepsList
+					rows={selectNextSteps({candidates: [worktree], dismissed: {}})}
+					onOpen={() => {}}
+					onDismiss={() => {}}
+				/>,
+			);
+			const button = container.querySelector<HTMLButtonElement>("[data-next-step-open]")!;
+			const describedBy = button.getAttribute("aria-describedby");
+
+			fireEvent.pointerEnter(button.parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+
+			expect({
+				dismiss: container.querySelector("[data-next-step-dismiss]")?.getAttribute("aria-label"),
+				described: describedBy === null ? null : document.getElementById(describedBy)?.textContent,
+				tooltip: screen.getByRole("tooltip").textContent,
+			}).toStrictEqual({
+				dismiss: "Dismiss the Worktree suggestion",
+				described: "Another session is running in this folder.",
+				tooltip: "Another session is running in this folder.",
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("shows a centred Dismiss tooltip over the X and no tooltip on the rest row", () => {
 		vi.useFakeTimers();
 		try {

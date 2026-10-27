@@ -1,3 +1,5 @@
+import type {FolderGitStatus} from "./api/home-folder-status";
+
 /** Upstream's /code start-card "Next steps" candidate ids, in priority order. */
 const NEXT_STEP_PRIORITY = [
 	"waiting-session",
@@ -35,6 +37,16 @@ export interface NextStepCandidate {
 	detail: string | null;
 	/** The hover tooltip's detail line, when it says more than `detail`. */
 	tooltip?: string;
+	/** A text-only tooltip (no title line) in place of the title-over-detail one. */
+	tooltipText?: string;
+	/** The dismiss button's label, `Dismiss “{title}”` by default. */
+	dismissLabel?: string;
+	/** What a press does: open the subject's session (the default), turn on Worktree, or prefill the composer. */
+	kind?: "open" | "worktree" | "prefill";
+	/** A pressed Worktree row, shown as the static "Worktree is on" row. */
+	taken?: true;
+	/** The composer text a `prefill` press fills in. */
+	prefill?: string;
 }
 
 export type NextStepRow<C extends NextStepCandidate> =
@@ -156,4 +168,84 @@ export function prNextStepCandidates(prs: readonly PrNextStepSource[]): NextStep
 				]
 			: []),
 	]);
+}
+
+/** The launch folder's state that upstream's folder-scoped rows (`qoe`) read. */
+export interface FolderNextStepSource {
+	folder: string | undefined;
+	/** The folder's working tree, undefined until it loads. */
+	git: FolderGitStatus | undefined;
+	/** A live session is running in exactly this folder. */
+	runningHere: boolean;
+	worktreeOn: boolean;
+	/** Worktree was turned on by pressing the row, for this draft and folder. */
+	worktreeTaken: boolean;
+	/** The keys of the `prefill` rows already pressed for this draft. */
+	used: ReadonlySet<string>;
+	/** The newest errored, unseen session in the folder. */
+	failed: {sessionId: string; title: string; failedAt: number} | null;
+	launching: boolean;
+}
+
+function worktreeCandidate({folder, git, runningHere, worktreeOn, worktreeTaken}: FolderNextStepSource) {
+	if (folder === undefined || git?.isGitRepo !== true || !runningHere || (worktreeOn && !worktreeTaken)) return [];
+	const candidate: NextStepCandidate = {
+		id: "worktree-apart",
+		kind: "worktree",
+		// A zero stamp never passes its dismissal, so a dismissed row never returns for this folder.
+		subject: folder,
+		stamp: 0,
+		title: "Turn on Worktree",
+		detail: "Session running here",
+		tooltipText:
+			"Another session is running in this folder. Worktree gives this session its own copy, so their changes stay apart.",
+		dismissLabel: "Dismiss the Worktree suggestion",
+	};
+	return [worktreeTaken ? {...candidate, taken: true as const} : candidate];
+}
+
+function continueCandidate({folder, git, worktreeOn, used}: FolderNextStepSource): NextStepCandidate[] {
+	if (folder === undefined || git === undefined || worktreeOn) return [];
+	const {headBranch: branch, defaultBranch, uncommittedFiles: files} = git;
+	if (branch === null || defaultBranch === null || branch === defaultBranch || files === 0) return [];
+	const candidate: NextStepCandidate = {
+		id: "continue-branch",
+		kind: "prefill",
+		// The file count in the subject makes a changed count a new, undismissed row (upstream's stamp equality).
+		subject: `${folder}\0${branch}\0${files}`,
+		stamp: 0,
+		title: "Continue uncommitted work",
+		detail: plural(files, "file", "files"),
+		tooltipText: `${plural(files, "uncommitted file", "uncommitted files")} on ${branch}`,
+		dismissLabel: "Dismiss the uncommitted work",
+		prefill: `Continue the work in progress on ${branch}: look at the uncommitted changes, tell me what state they\u2019re in, and finish what\u2019s started.`,
+	};
+	return used.has(nextStepKey(candidate)) ? [] : [candidate];
+}
+
+/**
+ * Upstream's launch-folder rows: "Blocked {title} · Hit an error" for the folder's failed session,
+ * "Turn on Worktree" when another session runs in the git folder, and "Continue uncommitted work" for a
+ * non-default branch with uncommitted files. None while the draft is launching.
+ */
+export function folderNextStepCandidates(source: FolderNextStepSource): NextStepCandidate[] {
+	if (source.launching) return [];
+	const {failed} = source;
+	return [
+		...(failed === null
+			? []
+			: [
+					{
+						id: "resume-session",
+						kind: "open",
+						subject: failed.sessionId,
+						stamp: failed.failedAt,
+						title: failed.title,
+						detail: "Hit an error",
+						tooltip: "Hit an error",
+					} satisfies NextStepCandidate,
+				]),
+		...worktreeCandidate(source),
+		...continueCandidate(source),
+	];
 }

@@ -323,7 +323,10 @@ export function NextStepsList({
 			{rows.map((row) => {
 				const candidates = rowCandidates(row);
 				const key = nextStepRowKey(row);
-				const dismissLabel = row.type === "row" ? `Dismiss “${row.candidate.title}”` : row.dismissLabel;
+				const dismissLabel =
+					row.type === "row"
+						? (row.candidate.dismissLabel ?? `Dismiss “${row.candidate.title}”`)
+						: row.dismissLabel;
 				return (
 					<li key={key} data-row-key={key}>
 						<div className="group/row relative">
@@ -367,8 +370,8 @@ export function NextStepsList({
 }
 
 /**
- * A next-step row: upstream's title-over-detail tooltip lined up with the row's start edge, and a hidden span
- * holding the title that describes the button.
+ * A next-step row: upstream's title-over-detail tooltip (or a row's text-only one) lined up with the row's start
+ * edge, and a hidden span holding the title (or that text) that describes the button.
  */
 function StepRowButton({
 	candidate,
@@ -379,8 +382,12 @@ function StepRowButton({
 	return (
 		<>
 			<Tooltip
-				content={candidate.title}
-				detail={candidate.tooltip ?? candidate.detail ?? undefined}
+				content={candidate.tooltipText ?? candidate.title}
+				detail={
+					candidate.tooltipText === undefined
+						? (candidate.tooltip ?? candidate.detail ?? undefined)
+						: undefined
+				}
 				side="top"
 				align="start"
 				stacked
@@ -400,7 +407,7 @@ function StepRowButton({
 				</button>
 			</Tooltip>
 			<span id={titleId} hidden>
-				{candidate.title}
+				{candidate.tooltipText ?? candidate.title}
 			</span>
 		</>
 	);
