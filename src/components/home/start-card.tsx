@@ -16,7 +16,7 @@ import {START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
 const ROW_LIMIT = 3;
 
 /** Upstream's start-card list: a 320px ringed surface-1 card. */
-const CARD_CLASS = "card-ring flex w-80 max-w-full shrink-0 flex-col rounded-xl bg-surface-1";
+const CARD_CLASS = "card-ring flex w-80 max-w-full shrink-0 flex-col rounded-card bg-surface-1";
 
 const ROW_CLASS = "flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary";
 
@@ -132,24 +132,48 @@ export interface NextStepsListProps {
 	onDismiss: (candidates: NextStepCandidate[]) => void;
 }
 
+// Upstream's row reveal: on hover, keyboard focus inside the row, or while its popup is open. Spelled out in full
+// so Tailwind's scanner sees every class.
 const STEP_BUTTON_CLASS =
-	"flex h-8 w-full min-w-0 items-center rounded-lg px-2 text-start text-[13px]/5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden";
+
+const STEP_DETAIL_CLASS =
+	"min-w-0 max-w-max grow basis-24 truncate text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
+
+/** Reserves the revealed dismiss's width (24px less the row gap) only while it shows. */
+const STEP_SPACER_CLASS =
+	"hidden shrink-0 items-center group-hover/row:flex group-has-[:focus-visible]/row:flex group-has-[[aria-expanded=true]]/row:flex touch:flex -ms-2";
+
+const DISMISS_SLOT_CLASS = `pointer-events-none absolute inset-y-0 end-1 flex items-center opacity-0 group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 group-has-[[aria-expanded=true]]/row:opacity-100 ${TOUCH_REVEAL}`;
 
 /** Rows that carry upstream's "Blocked" status before their title. */
 const BLOCKED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
 
+function StepSpacer() {
+	return (
+		<span aria-hidden="true" data-next-step-spacer className={STEP_SPACER_CLASS}>
+			<span className="w-6" />
+		</span>
+	);
+}
+
 function StepLine({candidate}: Readonly<{candidate: NextStepCandidate}>) {
 	return (
-		<span className="flex h-5 min-w-0 flex-1 flex-wrap gap-x-1.5 overflow-hidden">
-			<span className="min-w-0 truncate">
-				{BLOCKED_IDS.has(candidate.id) && (
-					<>
-						<span className="text-upstream-warning">Blocked</span>{" "}
-					</>
-				)}
-				{candidate.title}
+		<span className="flex min-w-0 flex-1 items-center gap-1">
+			<span
+				data-next-step-line
+				className="flex h-5 min-w-0 items-baseline gap-x-2 overflow-hidden whitespace-nowrap flex-wrap"
+			>
+				<span className="min-w-0 max-w-full truncate text-secondary">
+					{BLOCKED_IDS.has(candidate.id) && (
+						<>
+							<span className="text-upstream-warning">Blocked</span>{" "}
+						</>
+					)}
+					{candidate.title}
+				</span>
+				{candidate.detail !== null && <span className={STEP_DETAIL_CLASS}>{candidate.detail}</span>}
 			</span>
-			{candidate.detail !== null && <span className="shrink-0 text-ink-muted">{candidate.detail}</span>}
 		</span>
 	);
 }
@@ -181,45 +205,46 @@ export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListP
 		>
 			{rows.map((row, index) => {
 				const candidates = row.type === "row" ? [row.candidate] : row.rest;
+				const key = row.type === "row" ? `${row.candidate.id}:${row.candidate.subject}` : "blocked-sessions";
 				const dismissLabel = row.type === "row" ? `Dismiss “${row.candidate.title}”` : row.dismissLabel;
 				return (
-					<li
-						key={row.type === "row" ? `${row.candidate.id}:${row.candidate.subject}` : "rest"}
-						className="group/row relative"
-					>
-						{row.type === "row" ? (
-							<Tooltip
-								content={row.candidate.title}
-								detail={row.candidate.tooltip ?? row.candidate.detail ?? undefined}
-								className="w-full"
-							>
+					<li key={key} data-row-key={key}>
+						<div className="group/row relative">
+							{row.type === "row" ? (
+								<Tooltip
+									content={row.candidate.title}
+									detail={row.candidate.tooltip ?? row.candidate.detail ?? undefined}
+									className="w-full"
+								>
+									<button
+										type="button"
+										data-next-step-open
+										onClick={() => {
+											onOpen(row.candidate.subject);
+										}}
+										className={STEP_BUTTON_CLASS}
+									>
+										<StepLine candidate={row.candidate} />
+										<StepSpacer />
+									</button>
+								</Tooltip>
+							) : (
+								<RestRow title={row.title} rest={row.rest} onOpen={onOpen} />
+							)}
+							<span className={DISMISS_SLOT_CLASS}>
 								<button
 									type="button"
-									data-next-step-open
+									data-next-step-dismiss
+									aria-label={dismissLabel}
 									onClick={() => {
-										onOpen(row.candidate.subject);
+										dismiss(index, candidates);
 									}}
-									className={`${STEP_BUTTON_CLASS} pe-8`}
+									className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 								>
-									<StepLine candidate={row.candidate} />
+									<X aria-hidden="true" className="size-4" />
 								</button>
-							</Tooltip>
-						) : (
-							<RestRow title={row.title} rest={row.rest} onOpen={onOpen} />
-						)}
-						<span className="absolute inset-y-0 end-1 flex items-center">
-							<button
-								type="button"
-								data-next-step-dismiss
-								aria-label={dismissLabel}
-								onClick={() => {
-									dismiss(index, candidates);
-								}}
-								className={`flex size-6 items-center justify-center rounded-md text-ink-muted opacity-0 hover:bg-fill-ghost-hover hover:text-primary group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${TOUCH_REVEAL}`}
-							>
-								<X aria-hidden="true" className="size-4" />
-							</button>
-						</span>
+							</span>
+						</div>
 					</li>
 				);
 			})}
@@ -231,11 +256,16 @@ function RestRow({
 	title,
 	rest,
 	onOpen,
-}: Readonly<{title: string; rest: readonly NextStepCandidate[]; onOpen: (subject: string) => void}>) {
+}: Readonly<{
+	title: string;
+	rest: readonly NextStepCandidate[];
+	onOpen: (subject: string) => void;
+}>) {
 	return (
 		<Popover.Root>
-			<Popover.Trigger data-next-step-open className={`${STEP_BUTTON_CLASS} pe-8`}>
-				<span className="min-w-0 truncate">{title}</span>
+			<Popover.Trigger data-next-step-open className={STEP_BUTTON_CLASS}>
+				<span className="min-w-0 flex-1 truncate text-secondary">{title}</span>
+				<StepSpacer />
 			</Popover.Trigger>
 			<PopoverContent
 				side="bottom"
@@ -244,16 +274,17 @@ function RestRow({
 				className="flex max-h-[var(--available-height)] w-max max-w-[min(26rem,90vw)] flex-col gap-0.5 overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 shadow-[var(--menu-shadow)] outline-none"
 			>
 				{rest.map((candidate) => (
-					<button
-						key={candidate.subject}
-						type="button"
-						onClick={() => {
-							onOpen(candidate.subject);
-						}}
-						className={STEP_BUTTON_CLASS}
-					>
-						<StepLine candidate={candidate} />
-					</button>
+					<div key={candidate.subject} className="group/row">
+						<button
+							type="button"
+							onClick={() => {
+								onOpen(candidate.subject);
+							}}
+							className={STEP_BUTTON_CLASS}
+						>
+							<StepLine candidate={candidate} />
+						</button>
+					</div>
 				))}
 			</PopoverContent>
 		</Popover.Root>

@@ -80,7 +80,10 @@ describe("dark palette", () => {
 			"--upstream-text-secondary",
 		];
 
-		expect({light: tokens(":root", names), dark: tokens(".dark", names)}).toStrictEqual({
+		expect({
+			light: tokens(":root", names),
+			dark: tokens(".dark", names),
+		}).toStrictEqual({
 			light: {
 				"--composer-shadow-idle": "0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1)",
 				"--card-outline": "hsl(0 0% 4% / 0.1)",
@@ -134,6 +137,12 @@ describe("dark palette", () => {
 				styles,
 			),
 		).toBe(true);
+	});
+
+	it("keeps the surface-1 background on a ringed card that asks for it, like upstream's start card", () => {
+		expect(/\.card-ring\.bg-surface-1 \{\s*background-color: var\(--color-surface-1\);\s*\}/.test(styles)).toBe(
+			true,
+		);
 	});
 
 	it("draws upstream's epitaxy-card-outline-layer ring inside the card on ::after, with no shadow on the card", () => {

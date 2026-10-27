@@ -45,15 +45,70 @@ describe("NextStepsList", () => {
 				dismiss: item.querySelector("[data-next-step-dismiss]")?.getAttribute("aria-label"),
 			})),
 		).toStrictEqual([
-			{text: "Blocked Task 1Asked a question", status: "Blocked", dismiss: "Dismiss “Task 1”"},
-			{text: "Blocked Task 2Needs permission", status: "Blocked", dismiss: "Dismiss “Task 2”"},
+			{
+				text: "Blocked Task 1Asked a question",
+				status: "Blocked",
+				dismiss: "Dismiss “Task 1”",
+			},
+			{
+				text: "Blocked Task 2Needs permission",
+				status: "Blocked",
+				dismiss: "Dismiss “Task 2”",
+			},
 		]);
-		const dismissClass = screen.getByRole("button", {name: "Dismiss “Task 1”"}).className.split(" ");
+		const dismissClass = screen.getByRole("button", {name: "Dismiss “Task 1”"}).parentElement!.className.split(" ");
 		expect(
 			["opacity-0", "pointer-coarse:opacity-100", "[@media(hover:none)]:opacity-100"].map((token) =>
 				dismissClass.includes(token),
 			),
 		).toStrictEqual([true, true, true]);
+	});
+
+	it("uses upstream's row recipe: keyed li, group/row wrapper, reveal-only spacer and dismiss slot", () => {
+		const {container} = render(<NextStepsList rows={rowsOf(1)} onOpen={() => {}} onDismiss={() => {}} />);
+
+		const item = container.querySelector("li")!;
+		const wrapper = item.firstElementChild!;
+		const button = item.querySelector("[data-next-step-open]")!;
+		const line = button.querySelector("[data-next-step-line]")!;
+		const [title, detail] = [...line.children];
+		const dismiss = item.querySelector("[data-next-step-dismiss]")!;
+		expect({
+			key: item.dataset["rowKey"],
+			list: container.querySelector("ul")!.className,
+			wrapper: wrapper.className,
+			button: button.className,
+			inner: line.parentElement!.className,
+			line: line.className,
+			title: title?.className,
+			detail: detail?.className,
+			spacer: button.querySelector("[data-next-step-spacer]")?.outerHTML,
+			slot: dismiss.parentElement!.className,
+			dismiss: dismiss.className,
+		}).toStrictEqual({
+			key: "waiting-session:s1",
+			list: "card-ring flex w-80 max-w-full shrink-0 flex-col rounded-card bg-surface-1 gap-0.5 p-1 [[data-start-card-setup-hidden]_&]:hidden",
+			wrapper: "group/row relative",
+			button: "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden",
+			inner: "flex min-w-0 flex-1 items-center gap-1",
+			line: "flex h-5 min-w-0 items-baseline gap-x-2 overflow-hidden whitespace-nowrap flex-wrap",
+			title: "min-w-0 max-w-full truncate text-secondary",
+			detail: "min-w-0 max-w-max grow basis-24 truncate text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary",
+			spacer: '<span aria-hidden="true" data-next-step-spacer="true" class="hidden shrink-0 items-center group-hover/row:flex group-has-[:focus-visible]/row:flex group-has-[[aria-expanded=true]]/row:flex touch:flex -ms-2"><span class="w-6"></span></span>',
+			slot: "pointer-events-none absolute inset-y-0 end-1 flex items-center opacity-0 group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 group-has-[[aria-expanded=true]]/row:opacity-100 pointer-coarse:opacity-100 pointer-coarse:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto",
+			dismiss:
+				"pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+		});
+	});
+
+	it("keys the rest row blocked-sessions", () => {
+		const {container} = render(<NextStepsList rows={rowsOf(5)} onOpen={() => {}} onDismiss={() => {}} />);
+
+		expect([...container.querySelectorAll("li")].map((li) => li.dataset["rowKey"])).toStrictEqual([
+			"waiting-session:s1",
+			"waiting-session:s2",
+			"blocked-sessions",
+		]);
 	});
 
 	it("shows a failing PR row without the Blocked status", () => {
@@ -92,7 +147,11 @@ describe("NextStepsList", () => {
 		render(<NextStepsList rows={rowsOf(5)} onOpen={onOpen} onDismiss={onDismiss} />);
 
 		fireEvent.click(screen.getByRole("button", {name: "Dismiss 3 blocked sessions"}));
-		fireEvent.click(screen.getByRole("button", {name: "Claude is blocked in 3 more sessions"}));
+		fireEvent.click(
+			screen.getByRole("button", {
+				name: "Claude is blocked in 3 more sessions",
+			}),
+		);
 		const popup = await screen.findByRole("dialog");
 		const names = within(popup)
 			.getAllByRole("button")

@@ -679,6 +679,11 @@ html[data-interface-font="dyslexic"] {
 		box-shadow: 0 0 0 1px var(--card-outline);
 	}
 
+	/* Upstream's start card keeps its surface-1 fill inside the ring. */
+	.card-ring.bg-surface-1 {
+		background-color: var(--color-surface-1);
+	}
+
 	/* Upstream's MessageAttachments strip of natural image tiles above a user bubble. */
 	.attachment-strip {
 		display: flex;
