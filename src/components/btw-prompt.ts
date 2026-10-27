@@ -1,6 +1,6 @@
 import {parseBtwCommand} from "../lib/side-chat";
 import {askSideChat, openSideChat} from "../lib/side-chat-store";
-import {type ToastOptions} from "./toast-context";
+import type {ToastOptions} from "./toast-context";
 
 /**
  * The composer's `/btw` interception, run before a prompt is sent. Returns

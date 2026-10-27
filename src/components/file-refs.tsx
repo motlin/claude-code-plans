@@ -14,7 +14,7 @@ import {type ArtifactSummary, artifactsQueryOptions} from "../lib/api/artifacts"
 import {type FileRefStatus, fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {fileRefTexts, mentionsArtifactUrl} from "../lib/client-markdown";
 import {requestFileOpen} from "../lib/file-open-requests";
-import {type FileRef} from "../lib/file-refs";
+import type {FileRef} from "../lib/file-refs";
 import {markFileRefMissing, missingFileRefs, subscribeMissingFileRefs} from "../lib/missing-file-refs";
 import type {SessionFiles} from "../lib/session-files";
 import {relativeToCwd} from "./files/mention-path";

@@ -4,7 +4,7 @@ import {openSessionInFinder} from "../lib/api/sessions";
 import {assertNever} from "../lib/assert-never";
 import {useSessionArchive} from "../hooks/use-session-archive";
 import {useSessionFork} from "../hooks/use-session-fork";
-import {type SessionMenuItemId} from "../lib/session-menu-items";
+import type {SessionMenuItemId} from "../lib/session-menu-items";
 import {
 	claudeAiSessionUrl,
 	copySessionLink,

@@ -47,32 +47,32 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 415677,
+		"ceiling": 404545,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Sidebar group header context menu (2026-10-26): non-custom headers gain upstream's New session, Collapse all / Expand all and Archive all (N) items with their disabled reasons and the Archive all confirm. Home cold JS had drifted to just under the 1% tolerance (1262311 raw at 442badf3) and this takes it to 415677 gzip / 1264139 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-26"
+		"reason": "Bundle trim (2026-10-27): the SSE event names and pending AskUserQuestion/ExitPlanMode schemas moved out of hook-events.ts, JsonValueSchema and SkillOverrideValueSchema out of schemas.ts, and the server-only halves of composer-state, session-cost and api-request-log into their own modules; type-only imports written as `import {type X}` became `import type`. The client no longer downloads the hook event schemas, and home no longer downloads the strict transcript schemas. Home went from 419761 gzip / 1275032 raw to 404545 / 1220653, session from 631660 / 1897962 to 626645 / 1877453. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-27"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1264139,
+		"ceiling": 1220653,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Sidebar group header context menu (2026-10-26): non-custom headers gain upstream's New session, Collapse all / Expand all and Archive all (N) items with their disabled reasons and the Archive all confirm. Home cold JS had drifted to just under the 1% tolerance (1262311 raw at 442badf3) and this takes it to 415677 gzip / 1264139 raw. Ceilings raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-26"
+		"reason": "Bundle trim (2026-10-27): the SSE event names and pending AskUserQuestion/ExitPlanMode schemas moved out of hook-events.ts, JsonValueSchema and SkillOverrideValueSchema out of schemas.ts, and the server-only halves of composer-state, session-cost and api-request-log into their own modules; type-only imports written as `import {type X}` became `import type`. The client no longer downloads the hook event schemas, and home no longer downloads the strict transcript schemas. Home went from 419761 gzip / 1275032 raw to 404545 / 1220653, session from 631660 / 1897962 to 626645 / 1877453. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-27"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 627395,
+		"ceiling": 626645,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Sidebar-width-aware narrow viewport (2026-10-27): upstream's max(700, ceil(width) + 329)px query replaces the fixed 768px one; the function itself minifies to ~90 bytes, and the rest is rolldown re-lettering the shared density chunk's exports in every importer. Session cold JS had drifted to 626779 gzip / 1885291 raw, 204 bytes under the 1% tolerance, and this takes it to 627395 gzip / 1886305 raw. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-24"
+		"reason": "Bundle trim (2026-10-27): the SSE event names and pending AskUserQuestion/ExitPlanMode schemas moved out of hook-events.ts, JsonValueSchema and SkillOverrideValueSchema out of schemas.ts, and the server-only halves of composer-state, session-cost and api-request-log into their own modules; type-only imports written as `import {type X}` became `import type`. The client no longer downloads the hook event schemas, and home no longer downloads the strict transcript schemas. Home went from 419761 gzip / 1275032 raw to 404545 / 1220653, session from 631660 / 1897962 to 626645 / 1877453. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-27"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1886305,
+		"ceiling": 1877453,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Sidebar-width-aware narrow viewport (2026-10-27): upstream's max(700, ceil(width) + 329)px query replaces the fixed 768px one; the function itself minifies to ~90 bytes, and the rest is rolldown re-lettering the shared density chunk's exports in every importer. Session cold JS had drifted to 626779 gzip / 1885291 raw, 204 bytes under the 1% tolerance, and this takes it to 627395 gzip / 1886305 raw. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-25"
+		"reason": "Bundle trim (2026-10-27): the SSE event names and pending AskUserQuestion/ExitPlanMode schemas moved out of hook-events.ts, JsonValueSchema and SkillOverrideValueSchema out of schemas.ts, and the server-only halves of composer-state, session-cost and api-request-log into their own modules; type-only imports written as `import {type X}` became `import type`. The client no longer downloads the hook event schemas, and home no longer downloads the strict transcript schemas. Home went from 419761 gzip / 1275032 raw to 404545 / 1220653, session from 631660 / 1897962 to 626645 / 1877453. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-27"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

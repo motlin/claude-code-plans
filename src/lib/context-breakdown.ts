@@ -1,4 +1,4 @@
-import {type ContextUsageTwin} from "./schemas";
+import type {ContextUsageTwin} from "./schemas";
 import {ContextUsageTwinSchema} from "./runtime-schemas";
 
 export type ContextCategoryKind = ContextUsageTwin["categories"][number]["kind"];

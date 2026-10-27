@@ -1,12 +1,10 @@
 import {describe, expect, it, vi} from "vite-plus/test";
 import {StatuslineSchema, type Statusline} from "../src/lib/api/statusline";
 import {
-	type ComposerStateDependencies,
 	type ComposerStateSources,
 	formatResetLabel,
 	formatUsageAriaLabel,
 	formatUsageTooltipRows,
-	getComposerState,
 	lastAssistantEffortFromRecords,
 	lastAssistantModelFromRecords,
 	lastAssistantUsageFromRecords,
@@ -17,6 +15,7 @@ import {
 	usageRingPercent,
 	usageRingSeverity,
 } from "../src/lib/composer-state";
+import {type ComposerStateDependencies, getComposerState} from "../src/lib/composer-state-server";
 import {handleComposerStateRequest} from "../src/routes/api/sessions.$id.composer-state";
 
 const NOW_MS = Date.UTC(2026, 8, 29, 12, 0, 0);

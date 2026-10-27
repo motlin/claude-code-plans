@@ -1,6 +1,6 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
-import {type ComposerStateDependencies, getComposerState} from "../../lib/composer-state";
+import {type ComposerStateDependencies, getComposerState} from "../../lib/composer-state-server";
 
 export async function handleComposerStateRequest(
 	sessionId: string,

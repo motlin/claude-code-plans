@@ -1,6 +1,6 @@
 import {queryOptions, useMutation, useQueryClient} from "@tanstack/react-query";
 import {z} from "zod";
-import {SkillOverrideValueSchema} from "../schemas";
+import {SkillOverrideValueSchema} from "../skill-override-value";
 import {ApiResponseError, apiFetch} from "./client";
 import {FileTreeNodeSchema, PluginInfoSchema} from "./plugins";
 

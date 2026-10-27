@@ -1,27 +1,14 @@
 import {z} from "zod";
 import {ArtifactCapabilitiesSchema} from "./artifact-schemas";
 import {isMcpTool, toolInputSchemaByName} from "./tool-input-schemas";
+import {JsonValueSchema} from "./json-value-schema";
+import {SkillOverrideValueSchema} from "./skill-override-value";
 
 // ---------------------------------------------------------------------------
 // JSON value
 // ---------------------------------------------------------------------------
 
-/**
- * Recursive schema for any valid JSON value. Used in place of `z.unknown()` for
- * externally-owned API objects (Anthropic `usage`, `container`, etc.) so we
- * assert "valid JSON" (rejecting undefined/functions/symbols) without breaking
- * when the upstream shape gains new fields.
- */
-export const JsonValueSchema: z.ZodType = z.lazy(() =>
-	z.union([
-		z.string(),
-		z.number(),
-		z.boolean(),
-		z.null(),
-		z.array(JsonValueSchema),
-		z.record(z.string(), JsonValueSchema),
-	]),
-);
+export {JsonValueSchema} from "./json-value-schema";
 
 // ---------------------------------------------------------------------------
 // Sessions Index (sessions-index.json)
@@ -2497,12 +2484,7 @@ const WorktreeSettingsSchema = z
 	})
 	.strict();
 
-/**
- * `skillOverrides[name]` values documented at
- * https://code.claude.com/docs/en/skills.md#override-skill-visibility-from-settings.
- * An absent key means "on".
- */
-export const SkillOverrideValueSchema = z.enum(["on", "name-only", "user-invocable-only", "off"]);
+export {SkillOverrideValueSchema} from "./skill-override-value";
 
 /** How long an AskUserQuestion prompt waits for an answer. */
 export const AskUserQuestionTimeoutSchema = z.enum(["60s", "5m", "10m", "never"]);

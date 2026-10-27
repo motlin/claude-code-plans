@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {buildApiRequestLog, resolveApiRequest} from "../src/lib/api-request-log";
+import {resolveApiRequest} from "../src/lib/api-request-log";
+import {buildApiRequestLog} from "../src/lib/api-request-log-builder";
 import {jsonlRecordFixtures} from "./fixtures/jsonl-records";
 
 const baseRequest = jsonlRecordFixtures["api-request"];

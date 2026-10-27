@@ -20,7 +20,7 @@ import {composerDefaultsQueryOptions} from "../src/lib/api/composer-defaults";
 import {usageQueryOptions} from "../src/lib/api/usage";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
-import {getComposerDefaults} from "../src/lib/composer-state";
+import {getComposerDefaults} from "../src/lib/composer-state-server";
 import {requestHomeComposerPrefill} from "../src/lib/home-composer-focus";
 import {SSE_EVENTS} from "../src/lib/hook-events";
 import {createGroup, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";

@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {costStateFromRecord, formatUsd} from "../src/lib/session-cost";
+import {formatUsd} from "../src/lib/session-cost";
+import {costStateFromRecord} from "../src/lib/session-cost-record";
 
 describe("costStateFromRecord", () => {
 	it("normalizes a cost-state record, ordering models by cost", () => {

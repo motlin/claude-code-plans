@@ -1,4 +1,5 @@
-import {type ComposerDefaults, getComposerDefaults, resolveComposerState} from "./composer-state";
+import {type ComposerDefaults, resolveComposerState} from "./composer-state";
+import {getComposerDefaults} from "./composer-state-server";
 import {EffortLevelSchema} from "./launch-options";
 import {effortLevelShortLabels} from "./schema-choices";
 import {setShellChinLabels, type ShellChinLabels} from "./shell-chin-store";

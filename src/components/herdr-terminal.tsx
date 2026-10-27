@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {createTerminalFrameConsumer} from "../lib/herdr/terminal-protocol";
 import {useTerminalTheme} from "../hooks/use-terminal-theme";
-import {type GhosttyAppearance} from "../lib/server-fns";
+import type {GhosttyAppearance} from "../lib/server-fns";
 import {applyTerminalTheme} from "../lib/terminal-theme";
 import {TerminalPlaceholder} from "./terminal-placeholder";
 import {TerminalSelectionStatus} from "./terminal-selection-status";

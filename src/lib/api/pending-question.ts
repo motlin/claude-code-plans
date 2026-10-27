@@ -1,6 +1,6 @@
 import {z} from "zod";
 import {queryOptions, type QueryClient} from "@tanstack/react-query";
-import {PendingQuestionSchema, type SessionPendingQuestionChangedPayload} from "../hook-events";
+import {PendingQuestionSchema, type SessionPendingQuestionChangedPayload} from "../pending-calls";
 import {apiFetch} from "./client";
 
 /** `/api/sessions/$id/pending-question`: the AskUserQuestion the session waits on, from its hooks. */

@@ -17,7 +17,7 @@ import {
 	terminalOverlay,
 	terminalStatus,
 } from "../lib/terminal-lifecycle";
-import {type ConnectionStatus} from "./herdr-terminal";
+import type {ConnectionStatus} from "./herdr-terminal";
 import {createOscFilter} from "../lib/terminal-osc-filter";
 import {loadGhostty} from "./load-ghostty";
 import {TerminalPlaceholder} from "./terminal-placeholder";

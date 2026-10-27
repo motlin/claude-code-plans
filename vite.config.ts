@@ -415,7 +415,13 @@ export default defineConfig({
 	build: {
 		// The per-file gzip table is hundreds of lines on every build; just perf-bundle ratchets the sizes that matter.
 		reportCompressedSize: false,
-		rolldownOptions: {onLog: quietDependencyDirectives},
+		rolldownOptions: {
+			onLog: quietDependencyDirectives,
+			// Zod schema builders (`z.object(...)`, `z.enum(...).optional()`, ...) only construct values, but the
+			// bundler can't tell, so every top-level schema in a reached module stayed in the bundle whether or not
+			// anything used it. Marking `z` pure lets unused schemas tree-shake away.
+			treeshake: {manualPureFunctions: ["z"]},
+		},
 	},
 	environments: {
 		client: {

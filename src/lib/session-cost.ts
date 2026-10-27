@@ -1,7 +1,5 @@
 import {z} from "zod";
 
-import {CostStateRecordSchema} from "./runtime-schemas";
-
 const SessionModelCostSchema = z
 	.object({
 		/** Raw model id, e.g. `claude-opus-5-5[1m]`. */
@@ -30,33 +28,6 @@ export const SessionCostStateSchema = z
 	.strict();
 
 export type SessionCostState = z.infer<typeof SessionCostStateSchema>;
-
-/** The totals a `cost-state` record carries, or null when `record` is not a valid one. */
-export function costStateFromRecord(record: unknown): SessionCostState | null {
-	const parsed = CostStateRecordSchema.safeParse(record);
-	if (!parsed.success) return null;
-	const cost = parsed.data;
-	const models = Object.entries(cost.modelUsage ?? {})
-		.map(([model, usage]) => ({
-			model,
-			costUSD: usage.costUSD ?? 0,
-			inputTokens: usage.inputTokens ?? 0,
-			outputTokens: usage.outputTokens ?? 0,
-			cacheReadInputTokens: usage.cacheReadInputTokens ?? 0,
-			cacheCreationInputTokens: usage.cacheCreationInputTokens ?? 0,
-		}))
-		.toSorted((a, b) => b.costUSD - a.costUSD);
-	const state: SessionCostState = {
-		totalCostUSD: cost.totalCostUSD ?? 0,
-		linesAdded: cost.totalLinesAdded ?? 0,
-		linesRemoved: cost.totalLinesRemoved ?? 0,
-		hasUnknownModelCost: cost.hasUnknownModelCost ?? false,
-		models,
-	};
-	if (cost.totalAPIDuration !== undefined) state.apiDurationMs = cost.totalAPIDuration;
-	if (cost.totalToolDuration !== undefined) state.toolDurationMs = cost.totalToolDuration;
-	return state;
-}
 
 const USD = new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"});
 

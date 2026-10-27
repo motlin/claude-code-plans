@@ -14,7 +14,7 @@ import {toLenient} from "./lenient-schema";
 import {asRecord} from "./narrow";
 import {trackedReadFileSync} from "./perf/tracked-fs";
 import type * as schema from "./db/schema";
-import {JsonValueSchema} from "./schemas";
+import {JsonValueSchema} from "./json-value-schema";
 import {transcriptFilePath} from "./structured-transcript";
 import {
 	RuntimeWorkflowProgressEntrySchema,

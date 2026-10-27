@@ -1,5 +1,6 @@
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
-import {buildApiRequestLog, mightBeApiRequestLogLine, type ApiRequestLog} from "./api-request-log";
+import type {ApiRequestLog} from "./api-request-log";
+import {buildApiRequestLog, mightBeApiRequestLogLine} from "./api-request-log-builder";
 import type * as schema from "./db/schema";
 import {trackedReadFileSync} from "./perf/tracked-fs";
 import {parseTranscriptLine, transcriptFilePath} from "./structured-transcript";

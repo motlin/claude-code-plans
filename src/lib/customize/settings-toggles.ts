@@ -10,7 +10,7 @@ import {
 } from "../api/customize";
 import {rejectCrossSite} from "../same-origin-guard";
 import {ClaudeSettingsSchema} from "../runtime-schemas";
-import {SkillOverrideValueSchema} from "../schemas";
+import {SkillOverrideValueSchema} from "../skill-override-value";
 import {errnoCode} from "../narrow";
 
 const SETTINGS_FILENAME = "settings.json";

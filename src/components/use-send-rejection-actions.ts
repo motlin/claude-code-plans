@@ -2,7 +2,7 @@ import {useCallback} from "react";
 
 import {focusComposer, getComposerText, submitComposer} from "../lib/context-attach";
 import {rejectedRetryAction} from "../lib/send-rejection";
-import {type SendRejection} from "./use-live-herdr-prompt";
+import type {SendRejection} from "./use-live-herdr-prompt";
 
 /**
  * The send-rejected card's buttons. Upstream `dS`: Try again clears the error

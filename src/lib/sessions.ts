@@ -17,7 +17,8 @@ import {
 	SessionsIndexSchema,
 } from "./runtime-schemas";
 import {isCountableMessageRecord} from "./message-count";
-import {costStateFromRecord, type SessionCostState} from "./session-cost";
+import type {SessionCostState} from "./session-cost";
+import {costStateFromRecord} from "./session-cost-record";
 import {narrationProse} from "./thinking-narration";
 import {isCaveatLine, isCommandLine, isStdoutLine} from "./transcript";
 

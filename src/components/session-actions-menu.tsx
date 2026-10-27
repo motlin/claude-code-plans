@@ -28,7 +28,7 @@ import {
 	sessionMenuReadState,
 } from "../lib/session-menu-items";
 import {forkDisabledReason} from "../lib/session-fork";
-import {type TranscriptMode} from "../lib/transcript-mode";
+import type {TranscriptMode} from "../lib/transcript-mode";
 import {maybeShowDragPinHint} from "../lib/drag-pin-hint";
 import {pin, readPinState, unpin, usePins, writePinState} from "../lib/pin-store";
 import {assign, createGroup, useSessionGroups} from "../lib/session-group-store";
@@ -56,7 +56,7 @@ import {
 } from "./ui/menu";
 import {useSessionMenuRunner} from "./use-session-menu-runner";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
-import {type SessionMenuRun} from "./use-session-menu-runner";
+import type {SessionMenuRun} from "./use-session-menu-runner";
 import {keepArrowsRoving} from "./sidebar/use-roving-focus";
 
 /** Actions wired locally so far; the rest appear as their features land. */

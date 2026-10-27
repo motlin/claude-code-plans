@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {queryOptions} from "@tanstack/react-query";
 import {apiFetch} from "./client";
-import {JsonValueSchema} from "../schemas";
+import {JsonValueSchema} from "../json-value-schema";
 
 const ProjectListItemSchema = z.object({
 	id: z.string(),

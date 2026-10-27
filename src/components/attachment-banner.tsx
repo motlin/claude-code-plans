@@ -32,7 +32,7 @@ import {assertNever} from "../lib/assert-never";
 import {parseAgentMessage} from "../lib/agent-message";
 import {AgentMessageRow} from "./agent-message-row";
 import type {z} from "zod";
-import {type AttachmentPayload, type RenderedRoleSchema} from "../lib/schemas";
+import type {AttachmentPayload, RenderedRoleSchema} from "../lib/schemas";
 import {AttachmentPayloadSchema} from "../lib/runtime-schemas";
 import {formatTimestamp, formatRelativeTimestamp} from "../lib/timestamp-format";
 import {DebugLink} from "./debug-link";

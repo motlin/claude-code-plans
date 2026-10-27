@@ -1,6 +1,7 @@
 import {isRecord} from "./narrow";
 import {foldJsonl, IncrementalJsonlCache, type JsonlFold} from "./incremental-jsonl";
-import {costStateFromRecord, type SessionCostState} from "./session-cost";
+import type {SessionCostState} from "./session-cost";
+import {costStateFromRecord} from "./session-cost-record";
 
 /** The session-level fields the detail endpoint reports from a transcript's records. */
 export interface SessionProvenance {

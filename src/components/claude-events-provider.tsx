@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type ReactNode} from "react";
 import {useQueryClient} from "@tanstack/react-query";
-import {DOMAIN_EVENTS, HERDR_EVENTS, SSE_EVENTS, type JsonValue, type SessionSummaryPayload} from "../lib/hook-events";
+import {DOMAIN_EVENTS, HERDR_EVENTS, SSE_EVENTS} from "../lib/event-names";
+import type {JsonValue, SessionSummaryPayload} from "../lib/hook-events";
 import {
 	MemorySummaryPayloadSchema,
 	NotificationEntryPayloadSchema,

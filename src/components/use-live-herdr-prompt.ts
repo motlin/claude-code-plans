@@ -1,9 +1,9 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {markFailedSend, readFailedSend} from "../hooks/use-composer-draft";
-import {type DeliveryResult} from "../hooks/use-composer-queue";
+import type {DeliveryResult} from "../hooks/use-composer-queue";
 import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
 import {requestComposerTakeBack} from "../lib/context-attach";
-import {type SessionLine} from "../lib/transcript";
+import type {SessionLine} from "../lib/transcript";
 
 /**
  * Keeps the optimistic bubble for a prompt sent to the live pane until the

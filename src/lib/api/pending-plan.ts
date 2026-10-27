@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {queryOptions, type QueryClient} from "@tanstack/react-query";
-import {PendingPlanSchema, type SessionPendingPlanChangedPayload} from "../hook-events";
+import type {SessionPendingPlanChangedPayload} from "../hook-events";
+import {PendingPlanSchema} from "../pending-calls";
 import {apiFetch} from "./client";
 
 /** `/api/sessions/$id/pending-plan`: the ExitPlanMode the session waits on, from its hooks. */

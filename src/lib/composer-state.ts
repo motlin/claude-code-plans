@@ -1,9 +1,7 @@
 import {z} from "zod";
-import {type Statusline, SESSION_ID_PATTERN, StatuslineSchema} from "./api/statusline";
-import {isBypassPermissionsAllowed, resolveLaunchModel} from "./launch-options";
+import {type Statusline, StatuslineSchema} from "./api/statusline";
+import {resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
-import {ClaudeSettingsSchema} from "./runtime-schemas";
-import {sessionFastMode} from "./session-fast-mode";
 import {formatWeeklyReset} from "./usage";
 import {nonEmpty} from "./non-empty";
 
@@ -373,78 +371,6 @@ export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.str
 	statuslineUpdatedAt: z.string().nullable(),
 });
 
-export interface ComposerStateDependencies {
-	readStatusline(sessionId: string): Promise<{json: unknown; mtimeMs: number}>;
-	readSettings(): Promise<unknown>;
-}
-
-async function readSettingsDefaults(
-	dependencies: ComposerStateDependencies,
-): Promise<
-	Pick<
-		ComposerServerState,
-		| "settingsDefaultMode"
-		| "settingsModel"
-		| "settingsEffortLevel"
-		| "settingsBypassPermissionsAllowed"
-		| "settingsFastMode"
-	>
-> {
-	try {
-		const parsed = ClaudeSettingsSchema.safeParse(await dependencies.readSettings());
-		if (parsed.success) {
-			return {
-				settingsDefaultMode: parsed.data.permissions?.defaultMode ?? null,
-				settingsModel: parsed.data.model ?? null,
-				settingsEffortLevel: parsed.data.effortLevel ?? null,
-				settingsBypassPermissionsAllowed: isBypassPermissionsAllowed({
-					defaultMode: parsed.data.permissions?.defaultMode,
-					skipDangerousModePermissionPrompt: parsed.data.skipDangerousModePermissionPrompt,
-				}),
-				settingsFastMode: sessionFastMode([], parsed.data),
-			};
-		}
-	} catch {
-		// Missing or unreadable settings.json leaves the defaults unset.
-	}
-	return {
-		settingsDefaultMode: null,
-		settingsModel: null,
-		settingsEffortLevel: null,
-		settingsBypassPermissionsAllowed: false,
-		settingsFastMode: false,
-	};
-}
-
-async function readStatuslineSnapshot(
-	sessionId: string,
-	dependencies: ComposerStateDependencies,
-): Promise<Pick<ComposerServerState, "statusline" | "statuslineUpdatedAt">> {
-	if (SESSION_ID_PATTERN.test(sessionId)) {
-		try {
-			const {json, mtimeMs} = await dependencies.readStatusline(sessionId);
-			const parsed = StatuslineSchema.safeParse(json);
-			if (parsed.success) {
-				return {statusline: parsed.data, statuslineUpdatedAt: new Date(mtimeMs).toISOString()};
-			}
-		} catch {
-			// No statusline has been written for this session yet.
-		}
-	}
-	return {statusline: null, statuslineUpdatedAt: null};
-}
-
-export async function getComposerState(
-	sessionId: string,
-	dependencies: ComposerStateDependencies,
-): Promise<ComposerServerState> {
-	const [settings, statusline] = await Promise.all([
-		readSettingsDefaults(dependencies),
-		readStatuslineSnapshot(sessionId, dependencies),
-	]);
-	return {...settings, ...statusline};
-}
-
 /** Launch defaults from `~/.claude/settings.json` for the home composer chin. */
 export interface ComposerDefaults {
 	model: string | null;
@@ -462,24 +388,3 @@ export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObj
 	bypassPermissionsAllowed: z.boolean(),
 	fastMode: z.boolean(),
 });
-
-export async function getComposerDefaults(readSettings: () => Promise<unknown>): Promise<ComposerDefaults> {
-	try {
-		const parsed = ClaudeSettingsSchema.safeParse(await readSettings());
-		if (parsed.success) {
-			return {
-				model: parsed.data.model ?? null,
-				effortLevel: parsed.data.effortLevel ?? null,
-				defaultMode: parsed.data.permissions?.defaultMode ?? null,
-				bypassPermissionsAllowed: isBypassPermissionsAllowed({
-					defaultMode: parsed.data.permissions?.defaultMode,
-					skipDangerousModePermissionPrompt: parsed.data.skipDangerousModePermissionPrompt,
-				}),
-				fastMode: sessionFastMode([], parsed.data),
-			};
-		}
-	} catch {
-		// Missing or unreadable settings.json leaves the defaults unset.
-	}
-	return {model: null, effortLevel: null, defaultMode: null, bypassPermissionsAllowed: false, fastMode: false};
-}

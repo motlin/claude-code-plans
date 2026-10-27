@@ -1,22 +1,21 @@
 import {createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore} from "react";
 import {useQueryClient, type QueryClient} from "@tanstack/react-query";
 import {z} from "zod";
-import {
-	DOMAIN_EVENTS,
-	SSE_EVENTS,
-	type HookSchemaDriftPayload,
-	type MemorySummaryPayload,
-	type NotificationPayload,
-	type NotificationEntryPayload,
-	type NotificationClearedPayload,
-	type PendingApprovalPayload,
-	type PlanSummaryPayload,
-	type SessionLinesAppendedPayload,
-	type SessionHookContextPayload,
-	type SessionSummaryPayload,
-	type SessionToolPendingPayload,
-	type SessionToolFailedPayload,
-	type SubagentStartedPayload,
+import {DOMAIN_EVENTS, SSE_EVENTS} from "../lib/event-names";
+import type {
+	HookSchemaDriftPayload,
+	MemorySummaryPayload,
+	NotificationPayload,
+	NotificationEntryPayload,
+	NotificationClearedPayload,
+	PendingApprovalPayload,
+	PlanSummaryPayload,
+	SessionLinesAppendedPayload,
+	SessionHookContextPayload,
+	SessionSummaryPayload,
+	SessionToolPendingPayload,
+	SessionToolFailedPayload,
+	SubagentStartedPayload,
 } from "../lib/hook-events";
 import {
 	reconcileLiveSubagents,

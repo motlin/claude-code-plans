@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {queryOptions, infiniteQueryOptions, useMutation, useQueryClient, type QueryClient} from "@tanstack/react-query";
 import {apiFetch} from "./client";
-import {JsonValueSchema} from "../schemas";
+import {JsonValueSchema} from "../json-value-schema";
 import {SlowCommandSchema} from "../slow-commands";
 import {SessionViewedStateSchema} from "./viewed-state";
 import {SessionBucketSchema} from "../session-state";
