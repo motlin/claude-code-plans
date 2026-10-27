@@ -138,7 +138,12 @@ export function HomeComposer() {
 				deliveryHint={pendingLaunch === null ? undefined : `Starting session in ${pendingLaunch.cwd}…`}
 				chin={chin}
 				environment={
-					<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
+					<ProjectPicker
+						projects={startProjects}
+						selected={project}
+						onSelect={setChosenProjectId}
+						worktree={worktree}
+					/>
 				}
 				{...slashMenu}
 				promptHistory={promptHistory}

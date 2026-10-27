@@ -435,6 +435,30 @@ describe("HomeComposer", () => {
 		});
 	});
 
+	it("turns Worktree on from the folder picker footer and launches with --worktree", async () => {
+		await renderApp();
+		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
+		fireEvent.click(await screen.findByTestId("environment-bar-worktree"));
+		expect({
+			checked: screen.getByRole("switch", {name: "Worktree"}).getAttribute("aria-checked"),
+			stored: localStorage.getItem(HOME_WORKTREE_STORAGE_KEY),
+			open: screen.queryByRole("textbox", {name: "Search projects"}) !== null,
+		}).toStrictEqual({checked: "true", stored: "true", open: true});
+		fireEvent.keyDown(screen.getByRole("textbox", {name: "Search projects"}), {key: "Escape"});
+		await typePrompt("hello");
+
+		fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
+		expect(launchBody(launchCalls[0])).toStrictEqual({
+			cwd: "/users/dev/it's",
+			prompt: "hello",
+			args: ["--worktree"],
+		});
+	});
+
 	it("launches in the project chosen from the picker", async () => {
 		await renderApp();
 		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
@@ -474,6 +498,7 @@ describe("HomeComposer", () => {
 		).toStrictEqual([
 			{name: "it's", selected: "true"},
 			{name: "newest", selected: "false"},
+			{name: "Worktree", selected: "false"},
 		]);
 
 		fireEvent.change(search, {target: {value: "dev/new"}});
