@@ -818,9 +818,9 @@ function SessionRowLink({
 					)}
 				/>
 			</span>
-			{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it */}
+			{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it, unless the meta line has it */}
 			<span className="shrink-0 flex items-center gap-1.5 text-xs text-ink-muted me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
-				{prTail !== undefined && <PrTailGlyph state={prTail} />}
+				{prTail !== undefined && metaLine === undefined && <PrTailGlyph state={prTail} />}
 			</span>
 		</>
 	);

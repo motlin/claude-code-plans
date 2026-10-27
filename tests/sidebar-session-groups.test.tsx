@@ -1313,4 +1313,20 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 			},
 		});
 	});
+
+	it("moves the PR glyph from the title tail onto the meta line while the line shows", async () => {
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true, showPrStatus: true}),
+		);
+		const {container} = await renderGroups([
+			{...session("d1", "Open PR on main", "done", 5), gitBranch: "main", prStatus: {number: 8, state: "open"}},
+		]);
+
+		const glyphs = [...container.querySelectorAll("a[data-row-main-button] [data-pr-glyph]")].map((glyph) => ({
+			state: glyph.getAttribute("data-pr-glyph"),
+			onLine: glyph.closest(".df-meta-line") !== null,
+		}));
+		expect(glyphs).toStrictEqual([{state: "opened", onLine: true}]);
+	});
 });
