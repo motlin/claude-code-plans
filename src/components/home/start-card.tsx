@@ -154,6 +154,8 @@ export interface NextStepsListProps {
 	onDismiss: (candidates: NextStepCandidate[]) => void;
 	/** Where a keyboard dismiss sends focus when no row remains; the composer by default. */
 	onEmptyFocus?: (() => void) | undefined;
+	/** Turns on Worktree for a pressed "Turn on Worktree" row, which then comes back `taken`. */
+	onTurnOnWorktree?: ((candidate: NextStepCandidate) => void) | undefined;
 }
 
 // Upstream's row reveal: on hover, keyboard focus inside the row, or while its popup is open. Spelled out in full
@@ -235,6 +237,7 @@ export function NextStepsList({
 	onOpen,
 	onDismiss,
 	onEmptyFocus = requestHomeComposerFocus,
+	onTurnOnWorktree,
 }: Readonly<NextStepsListProps>) {
 	const [openRest, setOpenRest] = useState<string | null>(null);
 	const candidates = incoming.flatMap(rowCandidates);
@@ -327,11 +330,22 @@ export function NextStepsList({
 					row.type === "row"
 						? (row.candidate.dismissLabel ?? `Dismiss “${row.candidate.title}”`)
 						: row.dismissLabel;
+				if (row.type === "row" && row.candidate.taken === true) {
+					return (
+						<li key={key} data-row-key={key}>
+							<WorktreeTakenRow />
+						</li>
+					);
+				}
 				return (
 					<li key={key} data-row-key={key}>
 						<div className="group/row relative">
 							{row.type === "row" ? (
-								<StepRowButton candidate={row.candidate} onOpen={onOpen} />
+								<StepRowButton
+									candidate={row.candidate}
+									onOpen={onOpen}
+									onTurnOnWorktree={onTurnOnWorktree}
+								/>
 							) : (
 								<RestRow
 									title={row.title}
@@ -370,14 +384,35 @@ export function NextStepsList({
 }
 
 /**
+ * Upstream's pressed "Turn on Worktree" row (`T5`): static, with no hover, tooltip or dismiss, but it keeps its seat.
+ */
+function WorktreeTakenRow() {
+	return (
+		<div
+			data-testid="start-card-worktree-apart"
+			className="flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5"
+		>
+			<span className="min-w-0 flex-1 truncate text-secondary">Worktree is on</span>
+			<Check aria-hidden="true" className="size-4 shrink-0 text-primary" />
+		</div>
+	);
+}
+
+/**
  * A next-step row: upstream's title-over-detail tooltip (or a row's text-only one) lined up with the row's start
  * edge, and a hidden span holding the title (or that text) that describes the button.
  */
 function StepRowButton({
 	candidate,
 	onOpen,
+	onTurnOnWorktree,
 	listed = false,
-}: Readonly<{candidate: NextStepCandidate; onOpen: (subject: string) => void; listed?: boolean}>) {
+}: Readonly<{
+	candidate: NextStepCandidate;
+	onOpen: (subject: string) => void;
+	onTurnOnWorktree?: ((candidate: NextStepCandidate) => void) | undefined;
+	listed?: boolean;
+}>) {
 	const titleId = useId();
 	return (
 		<>
@@ -398,7 +433,12 @@ function StepRowButton({
 					data-next-step-open
 					aria-describedby={titleId}
 					onClick={() => {
-						onOpen(candidate.subject);
+						if (candidate.kind === "worktree") {
+							onTurnOnWorktree?.(candidate);
+							requestHomeComposerFocus();
+						} else {
+							onOpen(candidate.subject);
+						}
 					}}
 					className={STEP_BUTTON_CLASS}
 				>

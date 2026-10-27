@@ -458,6 +458,73 @@ describe("NextStepsList", () => {
 		}
 	});
 
+	it("turns on Worktree, focuses the composer, and swaps the row for upstream's static Worktree is on row", () => {
+		const onOpen = vi.fn<(sessionId: string) => void>();
+		const pressed: NextStepCandidate[] = [];
+		const worktree: NextStepCandidate = {
+			id: "worktree-apart",
+			kind: "worktree",
+			subject: "/p",
+			stamp: 0,
+			title: "Turn on Worktree",
+			detail: "Session running here",
+			tooltipText: "Another session is running in this folder.",
+			dismissLabel: "Dismiss the Worktree suggestion",
+		};
+		function Harness() {
+			const [taken, setTaken] = useState(false);
+			return (
+				<>
+					<FakeComposer />
+					<NextStepsList
+						rows={selectNextSteps({
+							candidates: [taken ? {...worktree, taken: true} : worktree, ...blocked(1)],
+							dismissed: {},
+						})}
+						onOpen={onOpen}
+						onDismiss={() => {}}
+						onTurnOnWorktree={(candidate) => {
+							pressed.push(candidate);
+							setTaken(true);
+						}}
+					/>
+				</>
+			);
+		}
+		const {container} = render(<Harness />);
+
+		fireEvent.click(screen.getByRole("button", {name: /^Turn on Worktree/}));
+
+		const li = container.querySelector("li[data-row-key='worktree-apart:/p']")!;
+		const row = li.querySelector("[data-testid='start-card-worktree-apart']")!;
+		const check = row.querySelector("svg");
+		expect({
+			pressed,
+			opened: onOpen.mock.calls,
+			focused: document.activeElement?.getAttribute("aria-label"),
+			buttons: li.querySelectorAll("button").length,
+			tag: row.tagName,
+			className: row.className,
+			text: row.textContent,
+			titleClass: row.querySelector("span")?.className,
+			checkClass: check?.getAttribute("class"),
+			checkHidden: check?.getAttribute("aria-hidden"),
+			describedBy: li.querySelectorAll("[aria-describedby]").length,
+		}).toStrictEqual({
+			pressed: [worktree],
+			opened: [],
+			focused: "Prompt",
+			buttons: 0,
+			tag: "DIV",
+			className: "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5",
+			text: "Worktree is on",
+			titleClass: "min-w-0 flex-1 truncate text-secondary",
+			checkClass: "lucide lucide-check size-4 shrink-0 text-primary",
+			checkHidden: "true",
+			describedBy: 0,
+		});
+	});
+
 	it("renders nothing without rows", () => {
 		const {container} = render(<NextStepsList rows={[]} onOpen={() => {}} onDismiss={() => {}} />);
 
