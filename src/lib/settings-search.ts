@@ -183,23 +183,20 @@ export function rankSettingsSections(query: string): RankedSettingsSection[] {
 		.toSorted((a, b) => a.score - b.score);
 }
 
-export interface SettingsSearchResult extends SettingsIndexEntry {
-	/** Index of the match in `title` (length `query.trim().length`), or -1 for no highlight. */
-	start: number;
-}
-
-export interface SettingsSearchGroup {
-	tab: SettingsTab;
-	results: SettingsSearchResult[];
-}
-
 /** True when the character before `start` is not a letter or digit. */
 function isWordStart(title: string, start: number): boolean {
 	return start === 0 || /[^a-z0-9]/i.test(title.charAt(start - 1));
 }
 
-/** The first word-start occurrence of `needle` in `haystack`, else the first occurrence. */
-function bestMatch(haystack: string, needle: string): number {
+/**
+ * Where to highlight `query` in `label`: the first word-start occurrence of the trimmed, lowercased
+ * query, else its first occurrence, else -1. Rows found through phrases, collapsed spaces or
+ * out-of-order words have no literal match and get no highlight.
+ */
+export function settingsMatchStart(label: string, query: string): number {
+	const haystack = label.toLowerCase();
+	const needle = query.trim().toLowerCase();
+	if (needle === "") return -1;
 	let first = -1;
 	for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1)) {
 		if (first === -1) first = at;
@@ -209,16 +206,70 @@ function bestMatch(haystack: string, needle: string): number {
 }
 
 /**
- * Ranked sections with their matching rows. Each result's `start` locates the trimmed,
- * lowercased query in its title for highlighting; rows found through phrases, collapsed spaces or
- * out-of-order words have no literal match and get -1.
+ * One popover row: a section `hit` (optionally with a via line naming the matched row or keyword),
+ * a `child` row indented under its section, or a "+N more" row.
  */
-export function searchSettings(query: string): SettingsSearchGroup[] {
-	const needle = query.trim().toLowerCase();
-	return rankSettingsSections(query).map(({tab, rows}) => ({
-		tab,
-		results: rows.map(({entry}) => ({...entry, start: bestMatch(entry.title.toLowerCase(), needle)})),
-	}));
+export type SettingsResultRow =
+	| {kind: "hit"; tab: SettingsTab; via?: string; rowSlug?: string}
+	| {kind: "child"; tab: SettingsTab; rowSlug: string; title: string}
+	| {kind: "more"; tab: SettingsTab; count: number};
+
+/** Upstream's `tn`: children shown under a section before "+N more". */
+const MAX_CHILDREN = 3;
+/** Upstream's `nn`: shorter queries show one via-hit per section. */
+const MIN_CHILD_QUERY_LENGTH = 2;
+
+function viaHit(tab: SettingsTab, entry: SettingsIndexEntry): SettingsResultRow {
+	return {kind: "hit", tab, via: entry.title, rowSlug: entry.rowSlug};
+}
+
+/**
+ * Upstream's `fn` over ranked sections. A 1-character query gives one hit per section with its
+ * first matching row (or keyword) on a via line. Longer queries give a section-name match, or a
+ * section with several matching rows, a hit then up to three children and "+N more" (all children
+ * when the section is in `expanded`); a single matching row becomes a via-hit, and a keyword-only
+ * match a hit with the keyword as via. Row labels already shown under an earlier section are
+ * dropped.
+ */
+export function layoutSettingsResultRows(
+	sections: readonly RankedSettingsSection[],
+	query: string,
+	expanded: ReadonlySet<SettingsTab>,
+): SettingsResultRow[] {
+	const short = normalizeSettingsQuery(query).length < MIN_CHILD_QUERY_LENGTH;
+	const shown = new Set<string>();
+	return sections.flatMap(({tab, score, keyword, rows}): SettingsResultRow[] => {
+		const entries = rows.map((row) => row.entry).filter((entry) => !shown.has(entry.title));
+		const [first] = entries;
+		if (short || (score >= ROW_SCORE_BASE && entries.length === 1)) {
+			if (first !== undefined) {
+				shown.add(first.title);
+				return [viaHit(tab, first)];
+			}
+			return [keyword === undefined ? {kind: "hit", tab} : {kind: "hit", tab, via: keyword}];
+		}
+		if (first === undefined) {
+			return [keyword === undefined ? {kind: "hit", tab} : {kind: "hit", tab, via: keyword}];
+		}
+		const visible = expanded.has(tab) ? entries : entries.slice(0, MAX_CHILDREN);
+		for (const entry of visible) shown.add(entry.title);
+		const hidden = entries.length - visible.length;
+		return [
+			{kind: "hit", tab},
+			...visible.map((entry): SettingsResultRow => ({
+				kind: "child",
+				tab,
+				rowSlug: entry.rowSlug,
+				title: entry.title,
+			})),
+			...(hidden > 0 ? [{kind: "more" as const, tab, count: hidden}] : []),
+		];
+	});
+}
+
+/** The popover rows for `query`, with the tabs in `expanded` showing every child. */
+export function buildSettingsResultRows(query: string, expanded: ReadonlySet<SettingsTab>): SettingsResultRow[] {
+	return layoutSettingsResultRows(rankSettingsSections(query), query, expanded);
 }
 
 /** Split `title` into the text before, inside and after a match of `length` at `start`. */

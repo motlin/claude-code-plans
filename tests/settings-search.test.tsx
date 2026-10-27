@@ -176,7 +176,14 @@ describe("settings search", () => {
 		expect({flashing: flashingRows(), scrolled}).toStrictEqual({flashing: [], scrolled: ["code-font"]});
 	});
 
-	it("shows grouped results and deep links to the selected row", async () => {
+	/** Each popover row's accessible name, or for hits (no aria-label) their visible text. */
+	function popoverRows(popover: HTMLElement): string[] {
+		return within(popover)
+			.getAllByRole("button")
+			.map((button) => button.getAttribute("aria-label") ?? `hit: ${button.textContent}`);
+	}
+
+	it("shows section hits with child rows and deep links to the selected child", async () => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 
@@ -185,21 +192,14 @@ describe("settings search", () => {
 		});
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		// Upstream anatomy: each result is a button with the section on line 1 and the row title
-		// on line 2, and results from the same section sit together.
-		expect(
-			within(popover)
-				.getAllByRole("button")
-				.map((button) => [
-					button.querySelector("[data-settings-result-section]")?.textContent,
-					button.querySelector("[data-settings-result-title]")?.textContent,
-				]),
-		).toStrictEqual([
-			["Claude Code", "Default transcript view"],
-			["Sessions", "Default view"],
-			["Sessions", "Offer to review uncommitted changes"],
-			["AI features", "Working-copy review"],
-			["AI features", "Review behavior"],
+		expect(popoverRows(popover)).toStrictEqual([
+			"hit: Claude CodeDefault transcript view",
+			"hit: Sessions",
+			"Default view in Sessions",
+			"Offer to review uncommitted changes in Sessions",
+			"hit: AI features",
+			"Working-copy review in AI features",
+			"Review behavior in AI features",
 		]);
 		expect([...popover.querySelectorAll(".text-accent-100")].map((match) => match.textContent)).toStrictEqual([
 			"view",
@@ -209,7 +209,7 @@ describe("settings search", () => {
 			"view",
 		]);
 
-		fireEvent.click(within(popover).getByRole("button", {name: "Sessions Default view"}));
+		fireEvent.click(within(popover).getByRole("button", {name: "Default view in Sessions"}));
 
 		await waitFor(() => {
 			expect(router.state.location.hash).toBe("settings/sessions");
@@ -221,7 +221,7 @@ describe("settings search", () => {
 		expect(screen.queryByRole("dialog", {name: "Search results"})).toBeNull();
 	});
 
-	it("renders each result as an icon and a Tab / Row breadcrumb", async () => {
+	it("renders a section hit as the tab icon, the highlighted name and an optional via line", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 
@@ -230,12 +230,47 @@ describe("settings search", () => {
 		});
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		const first = within(popover).getAllByRole("button")[0];
+		const [hit] = within(popover).getAllByRole("button");
+		const lines = hit.firstElementChild?.children ?? [];
 		expect({
-			icon: first.firstElementChild?.tagName.toLowerCase(),
-			section: first.querySelector("[data-settings-result-section]")?.textContent,
-			title: first.querySelector("[data-settings-result-title]")?.textContent,
-			text: first.textContent,
-		}).toStrictEqual({icon: "svg", section: "General", title: "Theme", text: "General / Theme"});
+			rows: popoverRows(popover),
+			icon: lines[0]?.firstElementChild?.tagName.toLowerCase(),
+			name: lines[0]?.textContent,
+			via: lines[1]?.textContent,
+			matches: [...popover.querySelectorAll(".text-accent-100")].map((match) => match.textContent),
+		}).toStrictEqual({rows: ["hit: GeneralTheme"], icon: "svg", name: "General", via: "Theme", matches: ["Theme"]});
+	});
+
+	it.each<[string, string, string]>([
+		// Section-name-only and keyword-only hits get rows of their own and switch the tab only.
+		["general", "hit: General", "settings/general"],
+		["tmux", "hit: Applicationtmux", "settings/application"],
+	])("gives %j a hit row that opens its tab", async (query, row, hash) => {
+		const router = await renderAt("/#settings/claude-code");
+		await screen.findByRole("dialog", {name: "Settings"});
+
+		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {target: {value: query}});
+
+		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		expect(popoverRows(popover)).toStrictEqual([row]);
+		fireEvent.click(within(popover).getByRole("button"));
+
+		await waitFor(() => {
+			expect(router.state.location.hash).toBe(hash);
+		});
+		expect({scrolled, flashing: flashingRows()}).toStrictEqual({scrolled: [], flashing: []});
+	});
+
+	it("Enter picks the first row, even a keyword-only hit", async () => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("combobox", {name: "Search settings"});
+
+		fireEvent.change(input, {target: {value: "herdr"}});
+		fireEvent.keyDown(input, {key: "Enter"});
+
+		await waitFor(() => {
+			expect(router.state.location.hash).toBe("settings/application");
+		});
 	});
 });

@@ -4,27 +4,124 @@ import {Search} from "lucide-react";
 import {useId, useMemo, useRef, useState} from "react";
 import {settingsTabLabels} from "../../lib/schema-choices";
 import type {SettingsTab} from "../../lib/settings-hash";
-import {searchSettings, splitMatch, type SettingsSearchResult} from "../../lib/settings-search";
+import {
+	buildSettingsResultRows,
+	normalizeSettingsQuery,
+	type SettingsResultRow,
+	settingsMatchStart,
+	splitMatch,
+} from "../../lib/settings-search";
 import {SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 
+/** `label` with the query's first word-start (else first) occurrence in the accent color. */
+function Highlighted({label, query}: {label: string; query: string}) {
+	const start = settingsMatchStart(label, query);
+	if (start === -1) return label;
+	const parts = splitMatch(label, start, query.trim().length);
+	return (
+		<>
+			{parts.before}
+			<span className="text-accent-100">{parts.match}</span>
+			{parts.after}
+		</>
+	);
+}
+
+const ROW_CLASS =
+	"flex w-full items-center gap-2 rounded-r6 px-1 py-1.5 text-start text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover focus-visible:outline-hidden";
+const INDENT_CLASS = "ps-[calc(20px+0.5rem)]";
+
+function rowKey(row: SettingsResultRow): string {
+	return row.kind === "child" ? `child/${row.tab}/${row.rowSlug}` : `${row.kind}/${row.tab}`;
+}
+
+/** Upstream's result row: a section hit (icon, name, optional via line), an indented child, or "+N more". */
+function ResultRow({
+	row,
+	query,
+	onChoose,
+}: {
+	row: SettingsResultRow;
+	query: string;
+	onChoose: (row: SettingsResultRow) => void;
+}) {
+	const section = settingsTabLabels[row.tab];
+	if (row.kind === "hit") {
+		const Icon = SETTINGS_TAB_ICONS[row.tab];
+		return (
+			<button
+				type="button"
+				onClick={() => {
+					onChoose(row);
+				}}
+				className={ROW_CLASS}
+			>
+				<span className="flex min-w-0 flex-1 flex-col">
+					<span className="flex items-center gap-2">
+						<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5 text-secondary" />
+						<span className="min-w-0 flex-1 truncate">
+							<Highlighted label={section} query={query} />
+						</span>
+					</span>
+					{row.via !== undefined && (
+						<span className={`truncate ${INDENT_CLASS} text-footnote text-[var(--settings-muted)]`}>
+							<Highlighted label={row.via} query={query} />
+						</span>
+					)}
+				</span>
+			</button>
+		);
+	}
+	return (
+		<button
+			type="button"
+			aria-label={
+				row.kind === "child"
+					? `${row.title} in ${section}`
+					: `${row.count} more ${row.count === 1 ? "match" : "matches"} in ${section}`
+			}
+			onClick={() => {
+				onChoose(row);
+			}}
+			className={ROW_CLASS}
+		>
+			<span className={`flex min-w-0 flex-1 items-center gap-2 ${INDENT_CLASS}`}>
+				{row.kind === "child" ? (
+					<span className="min-w-0 flex-1 truncate">
+						<Highlighted label={row.title} query={query} />
+					</span>
+				) : (
+					<span className="min-w-0 flex-1 truncate text-[var(--settings-muted)]">+{row.count} more</span>
+				)}
+			</span>
+		</button>
+	);
+}
+
 /**
- * The Settings nav search field. Typing opens upstream's 280px results popover (padding 4): one
- * 14/20 r8 row per match, the tab icon then a "Tab / Row" breadcrumb with the match in the accent
- * color. Choosing a result hands its tab and row to `onSelect`.
+ * The Settings nav search field. Typing opens upstream's 280px results popover (padding 4) of
+ * section hits, indented child rows and "+N more" rows (see `buildSettingsResultRows`), with the
+ * match in the accent color. Choosing a hit or child hands its tab (and row, when it names one) to
+ * `onSelect`; "+N more" lists the rest of that section in place.
  */
-export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: string) => void}) {
+export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: string) => void}) {
 	const [query, setQuery] = useState("");
 	const [dismissed, setDismissed] = useState(false);
+	const [expanded, setExpanded] = useState<ReadonlySet<SettingsTab>>(() => new Set());
 	const anchorRef = useRef<HTMLDivElement>(null);
 	const listId = useId();
-	const groups = useMemo(() => searchSettings(query), [query]);
-	const needleLength = query.trim().length;
-	const open = !dismissed && needleLength > 0;
+	const rows = useMemo(() => buildSettingsResultRows(query, expanded), [query, expanded]);
+	const open = !dismissed && query.trim().length > 0;
 
-	const choose = (result: SettingsSearchResult) => {
+	const choose = (row: SettingsResultRow) => {
+		if (row.kind === "more") {
+			setExpanded((previous) => new Set([...previous, row.tab]));
+			return;
+		}
 		setQuery("");
 		setDismissed(false);
-		onSelect(result.tab, result.rowSlug);
+		setExpanded(new Set());
+		onSelect(row.tab, row.rowSlug);
 	};
 
 	return (
@@ -44,7 +141,9 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 					placeholder="Search"
 					value={query}
 					onChange={(event) => {
-						setQuery(event.target.value);
+						const next = event.target.value;
+						if (normalizeSettingsQuery(next) !== normalizeSettingsQuery(query)) setExpanded(new Set());
+						setQuery(next);
 						setDismissed(false);
 					}}
 					onKeyDown={(event) => {
@@ -53,7 +152,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 							event.stopPropagation();
 							setDismissed(true);
 						} else if (event.key === "Enter") {
-							const first = groups.flatMap((group) => group.results)[0];
+							const [first] = rows;
 							if (first !== undefined) {
 								event.preventDefault();
 								choose(first);
@@ -94,46 +193,14 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 							className="w-[280px] rounded-card bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none"
 						>
 							<div className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1">
-								{groups.every((group) => group.results.length === 0) ? (
+								{rows.length === 0 ? (
 									<p className="px-2.5 py-1.5 text-footnote text-[var(--settings-muted)]">
 										No results
 									</p>
 								) : (
-									groups.flatMap((group) => {
-										const Icon = SETTINGS_TAB_ICONS[group.tab];
-										return group.results.map((result) => {
-											const parts =
-												result.start === -1
-													? {before: result.title, match: "", after: ""}
-													: splitMatch(result.title, result.start, needleLength);
-											return (
-												<button
-													key={`${result.tab}/${result.rowSlug}`}
-													type="button"
-													aria-label={`${settingsTabLabels[group.tab]} ${result.title}`}
-													onClick={() => {
-														choose(result);
-													}}
-													className="flex w-full items-center gap-2 rounded-r6 px-1 py-1.5 text-left text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover focus-visible:outline-hidden"
-												>
-													<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5" />
-													<span className="min-w-0 truncate">
-														<span data-settings-result-section="">
-															{settingsTabLabels[group.tab]}
-														</span>
-														<span className="text-[var(--settings-muted)]"> / </span>
-														<span data-settings-result-title="">
-															{parts.before}
-															{parts.match !== "" && (
-																<span className="text-accent-100">{parts.match}</span>
-															)}
-															{parts.after}
-														</span>
-													</span>
-												</button>
-											);
-										});
-									})
+									rows.map((row) => (
+										<ResultRow key={rowKey(row)} row={row} query={query} onChoose={choose} />
+									))
 								)}
 							</div>
 						</Popover.Popup>

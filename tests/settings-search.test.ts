@@ -1,11 +1,13 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
+	buildSettingsResultRows,
+	layoutSettingsResultRows,
 	normalizeSettingsQuery,
 	rankSettingsLabel,
 	rankSettingsSections,
-	searchSettings,
 	SETTINGS_INDEX,
 	SETTINGS_SECTION_KEYWORDS,
+	settingsMatchStart,
 	splitMatch,
 } from "../src/lib/settings-search";
 
@@ -16,7 +18,7 @@ describe("SETTINGS_INDEX", () => {
 	});
 });
 
-describe("searchSettings", () => {
+describe("rankSettingsSections grouping", () => {
 	it.each<[string, Array<{tab: string; rows: Array<[string, string]>}>]>([
 		["", []],
 		["   ", []],
@@ -96,35 +98,27 @@ describe("searchSettings", () => {
 			],
 		],
 	])("groups results for %j", (query, expected) => {
-		const actual = searchSettings(query).map((group) => ({
-			tab: group.tab,
-			rows: group.results.map((result) => [result.rowSlug, result.title]),
+		const actual = rankSettingsSections(query).map((section) => ({
+			tab: section.tab,
+			rows: section.rows.map(({entry}) => [entry.rowSlug, entry.title]),
 		}));
 		expect(actual).toStrictEqual(expected);
 	});
+});
 
-	it("reports where the query matched in the title, and no match for phrase hits", () => {
-		expect(searchSettings("FONT")).toStrictEqual([
-			{
-				tab: "claude-code",
-				results: [
-					{tab: "claude-code", rowSlug: "code-font", title: "Code font", start: 5},
-					{tab: "claude-code", rowSlug: "interface-font", title: "Interface font", start: 10},
-				],
-			},
-			{
-				tab: "general",
-				results: [
-					{
-						tab: "general",
-						rowSlug: "transcript-text-size",
-						title: "Transcript text size",
-						searchPhrases: ["font size"],
-						start: -1,
-					},
-				],
-			},
-		]);
+describe("settingsMatchStart", () => {
+	it.each<[string, string, number]>([
+		["Code font", "FONT", 5],
+		["Interface font", " font ", 10],
+		// A word-start occurrence beats an earlier mid-word one.
+		["Offer to review uncommitted changes", "re", 9],
+		["Thinking", "ink", 2],
+		// Phrase, collapsed-space and out-of-order hits have no literal match.
+		["Transcript text size", "font size", -1],
+		["Code font", "codefont", -1],
+		["Code font", "font code", -1],
+	])("locates %j in %j at %d", (label, query, expected) => {
+		expect(settingsMatchStart(label, query)).toBe(expected);
 	});
 });
 
@@ -215,5 +209,134 @@ describe("splitMatch", () => {
 			match: "font",
 			after: "",
 		});
+	});
+});
+
+describe("buildSettingsResultRows", () => {
+	it.each<[string, ReturnType<typeof buildSettingsResultRows>]>([
+		["", []],
+		["zzzq", []],
+		// Several row matches: a hit, then its children. A single row match is one via-hit.
+		[
+			"font",
+			[
+				{kind: "hit", tab: "claude-code"},
+				{kind: "child", tab: "claude-code", rowSlug: "code-font", title: "Code font"},
+				{kind: "child", tab: "claude-code", rowSlug: "interface-font", title: "Interface font"},
+				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
+			],
+		],
+		["theme", [{kind: "hit", tab: "general", via: "Theme", rowSlug: "theme"}]],
+		// A section-name match lists its matching rows as children even when there is one.
+		[
+			"transcript",
+			[
+				{kind: "hit", tab: "transcript"},
+				{
+					kind: "child",
+					tab: "transcript",
+					rowSlug: "show-transcript-only-system-records",
+					title: "Show transcript-only system records",
+				},
+				{kind: "hit", tab: "general"},
+				{kind: "child", tab: "general", rowSlug: "transcript-text-size", title: "Transcript text size"},
+				{kind: "child", tab: "general", rowSlug: "transcript-width", title: "Transcript width"},
+				{
+					kind: "hit",
+					tab: "claude-code",
+					via: "Default transcript view",
+					rowSlug: "default-transcript-view",
+				},
+			],
+		],
+		// A section-name match with no matching rows is a bare hit.
+		["general", [{kind: "hit", tab: "general"}]],
+		// A keyword-only hit shows the keyword on its via line and has no row.
+		["tmux", [{kind: "hit", tab: "application", via: "tmux"}]],
+		// More than three matches: three children, then "+N more".
+		[
+			"hook",
+			[
+				{kind: "hit", tab: "transcript"},
+				{kind: "child", tab: "transcript", rowSlug: "hook-warnings", title: "Hook warnings"},
+				{kind: "child", tab: "transcript", rowSlug: "hook-errors", title: "Hook errors"},
+				{kind: "child", tab: "transcript", rowSlug: "passed-hooks", title: "Passed hooks"},
+			],
+		],
+		// One character: one hit per section, each with its best row on a via line; name-only
+		// sections (Setup, Usage) are bare hits. Ties keep nav order.
+		[
+			"s",
+			[
+				{kind: "hit", tab: "sessions", via: "Sessions page grouping", rowSlug: "sessions-page-grouping"},
+				{kind: "hit", tab: "setup"},
+				{kind: "hit", tab: "usage"},
+				{kind: "hit", tab: "transcript", via: "System banners", rowSlug: "system-banners"},
+				{kind: "hit", tab: "ai-features", via: "Summary button", rowSlug: "summary-button"},
+				{kind: "hit", tab: "application", via: "Shell tabs", rowSlug: "shell-tabs"},
+				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
+				{
+					kind: "hit",
+					tab: "claude-config",
+					via: "Claude Code settings files",
+					rowSlug: "claude-code-settings-files",
+				},
+				{kind: "hit", tab: "claude-code", via: "Terminal colors", rowSlug: "terminal-colors"},
+			],
+		],
+	])("lays out rows for %j", (query, expected) => {
+		expect(buildSettingsResultRows(query, new Set())).toStrictEqual(expected);
+	});
+
+	it("caps a section at three children and counts the rest in a more row, unless expanded", () => {
+		const entries = ["Alpha one", "Alpha two", "Alpha three", "Alpha four", "Alpha five"].map((title, index) => ({
+			entry: {tab: "general" as const, rowSlug: `row-${index}`, title},
+			rank: 1,
+		}));
+		const sections = [{tab: "general" as const, score: 6, rows: entries}];
+
+		expect(layoutSettingsResultRows(sections, "alpha", new Set())).toStrictEqual([
+			{kind: "hit", tab: "general"},
+			{kind: "child", tab: "general", rowSlug: "row-0", title: "Alpha one"},
+			{kind: "child", tab: "general", rowSlug: "row-1", title: "Alpha two"},
+			{kind: "child", tab: "general", rowSlug: "row-2", title: "Alpha three"},
+			{kind: "more", tab: "general", count: 2},
+		]);
+		expect(layoutSettingsResultRows(sections, "alpha", new Set(["general"]))).toStrictEqual([
+			{kind: "hit", tab: "general"},
+			{kind: "child", tab: "general", rowSlug: "row-0", title: "Alpha one"},
+			{kind: "child", tab: "general", rowSlug: "row-1", title: "Alpha two"},
+			{kind: "child", tab: "general", rowSlug: "row-2", title: "Alpha three"},
+			{kind: "child", tab: "general", rowSlug: "row-3", title: "Alpha four"},
+			{kind: "child", tab: "general", rowSlug: "row-4", title: "Alpha five"},
+		]);
+	});
+
+	it("drops a row label already shown under an earlier section", () => {
+		const sections = [
+			{
+				tab: "general" as const,
+				score: 6,
+				rows: [
+					{entry: {tab: "general" as const, rowSlug: "a", title: "Shared"}, rank: 1},
+					{entry: {tab: "general" as const, rowSlug: "b", title: "Shared two"}, rank: 1},
+				],
+			},
+			{
+				tab: "sessions" as const,
+				score: 6,
+				rows: [
+					{entry: {tab: "sessions" as const, rowSlug: "c", title: "Shared"}, rank: 1},
+					{entry: {tab: "sessions" as const, rowSlug: "d", title: "Shared three"}, rank: 1},
+				],
+			},
+		];
+
+		expect(layoutSettingsResultRows(sections, "shared", new Set())).toStrictEqual([
+			{kind: "hit", tab: "general"},
+			{kind: "child", tab: "general", rowSlug: "a", title: "Shared"},
+			{kind: "child", tab: "general", rowSlug: "b", title: "Shared two"},
+			{kind: "hit", tab: "sessions", via: "Shared three", rowSlug: "d"},
+		]);
 	});
 });
