@@ -121,14 +121,26 @@ describe("HomeLanding", () => {
 			title: screen.getByRole("heading", {level: 1}).textContent,
 			nextSteps: within(nextSteps).getAllByRole("listitem").length,
 			startCard: document.querySelector("[data-start-card]") !== null,
-			bodyChildren: [...(body?.children ?? [])].map((child) => child.hasAttribute("data-start-card")),
+			scroller: body?.parentElement?.hasAttribute("data-home-body"),
+			wrapperClass: body?.className,
+			slot: [...(body?.children ?? [])].map((slot) => ({
+				className: slot.className,
+				children: [...slot.children].map((child) => child.hasAttribute("data-start-card")),
+			})),
+			nextStepsHides: {
+				setup: nextSteps.hasAttribute("data-start-card-setup"),
+				hideClass: nextSteps.classList.contains("[[data-start-card-setup-hidden]_&]:hidden"),
+			},
 			h2s: screen.queryAllByRole("heading", {level: 2}).map((heading) => heading.textContent),
 			regions: screen.queryAllByRole("region").map((region) => region.getAttribute("aria-label")),
 		}).toStrictEqual({
 			title: "New session",
 			nextSteps: 2,
 			startCard: true,
-			bodyChildren: [true],
+			scroller: true,
+			wrapperClass: "flex min-h-full w-full flex-col pb-6",
+			slot: [{className: "flex w-full flex-col", children: [true]}],
+			nextStepsHides: {setup: true, hideClass: true},
 			h2s: [],
 			regions: [],
 		});

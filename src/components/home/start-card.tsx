@@ -10,6 +10,7 @@ import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
 import {useHomeLaunchFolder} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
+import {START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
 
 /** Upstream shows at most three recent environments. */
 const ROW_LIMIT = 3;
@@ -171,7 +172,13 @@ export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListP
 	};
 
 	return (
-		<ul ref={listRef} role="list" aria-label="Next steps" className={`${CARD_CLASS} gap-0.5 p-1`}>
+		<ul
+			ref={listRef}
+			role="list"
+			aria-label="Next steps"
+			data-start-card-setup
+			className={`${CARD_CLASS} gap-0.5 p-1 ${START_CARD_SETUP_HIDE_CLASS}`}
+		>
 			{rows.map((row, index) => {
 				const candidates = row.type === "row" ? [row.candidate] : row.rest;
 				const dismissLabel = row.type === "row" ? `Dismiss “${row.candidate.title}”` : row.dismissLabel;
