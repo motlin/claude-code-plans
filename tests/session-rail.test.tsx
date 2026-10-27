@@ -150,17 +150,44 @@ describe("session rail toggle", () => {
 		});
 	});
 
-	it("sets a 1x16 separator between the rail toggle and Changes, as upstream", () => {
-		registerKinds("changes", "files");
-		renderSession();
-		const order = [...document.querySelectorAll("button[aria-pressed], [role=separator]")].map(
-			(element) => element.getAttribute("aria-label") ?? element.getAttribute("role"),
+	it("lays out upstream's trail: rail toggle, a bare 1x16 span separator, the Changes/Files group, then ⋮", () => {
+		registerKinds("terminal", "changes", "files");
+		render(
+			<SettingsProvider>
+				<TileHost sessionId="rail-session">
+					<div data-titlebar-trail="">
+						<SessionPaneControls facts={{}} railAvailable />
+					</div>
+				</TileHost>
+			</SettingsProvider>,
 		);
-		const separator = screen.getByRole("separator");
+		const trailElement = document.querySelector("[data-titlebar-trail]");
+		if (trailElement === null) throw new Error("trail missing");
+		// The shared Tooltip anchors each button in a wrapper span; name that child by its button.
+		const control = (child: Element) =>
+			child.firstElementChild?.tagName === "BUTTON" && !child.hasAttribute("role")
+				? child.firstElementChild
+				: child;
+		const children = [...trailElement.children].map((child) => {
+			const element = control(child);
+			const label = element.getAttribute("aria-label") ?? element.getAttribute("role");
+			return label === null ? element.tagName : `${element.tagName}:${label}`;
+		});
+		const group = [...trailElement.children].find((child) => child.tagName === "DIV");
 
-		expect({order, classes: separator.className}).toStrictEqual({
-			order: ["Show session rail", "separator", "Changes", "Files"],
-			classes: "mx-0.5 h-4 w-px shrink-0 bg-border",
+		expect({
+			children,
+			groupClasses: group?.className,
+			group:
+				group === undefined
+					? []
+					: [...group.children].map((child) => control(child).getAttribute("aria-label")),
+			separatorClasses: screen.getByRole("separator").className,
+		}).toStrictEqual({
+			children: ["BUTTON:Show session rail", "SPAN:separator", "DIV", "BUTTON:View options"],
+			groupClasses: "flex items-center gap-1 empty:hidden",
+			group: ["Changes", "Files"],
+			separatorClasses: "h-4 w-px shrink-0 bg-border",
 		});
 	});
 

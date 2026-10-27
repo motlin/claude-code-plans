@@ -108,8 +108,9 @@ function ViewOptionsMenu({
 }
 
 /**
- * The titlebar trail's pane controls, upstream's set: the session rail toggle
- * and a 1x16 separator, then the Changes and Files toggles, then View options ⋮
+ * The titlebar trail's pane controls, upstream's set and DOM: the session rail
+ * toggle and a bare 1x16 separator (the trail's 4px gap each side), then the
+ * Changes and Files toggles in their own group, then View options ⋮
  * holding the other panes and Expand chat. Only a chat tile squeezed to 320px
  * or narrower folds the rail, Changes and Files into the top of the menu. The
  * trigger shows only when the menu has items.
@@ -138,10 +139,16 @@ export function SessionPaneControls({
 			{railAvailable && !folded && (
 				<>
 					<SessionRailToggle />
-					<div role="separator" aria-orientation="vertical" className="mx-0.5 h-4 w-px shrink-0 bg-border" />
+					<span role="separator" aria-orientation="vertical" className="h-4 w-px shrink-0 bg-border" />
 				</>
 			)}
-			{!folded && shown.map((entry) => <MainPaneToggle key={entry.kind} entry={entry} />)}
+			{!folded && (
+				<div className="flex items-center gap-1 empty:hidden">
+					{shown.map((entry) => (
+						<MainPaneToggle key={entry.kind} entry={entry} />
+					))}
+				</div>
+			)}
 			{(railFolded || menuEntries.length > 0 || onExpandChat !== undefined) && (
 				<ViewOptionsMenu railFolded={railFolded} entries={menuEntries} onExpandChat={onExpandChat} />
 			)}

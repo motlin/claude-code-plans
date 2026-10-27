@@ -531,7 +531,7 @@ export function SessionTitlebar({
 				className="relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary"
 			>
 				<TitlebarFoldedContext.Provider value={folded}>
-					{paneToggles !== undefined && <div className="flex items-center gap-1">{paneToggles}</div>}
+					{paneToggles}
 					{viewOptions}
 				</TitlebarFoldedContext.Provider>
 			</div>

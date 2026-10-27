@@ -190,6 +190,7 @@ describe("SessionTitlebar layout", () => {
 				(pill) => `${pill.getAttribute("data-origin-pill")}:${pill.textContent}`,
 			),
 			trail: controlsIn(trail),
+			trailChildren: [...trail.children].map((child) => child.getAttribute("aria-label")),
 			trailFollowsLead: Boolean(lead.compareDocumentPosition(trail) & Node.DOCUMENT_POSITION_FOLLOWING),
 		}).toStrictEqual({
 			height: true,
@@ -210,6 +211,7 @@ describe("SessionTitlebar layout", () => {
 				`forked-from:Forked from ${FORKED_FROM_ID.slice(0, 8)}`,
 			],
 			trail: ["Changes", "View options"],
+			trailChildren: ["Changes", "View options"],
 			trailFollowsLead: true,
 		});
 	});
