@@ -540,6 +540,25 @@ describe("settings search", () => {
 		expect({scrolled, flashing: flashingRows()}).toStrictEqual({scrolled: [], flashing: []});
 	});
 
+	it("deep links a via-hit to its matched row and flashes it", async () => {
+		const router = await renderAt("/#settings/claude-code");
+		await screen.findByRole("dialog", {name: "Settings"});
+
+		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "theme"}});
+
+		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		expect(popoverRows(popover)).toStrictEqual(["hit: GeneralTheme"]);
+		fireEvent.click(within(popover).getByRole("button"));
+
+		await waitFor(() => {
+			expect(router.state.location.hash).toBe("settings/general");
+		});
+		expect(scrolled).toStrictEqual(["theme"]);
+		await waitFor(() => {
+			expect(flashingRows()).toStrictEqual([{row: "theme", title: true}]);
+		});
+	});
+
 	it("Enter picks the first row, even a keyword-only hit", async () => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
