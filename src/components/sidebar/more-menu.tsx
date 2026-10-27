@@ -36,7 +36,6 @@ export function MoreNavMenu({
 }) {
 	// A session page highlights its own row in the list below, not the More row.
 	const active = overflow.find((item) => item.section === activeSection && item.section !== "sessions");
-	const ActiveIcon = active?.icon;
 	const navigate = useNavigate();
 	const [editing, setEditing] = useState(false);
 
@@ -45,7 +44,7 @@ export function MoreNavMenu({
 			<div className="flex items-center">
 				<Menu>
 					<MenuTrigger
-						aria-label="More navigation items"
+						aria-label={active?.label ?? "More navigation items"}
 						data-row=""
 						data-roving-item=""
 						onKeyDown={keepArrowsRoving}
@@ -53,13 +52,13 @@ export function MoreNavMenu({
 						className={NAV_ROW_CLASS}
 					>
 						<span className="df-leading-slot">
-							{ActiveIcon === undefined ? (
-								<Ellipsis aria-hidden="true" />
-							) : (
-								<ActiveIcon aria-hidden="true" />
-							)}
+							<Ellipsis aria-hidden="true" />
 						</span>
-						<span className="min-w-0 flex-1 truncate">{active?.label ?? "More"}</span>
+						{active === undefined ? (
+							<span>More</span>
+						) : (
+							<span className="truncate flex items-center whitespace-nowrap">{active.label}</span>
+						)}
 					</MenuTrigger>
 					<MenuContent density="comfortable" side="right" align="start">
 						{overflow.map((item) => {

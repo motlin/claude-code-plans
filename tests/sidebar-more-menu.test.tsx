@@ -135,13 +135,36 @@ afterEach(() => {
 });
 
 describe("sidebar More menu", () => {
-	it("turns the More row into a selected Scheduled row while on an overflow page, as upstream does", async () => {
+	it("turns the More row into a selected Scheduled row named Scheduled that keeps the ⋯ icon on an overflow page, as upstream does", async () => {
 		await renderSidebar(["artifacts", "plans", "memories", "customize"], "/routines");
-		const more = screen.getByRole("button", {name: "More navigation items"});
-		expect({text: more.textContent, selected: more.getAttribute("data-selected")}).toStrictEqual({
+		const more = screen.getByRole("button", {name: "Scheduled"});
+		const label = more.querySelector("span:not(.df-leading-slot)");
+		expect({
+			text: more.textContent,
+			selected: more.getAttribute("data-selected"),
+			leadingIcons: [...more.querySelectorAll(".df-leading-slot svg")].map((svg) =>
+				svg
+					.getAttribute("class")
+					?.split(" ")
+					.find((name) => name.startsWith("lucide-") && name !== "lucide-icon"),
+			),
+			labelClass: label?.className,
+		}).toStrictEqual({
 			text: "Scheduled",
 			selected: "focused",
+			leadingIcons: ["lucide-ellipsis"],
+			labelClass: "truncate flex items-center whitespace-nowrap",
 		});
+	});
+
+	it("names the More row More navigation items and labels it More off an overflow page", async () => {
+		await renderSidebar();
+		const more = screen.getByRole("button", {name: "More navigation items"});
+		expect({
+			text: more.textContent,
+			selected: more.getAttribute("data-selected"),
+			labelClass: more.querySelector("span:not(.df-leading-slot)")?.className,
+		}).toStrictEqual({text: "More", selected: null, labelClass: ""});
 	});
 
 	it("shows only the pinned sections as sidebar rows", async () => {
@@ -153,7 +176,9 @@ describe("sidebar More menu", () => {
 	it("leads the More row with upstream's three-dot glyph in the normal nav ink", async () => {
 		await renderSidebar();
 		const icon = screen.getByRole("button", {name: "More navigation items"}).querySelector("svg");
-		const label = screen.getByRole("button", {name: "More navigation items"}).querySelector(".truncate");
+		const label = screen
+			.getByRole("button", {name: "More navigation items"})
+			.querySelector("span:not(.df-leading-slot)");
 		expect({
 			glyph: icon
 				?.getAttribute("class")
