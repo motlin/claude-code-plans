@@ -1,5 +1,6 @@
 import {SESSION_FOOTER_CLASS} from "./dock-tokens";
 import {SessionSkeleton} from "./session-skeleton";
+import {SessionNotFound} from "./session-unavailable";
 import {sessionScrollKey} from "../lib/session-route-location";
 import {useLocation} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
@@ -197,15 +198,6 @@ const SESSION_PANE_CHUNKS = [
 
 function SessionChrome({children}: {children: React.ReactNode}) {
 	return <div className="h-full overflow-auto">{children}</div>;
-}
-
-function SessionNotFound() {
-	return (
-		<SessionChrome>
-			<h1 className="flex h-8 items-center text-body font-medium">Session Not Found</h1>
-			<p className="mt-2 text-t6">This session could not be found.</p>
-		</SessionChrome>
-	);
 }
 
 /**

@@ -48,7 +48,7 @@ describe("blank-screen prevention on /session/$id", () => {
 
 		expect({
 			skeleton: screen.queryByTestId("session-skeleton") !== null,
-			notFound: screen.queryByText("Session Not Found"),
+			notFound: screen.queryByText("This session couldn’t be found"),
 		}).toStrictEqual({skeleton: true, notFound: null});
 	});
 
