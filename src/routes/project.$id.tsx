@@ -24,6 +24,7 @@ import {toMdSlug} from "../lib/md-slug";
 import {formatRelativeTimeFromIso} from "../lib/relative-time";
 import {formatCount} from "../lib/pluralize";
 import {DetailTopBar} from "../components/detail-top-bar";
+import {NotFoundContent} from "../components/not-found-content";
 import {pillStyles} from "../components/pill-styles";
 import {MarkdownInline} from "../components/markdown-view";
 import {TaskOwner} from "../components/task-owner";
@@ -97,18 +98,7 @@ function ProjectPage() {
 	const {data: approvalsData} = useSuspenseQuery(projectApprovalsQueryOptions(id));
 
 	if (!detail) {
-		return (
-			<div>
-				<DetailTopBar>
-					<Link to="/projects" className={pillStyles.primary}>
-						<ArrowLeft className="h-3.5 w-3.5" />
-						All Projects
-					</Link>
-				</DetailTopBar>
-				<h1 className="mt-4 text-lg font-semibold">Project Not Found</h1>
-				<p className="mt-2 text-t6">This project could not be found.</p>
-			</div>
-		);
+		return <NotFoundContent />;
 	}
 
 	const memories = memoriesData?.memories ?? [];

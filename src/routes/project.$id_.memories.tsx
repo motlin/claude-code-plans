@@ -4,6 +4,7 @@ import {ArrowLeft} from "lucide-react";
 import {projectMemoriesQueryOptions} from "../lib/api/memories";
 import {toMdSlug} from "../lib/md-slug";
 import {DetailTopBar} from "../components/detail-top-bar";
+import {NotFoundContent} from "../components/not-found-content";
 import {pillStyles} from "../components/pill-styles";
 import {DebugLink} from "../components/debug-link";
 
@@ -35,17 +36,7 @@ function ProjectMemoriesPage() {
 	const {data} = useSuspenseQuery(projectMemoriesQueryOptions(id));
 
 	if (!data) {
-		return (
-			<div>
-				<DetailTopBar>
-					<Link to="/projects" className={pillStyles.primary}>
-						<ArrowLeft className="h-3.5 w-3.5" />
-						All Projects
-					</Link>
-				</DetailTopBar>
-				<h1 className="mt-4 text-lg font-semibold">Project Not Found</h1>
-			</div>
-		);
+		return <NotFoundContent />;
 	}
 
 	const {project, memories} = data;

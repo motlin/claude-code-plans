@@ -5,6 +5,7 @@ import {useMemo} from "react";
 import {z} from "zod";
 import {projectDetailQueryOptions, projectSessionsQueryOptions} from "../lib/api/projects";
 import {DetailTopBar} from "../components/detail-top-bar";
+import {NotFoundContent} from "../components/not-found-content";
 import {pillStyles} from "../components/pill-styles";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {formatCount} from "../lib/pluralize";
@@ -67,17 +68,7 @@ function ProjectSessionsPage() {
 	}, [allSessions]);
 
 	if (!project) {
-		return (
-			<div>
-				<DetailTopBar>
-					<Link to="/projects" className={pillStyles.primary}>
-						<ArrowLeft className="h-3.5 w-3.5" />
-						All Projects
-					</Link>
-				</DetailTopBar>
-				<h1 className="mt-4 text-lg font-semibold">Project Not Found</h1>
-			</div>
-		);
+		return <NotFoundContent />;
 	}
 
 	return (
