@@ -74,7 +74,7 @@ describe("missing-session view", () => {
 				type: "button",
 				classes: [
 					"h-5",
-					"rounded-r5",
+					"rounded-r4",
 					"px-1.5",
 					"text-[12px]/[17px]",
 					"font-medium",

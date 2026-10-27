@@ -404,7 +404,7 @@ it.each([409, 503])("shows an honest %s lookup error and supports manual retry",
 			alertFollowsHeading: true,
 			alertClasses: "text-pretty text-secondary",
 			retryClasses:
-				"h-5 rounded-r5 px-1.5 text-[12px]/[17px] font-medium bg-fill-primary text-on-primary hover:bg-fill-primary-hover outline-none focus-visible:shadow-focus transition-shadow",
+				"h-5 rounded-r4 px-1.5 text-[12px]/[17px] font-medium bg-fill-primary text-on-primary hover:bg-fill-primary-hover outline-none focus-visible:shadow-focus transition-shadow",
 			retryInActions: true,
 		},
 		attentionTitle: status === 409 ? "Ambiguous session link" : "Indexing sessions…",

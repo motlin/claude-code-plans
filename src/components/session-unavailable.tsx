@@ -2,9 +2,9 @@ import {useNavigate} from "@tanstack/react-router";
 import type {ReactNode} from "react";
 import {requestHomeComposerFocus} from "../lib/home-composer-focus";
 
-/** Upstream's default-density sm primary Button: h-control--sm 20, pad-md--sm 6, radius--sm 5, body--sm 12. */
+/** Upstream's default-density sm primary Button: h-control--sm 20, pad-md--sm 6, radius--sm 5 (rounded-r4), body--sm 12. */
 export const SESSION_UNAVAILABLE_BUTTON_CLASS =
-	"h-5 rounded-r5 px-1.5 text-[12px]/[17px] font-medium bg-fill-primary text-on-primary hover:bg-fill-primary-hover outline-none focus-visible:shadow-focus transition-shadow";
+	"h-5 rounded-r4 px-1.5 text-[12px]/[17px] font-medium bg-fill-primary text-on-primary hover:bg-fill-primary-hover outline-none focus-visible:shadow-focus transition-shadow";
 
 /**
  * Upstream's session-unavailable card: an empty 32px titlebar band over a centred `max-w-md` stack
