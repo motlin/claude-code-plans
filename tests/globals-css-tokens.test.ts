@@ -162,3 +162,19 @@ describe("brand fill tokens (upstream --cds-fill-brand / -hover, the ⌘K Compos
 		});
 	});
 });
+
+describe("button press squish (upstream .cds-btn-squish)", () => {
+	it("uses upstream's --cds-btn-spring curve", () => {
+		expect(tokens(block(":root"), ["--btn-spring"])).toStrictEqual({
+			"--btn-spring":
+				"linear( 0, 0.2459, 0.6526, 0.9468, 1.0764, 1.0915, 1.0585, 1.0219, 0.9993, 0.9914, 0.9921, 0.9957, 0.9988, 1.0004, 1 )",
+		});
+	});
+
+	// The paint list keeps the hover fade (upstream's 60ms paint-span timing) since `transition` replaces `transition-colors`.
+	it("scales to .975 in 60ms ease-out while pressed and springs back over .45s", () => {
+		expect(block("@utility btn-squish").replaceAll(/\s+/g, " ")).toBe(
+			"@utility btn-squish { --btn-squish-paint: background-color 60ms cubic-bezier(0.165, 0.84, 0.44, 1), color 60ms cubic-bezier(0.165, 0.84, 0.44, 1); transform-origin: 50% center; transition: transform 0.45s var(--btn-spring), var(--btn-squish-paint); &:active:not(:disabled) { transform: scale(0.975); transition: transform 60ms ease-out, var(--btn-squish-paint); }",
+		);
+	});
+});

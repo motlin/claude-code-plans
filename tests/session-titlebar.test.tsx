@@ -8,7 +8,11 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionTitlebar} from "../src/components/session-titlebar";
 import {ToastProvider} from "../src/components/toast";
-import {SESSION_STICKY_HEADER_CLASS} from "../src/components/titlebar-classes";
+import {
+	SESSION_STICKY_HEADER_CLASS,
+	TITLEBAR_ICON_BUTTON_CLASS,
+	TITLEBAR_RAIL_TOGGLE_CLASS,
+} from "../src/components/titlebar-classes";
 import {useTitlebarHiddenCount} from "../src/components/titlebar-fold-context";
 import {foldBudget, splitPanes} from "../src/lib/titlebar-fold";
 import {topLeftClearance} from "../src/lib/top-left-clearance";
@@ -762,6 +766,22 @@ describe("SessionTitlebar cost pill", () => {
 				["model", ["Haiku 4.5", "$0.50", "10 in · 5 out"]],
 			],
 			note: "Some models have no known price, so the total is a floor.",
+		});
+	});
+});
+
+describe("titlebar icon button press and focus (upstream cds-btn-squish + focus shadow)", () => {
+	it("squishes on press and draws the focus shadow instead of a 1px ring", () => {
+		const classes = (value: string) => value.split(" ");
+		const pick = (value: string) =>
+			classes(value).filter(
+				(c) =>
+					["btn-squish", "transition-colors", "focus-visible:shadow-focus"].includes(c) ||
+					c.includes("ring-1"),
+			);
+		expect({icon: pick(TITLEBAR_ICON_BUTTON_CLASS), rail: pick(TITLEBAR_RAIL_TOGGLE_CLASS)}).toStrictEqual({
+			icon: ["btn-squish", "focus-visible:shadow-focus"],
+			rail: ["btn-squish", "focus-visible:shadow-focus"],
 		});
 	});
 });
