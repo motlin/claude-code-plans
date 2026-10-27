@@ -4,7 +4,7 @@ import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
 import {outputStyleOptions} from "../src/lib/output-style-options";
-import {enabledPluginDirs, listOutputStyles} from "../src/lib/output-styles";
+import {enabledPlugins, listOutputStyles} from "../src/lib/output-styles";
 
 let root: string;
 
@@ -22,7 +22,7 @@ async function put(path: string, content: string) {
 }
 
 describe("listOutputStyles", () => {
-	it("returns the CLI built-ins and custom styles from the user dir and the plugin dirs", async () => {
+	it("returns the CLI built-ins, the user dir's styles by plain name and plugin styles as plugin:style", async () => {
 		const claudeDir = join(root, "claude");
 		await put(
 			join(claudeDir, "output-styles", "terse.md"),
@@ -33,9 +33,16 @@ describe("listOutputStyles", () => {
 		const pluginDir = join(root, "plugin-a");
 		await put(join(pluginDir, "output-styles", "pirate.md"), "---\nname: Pirate\n---\nArr.\n");
 
-		expect(await listOutputStyles(claudeDir, [pluginDir, join(root, "no-such-plugin")])).toStrictEqual({
+		await put(join(pluginDir, "output-styles", "shanty.md"), "No frontmatter.\n");
+
+		expect(
+			await listOutputStyles(claudeDir, [
+				{name: "plugin-a", dir: pluginDir},
+				{name: "no-such-plugin", dir: join(root, "no-such-plugin")},
+			]),
+		).toStrictEqual({
 			builtIns: ["Explanatory", "Learning"],
-			customs: ["plain", "Terse", "Pirate"],
+			customs: ["plain", "Terse", "plugin-a:Pirate", "plugin-a:shanty"],
 		});
 	});
 
@@ -47,8 +54,8 @@ describe("listOutputStyles", () => {
 	});
 });
 
-describe("enabledPluginDirs", () => {
-	it("returns the install paths of the plugins settings.json enables", async () => {
+describe("enabledPlugins", () => {
+	it("returns the names and install paths of the plugins settings.json enables", async () => {
 		const claudeDir = join(root, "claude");
 		await put(
 			join(claudeDir, "plugins", "installed_plugins.json"),
@@ -56,6 +63,7 @@ describe("enabledPluginDirs", () => {
 				version: 2,
 				plugins: {
 					"on@market": [{installPath: "/plugins/on", version: "1.0.0"}],
+					"renamed@market": [{installPath: join(root, "renamed"), version: "1.0.0"}],
 					"off@market": [{installPath: "/plugins/off", version: "1.0.0"}],
 					"unlisted@market": [{installPath: "/plugins/unlisted", version: "1.0.0"}],
 				},
@@ -63,14 +71,18 @@ describe("enabledPluginDirs", () => {
 		);
 		await put(
 			join(claudeDir, "settings.json"),
-			JSON.stringify({enabledPlugins: {"on@market": true, "off@market": false}}),
+			JSON.stringify({enabledPlugins: {"on@market": true, "renamed@market": true, "off@market": false}}),
 		);
+		await put(join(root, "renamed", ".claude-plugin", "plugin.json"), JSON.stringify({name: "manifest-name"}));
 
-		expect(await enabledPluginDirs(claudeDir)).toStrictEqual(["/plugins/on"]);
+		expect(await enabledPlugins(claudeDir)).toStrictEqual([
+			{name: "on", dir: "/plugins/on"},
+			{name: "manifest-name", dir: join(root, "renamed")},
+		]);
 	});
 
 	it("returns nothing without a plugin registry", async () => {
-		expect(await enabledPluginDirs(join(root, "missing"))).toStrictEqual([]);
+		expect(await enabledPlugins(join(root, "missing"))).toStrictEqual([]);
 	});
 });
 

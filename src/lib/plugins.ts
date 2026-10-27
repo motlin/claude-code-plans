@@ -197,6 +197,24 @@ export async function readPluginRegistry(claudeDir: string): Promise<z.infer<typ
 	}
 }
 
+async function readPluginJson(installPath: string): Promise<z.infer<typeof PluginJsonSchema>> {
+	try {
+		const raw = await readFile(join(installPath, ".claude-plugin", "plugin.json"), "utf-8");
+		return PluginJsonSchema.safeParse(JSON.parse(raw)).data ?? {};
+	} catch {
+		return {};
+	}
+}
+
+function pluginName(id: string, pluginJson: z.infer<typeof PluginJsonSchema>): string {
+	return nonEmpty(pluginJson.name) ?? nonEmpty(id.split("@")[0]) ?? id;
+}
+
+/** The name Claude Code knows a plugin by: plugin.json `name`, else the id before `@marketplace`. */
+export async function readPluginName(id: string, installPath: string): Promise<string> {
+	return pluginName(id, await readPluginJson(installPath));
+}
+
 export async function listPlugins(claudeDir: string = join(homedir(), ".claude")): Promise<PluginInfo[]> {
 	const registry = await readPluginRegistry(claudeDir);
 	if (registry === null) return [];
@@ -207,13 +225,7 @@ export async function listPlugins(claudeDir: string = join(homedir(), ".claude")
 		const install = installs[0];
 		if (!install) continue;
 
-		let pluginJson: z.infer<typeof PluginJsonSchema> = {};
-		try {
-			const raw = await readFile(join(install.installPath, ".claude-plugin", "plugin.json"), "utf-8");
-			pluginJson = PluginJsonSchema.safeParse(JSON.parse(raw)).data ?? {};
-		} catch {
-			// no plugin.json
-		}
+		const pluginJson = await readPluginJson(install.installPath);
 
 		const agents = await readMdFiles(join(install.installPath, "agents"), "agent");
 		const commands = await readMdFiles(join(install.installPath, "commands"), "command");
@@ -223,7 +235,7 @@ export async function listPlugins(claudeDir: string = join(homedir(), ".claude")
 
 		plugins.push({
 			id,
-			name: nonEmpty(pluginJson.name) ?? nonEmpty(id.split("@")[0]) ?? id,
+			name: pluginName(id, pluginJson),
 			version,
 			versionKind: getPluginVersionKind(version),
 			description: pluginJson.description ?? "",
