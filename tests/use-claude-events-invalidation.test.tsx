@@ -511,7 +511,8 @@ describe("ClaudeEventsProvider SSE stream refused while the dev server restarts"
 
 		act(() => {
 			eventSource.fail();
-			vi.advanceTimersByTime(1000);
+			// The first reopen waits 1s jittered by ×[0.75, 1.25].
+			vi.advanceTimersByTime(1250);
 		});
 		const reopened = TestEventSource.current!;
 		act(() => {

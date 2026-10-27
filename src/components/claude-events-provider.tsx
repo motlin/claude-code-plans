@@ -17,9 +17,12 @@ import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {syncUnseenFromQueryCache} from "../lib/unseen-query-sync";
 import {isLiveSessionState, type ActivityState} from "../lib/session-state";
 import {openSharedEventSource} from "../lib/shared-event-source";
+import {nextStreamDrop} from "../lib/stream-drop";
 import {startLiveAppendJourneys} from "../lib/perf/field-journeys";
 import {
 	ClaudeEventsContext,
+	EventStreamStatusContext,
+	createStreamDropStore,
 	applyApprovalChanged,
 	applyApprovalResolved,
 	applyMemoryChanged,
@@ -120,6 +123,8 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 	const dispatch = useCallback((action: ClaudeEventsAction) => {
 		setState((current) => claudeEventsReducer(current, action));
 	}, []);
+
+	const [streamDropStore] = useState(createStreamDropStore);
 
 	const queryClient = useQueryClient();
 	const statuslineListenersRef = useRef(new Set<(sessionId: string) => void>());
@@ -611,8 +616,11 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 			onReconnected: () => {
 				applyReconnected(queryClient);
 			},
+			onStatus: (status) => {
+				streamDropStore.set(nextStreamDrop(streamDropStore.get(), status));
+			},
 		});
-	}, [dispatch, queryClient]);
+	}, [dispatch, queryClient, streamDropStore]);
 
 	const contextValue: ClaudeEventsContextValue = useMemo(
 		() => ({
@@ -633,5 +641,9 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 		],
 	);
 
-	return <ClaudeEventsContext.Provider value={contextValue}>{children}</ClaudeEventsContext.Provider>;
+	return (
+		<ClaudeEventsContext.Provider value={contextValue}>
+			<EventStreamStatusContext.Provider value={streamDropStore}>{children}</EventStreamStatusContext.Provider>
+		</ClaudeEventsContext.Provider>
+	);
 }

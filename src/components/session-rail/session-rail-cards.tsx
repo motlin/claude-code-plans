@@ -37,7 +37,9 @@ import type {PrStatus} from "../../lib/pr-status";
 import {requestFileOpen} from "../../lib/file-open-requests";
 import {formatCount} from "../../lib/pluralize";
 import type {OutputFile} from "../../lib/session-outputs";
+import {useEventStreamStatus} from "../../hooks/use-claude-events";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
+import {streamDropHint} from "../../lib/stream-drop";
 import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import {type BackgroundTasksFocus, useBackgroundTasksOpener} from "../background-tasks-opener-context";
 import {useCopyToClipboard} from "../files/file-actions-menu";
@@ -102,12 +104,15 @@ function EnvironmentMenuRow({
 	icon,
 	label,
 	hint,
+	hintStatus,
 	title,
 	children,
 }: {
 	icon: LucideIcon;
 	label: string;
 	hint?: string;
+	/** Set when the hint is the event stream's state rather than a detail of the row. */
+	hintStatus?: string;
 	title: string;
 	children: React.ReactNode;
 }) {
@@ -119,7 +124,11 @@ function EnvironmentMenuRow({
 						{label}
 					</span>
 					{hint !== undefined && (
-						<span data-rail-row-hint="" className="shrink-0 text-[12px]/[15px] text-ink-muted tabular-nums">
+						<span
+							data-rail-row-hint=""
+							data-stream-status={hintStatus}
+							className="shrink-0 text-[12px]/[15px] text-ink-muted tabular-nums"
+						>
 							{hint}
 						</span>
 					)}
@@ -152,14 +161,21 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 		bridged: bridgeSessionId !== null,
 		live: inputs.live,
 	});
+	const streamDrop = useEventStreamStatus();
 	return (
 		<Rows>
 			{cwd !== null && (
 				<EnvironmentMenuRow
 					icon={Laptop}
 					label={homeRelative(cwd, inputs.homeRoot)}
-					hint={environment.label}
-					title={cwd}
+					{...(streamDrop === null
+						? {hint: environment.label, title: cwd}
+						: {
+								hint: streamDropHint(streamDrop),
+								hintStatus: streamDrop,
+								// The stream's state takes the terminal host's place; the title keeps it.
+								title: `${cwd} · ${environment.label}`,
+							})}
 				>
 					<MenuItem
 						onSelect={() => {

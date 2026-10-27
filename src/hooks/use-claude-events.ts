@@ -44,6 +44,7 @@ import {isPrompt} from "../lib/transcript-chain";
 import {getSubagentLifecycleKey, toSubagentSessionId} from "../lib/subagents";
 import {isLiveSessionState, type ActivityState} from "../lib/session-state";
 import type {Statusline} from "../lib/api/statusline";
+import type {StreamDrop} from "../lib/stream-drop";
 import type {ComposerServerState} from "../lib/composer-state";
 import type {Notification, NotificationsData} from "../lib/api/notifications";
 import {invalidateSessionIdentities} from "../lib/api/session-identity";
@@ -500,6 +501,43 @@ export function toSessionStateObservation(summary: SessionSummaryPayload): Sessi
 }
 
 export const ClaudeEventsContext = createContext<ClaudeEventsContextValue | null>(null);
+
+/** How the shared `/api/events` stream is recovering from a drop, null while it is up. */
+export interface StreamDropStore {
+	get: () => StreamDrop;
+	set: (drop: StreamDrop) => void;
+	subscribe: (listener: () => void) => () => void;
+}
+
+export function createStreamDropStore(initial: StreamDrop = null): StreamDropStore {
+	let drop = initial;
+	const listeners = new Set<() => void>();
+	return {
+		get: () => drop,
+		set(next) {
+			if (next === drop) return;
+			drop = next;
+			for (const listener of listeners) listener();
+		},
+		subscribe(listener) {
+			listeners.add(listener);
+			return () => {
+				listeners.delete(listener);
+			};
+		},
+	};
+}
+
+/**
+ * A store rather than a value, apart from ClaudeEventsContext: a status change re-renders neither the provider nor
+ * the app, only the components that read it.
+ */
+export const EventStreamStatusContext = createContext<StreamDropStore>(createStreamDropStore());
+
+export function useEventStreamStatus(): StreamDrop {
+	const store = useContext(EventStreamStatusContext);
+	return useSyncExternalStore(store.subscribe, store.get, () => null);
+}
 
 export function useClaudeEvents(): ClaudeEventsState {
 	const ctx = useContext(ClaudeEventsContext);

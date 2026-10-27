@@ -13,6 +13,8 @@ import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SessionRailCards, type SessionRailInputs} from "../src/components/session-rail/session-rail-cards";
 import {ToastProvider} from "../src/components/toast";
+import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
+import type {StreamDrop} from "../src/lib/stream-drop";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
@@ -200,9 +202,11 @@ async function renderCards(
 	inputs: SessionRailInputs,
 	prepare: (client: QueryClient) => void = () => {},
 	opener: BackgroundTasksOpener | null = null,
+	stream: StreamDrop = null,
 ) {
 	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	prepare(client);
+	const streamDropStore = createStreamDropStore(stream);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<TileHost sessionId={SESSION_ID}>
@@ -215,9 +219,11 @@ async function renderCards(
 	const router = createRouter({routeTree: rootRoute, history: createMemoryHistory({initialEntries: ["/"]})});
 	render(
 		<QueryClientProvider client={client}>
-			<ToastProvider>
-				<RouterProvider router={router} />
-			</ToastProvider>
+			<EventStreamStatusContext.Provider value={streamDropStore}>
+				<ToastProvider>
+					<RouterProvider router={router} />
+				</ToastProvider>
+			</EventStreamStatusContext.Provider>
 		</QueryClientProvider>,
 	);
 	await act(async () => {
@@ -295,6 +301,36 @@ describe("Environment card", () => {
 			remoteControl: [
 				["Remote Control · Offline", "https://claude.ai/code/session_bridge", "_blank", "Open in claude.ai"],
 			],
+		});
+	});
+
+	it("hints the folder row with the dropped event stream's state, keeping the terminal host in its title", async () => {
+		const states: Record<string, StreamDrop> = {
+			reconnecting: "reconnecting",
+			connecting: "connecting",
+			connected: null,
+		};
+		const seen: Record<string, unknown> = {};
+		for (const [name, stream] of Object.entries(states)) {
+			await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE}, () => {}, null, stream);
+			const card = screen.getByRole("region", {name: /^Environment/});
+			const hint = within(card).getAllByText((_, el) => el?.hasAttribute("data-rail-row-hint") === true)[0];
+			seen[name] = {
+				hint: hint?.textContent,
+				status: hint?.getAttribute("data-stream-status") ?? null,
+				title: hint?.closest("[title]")?.getAttribute("title"),
+			};
+			cleanup();
+		}
+
+		expect(seen).toStrictEqual({
+			reconnecting: {
+				hint: "Reconnecting",
+				status: "reconnecting",
+				title: "/Users/alice/projects/avalonlogs · herdr",
+			},
+			connecting: {hint: "Connecting", status: "connecting", title: "/Users/alice/projects/avalonlogs · herdr"},
+			connected: {hint: "herdr", status: null, title: "/Users/alice/projects/avalonlogs"},
 		});
 	});
 
