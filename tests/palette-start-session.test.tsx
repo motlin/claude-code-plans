@@ -619,4 +619,16 @@ describe("findLaunchedSession", () => {
 			}),
 		).toBe("abc");
 	});
+
+	it("matches a fresh session in a worktree the CLI made under the launch cwd", () => {
+		const worktreeLaunch = {cwd: "/p", since: 1000, sessionId: null};
+		const sessions = [
+			{sessionId: "early", cwd: "/p/.claude/worktrees/stale", startedAt: 999},
+			{sessionId: "sibling", cwd: "/p2/.claude/worktrees/x", startedAt: 1100},
+			{sessionId: "subdir", cwd: "/p/sub", startedAt: 1100},
+			{sessionId: "worktree", cwd: "/p/.claude/worktrees/bright-fox", startedAt: 1200},
+		];
+		expect(findLaunchedSession(sessions, worktreeLaunch)).toBe("worktree");
+		expect(findLaunchedSession(sessions.slice(0, 3), worktreeLaunch)).toBeNull();
+	});
 });
