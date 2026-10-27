@@ -111,25 +111,20 @@ function HeaderControls({
 }
 
 /**
- * Upstream `U8`: a project section's own "New session in {group}" +, which goes home with that
- * project as the launch folder and focuses the composer. "Other" and a project whose folder is
- * gone have nowhere to start one, so they get none.
+ * Upstream `U8`'s `onNewSession`: go home with this project section's folder as the launch folder
+ * and focus the composer. "Other" and a project whose folder is gone have nowhere to start one, so
+ * they get null.
  */
-function ProjectNewSessionButton({group}: {group: SessionGroup<SidebarSessionRow>}) {
+function useProjectNewSession(group: SessionGroup<SidebarSessionRow>, isProject: boolean): (() => void) | null {
 	const navigate = useNavigate();
-	const {data: projects} = useQuery(projectsQueryOptions());
+	const {data: projects} = useQuery({...projectsQueryOptions(), enabled: isProject});
 	const projectId = allRows(group)[0]?.session.project;
 	const project = projects?.find((candidate) => candidate.id === projectId);
-	if (typeof project?.projectPath !== "string") return null;
-	return (
-		<GroupNewSessionButton
-			groupLabel={group.label}
-			onNewSession={() => {
-				requestHomeLaunchFolder(project.id);
-				void navigate({to: "/"}).then(requestHomeComposerFocus);
-			}}
-		/>
-	);
+	if (!isProject || typeof project?.projectPath !== "string") return null;
+	return () => {
+		requestHomeLaunchFolder(project.id);
+		void navigate({to: "/"}).then(requestHomeComposerFocus);
+	};
 }
 
 /** Collapsed-header badge precedence, most urgent first: needs input (or its error), unread, running. */
@@ -223,6 +218,7 @@ export function GroupSection({
 }) {
 	const customGroupId = customGroupIdOfKey(group.key);
 	const isProject = isProjectGroupKey(group.key);
+	const projectNewSession = useProjectNewSession(group, isProject);
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
@@ -309,7 +305,7 @@ export function GroupSection({
 			>
 				{customGroupId === null ? (
 					isProject ? (
-						<ProjectGroupHeader groupKey={group.key} label={group.label}>
+						<ProjectGroupHeader groupKey={group.key} label={group.label} onNewSession={projectNewSession}>
 							{toggle}
 						</ProjectGroupHeader>
 					) : (
@@ -335,7 +331,13 @@ export function GroupSection({
 				<HeaderControls
 					filterSlot={filterSlot}
 					leadsList={leadsList}
-					{...(isProject ? {trailing: <ProjectNewSessionButton group={group} />} : {})}
+					{...(projectNewSession === null
+						? {}
+						: {
+								trailing: (
+									<GroupNewSessionButton groupLabel={group.label} onNewSession={projectNewSession} />
+								),
+							})}
 				/>
 			</div>
 			{expanded && (

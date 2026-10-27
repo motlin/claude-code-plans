@@ -162,6 +162,23 @@ describe("section header appearance", () => {
 
 		expect(screen.queryByRole("button", {name: "More options for Today"})).toBeNull();
 	});
+
+	it("disables the Other section's New session with upstream's place-unknown reason", async () => {
+		await renderSection("project-__no_project__", "Other");
+
+		fireEvent.click(screen.getByRole("button", {name: "More options for Other"}));
+		await flush();
+		const item = await waitFor(() => screen.getAllByRole("menuitem")[0]!);
+		expect({
+			label: item.textContent,
+			disabled: item.getAttribute("aria-disabled"),
+			reason: document.getElementById(item.getAttribute("aria-describedby") ?? "")?.textContent,
+		}).toStrictEqual({
+			label: "New session",
+			disabled: "true",
+			reason: "Where these sessions run isn’t known, so there’s nowhere to start a new one.",
+		});
+	});
 });
 
 describe("appearance picker", () => {

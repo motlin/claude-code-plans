@@ -1,5 +1,5 @@
 import {useNavigate} from "@tanstack/react-router";
-import {type ReactNode, useRef, useState} from "react";
+import {type ReactNode, useState} from "react";
 
 import {useArchiveSessions} from "../../hooks/use-session-archive";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
@@ -8,6 +8,7 @@ import type {SessionGroup, SessionGroupRow} from "../../lib/session-groups";
 import {ConfirmDialog} from "../confirm-dialog";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "../ui/menu";
 import {useSidebarSelection} from "./selection-context";
+import {useAfterMenuClose} from "./use-after-menu-close";
 
 /** Upstream's `RB` disabled reasons for the header context menu. */
 const REASONS = {
@@ -51,9 +52,7 @@ export function GroupHeaderContextMenu({
 	const archiveSessions = useArchiveSessions();
 	const [confirmArchive, setConfirmArchive] = useState(false);
 	// The composer and the confirm take focus, so they act only once the menu has closed.
-	const afterClose = useRef<(() => void) | null>(null);
-	// Menus hand focus back after onOpenChangeComplete, so this outlives the queued action.
-	const keepFocus = useRef(false);
+	const {later, menuProps, contentProps} = useAfterMenuClose();
 
 	const hiddenFamilies = new Set(collapsedFamilies);
 	const visibleIds = group.rows.flatMap((row) => [
@@ -73,25 +72,11 @@ export function GroupHeaderContextMenu({
 	const noneCollapsed = !sectionKeys.some((key) => collapsed.has(key));
 	const canSelectAll = selection !== null && visibleIds.length >= 2;
 
-	const later = (action: () => void) => () => {
-		afterClose.current = action;
-		keepFocus.current = true;
-	};
-	const onOpenChangeComplete = (open: boolean) => {
-		if (open) {
-			keepFocus.current = false;
-			return;
-		}
-		const action = afterClose.current;
-		afterClose.current = null;
-		action?.();
-	};
-
 	return (
 		<>
-			<ContextMenu onOpenChangeComplete={onOpenChangeComplete}>
+			<ContextMenu {...menuProps}>
 				<ContextMenuTrigger className="flex min-w-0 flex-1">{children}</ContextMenuTrigger>
-				<MenuContent finalFocus={() => !keepFocus.current}>
+				<MenuContent {...contentProps}>
 					<MenuItem onSelect={later(() => void navigate({to: "/"}).then(requestHomeComposerFocus))}>
 						New session
 					</MenuItem>

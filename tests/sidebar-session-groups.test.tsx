@@ -1179,4 +1179,59 @@ describe("SessionGroups per-project New session +", () => {
 			buttons: newSessionButtons(container)["project-project-a1"],
 		}).toStrictEqual({expanded: "false", buttons: ["New session in project-a1"]});
 	});
+
+	const PLACE_UNKNOWN = "Where these sessions run isn’t known, so there’s nowhere to start a new one.";
+
+	async function openHeaderMenu(container: HTMLElement, key: string): Promise<HTMLElement> {
+		fireEvent.contextMenu(toggleOf(container, key), {clientX: 40, clientY: 50});
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+		return await waitFor(() => screen.getByRole("menu"));
+	}
+
+	/** The header menu's first item with its disabled reason, or null while it is enabled. */
+	function firstMenuItem(menu: HTMLElement): {label: string | null; disabledReason: string | null} {
+		const item = menu.querySelector('[role="menuitem"]');
+		if (item === null) throw new Error("no menu item");
+		return {
+			label: item.textContent,
+			disabledReason:
+				item.getAttribute("aria-disabled") === "true"
+					? (document.getElementById(item.getAttribute("aria-describedby") ?? "")?.textContent ?? "")
+					: null,
+		};
+	}
+
+	it("leads a project header menu with an enabled New session that goes home with that project", async () => {
+		const {container, router} = await renderGroups(ROWS, {
+			prefs: byProject,
+			projects: PROJECTS,
+			initialPath: "/session/a1",
+		});
+
+		const menu = await openHeaderMenu(container, "project-project-b1");
+		expect(firstMenuItem(menu)).toStrictEqual({label: "New session", disabledReason: null});
+
+		fireEvent.click(within(menu).getByRole("menuitem", {name: "New session"}));
+
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/");
+		});
+		expect(takePendingHomeLaunchFolder()).toBe("-projects-b1");
+	});
+
+	it("disables New session with the place-unknown reason for a project whose folder is gone", async () => {
+		const {container} = await renderGroups(ROWS, {
+			prefs: byProject,
+			projects: [project("-projects-a1", "project-a1", null), PROJECTS[1]],
+		});
+
+		expect(firstMenuItem(await openHeaderMenu(container, "project-project-a1"))).toStrictEqual({
+			label: "New session",
+			disabledReason: PLACE_UNKNOWN,
+		});
+	});
 });
