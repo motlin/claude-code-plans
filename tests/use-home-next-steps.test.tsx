@@ -410,6 +410,80 @@ describe("useHomeNextSteps", () => {
 			});
 			expect(fetchFolderPr.mock.calls.filter(([url]) => url.startsWith("/api/home/folder-pr"))).toStrictEqual([]);
 		});
+
+		it("drops the PR rows while launching and on a folder switch, with no frame of the old folder's rows", async () => {
+			fetchFolderPr.mockClear();
+			vi.stubGlobal("fetch", fetchFolderPr);
+			const queryClient = prClient("feat");
+			queryClient.setQueryData(projectsQueryOptions().queryKey, [
+				...(queryClient.getQueryData(projectsQueryOptions().queryKey) ?? []),
+				{
+					id: "-projects-beta",
+					name: "beta",
+					projectPath: "/projects/beta",
+					sessionCount: 0,
+					memoryCount: 0,
+					planCount: 0,
+					taskCount: 0,
+					activeCount: 0,
+					lastActivity: new Date().toISOString(),
+				},
+			]);
+			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/beta").queryKey, {
+				isGitRepo: true,
+				headBranch: "main",
+				defaultBranch: "main",
+				uncommittedFiles: 0,
+			});
+			let launchFolder: HomeLaunchFolder | undefined;
+			function Controls() {
+				launchFolder = useHomeLaunchFolder();
+				return null;
+			}
+			const frames = await renderHook(queryClient, describeRow, (probe) => (
+				<HomeLaunchFolderProvider>
+					<Controls />
+					{probe}
+				</HomeLaunchFolderProvider>
+			));
+			const prRows = [
+				"pr-ci-failed Fix the failing checks · null",
+				"pr-review-comments Answer 1 review comment · Alpha PR",
+			];
+			act(() => {
+				launchFolder?.select("-projects-alpha");
+			});
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual(prRows);
+			});
+
+			act(() => {
+				launchFolder?.setLaunching(true);
+			});
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual([]);
+			});
+			act(() => {
+				launchFolder?.setLaunching(false);
+			});
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual(prRows);
+			});
+
+			const switchedAt = frames.length;
+			act(() => {
+				launchFolder?.select("-projects-beta");
+			});
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual([]);
+			});
+			expect(
+				frames.slice(switchedAt).filter((frame) => frame?.some((row) => row?.startsWith("pr-"))),
+			).toStrictEqual([]);
+			expect(
+				fetchFolderPr.mock.calls.map(([url]) => url).filter((url) => url.startsWith("/api/home/folder-pr")),
+			).toStrictEqual([FOLDER_PR_URL]);
+		});
 	});
 
 	describe("lifecycle", () => {
