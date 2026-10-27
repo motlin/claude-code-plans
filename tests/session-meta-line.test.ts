@@ -1,7 +1,7 @@
 import {sessionMetaLine} from "../src/lib/session-meta-line";
-import type {SessionPrLink} from "../src/lib/sessions";
+import type {GitPrState} from "../src/lib/pr-status";
 
-const pr: SessionPrLink = {number: 7, url: "https://github.com/o/r/pull/7", repository: "o/r"};
+const pr: GitPrState = "opened";
 
 describe("sessionMetaLine", () => {
 	it("shows branch and folder when the heading is not the folder", () => {

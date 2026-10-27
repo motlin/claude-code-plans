@@ -1,17 +1,18 @@
+import type {GitPrState} from "./pr-status";
 import type {SessionBucket} from "./session-state";
-import type {SessionPrLink} from "./sessions";
 
 /** The second line of a "described" sidebar row (Show ▸ Metadata), upstream's `L2` model. */
 export type SessionMetaLine =
 	| {kind: "blocked"; word: boolean; reason?: string}
-	| {kind: "place"; pr?: SessionPrLink; branch?: string; folder?: string};
+	| {kind: "place"; pr?: GitPrState; branch?: string; folder?: string};
 
 export interface SessionMetaLineInput {
 	bucket: SessionBucket;
 	/** The row sits under the Needs input group, which already says "blocked". */
 	underNeedsInput: boolean;
 	reason?: string | undefined;
-	pr?: SessionPrLink | undefined;
+	/** The PR glyph state, which leads the line in place of the branch glyph. */
+	pr?: GitPrState | undefined;
 	branch?: string | undefined;
 	folder?: string | undefined;
 	heading?: string | undefined;

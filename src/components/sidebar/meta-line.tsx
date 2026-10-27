@@ -1,7 +1,16 @@
+import {GitBranch} from "lucide-react";
 import type {SessionMetaLine} from "../../lib/session-meta-line";
+import {PrTailGlyph} from "../status-dot";
 
 const ITEM_CLASS = "shrink-0 whitespace-nowrap";
 const LIST_FORMAT = new Intl.ListFormat("en", {type: "unit"});
+
+/** The glyph leading a place line: the PR state when there is one, else a branch mark when there's a branch. */
+function PlaceGlyph({line}: {line: Extract<SessionMetaLine, {kind: "place"}>}) {
+	if (line.pr !== undefined) return <PrTailGlyph state={line.pr} place="line" />;
+	if (line.branch === undefined) return null;
+	return <GitBranch aria-hidden="true" data-branch-glyph="" className="size-3 shrink-0 text-ink-muted" />;
+}
 
 /** A described row's second line (upstream `gM`): the blocked word and reason, or branch then folder. */
 export function MetaLine({line}: {line: SessionMetaLine}) {
@@ -20,6 +29,7 @@ export function MetaLine({line}: {line: SessionMetaLine}) {
 				</span>
 			) : (
 				<span className="flex shrink-0 items-center gap-1">
+					{line.kind === "place" && <PlaceGlyph line={line} />}
 					<bdi className={ITEM_CLASS}>{first}</bdi>
 				</span>
 			)}

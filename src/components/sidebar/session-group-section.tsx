@@ -19,7 +19,7 @@ import {requestHomeComposerFocus, requestHomeLaunchFolder} from "../../lib/home-
 import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
-import {prGlyph} from "../../lib/pr-status";
+import {type GitPrState, prGlyph} from "../../lib/pr-status";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {blockedDetail} from "../../lib/blocked-detail";
 import {sessionMetaLine, type SessionMetaLine} from "../../lib/session-meta-line";
@@ -792,12 +792,17 @@ function SessionRowLink({
 	const {settings} = useSettings();
 	const blocked = row.bucket === "blocked";
 	const hintId = useId();
-	const metaLine = useRowMetaLine(row, pinnedIds === undefined && settings.sessionListPrefs.showMetadata, place);
 	// Upstream draws no PR tail on pinned rows.
 	const prTail =
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
 			? prGlyph(row.session.prStatus).state
 			: undefined;
+	const metaLine = useRowMetaLine(
+		row,
+		pinnedIds === undefined && settings.sessionListPrefs.showMetadata,
+		place,
+		prTail,
+	);
 	const rowClass = metaLine === undefined ? ROW_CLASS : DESCRIBED_ROW_CLASS;
 	const titleLine = (
 		<>
@@ -923,7 +928,12 @@ interface RowPlace {
 const NEEDS_INPUT_GROUP_KEY = "state-blocked";
 
 /** A row's described second line (Show ▸ Metadata), or undefined for a one-line row. */
-function useRowMetaLine(row: SidebarSessionRow, enabled: boolean, place: RowPlace): SessionMetaLine | undefined {
+function useRowMetaLine(
+	row: SidebarSessionRow,
+	enabled: boolean,
+	place: RowPlace,
+	pr: GitPrState | undefined,
+): SessionMetaLine | undefined {
 	const blocked = row.bucket === "blocked";
 	const {data: toolName} = useQuery({
 		...approvalsQueryOptions(),
@@ -935,7 +945,7 @@ function useRowMetaLine(row: SidebarSessionRow, enabled: boolean, place: RowPlac
 		bucket: row.bucket,
 		underNeedsInput: place.underNeedsInput,
 		reason: blocked ? blockedDetail(toolName) : undefined,
-		pr: row.session.pr,
+		pr,
 		branch: row.session.gitBranch,
 		folder: row.session.projectName,
 		heading: place.heading,
