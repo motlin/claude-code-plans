@@ -256,6 +256,57 @@ describe("SessionPaneControls", () => {
 		).toEqual(["text-primary"]);
 	});
 
+	it("lays a row out as upstream does: leading icon slot, label, trailing Counter, no check slot while unchecked", async () => {
+		registerKinds("background-tasks");
+		renderControls({backgroundTasks: {total: 2, running: 1}});
+		await openViewOptions();
+
+		const row = screen.getByRole("menuitemcheckbox", {name: /^Background tasks/});
+		const parts = Array.from(row.children, (child) => ({
+			tag: child.tagName,
+			className: child.getAttribute("class"),
+			text: child.textContent,
+		}));
+
+		expect({
+			gap: row.className.split(" ").filter((c) => c.startsWith("gap-")),
+			parts,
+			counter: row.querySelector('[data-cds="Counter"]')?.getAttribute("class"),
+			checkSlot: row.querySelector("[data-check-slot]"),
+		}).toStrictEqual({
+			gap: ["gap-1.5"],
+			parts: [
+				{tag: "SPAN", className: "flex size-4 shrink-0 items-center justify-center", text: ""},
+				{tag: "SPAN", className: "min-w-0 flex-1 truncate", text: "Background tasks"},
+				{tag: "SPAN", className: "ms-3 flex shrink-0 items-center gap-1.5", text: "1"},
+			],
+			counter:
+				"inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-alpha-1 px-[4.8px] text-caption font-medium text-secondary",
+			checkSlot: null,
+		});
+	});
+
+	it("shows the check slot instead of the Counter on a checked row with a count", async () => {
+		registerKinds("background-tasks");
+		renderControls({backgroundTasks: {total: 2, running: 1}});
+		await openViewOptions();
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Background tasks/}));
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+		await openViewOptions();
+
+		const row = screen.getByRole("menuitemcheckbox", {name: /^Background tasks/});
+
+		expect({
+			checked: row.getAttribute("aria-checked"),
+			counter: row.querySelector('[data-cds="Counter"]'),
+			checkSlot: row.querySelector("[data-check-slot]")?.tagName,
+		}).toStrictEqual({checked: "true", counter: null, checkSlot: "SPAN"});
+	});
+
 	it("lists Session details and opens it as a pane", async () => {
 		registerKinds("session-details");
 		renderControls();

@@ -498,17 +498,28 @@ export interface MenuCheckboxItemProps extends Omit<
 	shortcut?: string;
 	/** Close the menu on pick, as upstream's View options rows do. Defaults to keeping it open. */
 	closeOnClick?: boolean;
+	/** Upstream's View options leading icon: a 16px slot before the label, with the row gap at 6px. */
+	icon?: ReactNode;
+	/** Upstream's trailing Counter; while it shows on an unchecked row, the check slot is left out. */
+	count?: number;
 }
+
+/** Upstream's compact `Counter`: a 16px pill in neutral fill with caption-medium muted digits. */
+const COUNTER_CLASS =
+	"inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-alpha-1 px-[4.8px] text-caption font-medium text-secondary";
 
 export function MenuCheckboxItem({
 	children,
 	accelerator,
 	shortcut,
 	closeOnClick = false,
+	icon,
+	count,
 	...props
 }: MenuCheckboxItemProps) {
-	const itemClass = useItemClass();
+	const itemClass = useItemClass(false, icon === undefined ? "gap-1" : "gap-1.5");
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
+	const showCount = count !== undefined && count > 0 && props.checked !== true;
 	return (
 		<BaseMenu.CheckboxItem
 			{...props}
@@ -517,11 +528,24 @@ export function MenuCheckboxItem({
 			{...(ariaKeyShortcuts ? {"aria-keyshortcuts": ariaKeyShortcuts} : {})}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
+			{icon !== undefined && (
+				<span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center">
+					{icon}
+				</span>
+			)}
 			<span className={LABEL_CLASS}>{children}</span>
 			{shortcut !== undefined && <ItemTrailing shortcut={shortcut} />}
-			<BaseMenu.CheckboxItemIndicator className={CHECK_SLOT_CLASS}>
-				<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
-			</BaseMenu.CheckboxItemIndicator>
+			{showCount ? (
+				<span className="ms-3 flex shrink-0 items-center gap-1.5">
+					<span data-cds="Counter" className={COUNTER_CLASS}>
+						{count}
+					</span>
+				</span>
+			) : (
+				<BaseMenu.CheckboxItemIndicator data-check-slot="" className={CHECK_SLOT_CLASS}>
+					<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
+				</BaseMenu.CheckboxItemIndicator>
+			)}
 		</BaseMenu.CheckboxItem>
 	);
 }

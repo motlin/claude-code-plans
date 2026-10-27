@@ -85,19 +85,10 @@ function ViewOptionsMenu({
 								host.togglePane(entry.kind);
 							}}
 							{...(binding === undefined ? {} : {shortcut: bindingToKeys(binding)})}
+							{...(entry.badge === undefined ? {} : {count: entry.badge})}
+							icon={<Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />}
 						>
-							<span className="flex items-center gap-2">
-								<Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />
-								{entry.label}
-								{entry.badge !== undefined && (
-									<span
-										data-count=""
-										className="rounded-full bg-alpha-2 px-1.5 text-caption text-secondary"
-									>
-										{entry.badge}
-									</span>
-								)}
-							</span>
+							{entry.label}
 						</MenuCheckboxItem>
 					);
 				})}
