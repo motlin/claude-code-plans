@@ -1,4 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
+import type {StreamStatus} from "../src/lib/reconnecting-event-source";
 import {
 	openSharedEventSource,
 	type SharedEventSourceDeps,
@@ -55,7 +56,7 @@ class FakeOrigin {
 
 	/** A tab of this origin, recording what its consumer's listeners and resync callback saw. */
 	openTab(options: {locks?: boolean} = {}): FakeTab {
-		const tab: FakeTab = {received: [], resyncs: 0, close: () => {}};
+		const tab: FakeTab = {received: [], resyncs: 0, statuses: [], close: () => {}};
 		const consumer: SharedEventSourceOptions = {
 			attach(target) {
 				for (const type of ["session:start", "subagents:snapshot"]) {
@@ -63,14 +64,20 @@ class FakeOrigin {
 				}
 			},
 			onReconnected: () => tab.resyncs++,
+			onStatus: (status) => tab.statuses.push(status),
 		};
 		tab.close = openSharedEventSource("/api/events", consumer, {
 			locks: options.locks === false ? undefined : this.locks,
 			createChannel: this.createChannel,
 			openStream: (url, streamOptions) => {
-				const stream = new FakeStream(url, streamOptions.resumeAfterGap === true, () => {
-					streamOptions.onReconnected();
-				});
+				const stream = new FakeStream(
+					url,
+					streamOptions.resumeAfterGap === true,
+					() => {
+						streamOptions.onReconnected();
+					},
+					(status) => streamOptions.onStatus?.(status),
+				);
 				streamOptions.attach(stream as unknown as EventSource);
 				this.streams.push(stream);
 				return () => {
@@ -93,6 +100,7 @@ class FakeOrigin {
 interface FakeTab {
 	received: string[];
 	resyncs: number;
+	statuses: StreamStatus[];
 	close: () => void;
 }
 
@@ -121,6 +129,7 @@ class FakeStream extends EventTarget {
 		readonly url: string,
 		readonly resumeAfterGap: boolean,
 		private readonly onReconnected: () => void,
+		readonly status: (status: StreamStatus) => void,
 	) {
 		super();
 	}
@@ -220,6 +229,42 @@ describe("openSharedEventSource", () => {
 		});
 	});
 
+	it("relays every status change of the leading tab's stream to the other tabs", async () => {
+		const origin = new FakeOrigin();
+		const tabs = [origin.openTab(), origin.openTab(), origin.openTab()];
+		await settle();
+
+		const [stream] = origin.openStreams();
+		stream!.status("connecting");
+		stream!.status("connected");
+		stream!.status("reconnecting");
+		await settle();
+
+		expect(tabs.map((tab) => tab.statuses)).toStrictEqual(
+			Array.from({length: 3}, () => ["connecting", "connected", "reconnecting"]),
+		);
+	});
+
+	it("tells a tab that joins later the stream's current status", async () => {
+		const origin = new FakeOrigin();
+		const leader = origin.openTab();
+		await settle();
+		origin.openStreams()[0]!.status("connecting");
+		origin.openStreams()[0]!.status("connected");
+		await settle();
+
+		const follower = origin.openTab();
+		await settle();
+
+		expect({
+			leader: {statuses: leader.statuses, resyncs: leader.resyncs},
+			follower: {statuses: follower.statuses, resyncs: follower.resyncs},
+		}).toStrictEqual({
+			leader: {statuses: ["connecting", "connected"], resyncs: 0},
+			follower: {statuses: ["connected"], resyncs: 0},
+		});
+	});
+
 	it("stops waiting for the stream once a following tab closes", async () => {
 		const origin = new FakeOrigin();
 		const leader = origin.openTab();
@@ -238,13 +283,22 @@ describe("openSharedEventSource", () => {
 		const tabs = [origin.openTab({locks: false}), origin.openTab({locks: false})];
 		await settle();
 
-		for (const stream of origin.openStreams()) stream.emit("session:start", "{}");
+		for (const stream of origin.openStreams()) {
+			stream.emit("session:start", "{}");
+			stream.status("connected");
+		}
 		await settle();
 
 		expect({
 			streams: origin.openStreams().length,
 			received: tabs.map((tab) => tab.received),
+			statuses: tabs.map((tab) => tab.statuses),
 			fetches: origin.snapshotFetches,
-		}).toStrictEqual({streams: 2, received: [["session:start {}"], ["session:start {}"]], fetches: 0});
+		}).toStrictEqual({
+			streams: 2,
+			received: [["session:start {}"], ["session:start {}"]],
+			statuses: [["connected"], ["connected"]],
+			fetches: 0,
+		});
 	});
 });

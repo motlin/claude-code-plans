@@ -5,7 +5,12 @@
 // tab catch up on the events missed in between.
 
 import {z} from "zod";
-import {openReconnectingEventSource, type ReconnectingEventSourceOptions} from "./reconnecting-event-source";
+import {assertNever} from "./assert-never";
+import {
+	openReconnectingEventSource,
+	type ReconnectingEventSourceOptions,
+	type StreamStatus,
+} from "./reconnecting-event-source";
 
 /** An event a fresh stream sends as soon as it connects, which a following tab fetches instead. */
 const SnapshotEventSchema = z.strictObject({type: z.string(), data: z.string()});
@@ -14,6 +19,9 @@ export type SnapshotEvent = z.infer<typeof SnapshotEventSchema>;
 const RelayMessageSchema = z.discriminatedUnion("kind", [
 	z.strictObject({kind: z.literal("event"), type: z.string(), data: z.string()}),
 	z.strictObject({kind: z.literal("resync")}),
+	z.strictObject({kind: z.literal("status"), status: z.enum(["connecting", "connected", "reconnecting"])}),
+	// A tab that starts following asks the leader for the stream's current status.
+	z.strictObject({kind: z.literal("status-request")}),
 ]);
 type RelayMessage = z.infer<typeof RelayMessageSchema>;
 
@@ -43,6 +51,8 @@ export interface SharedEventSourceOptions {
 	attach(target: EventTarget): void;
 	/** Runs when this tab may have missed events: the stream reconnected, or another tab took it over. */
 	onReconnected(): void;
+	/** Runs whenever the shared stream's status changes, and once a following tab learns the current status. */
+	onStatus?(status: StreamStatus): void;
 }
 
 /** The URL a following tab fetches the stream's connect-time events from. */
@@ -99,6 +109,7 @@ export function openSharedEventSource(
 			onReconnected: () => {
 				options.onReconnected();
 			},
+			onStatus: (status) => options.onStatus?.(status),
 		});
 	}
 
@@ -111,6 +122,8 @@ export function openSharedEventSource(
 	let closeStream = (): void => {};
 	// A following tab holds relayed events here until the connect-time snapshot it fetched is delivered first.
 	let pending: SnapshotEvent[] | null = null;
+	// Set only while this tab leads: the status of the stream it owns.
+	let leaderStatus: StreamStatus | undefined;
 
 	const deliver = (type: string, data: string): void => {
 		if (pending) pending.push({type, data});
@@ -121,8 +134,22 @@ export function openSharedEventSource(
 		const parsed = RelayMessageSchema.safeParse(event.data);
 		if (!parsed.success) return;
 		const message = parsed.data;
-		if (message.kind === "event") deliver(message.type, message.data);
-		else options.onReconnected();
+		switch (message.kind) {
+			case "event":
+				deliver(message.type, message.data);
+				break;
+			case "resync":
+				options.onReconnected();
+				break;
+			case "status":
+				options.onStatus?.(message.status);
+				break;
+			case "status-request":
+				if (leaderStatus) channel.postMessage({kind: "status", status: leaderStatus});
+				break;
+			default:
+				assertNever(message);
+		}
 	};
 
 	const lead = async (resumeAfterGap: boolean): Promise<void> => {
@@ -145,6 +172,11 @@ export function openSharedEventSource(
 				options.onReconnected();
 				channel.postMessage({kind: "resync"});
 			},
+			onStatus(status) {
+				leaderStatus = status;
+				options.onStatus?.(status);
+				channel.postMessage({kind: "status", status});
+			},
 			resumeAfterGap,
 		});
 		return new Promise<void>((resolve) => {
@@ -154,6 +186,7 @@ export function openSharedEventSource(
 
 	const follow = (): void => {
 		pending = [];
+		channel.postMessage({kind: "status-request"});
 		deps.fetchSnapshot(url).then(
 			(snapshot) => {
 				if (!pending) return;
