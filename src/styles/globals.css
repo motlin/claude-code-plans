@@ -1786,6 +1786,10 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 		color: var(--upstream-text-secondary);
 	}
 
+	.df-nav-row[data-selected="focused"] .df-leading-slot {
+		color: var(--upstream-text-primary);
+	}
+
 	.df-new-icon-circle {
 		display: flex;
 		width: 22px;

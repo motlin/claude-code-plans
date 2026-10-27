@@ -100,4 +100,22 @@ describe("app chrome design tokens", () => {
 			transparentCircleSelectors: ['.df-nav-row[data-selected="focused"] .df-new-icon-circle'],
 		});
 	});
+	it("paints a selected nav row's leading icon upstream's text-primary, as data-[selected=focused]:[&_.df-leading-slot]:text-primary does", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const leadingSlotColors = [...styles.matchAll(/([^{}]*\.df-leading-slot)\s*\{\s*color:\s*([^;]+);/g)].map(
+			([, selector, color]) => [selector?.trim(), color],
+		);
+		const newRow = readFileSync("src/components/sidebar/new-session-row.tsx", "utf8");
+
+		expect({
+			leadingSlotColors,
+			newRowOwnSelectedRule: newRow.includes("data-[selected=focused]:[&_.df-leading-slot]:text-primary"),
+		}).toStrictEqual({
+			leadingSlotColors: [
+				[".df-nav-row .df-leading-slot", "var(--upstream-text-secondary)"],
+				['.df-nav-row[data-selected="focused"] .df-leading-slot', "var(--upstream-text-primary)"],
+			],
+			newRowOwnSelectedRule: false,
+		});
+	});
 });
