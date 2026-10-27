@@ -327,6 +327,8 @@ describe("sidebar Group and sort menu", () => {
 		const show = await openSubmenu(/^Show/);
 
 		expect(menuOutline(show)).toEqual([
+			"Metadata",
+			"---",
 			"Empty groups",
 			"PR status",
 			"---",
@@ -342,6 +344,27 @@ describe("sidebar Group and sort menu", () => {
 			"30d",
 			"All",
 		]);
+	});
+
+	it("leads Show with upstream's Metadata checkbox, off by default, and keeps the menu open when it persists turning it on", async () => {
+		await renderSidebarGroups();
+		await openFilterMenu();
+		const show = await openSubmenu(/^Show/);
+		const [first] = within(show).getAllByRole("menuitemcheckbox");
+		if (first === undefined) throw new Error("Expected a Show checkbox");
+		const before = {name: first.textContent, checked: first.getAttribute("aria-checked")};
+		fireEvent.click(first);
+		await flush();
+
+		expect({
+			before,
+			after: screen.getByRole("menuitemcheckbox", {name: "Metadata"}).getAttribute("aria-checked"),
+			stored: storedPrefs(),
+		}).toStrictEqual({
+			before: {name: "Metadata", checked: "false"},
+			after: "true",
+			stored: {...DEFAULT_SESSION_LIST_PREFS, showMetadata: true},
+		});
 	});
 
 	it("marks non-default trailing values in accent", async () => {

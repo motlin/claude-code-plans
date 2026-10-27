@@ -54,6 +54,7 @@ describe("DEFAULT_SESSION_LIST_PREFS", () => {
 			activityDays: "7d",
 			showEmptyGroups: false,
 			showPrStatus: false,
+			showMetadata: false,
 			version: 2,
 		});
 	});
@@ -519,7 +520,7 @@ describe("migrateSessionListPrefs", () => {
 		};
 		expect(
 			migrateSessionListPrefs({stored: JSON.stringify(stored), sessionsGrouping: null, sessionSort: null}),
-		).toStrictEqual({...stored, showPrStatus: false, version: 2});
+		).toStrictEqual({...stored, showPrStatus: false, showMetadata: false, version: 2});
 	});
 
 	it("keeps PR status on when version 2 prefs turned it on after the migration", () => {
@@ -543,7 +544,21 @@ describe("migrateSessionListPrefs", () => {
 				sessionsGrouping: null,
 				sessionSort: null,
 			}),
-		).toStrictEqual({...stored, showPrStatus: false, sortDirection: "desc", version: 2});
+		).toStrictEqual({...stored, showPrStatus: false, showMetadata: false, sortDirection: "desc", version: 2});
+	});
+
+	it("defaults Metadata off in version 2 prefs saved before it existed, as upstream's default", () => {
+		const {showMetadata: _omitted, ...stored} = {...DEFAULT_SESSION_LIST_PREFS, showEmptyGroups: true};
+		expect(
+			migrateSessionListPrefs({stored: JSON.stringify(stored), sessionsGrouping: null, sessionSort: null}),
+		).toStrictEqual({...stored, showMetadata: false});
+	});
+
+	it("keeps Metadata on once turned on", () => {
+		const stored = {...DEFAULT_SESSION_LIST_PREFS, showMetadata: true};
+		expect(
+			migrateSessionListPrefs({stored: JSON.stringify(stored), sessionsGrouping: null, sessionSort: null}),
+		).toStrictEqual(stored);
 	});
 
 	it("falls back to defaults with no stored or legacy values", () => {

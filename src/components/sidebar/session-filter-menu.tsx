@@ -123,9 +123,10 @@ function ChoiceGroup<Value extends string>({
 
 /**
  * claude.ai/code's session-list "Group and sort" menu: Group by, Sort by and Show submenus, New
- * section, Reset to defaults and View all. Folder stands in for the cloud-only Environment; the
- * local Status and Last activity filters and the PR status toggle sit under Show, the PR toggle
- * only once some row has PR data. Upstream's Show ▸ Metadata has no local data.
+ * section, Reset to defaults and View all. Folder stands in for the cloud-only Environment. Show
+ * leads with upstream's Metadata toggle (branch from the JSONL gitBranch, folder from the project
+ * name, blocked reason from the pending approval); the local Status and Last activity filters and
+ * the PR status toggle follow, the PR toggle only once some row has PR data.
  */
 function SessionFilterMenu({
 	prefs,
@@ -195,6 +196,15 @@ function SessionFilterMenu({
 					<MenuSub>
 						<MenuSubTrigger>Show</MenuSubTrigger>
 						<MenuSubContent>
+							<MenuCheckboxItem
+								checked={prefs.showMetadata}
+								onCheckedChange={(checked) => {
+									onChange({...prefs, showMetadata: checked});
+								}}
+							>
+								Metadata
+							</MenuCheckboxItem>
+							<MenuSeparator />
 							<MenuCheckboxItem
 								checked={prefs.showEmptyGroups}
 								onCheckedChange={(checked) => {

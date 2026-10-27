@@ -31,6 +31,8 @@ export const SessionListPrefsSchema = z
 		showEmptyGroups: z.boolean(),
 		/** The PR glyph replaces the row dot on sessions with a pull request; off by default, as upstream shows none. */
 		showPrStatus: z.boolean(),
+		/** Upstream's Show ▸ Metadata: two-line rows with the branch, folder or blocked reason; off by default, as upstream. */
+		showMetadata: z.boolean(),
 		/** 2 since Show PR status defaulted off; unversioned prefs still carry the old default-on value. */
 		version: z.literal(2),
 	})
@@ -45,6 +47,7 @@ export const DEFAULT_SESSION_LIST_PREFS: SessionListPrefs = {
 	activityDays: "7d",
 	showEmptyGroups: false,
 	showPrStatus: false,
+	showMetadata: false,
 	version: 2,
 };
 
@@ -445,10 +448,11 @@ export interface StoredSessionListPrefs {
 export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionListPrefs {
 	if (input.stored !== null) {
 		try {
-			// Older prefs lack Show PR status, Sort direction or the version; default them. Unversioned
+			// Older prefs lack Show PR status, Show metadata, Sort direction or the version; default them. Unversioned
 			// prefs saved Show PR status under its old default-on, so version 2 turns it off.
 			const parsed = SessionListPrefsSchema.partial({
 				showPrStatus: true,
+				showMetadata: true,
 				sortDirection: true,
 				version: true,
 			}).safeParse(JSON.parse(input.stored));
@@ -459,6 +463,7 @@ export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionL
 					showPrStatus: migrated
 						? DEFAULT_SESSION_LIST_PREFS.showPrStatus
 						: (parsed.data.showPrStatus ?? DEFAULT_SESSION_LIST_PREFS.showPrStatus),
+					showMetadata: parsed.data.showMetadata ?? DEFAULT_SESSION_LIST_PREFS.showMetadata,
 					sortDirection: parsed.data.sortDirection ?? DEFAULT_SESSION_LIST_PREFS.sortDirection,
 					version: DEFAULT_SESSION_LIST_PREFS.version,
 				};
