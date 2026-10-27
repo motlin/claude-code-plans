@@ -338,13 +338,43 @@ it("waits for a fresh lookup rather than pinning invalidated success from a prev
 	});
 });
 
-it.each([404, 409, 503])("shows an honest %s lookup error and supports manual retry", async (status) => {
+it("shows upstream's missing-session view when the alias lookup 404s", async () => {
+	const {finish, setLookup} = await setup();
+	setLookup(async () => Promise.resolve(new Response(null, {status: 404})));
+	await actAndSettle(() => {
+		finish(new Response(null, {status: 404}));
+	});
+	const heading = await screen.findByRole("heading", {level: 2});
+	expect({
+		heading: heading.textContent,
+		body: heading.nextElementSibling?.textContent,
+		buttons: screen.getAllByRole("button").map((button) => button.textContent),
+		title: document.title,
+	}).toStrictEqual({
+		heading: "This session couldn’t be found",
+		body: "It may have been deleted, or you may not have access.",
+		buttons: ["Start a new session"],
+		title: "Session Not Found",
+	});
+});
+
+it.each([409, 503])("shows an honest %s lookup error and supports manual retry", async (status) => {
 	const {finish, setLookup, fetcher, client} = await setup();
 	setLookup(async () => Promise.resolve(new Response(null, {status})));
 	await actAndSettle(() => {
 		finish(new Response(null, {status}));
 	});
-	const message = (await screen.findByRole("alert")).textContent;
+	const alert = await screen.findByRole("alert");
+	const message = alert.textContent;
+	const heading = screen.getByRole("heading", {level: 2});
+	const retry = screen.getByRole("button", {name: "Retry"});
+	const layout = {
+		heading: heading.textContent,
+		alertFollowsHeading: heading.nextElementSibling === alert,
+		alertClasses: alert.className,
+		retryClasses: retry.className,
+		retryInActions: retry.parentElement === alert.nextElementSibling,
+	};
 	const failedRequests = fetcher.mock.calls.length;
 	const title = document.title;
 	act(() => {
@@ -360,6 +390,7 @@ it.each([404, 409, 503])("shows an honest %s lookup error and supports manual re
 	});
 	expect({
 		status,
+		layout,
 		message,
 		title,
 		attentionTitle,
@@ -368,15 +399,20 @@ it.each([404, 409, 503])("shows an honest %s lookup error and supports manual re
 		owners: new Set(observed.owners),
 	}).toStrictEqual({
 		status,
-		attentionTitle:
-			status === 404 ? "Session Not Found" : status === 409 ? "Ambiguous session link" : "Indexing sessions…",
-		title: status === 404 ? "Session Not Found" : status === 409 ? "Ambiguous session link" : "Indexing sessions…",
+		layout: {
+			heading: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
+			alertFollowsHeading: true,
+			alertClasses: "text-pretty text-secondary",
+			retryClasses:
+				"h-5 rounded-r5 px-1.5 text-[12px]/[17px] font-medium bg-fill-primary text-on-primary hover:bg-fill-primary-hover outline-none focus-visible:shadow-focus transition-shadow",
+			retryInActions: true,
+		},
+		attentionTitle: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
+		title: status === 409 ? "Ambiguous session link" : "Indexing sessions…",
 		message:
-			status === 404
-				? "Session Not Found"
-				: status === 409
-					? "This session link has more than one local session."
-					: "Sessions are still being indexed. Try again shortly.",
+			status === 409
+				? "This session link has more than one local session."
+				: "Sessions are still being indexed. Try again shortly.",
 		failedRequests: status === 503 ? 3 : 1,
 		owner: ALICE,
 		owners: new Set([ALICE]),

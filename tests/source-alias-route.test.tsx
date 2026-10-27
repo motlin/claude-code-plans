@@ -173,14 +173,33 @@ it("paints the source loading state before UUID source data arrives", async () =
 	expect(screen.queryByRole("status")).toBeNull();
 });
 
-it.each([404, 409])(
+it("shows the missing-session view and the shared 404 title without a source request", async () => {
+	const {finish, fetcher} = await setup();
+	act(() => {
+		finish(new Response(null, {status: 404}));
+	});
+	await waitFor(() => {
+		expect(document.title).toBe("Session Not Found");
+	});
+	expect({
+		heading: screen.getByRole("heading", {level: 2}).textContent,
+		buttons: screen.getAllByRole("button").map((button) => button.textContent),
+		urls: fetcher.mock.calls.map(([url]) => url),
+	}).toStrictEqual({
+		heading: "This session couldn’t be found",
+		buttons: ["Start a new session"],
+		urls: [`/api/sessions/${ALIAS}/identity`],
+	});
+});
+
+it.each([409])(
 	"shows the shared %s failure title without a source request and restores the source title after retry",
 	async (status) => {
 		const {finish, setLookup, fetcher} = await setup();
 		act(() => {
 			finish(new Response(null, {status}));
 		});
-		const title = status === 404 ? "Session Not Found" : "Ambiguous session link";
+		const title = "Ambiguous session link";
 		await waitFor(() => {
 			expect(document.title).toBe(title);
 		});
@@ -192,7 +211,7 @@ it.each([404, 409])(
 			expect(document.title).toBe("Source: 11111111");
 		});
 		expect(failure).toStrictEqual({
-			message: status === 404 ? "Session Not Found" : "This session link has more than one local session.",
+			message: "This session link has more than one local session.",
 			urls: [`/api/sessions/${ALIAS}/identity`],
 		});
 	},

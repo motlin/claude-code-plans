@@ -7,6 +7,8 @@ import {sessionScrollKey} from "../lib/session-route-location";
 import {resolvedRouteTitle} from "../lib/route-title";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {SessionSkeleton} from "./session-skeleton";
+import {ApiResponseError} from "../lib/api/client";
+import {SESSION_UNAVAILABLE_BUTTON_CLASS, SessionNotFound, SessionUnavailable} from "./session-unavailable";
 
 /** Resolve a route alias before any UUID query, and retain its first verified owner for this visit. */
 export function SessionRouteIdentity({
@@ -102,17 +104,23 @@ export function SessionRouteIdentity({
 					<SessionSkeleton />
 				</div>
 			);
+		if (identity.error instanceof ApiResponseError && identity.error.status === 404) return <SessionNotFound />;
 		return (
-			<div className="h-full overflow-auto p-8">
-				<p role="alert">{failure.message}</p>
-				<button
-					type="button"
-					className="mt-4 rounded-md border border-border px-3 py-1.5"
-					onClick={() => void identity.refetch()}
-				>
-					Retry
-				</button>
-			</div>
+			<SessionUnavailable
+				alert
+				heading={failure.title}
+				actions={
+					<button
+						type="button"
+						className={SESSION_UNAVAILABLE_BUTTON_CLASS}
+						onClick={() => void identity.refetch()}
+					>
+						Retry
+					</button>
+				}
+			>
+				{failure.message}
+			</SessionUnavailable>
 		);
 	};
 

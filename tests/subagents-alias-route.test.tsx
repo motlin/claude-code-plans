@@ -203,13 +203,32 @@ it("keeps UUID subagent visits free of identity requests", async () => {
 	});
 });
 
-it.each([404, 409])("restores the subagents title after retrying the shared %s alias failure", async (status) => {
-	const {finish, setLookup, fetcher} = await setup();
+it("shows the missing-session view and the shared 404 title without a subagents request", async () => {
+	const {finish, fetcher} = await setup();
 	act(() => {
-		finish(new Response(null, {status}));
+		finish(new Response(null, {status: 404}));
 	});
 	await waitFor(() => {
-		expect(document.title).toBe(status === 404 ? "Session Not Found" : "Ambiguous session link");
+		expect(document.title).toBe("Session Not Found");
+	});
+	expect({
+		heading: screen.getByRole("heading", {level: 2}).textContent,
+		buttons: screen.getAllByRole("button").map((button) => button.textContent),
+		urls: fetcher.mock.calls.map(([url]) => url),
+	}).toStrictEqual({
+		heading: "This session couldn’t be found",
+		buttons: ["Start a new session"],
+		urls: [`/api/sessions/${ALIAS}/identity`],
+	});
+});
+
+it.each([409])("restores the subagents title after retrying the shared %s alias failure", async () => {
+	const {finish, setLookup, fetcher} = await setup();
+	act(() => {
+		finish(new Response(null, {status: 409}));
+	});
+	await waitFor(() => {
+		expect(document.title).toBe("Ambiguous session link");
 	});
 	const failure = {message: screen.getByRole("alert").textContent, urls: fetcher.mock.calls.map(([url]) => url)};
 	setLookup(async () => Promise.resolve(Response.json({sessionId: ALICE})));
@@ -219,7 +238,7 @@ it.each([404, 409])("restores the subagents title after retrying the shared %s a
 		expect(document.title).toBe("Subagents - local-al");
 	});
 	expect(failure).toStrictEqual({
-		message: status === 404 ? "Session Not Found" : "This session link has more than one local session.",
+		message: "This session link has more than one local session.",
 		urls: [`/api/sessions/${ALIAS}/identity`],
 	});
 });
