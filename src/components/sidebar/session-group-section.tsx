@@ -1,5 +1,5 @@
-import {Link} from "@tanstack/react-router";
-import {useQueryClient} from "@tanstack/react-query";
+import {Link, useNavigate} from "@tanstack/react-router";
+import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {ChevronRight} from "lucide-react";
 import {
 	Fragment,
@@ -14,6 +14,8 @@ import {
 	type ReactNode,
 } from "react";
 
+import {projectsQueryOptions} from "../../lib/api/projects";
+import {requestHomeComposerFocus, requestHomeLaunchFolder} from "../../lib/home-composer-focus";
 import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
@@ -47,6 +49,7 @@ import {PrTailGlyph, SessionStateIcon} from "../status-dot";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
 import {GroupHeaderContextMenu} from "./group-header-context-menu";
+import {GroupNewSessionButton} from "./group-new-session-button";
 import {GroupAppearanceMark} from "./group-appearance";
 import {useOpenRowAutoExpand, useSectionFocusRescue} from "./group-section-focus";
 import {NewSessionHeaderButton} from "./new-session-row";
@@ -78,11 +81,19 @@ export const ROW_CLASS =
 /**
  * A section header's trailing controls, as upstream lays them out: Group and sort revealed on hover
  * or keyboard focus (always on touch, and while its menu is open), then the first section's
- * always-visible New session +.
+ * always-visible New session + (or, under project grouping, every section's own +).
  */
-function HeaderControls({filterSlot, leadsList}: {filterSlot: ReactNode; leadsList: boolean}) {
+function HeaderControls({
+	filterSlot,
+	leadsList,
+	trailing,
+}: {
+	filterSlot: ReactNode;
+	leadsList: boolean;
+	trailing?: ReactNode;
+}) {
 	const hasFilter = filterSlot !== undefined && filterSlot !== null;
-	if (!hasFilter && !leadsList) return null;
+	if (!hasFilter && !leadsList && trailing === undefined) return null;
 	return (
 		<div className="flex items-center">
 			{hasFilter && (
@@ -94,7 +105,30 @@ function HeaderControls({filterSlot, leadsList}: {filterSlot: ReactNode; leadsLi
 				</span>
 			)}
 			{leadsList && <NewSessionHeaderButton />}
+			{trailing}
 		</div>
+	);
+}
+
+/**
+ * Upstream `U8`: a project section's own "New session in {group}" +, which goes home with that
+ * project as the launch folder and focuses the composer. "Other" and a project whose folder is
+ * gone have nowhere to start one, so they get none.
+ */
+function ProjectNewSessionButton({group}: {group: SessionGroup<SidebarSessionRow>}) {
+	const navigate = useNavigate();
+	const {data: projects} = useQuery(projectsQueryOptions());
+	const projectId = allRows(group)[0]?.session.project;
+	const project = projects?.find((candidate) => candidate.id === projectId);
+	if (typeof project?.projectPath !== "string") return null;
+	return (
+		<GroupNewSessionButton
+			groupLabel={group.label}
+			onNewSession={() => {
+				requestHomeLaunchFolder(project.id);
+				void navigate({to: "/"}).then(requestHomeComposerFocus);
+			}}
+		/>
 	);
 }
 
@@ -298,7 +332,11 @@ export function GroupSection({
 						{toggle}
 					</CustomGroupHeader>
 				)}
-				<HeaderControls filterSlot={filterSlot} leadsList={leadsList} />
+				<HeaderControls
+					filterSlot={filterSlot}
+					leadsList={leadsList}
+					{...(isProject ? {trailing: <ProjectNewSessionButton group={group} />} : {})}
+				/>
 			</div>
 			{expanded && (
 				<div ref={rowsRef} data-group-rows className={ROWS_CLASS}>

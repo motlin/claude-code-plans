@@ -288,7 +288,8 @@ export function SessionGroups({
 								expanded={!collapsed.has(group.key)}
 								activeItemId={activeItemId}
 								filterSlot={filterSlot}
-								leadsList={index === 0}
+								// Upstream `Xv` vs `gd`: one generic + for status and date; project and custom sections carry their own.
+								leadsList={index === 0 && prefs.groupBy !== "project" && prefs.groupBy !== "custom"}
 								onShowMore={() => {
 									setRevealed((previous) => ({
 										...previous,

@@ -15,7 +15,9 @@ import {ToastProvider} from "../src/components/toast";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
+import {ProjectListResponse, projectsQueryOptions} from "../src/lib/api/projects";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
+import {takePendingHomeLaunchFolder} from "../src/lib/home-composer-focus";
 import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
@@ -75,12 +77,17 @@ async function renderGroups(
 		unseeded?: boolean;
 		activeItemId?: string;
 		prefs?: SessionListPrefs;
+		projects?: unknown[];
+		initialPath?: string;
 	} = {},
 ) {
 	const queryClient =
 		options.unseeded === true
 			? new QueryClient({defaultOptions: {queries: {retry: false}}})
 			: seedQueryClient(sessions, options.nextCursor ?? null);
+	if (options.projects !== undefined) {
+		queryClient.setQueryData(projectsQueryOptions().queryKey, ProjectListResponse.parse(options.projects));
+	}
 	const rootRoute = createRootRoute({
 		component: () => (
 			<SettingsProvider>
@@ -109,20 +116,26 @@ async function renderGroups(
 	});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([homeRoute, sessionRoute]),
-		history: createMemoryHistory({initialEntries: ["/"]}),
+		history: createMemoryHistory({initialEntries: [options.initialPath ?? "/"]}),
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
 	await waitFor(() => {
 		expect(result.container.querySelector("[data-group-toggle], [role=alert]")).toBeTruthy();
 	});
-	return {...result, queryClient};
+	return {...result, queryClient, router};
 }
 
 function groupNames(container: HTMLElement): string[] {
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
 		(node) => node.textContent,
 	);
+}
+
+function toggleOf(container: HTMLElement, key: string): HTMLElement {
+	const toggle = container.querySelector(`[data-group-key="${key}"] [data-group-toggle]`);
+	if (!(toggle instanceof HTMLElement)) throw new Error(`no ${key} toggle`);
+	return toggle;
 }
 
 function rowTitlesIn(container: HTMLElement, groupKey: string): string[] {
@@ -1002,11 +1015,6 @@ describe("SessionGroups open row and focus rescue", () => {
 			});
 		});
 	}
-	function toggleOf(container: HTMLElement, key: string): HTMLElement {
-		const toggle = container.querySelector(`[data-group-key="${key}"] [data-group-toggle]`);
-		if (!(toggle instanceof HTMLElement)) throw new Error(`no ${key} toggle`);
-		return toggle;
-	}
 
 	it("keeps the open session's row under its collapsed header and badges only the hidden rows", async () => {
 		const rows = [
@@ -1075,5 +1083,100 @@ describe("SessionGroups open row and focus rescue", () => {
 		await waitFor(() => {
 			expect(document.activeElement).toBe(toggleOf(container, "state-blocked"));
 		});
+	});
+});
+
+describe("SessionGroups per-project New session +", () => {
+	const byProject = {...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"} as const;
+	const ROWS = [session("a1", "Alpha one", "done", 5), session("b1", "Beta one", "done", 6)];
+
+	function project(id: string, name: string, projectPath: string | null) {
+		return {
+			id,
+			name,
+			projectPath,
+			sessionCount: 1,
+			memoryCount: 0,
+			planCount: 0,
+			taskCount: 0,
+			activeCount: 0,
+			lastActivity: "2026-10-01T00:00:00Z",
+		};
+	}
+
+	const PROJECTS = [project("-projects-a1", "project-a1", "/p/a1"), project("-projects-b1", "project-b1", "/p/b1")];
+
+	function newSessionButtons(container: HTMLElement): Record<string, string[]> {
+		return Object.fromEntries(
+			[...container.querySelectorAll<HTMLElement>('[data-testid="sidebar-recents"] [data-group-key]')].map(
+				(section) => [
+					section.getAttribute("data-group-key"),
+					[...section.querySelectorAll("[data-sidebar-group-label] button[aria-label^='New session']")].map(
+						(button) => button.getAttribute("aria-label") ?? "",
+					),
+				],
+			),
+		);
+	}
+
+	afterEach(() => {
+		takePendingHomeLaunchFolder();
+	});
+
+	it("gives every project header its own New session in {group} + and drops the generic first-header +", async () => {
+		const {container} = await renderGroups(ROWS, {prefs: byProject, projects: PROJECTS});
+
+		expect(newSessionButtons(container)).toStrictEqual({
+			"project-project-a1": ["New session in project-a1"],
+			"project-project-b1": ["New session in project-b1"],
+		});
+	});
+
+	it("keeps the generic New session + on the first header under status grouping", async () => {
+		const {container} = await renderGroups(ROWS, {projects: PROJECTS});
+
+		expect(newSessionButtons(container)).toStrictEqual({"state-done": ["New session"]});
+	});
+
+	it("shows no + for a project whose folder is gone or unknown", async () => {
+		const {container} = await renderGroups(ROWS, {
+			prefs: byProject,
+			projects: [project("-projects-a1", "project-a1", null)],
+		});
+
+		expect(newSessionButtons(container)).toStrictEqual({
+			"project-project-a1": [],
+			"project-project-b1": [],
+		});
+	});
+
+	it("goes home with that project as the launch folder, leaving the section expanded", async () => {
+		const {container, router} = await renderGroups(ROWS, {
+			prefs: byProject,
+			projects: PROJECTS,
+			initialPath: "/session/a1",
+		});
+
+		fireEvent.click(screen.getByRole("button", {name: "New session in project-b1"}));
+
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/");
+		});
+		expect({
+			launchFolder: takePendingHomeLaunchFolder(),
+			expanded: toggleOf(container, "project-project-b1").getAttribute("aria-expanded"),
+			collapsedGroups: readSidebarState().collapsedGroups,
+		}).toStrictEqual({launchFolder: "-projects-b1", expanded: "true", collapsedGroups: []});
+	});
+
+	it("keeps the + on a collapsed project section", async () => {
+		const {container} = await renderGroups(ROWS, {prefs: byProject, projects: PROJECTS});
+
+		fireEvent.click(toggleOf(container, "project-project-a1"));
+
+		expect({
+			expanded: toggleOf(container, "project-project-a1").getAttribute("aria-expanded"),
+			buttons: newSessionButtons(container)["project-project-a1"],
+		}).toStrictEqual({expanded: "false", buttons: ["New session in project-a1"]});
 	});
 });
