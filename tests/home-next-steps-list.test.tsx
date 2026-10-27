@@ -158,20 +158,83 @@ describe("NextStepsList", () => {
 		const names = within(popup)
 			.getAllByRole("button")
 			.map((button) => button.textContent);
+		const dismissButtons = popup.querySelectorAll("[aria-label^=Dismiss]").length;
 		fireEvent.click(within(popup).getByRole("button", {name: /Task 4/}));
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
 
 		expect({
 			dismissed: onDismiss.mock.calls.map(([candidates]) => candidates.map((c) => c.subject)),
+			dismissButtons,
 			names,
 			opened: onOpen.mock.calls,
+			trigger: screen
+				.getByRole("button", {name: "Claude is blocked in 3 more sessions"})
+				.getAttribute("aria-expanded"),
 		}).toStrictEqual({
 			dismissed: [["s3", "s4", "s5"]],
-			names: [
-				"Blocked Task 3Asked a question",
-				"Blocked Task 4Needs permission",
-				"Blocked Task 5Asked a question",
-			],
+			dismissButtons: 0,
+			names: ["Task 3Asked a question", "Task 4Needs permission", "Task 5Asked a question"],
 			opened: [["s4"]],
+			trigger: "false",
+		});
+	});
+
+	it("anchors the rest popup bottom/start at least as wide as its trigger, a list of keyed rows", async () => {
+		render(<NextStepsList rows={rowsOf(5)} onOpen={() => {}} onDismiss={() => {}} />);
+		const trigger = screen.getByRole("button", {name: "Claude is blocked in 3 more sessions"});
+
+		fireEvent.click(trigger);
+		const popup = await screen.findByRole("dialog");
+		const list = within(popup).getByRole("list");
+
+		expect({
+			align: popup.getAttribute("data-align"),
+			side: popup.getAttribute("data-side"),
+			popupClass: popup.className,
+			listClass: list.className,
+			keys: [...list.children].map((li) => li.getAttribute("data-row-key")),
+			expanded: trigger.getAttribute("aria-expanded"),
+			caret: trigger.querySelector("svg")?.getAttribute("class"),
+			triggerClass: trigger.className,
+		}).toStrictEqual({
+			align: "start",
+			side: "bottom",
+			popupClass:
+				"max-h-[var(--available-height)] min-w-[var(--anchor-width)] max-w-[min(26rem,90vw)] overflow-y-auto rounded-r7 bg-surface-3 shadow-[var(--menu-shadow)] break-words outline-none",
+			listClass: "flex flex-col gap-0.5 p-1",
+			keys: ["waiting-session:s3", "waiting-session:s4", "waiting-session:s5"],
+			expanded: "true",
+			caret: "lucide lucide-chevron-down size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary",
+			triggerClass: expect.stringContaining("group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover"),
+		});
+	});
+
+	it("moves focus into the first listed row on open and back to the trigger on Escape", async () => {
+		render(<NextStepsList rows={rowsOf(5)} onOpen={() => {}} onDismiss={() => {}} />);
+		const trigger = screen.getByRole("button", {name: "Claude is blocked in 3 more sessions"});
+
+		fireEvent.click(trigger);
+		const popup = await screen.findByRole("dialog");
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 50);
+			});
+		});
+		const onOpenFocus = document.activeElement?.textContent;
+		fireEvent.keyDown(popup, {key: "Escape"});
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 50);
+			});
+		});
+
+		expect({onOpenFocus, afterEscape: document.activeElement === trigger}).toStrictEqual({
+			onOpenFocus: "Task 3Asked a question",
+			afterEscape: true,
 		});
 	});
 

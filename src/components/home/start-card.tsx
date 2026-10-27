@@ -1,5 +1,5 @@
-import {Check, Folder, X} from "lucide-react";
-import {useId, useRef} from "react";
+import {Check, ChevronDown, Folder, X} from "lucide-react";
+import {useId, useRef, useState} from "react";
 
 import {useShortcut} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
@@ -140,6 +140,10 @@ const STEP_BUTTON_CLASS =
 const STEP_DETAIL_CLASS =
 	"min-w-0 max-w-max grow basis-24 truncate text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
 
+/** Upstream's revealed-row ink for the rest row's caret: muted at rest, secondary on hover, focus or open. */
+const STEP_CARET_CLASS =
+	"size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
+
 /** Reserves the revealed dismiss's width (24px less the row gap) only while it shows. */
 const STEP_SPACER_CLASS =
 	"hidden shrink-0 items-center group-hover/row:flex group-has-[:focus-visible]/row:flex group-has-[[aria-expanded=true]]/row:flex touch:flex -ms-2";
@@ -157,7 +161,8 @@ function StepSpacer() {
 	);
 }
 
-function StepLine({candidate}: Readonly<{candidate: NextStepCandidate}>) {
+/** `listed`: a row inside the rest popup, which drops the "Blocked" status. */
+function StepLine({candidate, listed = false}: Readonly<{candidate: NextStepCandidate; listed?: boolean}>) {
 	return (
 		<span className="flex min-w-0 flex-1 items-center gap-1">
 			<span
@@ -165,7 +170,7 @@ function StepLine({candidate}: Readonly<{candidate: NextStepCandidate}>) {
 				className="flex h-5 min-w-0 items-baseline gap-x-2 overflow-hidden whitespace-nowrap flex-wrap"
 			>
 				<span className="min-w-0 max-w-full truncate text-secondary">
-					{BLOCKED_IDS.has(candidate.id) && (
+					{!listed && BLOCKED_IDS.has(candidate.id) && (
 						<>
 							<span className="text-upstream-warning">Blocked</span>{" "}
 						</>
@@ -245,7 +250,8 @@ export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListP
 function StepRowButton({
 	candidate,
 	onOpen,
-}: Readonly<{candidate: NextStepCandidate; onOpen: (subject: string) => void}>) {
+	listed = false,
+}: Readonly<{candidate: NextStepCandidate; onOpen: (subject: string) => void; listed?: boolean}>) {
 	const titleId = useId();
 	return (
 		<>
@@ -266,8 +272,8 @@ function StepRowButton({
 					}}
 					className={STEP_BUTTON_CLASS}
 				>
-					<StepLine candidate={candidate} />
-					<StepSpacer />
+					<StepLine candidate={candidate} listed={listed} />
+					{!listed && <StepSpacer />}
 				</button>
 			</Tooltip>
 			<span id={titleId} hidden>
@@ -277,6 +283,10 @@ function StepRowButton({
 	);
 }
 
+/**
+ * The "Claude is blocked in N more sessions" row: a caret trigger whose popup, anchored bottom/start and at least as
+ * wide as the row, lists the folded sessions as plain rows (no "Blocked", no dismiss). Opening one closes the popup.
+ */
 function RestRow({
 	title,
 	rest,
@@ -286,31 +296,34 @@ function RestRow({
 	rest: readonly NextStepCandidate[];
 	onOpen: (subject: string) => void;
 }>) {
+	const [open, setOpen] = useState(false);
+	const openListed = (subject: string) => {
+		setOpen(false);
+		onOpen(subject);
+	};
 	return (
-		<Popover.Root>
+		<Popover.Root open={open} onOpenChange={setOpen}>
 			<Popover.Trigger data-next-step-open className={STEP_BUTTON_CLASS}>
 				<span className="min-w-0 flex-1 truncate text-secondary">{title}</span>
+				<ChevronDown aria-hidden="true" className={STEP_CARET_CLASS} />
 				<StepSpacer />
 			</Popover.Trigger>
 			<PopoverContent
 				side="bottom"
-				align="center"
+				align="start"
 				sideOffset={6}
-				className="flex max-h-[var(--available-height)] w-max max-w-[min(26rem,90vw)] flex-col gap-0.5 overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 shadow-[var(--menu-shadow)] outline-none"
+				className="max-h-[var(--available-height)] min-w-[var(--anchor-width)] max-w-[min(26rem,90vw)] overflow-y-auto rounded-r7 bg-surface-3 shadow-[var(--menu-shadow)] break-words outline-none"
 			>
-				{rest.map((candidate) => (
-					<div key={candidate.subject} className="group/row">
-						<button
-							type="button"
-							onClick={() => {
-								onOpen(candidate.subject);
-							}}
-							className={STEP_BUTTON_CLASS}
-						>
-							<StepLine candidate={candidate} />
-						</button>
-					</div>
-				))}
+				<ul role="list" className="flex flex-col gap-0.5 p-1">
+					{rest.map((candidate) => {
+						const key = `${candidate.id}:${candidate.subject}`;
+						return (
+							<li key={key} data-row-key={key} className="group/row relative">
+								<StepRowButton candidate={candidate} onOpen={openListed} listed />
+							</li>
+						);
+					})}
+				</ul>
 			</PopoverContent>
 		</Popover.Root>
 	);
