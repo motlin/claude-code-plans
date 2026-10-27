@@ -1,5 +1,5 @@
 import {Check, Folder, X} from "lucide-react";
-import {useRef} from "react";
+import {useId, useRef} from "react";
 
 import {useShortcut} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
@@ -211,44 +211,69 @@ export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListP
 					<li key={key} data-row-key={key}>
 						<div className="group/row relative">
 							{row.type === "row" ? (
-								<Tooltip
-									content={row.candidate.title}
-									detail={row.candidate.tooltip ?? row.candidate.detail ?? undefined}
-									className="w-full"
-								>
-									<button
-										type="button"
-										data-next-step-open
-										onClick={() => {
-											onOpen(row.candidate.subject);
-										}}
-										className={STEP_BUTTON_CLASS}
-									>
-										<StepLine candidate={row.candidate} />
-										<StepSpacer />
-									</button>
-								</Tooltip>
+								<StepRowButton candidate={row.candidate} onOpen={onOpen} />
 							) : (
 								<RestRow title={row.title} rest={row.rest} onOpen={onOpen} />
 							)}
 							<span className={DISMISS_SLOT_CLASS}>
-								<button
-									type="button"
-									data-next-step-dismiss
-									aria-label={dismissLabel}
-									onClick={() => {
-										dismiss(index, candidates);
-									}}
-									className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-								>
-									<X aria-hidden="true" className="size-4" />
-								</button>
+								<Tooltip content="Dismiss">
+									<button
+										type="button"
+										data-next-step-dismiss
+										aria-label={dismissLabel}
+										onClick={() => {
+											dismiss(index, candidates);
+										}}
+										className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+									>
+										<X aria-hidden="true" className="size-4" />
+									</button>
+								</Tooltip>
 							</span>
 						</div>
 					</li>
 				);
 			})}
 		</ul>
+	);
+}
+
+/**
+ * A next-step row: upstream's title-over-detail tooltip lined up with the row's start edge, and a hidden span
+ * holding the title that describes the button.
+ */
+function StepRowButton({
+	candidate,
+	onOpen,
+}: Readonly<{candidate: NextStepCandidate; onOpen: (subject: string) => void}>) {
+	const titleId = useId();
+	return (
+		<>
+			<Tooltip
+				content={candidate.title}
+				detail={candidate.tooltip ?? candidate.detail ?? undefined}
+				side="top"
+				align="start"
+				stacked
+				className="w-full"
+			>
+				<button
+					type="button"
+					data-next-step-open
+					aria-describedby={titleId}
+					onClick={() => {
+						onOpen(candidate.subject);
+					}}
+					className={STEP_BUTTON_CLASS}
+				>
+					<StepLine candidate={candidate} />
+					<StepSpacer />
+				</button>
+			</Tooltip>
+			<span id={titleId} hidden>
+				{candidate.title}
+			</span>
+		</>
 	);
 }
 

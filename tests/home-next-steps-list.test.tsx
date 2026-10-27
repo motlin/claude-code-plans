@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {useEffect, useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -56,7 +56,9 @@ describe("NextStepsList", () => {
 				dismiss: "Dismiss “Task 2”",
 			},
 		]);
-		const dismissClass = screen.getByRole("button", {name: "Dismiss “Task 1”"}).parentElement!.className.split(" ");
+		const dismissClass = screen
+			.getByRole("button", {name: "Dismiss “Task 1”"})
+			.parentElement!.parentElement!.className.split(" ");
 		expect(
 			["opacity-0", "pointer-coarse:opacity-100", "[@media(hover:none)]:opacity-100"].map((token) =>
 				dismissClass.includes(token),
@@ -83,7 +85,7 @@ describe("NextStepsList", () => {
 			title: title?.className,
 			detail: detail?.className,
 			spacer: button.querySelector("[data-next-step-spacer]")?.outerHTML,
-			slot: dismiss.parentElement!.className,
+			slot: dismiss.parentElement!.parentElement!.className,
 			dismiss: dismiss.className,
 		}).toStrictEqual({
 			key: "waiting-session:s1",
@@ -195,6 +197,73 @@ describe("NextStepsList", () => {
 			afterFirst: "Prompt",
 			dismissed: [["s2"], ["s1"]],
 		});
+	});
+
+	it("opens a start-aligned stacked title + detail tooltip above a row, described by a hidden title span", () => {
+		vi.useFakeTimers();
+		try {
+			const {container} = render(<NextStepsList rows={rowsOf(1)} onOpen={() => {}} onDismiss={() => {}} />);
+			const button = container.querySelector<HTMLButtonElement>("[data-next-step-open]")!;
+			const describedBy = button.getAttribute("aria-describedby");
+			const target = describedBy === null ? null : document.getElementById(describedBy);
+
+			fireEvent.pointerEnter(button.parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const tooltip = screen.getByRole("tooltip");
+
+			expect({
+				target: target?.outerHTML.replace(/id="[^"]+"/, 'id=""'),
+				side: tooltip.dataset["side"],
+				align: tooltip.dataset["align"],
+				parts: [...tooltip.children].map((child) => child.textContent),
+				stacked: tooltip.className.includes("max-w-[min(480px,calc(100vw-16px))]"),
+				startEdge: tooltip.className.split(" ").includes("left-0"),
+			}).toStrictEqual({
+				target: '<span id="" hidden="">Task 1</span>',
+				side: "top",
+				align: "start",
+				parts: ["Task 1", "Asked a question"],
+				stacked: true,
+				startEdge: true,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("shows a centred Dismiss tooltip over the X and no tooltip on the rest row", () => {
+		vi.useFakeTimers();
+		try {
+			const {container} = render(<NextStepsList rows={rowsOf(5)} onOpen={() => {}} onDismiss={() => {}} />);
+			const rest = screen.getByRole("button", {name: "Claude is blocked in 3 more sessions"});
+
+			fireEvent.pointerEnter(rest);
+			fireEvent.focus(rest);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const restTooltips = screen.queryAllByRole("tooltip").length;
+			fireEvent.blur(rest);
+			fireEvent.pointerLeave(rest);
+
+			const dismiss = container.querySelector("li [data-next-step-dismiss]")!;
+			fireEvent.pointerEnter(dismiss.parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const tooltip = screen.getByRole("tooltip");
+
+			expect({
+				restTooltips,
+				text: tooltip.textContent,
+				side: tooltip.dataset["side"],
+				align: tooltip.dataset["align"],
+			}).toStrictEqual({restTooltips: 0, text: "Dismiss", side: "top", align: "center"});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("renders nothing without rows", () => {
