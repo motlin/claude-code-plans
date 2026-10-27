@@ -19,7 +19,7 @@ import {Composer} from "../composer";
 import {useToast} from "../toast-context";
 import {ClawdMascot} from "./clawd-mascot";
 import {UsagePaceBanner} from "../usage-pace-banner";
-import {useHomeLaunchFolder} from "./launch-folder";
+import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
 
 export {HOME_RECENT_LIMIT} from "./launch-folder";
@@ -45,6 +45,7 @@ export function HomeComposer() {
 		launching,
 		setLaunching,
 	} = useHomeLaunchFolder();
+	const worktree = useHomeWorktree();
 	const slashMenu = useSlashCommands(project?.projectPath ?? undefined);
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
@@ -94,12 +95,14 @@ export function HomeComposer() {
 			toast({kind: "error", message: "Choose a project to start a session in."});
 			return;
 		}
-		const args = buildLaunchFlags(launchOptions);
+		const args = buildLaunchFlags(worktree.useWorktree ? {...launchOptions, worktree: true} : launchOptions);
 		const request = {cwd: project.projectPath, prompt, ...(args.length > 0 ? {args} : {})};
 		const since = Date.now();
 		setLaunching(true);
 		try {
 			const {sessionId} = await launchHerdrSession(request);
+			// The launch ends this draft, so its Worktree override goes back to the preference.
+			worktree.setForDraft(null);
 			if (stay) {
 				if (sessionId === null) setPendingLaunchGroup(null);
 				else assignLaunchedSession(sessionId);

@@ -23,6 +23,7 @@ import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {getComposerDefaults} from "../src/lib/composer-state-server";
 import {requestHomeComposerPrefill} from "../src/lib/home-composer-focus";
 import {SSE_EVENTS} from "../src/lib/hook-events";
+import {HOME_WORKTREE_STORAGE_KEY} from "../src/lib/home-worktree-pref";
 import {createGroup, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";
 import {installLocalStorage} from "./fake-storage";
 
@@ -414,6 +415,23 @@ describe("HomeComposer", () => {
 			cwd: "/users/dev/it's",
 			prompt: "fix the flaky test",
 			args: ["--permission-mode", "acceptEdits", "--model", "sonnet"],
+		});
+	});
+
+	it("passes --worktree when the persisted Worktree preference is on", async () => {
+		localStorage.setItem(HOME_WORKTREE_STORAGE_KEY, "true");
+		await renderApp();
+		await typePrompt("hello");
+
+		fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
+		expect(launchBody(launchCalls[0])).toStrictEqual({
+			cwd: "/users/dev/it's",
+			prompt: "hello",
+			args: ["--worktree"],
 		});
 	});
 
