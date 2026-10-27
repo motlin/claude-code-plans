@@ -1,19 +1,32 @@
-import type {SettingsTab} from "./settings-hash";
+import {settingsTabLabels} from "./schema-choices";
+import {type SettingsTab, SettingsTabSchema} from "./settings-hash";
 
 export interface SettingsIndexEntry {
 	tab: SettingsTab;
 	rowSlug: string;
 	title: string;
+	/** Extra phrases that find this row; they match only at rank <= 2 and then score 4. */
+	searchPhrases?: readonly string[];
 }
 
 /**
- * Every titled Settings row, in tab then DOM order. Like upstream, only row titles are indexed,
- * never section headings. tests/settings-search.test.tsx renders each tab and fails when this
- * drifts from the rows the dialog actually shows.
+ * Every titled Settings row, in tab then DOM order. Like upstream, row titles are indexed, never
+ * section headings. tests/settings-search.test.tsx renders each tab and fails when this drifts
+ * from the rows the dialog actually shows.
  */
 export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
-	{tab: "general", rowSlug: "theme", title: "Theme"},
-	{tab: "general", rowSlug: "transcript-text-size", title: "Transcript text size"},
+	{
+		tab: "general",
+		rowSlug: "theme",
+		title: "Theme",
+		searchPhrases: ["dark mode", "light mode", "dark theme", "light theme"],
+	},
+	{
+		tab: "general",
+		rowSlug: "transcript-text-size",
+		title: "Transcript text size",
+		searchPhrases: ["font size"],
+	},
 	{tab: "general", rowSlug: "transcript-width", title: "Transcript width"},
 	{tab: "general", rowSlug: "motion", title: "Motion"},
 	{tab: "general", rowSlug: "hide-chrome", title: "Hide chrome"},
@@ -72,8 +85,106 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	},
 ];
 
+/**
+ * Extra words that find a whole section (upstream's per-section keyword map). A keyword-only hit
+ * scores 10, after every name and row hit.
+ */
+export const SETTINGS_SECTION_KEYWORDS: Partial<Record<SettingsTab, readonly string[]>> = {
+	usage: ["overage", "extra usage", "spend limit", "usage credits"],
+	"claude-config": ["settings.json"],
+	application: ["herdr", "tmux"],
+};
+
+/**
+ * Upstream's query normaliser: NFKD, lowercase, accents stripped, smart quotes folded, and runs of
+ * whitespace, hyphens and underscores collapsed to one space.
+ */
+export function normalizeSettingsQuery(query: string): string {
+	return query
+		.normalize("NFKD")
+		.toLowerCase()
+		.replaceAll(/[\u0300-\u036f]/g, "")
+		.replaceAll(/[\u2018\u2019\u201b]/g, "'")
+		.replaceAll(/[\u201c\u201d]/g, '"')
+		.replaceAll(/[\s\-_\u2010-\u2015]+/g, " ")
+		.trim();
+}
+
+/**
+ * How well `query` matches `label`: 0 equal ignoring spaces, 1 prefix ignoring spaces, 2 every
+ * query word starts some word-suffix of the label (order-free), 3 every query word is a substring,
+ * -1 no match.
+ */
+export function rankSettingsLabel(query: string, label: string): number {
+	const needle = normalizeSettingsQuery(query);
+	if (needle === "") return -1;
+	const haystack = normalizeSettingsQuery(label);
+	const needleWords = needle.split(" ");
+	const labelWords = haystack.split(" ");
+	const compactNeedle = needleWords.join("");
+	const compactLabel = labelWords.join("");
+	if (compactLabel === compactNeedle) return 0;
+	if (compactLabel.startsWith(compactNeedle)) return 1;
+	const suffixes = labelWords.map((_, index) => labelWords.slice(index).join(""));
+	if (needleWords.every((word) => suffixes.some((suffix) => suffix.startsWith(word)))) return 2;
+	if (needleWords.every((word) => haystack.includes(word))) return 3;
+	return -1;
+}
+
+const PHRASE_RANK = 4;
+
+/** A row's rank: its title rank, else 4 when a search phrase matches at rank <= 2, else -1. */
+function rankEntry(query: string, entry: SettingsIndexEntry): number {
+	const rank = rankSettingsLabel(query, entry.title);
+	if (rank !== -1) return rank;
+	const phraseHit = (entry.searchPhrases ?? []).some((phrase) => {
+		const phraseRank = rankSettingsLabel(query, phrase);
+		return phraseRank !== -1 && phraseRank <= 2;
+	});
+	return phraseHit ? PHRASE_RANK : -1;
+}
+
+export interface RankedSettingsRow {
+	entry: SettingsIndexEntry;
+	rank: number;
+}
+
+export interface RankedSettingsSection {
+	tab: SettingsTab;
+	/** Name rank (0-3), else 5 + best row rank, else 10 for a keyword-only hit. */
+	score: number;
+	/** The keyword that found a keyword-only section. */
+	keyword?: string;
+	/** Matching rows, best rank first, ties in index order. */
+	rows: RankedSettingsRow[];
+}
+
+const ROW_SCORE_BASE = 5;
+const KEYWORD_SCORE = 10;
+
+/** Every section that matches `query`, by score then nav order. */
+export function rankSettingsSections(query: string): RankedSettingsSection[] {
+	if (normalizeSettingsQuery(query) === "") return [];
+	return SettingsTabSchema.options
+		.flatMap((tab): RankedSettingsSection[] => {
+			const rows = SETTINGS_INDEX.filter((entry) => entry.tab === tab)
+				.map((entry) => ({entry, rank: rankEntry(query, entry)}))
+				.filter((row) => row.rank !== -1)
+				.toSorted((a, b) => a.rank - b.rank);
+			const nameRank = rankSettingsLabel(query, settingsTabLabels[tab]);
+			if (nameRank !== -1) return [{tab, score: nameRank, rows}];
+			const [best] = rows;
+			if (best !== undefined) return [{tab, score: ROW_SCORE_BASE + best.rank, rows}];
+			const keyword = SETTINGS_SECTION_KEYWORDS[tab]?.find(
+				(candidate) => rankSettingsLabel(query, candidate) !== -1,
+			);
+			return keyword === undefined ? [] : [{tab, score: KEYWORD_SCORE, keyword, rows}];
+		})
+		.toSorted((a, b) => a.score - b.score);
+}
+
 export interface SettingsSearchResult extends SettingsIndexEntry {
-	/** Index of the match in `title`; the match is `query.trim().length` characters long. */
+	/** Index of the match in `title` (length `query.trim().length`), or -1 for no highlight. */
 	start: number;
 }
 
@@ -82,10 +193,9 @@ export interface SettingsSearchGroup {
 	results: SettingsSearchResult[];
 }
 
-/** 0 = title prefix, 1 = word start, 2 = mid-word. */
-function matchRank(title: string, start: number): number {
-	if (start === 0) return 0;
-	return /[^a-z0-9]/i.test(title.charAt(start - 1)) ? 1 : 2;
+/** True when the character before `start` is not a letter or digit. */
+function isWordStart(title: string, start: number): boolean {
+	return start === 0 || /[^a-z0-9]/i.test(title.charAt(start - 1));
 }
 
 /** The first word-start occurrence of `needle` in `haystack`, else the first occurrence. */
@@ -93,35 +203,22 @@ function bestMatch(haystack: string, needle: string): number {
 	let first = -1;
 	for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + 1)) {
 		if (first === -1) first = at;
-		if (matchRank(haystack, at) < 2) return at;
+		if (isWordStart(haystack, at)) return at;
 	}
 	return first;
 }
 
 /**
- * Case-insensitive substring search over row titles. Results are ranked (title prefix, then word
- * start, then mid-word; ties keep index order) and grouped by tab, with groups ordered by their
- * best result.
+ * Ranked sections with their matching rows. Each result's `start` locates the trimmed,
+ * lowercased query in its title for highlighting; rows found through phrases, collapsed spaces or
+ * out-of-order words have no literal match and get -1.
  */
 export function searchSettings(query: string): SettingsSearchGroup[] {
 	const needle = query.trim().toLowerCase();
-	if (needle === "") return [];
-
-	const ranked = SETTINGS_INDEX.flatMap((entry, order) => {
-		const start = bestMatch(entry.title.toLowerCase(), needle);
-		return start === -1 ? [] : [{result: {...entry, start}, order}];
-	}).toSorted(
-		(a, b) =>
-			matchRank(a.result.title, a.result.start) - matchRank(b.result.title, b.result.start) || a.order - b.order,
-	);
-
-	const groups = new Map<SettingsTab, SettingsSearchResult[]>();
-	for (const {result} of ranked) {
-		const group = groups.get(result.tab);
-		if (group === undefined) groups.set(result.tab, [result]);
-		else group.push(result);
-	}
-	return [...groups].map(([tab, results]) => ({tab, results}));
+	return rankSettingsSections(query).map(({tab, rows}) => ({
+		tab,
+		results: rows.map(({entry}) => ({...entry, start: bestMatch(entry.title.toLowerCase(), needle)})),
+	}));
 }
 
 /** Split `title` into the text before, inside and after a match of `length` at `start`. */

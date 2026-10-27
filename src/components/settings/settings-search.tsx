@@ -53,7 +53,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 							event.stopPropagation();
 							setDismissed(true);
 						} else if (event.key === "Enter") {
-							const first = groups[0]?.results[0];
+							const first = groups.flatMap((group) => group.results)[0];
 							if (first !== undefined) {
 								event.preventDefault();
 								choose(first);
@@ -94,7 +94,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 							className="w-[280px] rounded-card bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none"
 						>
 							<div className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1">
-								{groups.length === 0 ? (
+								{groups.every((group) => group.results.length === 0) ? (
 									<p className="px-2.5 py-1.5 text-footnote text-[var(--settings-muted)]">
 										No results
 									</p>
@@ -102,7 +102,10 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 									groups.flatMap((group) => {
 										const Icon = SETTINGS_TAB_ICONS[group.tab];
 										return group.results.map((result) => {
-											const parts = splitMatch(result.title, result.start, needleLength);
+											const parts =
+												result.start === -1
+													? {before: result.title, match: "", after: ""}
+													: splitMatch(result.title, result.start, needleLength);
 											return (
 												<button
 													key={`${result.tab}/${result.rowSlug}`}
@@ -121,7 +124,9 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row: st
 														<span className="text-[var(--settings-muted)]"> / </span>
 														<span data-settings-result-title="">
 															{parts.before}
-															<span className="text-accent-100">{parts.match}</span>
+															{parts.match !== "" && (
+																<span className="text-accent-100">{parts.match}</span>
+															)}
 															{parts.after}
 														</span>
 													</span>
