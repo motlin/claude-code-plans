@@ -5,6 +5,8 @@
 const CLOSED = 2;
 const BASE_DELAY_MS = 1000;
 const MAX_DELAY_MS = 30_000;
+/** After this many wakes without a stream opening, only `online` wakes a pending reopen, as upstream's `vC` does. */
+const VISIBLE_WAKE_LIMIT = 2;
 
 /** The stream's state as the UI shows it; the stream never gives up, so there is no "disconnected". */
 export type StreamStatus = "connecting" | "connected" | "reconnecting";
@@ -34,6 +36,8 @@ export function openReconnectingEventSource(url: string, options: ReconnectingEv
 	let hadError = options.resumeAfterGap === true;
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let status: StreamStatus | undefined;
+	let wakes = 0;
+	let removeWakeListeners: (() => void) | undefined;
 
 	const setStatus = (next: StreamStatus): void => {
 		if (next === status) return;
@@ -41,7 +45,34 @@ export function openReconnectingEventSource(url: string, options: ReconnectingEv
 		options.onStatus?.(next);
 	};
 
+	const stopWaiting = (): void => {
+		removeWakeListeners?.();
+		removeWakeListeners = undefined;
+	};
+
+	const reconnectSoon = (): void => {
+		stopWaiting();
+		clearTimeout(timer);
+		wakes++;
+		timer = setTimeout(connect, sseReconnectDelay(0, options.random));
+	};
+
+	// While a reopen waits out its backoff, coming back online or to the page reconnects in about a second instead.
+	const waitForWake = (): void => {
+		const onVisibilityChange = (): void => {
+			if (document.visibilityState === "visible") reconnectSoon();
+		};
+		window.addEventListener("online", reconnectSoon);
+		const onlineOnly = wakes >= VISIBLE_WAKE_LIMIT;
+		if (!onlineOnly) document.addEventListener("visibilitychange", onVisibilityChange);
+		removeWakeListeners = () => {
+			window.removeEventListener("online", reconnectSoon);
+			document.removeEventListener("visibilitychange", onVisibilityChange);
+		};
+	};
+
 	const connect = (): void => {
+		stopWaiting();
 		setStatus("connecting");
 		const current = new EventSource(url);
 		es = current;
@@ -53,9 +84,11 @@ export function openReconnectingEventSource(url: string, options: ReconnectingEv
 			current.close();
 			timer = setTimeout(connect, sseReconnectDelay(attempt, options.random));
 			attempt++;
+			waitForWake();
 		};
 		current.addEventListener("open", () => {
 			attempt = 0;
+			wakes = 0;
 			setStatus("connected");
 			if (hadError) {
 				hadError = false;
@@ -67,6 +100,7 @@ export function openReconnectingEventSource(url: string, options: ReconnectingEv
 	connect();
 	return () => {
 		clearTimeout(timer);
+		stopWaiting();
 		es.close();
 	};
 }
