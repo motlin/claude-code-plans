@@ -5,13 +5,27 @@ import {currentPerfCounters} from "./server-scope";
  * Runs a command without blocking the event loop, resolving with its stdout, and counts one `proc.spawned` in the
  * active perf scope.
  */
-export async function trackedExecFile(file: string, args: readonly string[], options: {cwd: string}): Promise<string> {
+export async function trackedExecFile(
+	file: string,
+	args: readonly string[],
+	options: {cwd: string; timeout?: number; env?: NodeJS.ProcessEnv},
+): Promise<string> {
 	const counters = currentPerfCounters();
 	if (counters !== undefined) counters.proc.spawned += 1;
 	return new Promise((resolve, reject) => {
-		execFile(file, args, {cwd: options.cwd, encoding: "utf-8"}, (error: Error | null, stdout: string) => {
-			if (error) reject(error);
-			else resolve(stdout);
-		});
+		execFile(
+			file,
+			args,
+			{
+				cwd: options.cwd,
+				encoding: "utf-8",
+				...(options.timeout === undefined ? {} : {timeout: options.timeout}),
+				...(options.env === undefined ? {} : {env: options.env}),
+			},
+			(error: Error | null, stdout: string) => {
+				if (error) reject(error);
+				else resolve(stdout);
+			},
+		);
 	});
 }
