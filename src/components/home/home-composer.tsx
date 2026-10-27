@@ -14,6 +14,7 @@ import {resolveComposerState} from "../../lib/composer-state";
 import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
 import {onHomeComposerFocusRequest, onHomeComposerPrefillRequest} from "../../lib/home-composer-focus";
 import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-session";
+import {assignLaunchedSession, setPendingLaunchGroup} from "../../lib/session-group-store";
 import {Composer} from "../composer";
 import {useToast} from "../toast-context";
 import {ClawdMascot} from "./clawd-mascot";
@@ -83,6 +84,7 @@ export function HomeComposer() {
 		const id = findLaunchedSession(activeSessions.values(), pendingLaunch);
 		if (id === null) return;
 		setPendingLaunch(null);
+		assignLaunchedSession(id);
 		void navigate({to: "/session/$id", params: {id}});
 	}, [pendingLaunch, activeSessions, navigate]);
 
@@ -99,6 +101,8 @@ export function HomeComposer() {
 		try {
 			const {sessionId} = await launchHerdrSession(request);
 			if (stay) {
+				if (sessionId === null) setPendingLaunchGroup(null);
+				else assignLaunchedSession(sessionId);
 				toast({kind: "success", message: `Started a session in ${project.name}`});
 			} else {
 				setPendingLaunch({cwd: request.cwd, since, sessionId});

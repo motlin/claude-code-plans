@@ -5,6 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {
 	SESSION_GROUP_STORAGE_KEY,
 	assign,
+	assignLaunchedSession,
 	createGroup,
 	deleteGroup,
 	listGroups,
@@ -13,6 +14,7 @@ import {
 	renameGroup,
 	setGroupAppearance,
 	setGroupOrder,
+	setPendingLaunchGroup,
 	useSessionGroups,
 } from "../src/lib/session-group-store";
 import {installLocalStorage} from "./fake-storage";
@@ -330,5 +332,25 @@ describe("session group store", () => {
 				bob: "cg-other",
 			},
 		});
+	});
+
+	it("assigns the next launched session to the pending launch group, once", () => {
+		const work = createGroup("Work");
+		setPendingLaunchGroup(work.id);
+
+		assignLaunchedSession("launched");
+		assignLaunchedSession("later");
+
+		expect(readSessionGroupState().assignments).toStrictEqual({launched: work.id});
+	});
+
+	it("drops a pending launch group cleared before the launch resolves", () => {
+		const work = createGroup("Work");
+		setPendingLaunchGroup(work.id);
+		setPendingLaunchGroup(null);
+
+		assignLaunchedSession("launched");
+
+		expect(readSessionGroupState().assignments).toStrictEqual({});
 	});
 });

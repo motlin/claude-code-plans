@@ -35,7 +35,7 @@ function deleteGroupBody(name: string, count: number): string {
 
 /**
  * The label of a Custom groups section with claude.ai/code's header menu,
- * opened by right-clicking the label or by its hover kebab: Rename group
+ * opened by right-clicking the label or by its hover kebab: New session (upstream `rv`), Rename group
  * (inline), Icon and color ▸, New group…, Move up / Move down / Sort A to Z, Archive all (N)
  * and Delete group behind a confirm.
  */
@@ -44,6 +44,7 @@ export function CustomGroupHeader({
 	groupKey,
 	label,
 	archivableIds,
+	onNewSession,
 	children,
 }: {
 	groupId: string;
@@ -52,6 +53,8 @@ export function CustomGroupHeader({
 	label: string;
 	/** Unarchived sessions shown in the section, for Archive all. */
 	archivableIds: readonly string[];
+	/** Starts a session that joins this group, as the header's + does. */
+	onNewSession: () => void;
 	/** The label's toggle button, replaced by the rename input while renaming. */
 	children: ReactNode;
 }) {
@@ -100,6 +103,7 @@ export function CustomGroupHeader({
 			onAppearance={(patch) => {
 				setGroupAppearance(groupId, patch);
 			}}
+			onNewSession={later(onNewSession)}
 			onRename={later(() => {
 				setRenaming(true);
 			})}
@@ -192,6 +196,7 @@ function CustomGroupMenuItems({
 	archiveCount,
 	appearance,
 	onAppearance,
+	onNewSession,
 	onRename,
 	onNewGroup,
 	onMove,
@@ -205,6 +210,7 @@ function CustomGroupMenuItems({
 	archiveCount: number;
 	appearance: GroupAppearance | undefined;
 	onAppearance: (patch: GroupAppearancePatch) => void;
+	onNewSession: () => void;
 	onRename: () => void;
 	onNewGroup: () => void;
 	onMove: (delta: -1 | 1) => void;
@@ -215,6 +221,8 @@ function CustomGroupMenuItems({
 	const canReorder = index !== -1 && count > 1;
 	return (
 		<>
+			<MenuItem onSelect={onNewSession}>New session</MenuItem>
+			<MenuSeparator />
 			<MenuItem onSelect={onRename}>Rename group</MenuItem>
 			<GroupAppearanceSubmenu appearance={appearance} onChange={onAppearance} />
 			<MenuItem onSelect={onNewGroup}>New group…</MenuItem>

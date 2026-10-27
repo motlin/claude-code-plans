@@ -9,8 +9,10 @@ import {GroupSection} from "../src/components/sidebar/session-group-section";
 import {type SidebarSessionRow, toGroupRow} from "../src/components/sidebar/sidebar-session-row";
 import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
+import {ProjectListResponse, projectsQueryOptions} from "../src/lib/api/projects";
 import type {SessionListItem} from "../src/lib/api/sessions";
-import {readSessionGroupState} from "../src/lib/session-group-store";
+import {takePendingHomeLaunchFolder} from "../src/lib/home-composer-focus";
+import {assignLaunchedSession, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";
 import type {SessionGroup} from "../src/lib/session-groups";
 import {installLocalStorage} from "./fake-storage";
 
@@ -20,6 +22,22 @@ const GROUPS = [
 	{id: "cg-gtd", name: "GTD"},
 	{id: "cg-alpha", name: "Alpha"},
 ];
+
+function project(id: string, name: string, projectPath: string | null) {
+	return {
+		id,
+		name,
+		projectPath,
+		sessionCount: 1,
+		memoryCount: 0,
+		planCount: 0,
+		taskCount: 0,
+		activeCount: 0,
+		lastActivity: "2026-10-01T00:00:00Z",
+	};
+}
+
+const PROJECTS = [project("-projects-alpha", "alpha", "/p/alpha"), project("-projects-beta", "beta", "/p/beta")];
 
 const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
 
@@ -71,6 +89,7 @@ async function renderGroup(groupId: string, rows: SidebarSessionRow[] = []) {
 		},
 	});
 	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
+	queryClient.setQueryData(projectsQueryOptions().queryKey, ProjectListResponse.parse(PROJECTS));
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -134,6 +153,8 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+	takePendingHomeLaunchFolder();
+	setPendingLaunchGroup(null);
 	vi.unstubAllGlobals();
 });
 
@@ -143,6 +164,8 @@ describe("custom group header menu items", () => {
 		await renderGroup("cg-gtd");
 
 		expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
+			"New session",
+			"---",
 			"Rename group",
 			"Icon and color",
 			"New group…",
@@ -160,6 +183,8 @@ describe("custom group header menu items", () => {
 		await renderGroup("cg-blog");
 
 		expect(menuOutline(await openHeaderMenu("Blog"))).toEqual([
+			"New session",
+			"---",
 			"Rename group",
 			"Icon and color",
 			"New group…",
@@ -176,6 +201,8 @@ describe("custom group header menu items", () => {
 		await renderGroup("cg-alpha");
 
 		expect(menuOutline(await openHeaderMenu("Alpha"))).toEqual([
+			"New session",
+			"---",
 			"Rename group",
 			"Icon and color",
 			"New group…",
@@ -195,6 +222,8 @@ describe("custom group header menu items", () => {
 		await renderGroup("cg-blog");
 
 		expect(menuOutline(await openHeaderMenu("Blog"))).toEqual([
+			"New session",
+			"---",
 			"Rename group",
 			"Icon and color",
 			"New group…",
@@ -214,6 +243,8 @@ describe("custom group header menu items", () => {
 		await flush();
 
 		expect(menuOutline(await waitFor(() => screen.getByRole("menu")))).toEqual([
+			"New session",
+			"---",
 			"Rename group",
 			"Icon and color",
 			"New group…",
@@ -235,6 +266,8 @@ describe("custom group header menu items", () => {
 		]);
 
 		expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
+			"New session",
+			"---",
 			"Rename group",
 			"Icon and color",
 			"New group…",
@@ -446,5 +479,61 @@ describe("Archive all", () => {
 		await waitFor(() => {
 			expect(screen.getByText("Archived 2 sessions")).toBeTruthy();
 		});
+	});
+});
+
+describe("custom group New session +", () => {
+	function plusLabel(): string | null {
+		return (
+			document
+				.querySelector("[data-sidebar-group-label] button[aria-label^='New session']")
+				?.getAttribute("aria-label") ?? null
+		);
+	}
+
+	it("names the newest session's folder and the group it will be added to", async () => {
+		storeGroups();
+		await renderGroup("cg-gtd", [
+			toGroupRow(listItem("a", {mtime: "2026-09-28T10:00:00.000Z"})),
+			toGroupRow(
+				listItem("b", {project: "-projects-beta", projectName: "beta", mtime: "2026-09-28T11:00:00.000Z"}),
+			),
+		]);
+
+		expect(plusLabel()).toBe("New session in beta, added to GTD");
+	});
+
+	it("says no folder is picked for an empty group", async () => {
+		storeGroups();
+		await renderGroup("cg-gtd");
+
+		expect(plusLabel()).toBe("New session with no folder picked, added to GTD");
+	});
+
+	it("goes home with the group's folder and adds the launched session to the group", async () => {
+		storeGroups();
+		await renderGroup("cg-gtd", [toGroupRow(listItem("a"))]);
+
+		fireEvent.click(screen.getByRole("button", {name: "New session in alpha, added to GTD"}));
+		await flush();
+		assignLaunchedSession("launched");
+
+		expect({
+			folder: takePendingHomeLaunchFolder(),
+			assignments: readSessionGroupState().assignments,
+		}).toStrictEqual({folder: "-projects-alpha", assignments: {launched: "cg-gtd"}});
+	});
+
+	it("starts the same launch from the header menu's New session", async () => {
+		storeGroups();
+		await renderGroup("cg-gtd", [toGroupRow(listItem("a"))]);
+
+		await choose("GTD", "New session");
+		assignLaunchedSession("launched");
+
+		expect({
+			folder: takePendingHomeLaunchFolder(),
+			assignments: readSessionGroupState().assignments,
+		}).toStrictEqual({folder: "-projects-alpha", assignments: {launched: "cg-gtd"}});
 	});
 });

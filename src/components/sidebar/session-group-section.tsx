@@ -24,10 +24,11 @@ import {sessionRowIconKind, type SessionStateKind} from "../../lib/session-state
 import {hasUnseenWork, subscribeUnseenWork} from "../../lib/unread-store";
 import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
-import {useSessionGroups} from "../../lib/session-group-store";
+import {setPendingLaunchGroup, useSessionGroups} from "../../lib/session-group-store";
 import {assertNever} from "../../lib/assert-never";
 import {
 	customGroupIdOfKey,
+	customGroupLaunchTarget,
 	GROUP_PAGE_SIZE,
 	isProjectGroupKey,
 	type SessionGroup,
@@ -122,9 +123,51 @@ function useProjectNewSession(group: SessionGroup<SidebarSessionRow>, isProject:
 	const project = projects?.find((candidate) => candidate.id === projectId);
 	if (!isProject || typeof project?.projectPath !== "string") return null;
 	return () => {
+		setPendingLaunchGroup(null);
 		requestHomeLaunchFolder(project.id);
 		void navigate({to: "/"}).then(requestHomeComposerFocus);
 	};
+}
+
+/**
+ * Upstream `uF` → `P4` for a custom section: go home with the group's folder (`$R`) as the launch
+ * folder, focus the composer, and add the session launched from there to this group.
+ */
+function useCustomGroupNewSession(
+	group: SessionGroup<SidebarSessionRow>,
+	customGroupId: string | null,
+): {target: string | null; onNewSession: () => void} | null {
+	const navigate = useNavigate();
+	const {data: projects} = useQuery({...projectsQueryOptions(), enabled: customGroupId !== null});
+	if (customGroupId === null) return null;
+	const launchRows = allRows(group).map((row) => ({
+		projectId: row.session.project,
+		lastActivityAt: row.lastActivityAt,
+	}));
+	const {projectId, folderName} = customGroupLaunchTarget(launchRows, projects ?? []);
+	return {
+		target: folderName,
+		onNewSession: () => {
+			setPendingLaunchGroup(customGroupId);
+			if (projectId !== null) requestHomeLaunchFolder(projectId);
+			void navigate({to: "/"}).then(requestHomeComposerFocus);
+		},
+	};
+}
+
+/** The section's own +: a custom group's (with its folder target), else a project's, else none. */
+function sectionNewSessionButton(
+	groupLabel: string,
+	custom: {target: string | null; onNewSession: () => void} | null,
+	project: (() => void) | null,
+): ReactNode {
+	if (custom !== null) {
+		return (
+			<GroupNewSessionButton groupLabel={groupLabel} target={custom.target} onNewSession={custom.onNewSession} />
+		);
+	}
+	if (project !== null) return <GroupNewSessionButton groupLabel={groupLabel} onNewSession={project} />;
+	return undefined;
 }
 
 /** Collapsed-header badge precedence, most urgent first: needs input (or its error), unread, running. */
@@ -219,6 +262,7 @@ export function GroupSection({
 	const customGroupId = customGroupIdOfKey(group.key);
 	const isProject = isProjectGroupKey(group.key);
 	const projectNewSession = useProjectNewSession(group, isProject);
+	const customNewSession = useCustomGroupNewSession(group, customGroupId);
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
@@ -324,6 +368,7 @@ export function GroupSection({
 						groupKey={group.key}
 						label={group.label}
 						archivableIds={archivableIds(group)}
+						onNewSession={customNewSession?.onNewSession ?? (() => {})}
 					>
 						{toggle}
 					</CustomGroupHeader>
@@ -331,13 +376,7 @@ export function GroupSection({
 				<HeaderControls
 					filterSlot={filterSlot}
 					leadsList={leadsList}
-					{...(projectNewSession === null
-						? {}
-						: {
-								trailing: (
-									<GroupNewSessionButton groupLabel={group.label} onNewSession={projectNewSession} />
-								),
-							})}
+					trailing={sectionNewSessionButton(group.label, customNewSession, projectNewSession)}
 				/>
 			</div>
 			{expanded && (

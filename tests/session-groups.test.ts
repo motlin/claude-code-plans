@@ -4,6 +4,7 @@ import {
 	DEFAULT_SESSION_LIST_PREFS,
 	SessionListPrefsSchema,
 	buildGroups,
+	customGroupLaunchTarget,
 	migrateSessionListPrefs,
 	shouldLoadNextPage,
 	type SessionGroup,
@@ -611,5 +612,55 @@ describe("shouldLoadNextPage", () => {
 			sevenDays: shouldLoadNextPage(groups, rows, prefs(), NOW),
 			all: shouldLoadNextPage(groups, rows, prefs({activityDays: "all"}), NOW),
 		}).toStrictEqual({sevenDays: false, all: true});
+	});
+});
+
+describe("customGroupLaunchTarget", () => {
+	const PROJECTS = [
+		{id: "-p-alpha", name: "alpha", projectPath: "/p/alpha"},
+		{id: "-p-beta", name: "beta", projectPath: "/p/beta"},
+		{id: "-p-gone", name: "gone", projectPath: null},
+	];
+
+	it("shares the one folder every session runs in", () => {
+		expect(
+			customGroupLaunchTarget(
+				[
+					{projectId: "-p-alpha", lastActivityAt: 1},
+					{projectId: "-p-alpha", lastActivityAt: 3},
+					{projectId: "-p-gone", lastActivityAt: 9},
+				],
+				PROJECTS,
+			),
+		).toStrictEqual({projectId: "-p-alpha", folderName: "alpha", rule: "shared"});
+	});
+
+	it("takes the folder of the most recently active session when they differ", () => {
+		expect(
+			customGroupLaunchTarget(
+				[
+					{projectId: "-p-alpha", lastActivityAt: 5},
+					{projectId: "-p-beta", lastActivityAt: 7},
+					{projectId: "-p-alpha", lastActivityAt: 6},
+				],
+				PROJECTS,
+			),
+		).toStrictEqual({projectId: "-p-beta", folderName: "beta", rule: "most_recent"});
+	});
+
+	it("has no folder for an empty group or one whose folders are gone or unknown", () => {
+		expect({
+			empty: customGroupLaunchTarget([], PROJECTS),
+			folderless: customGroupLaunchTarget(
+				[
+					{projectId: "-p-gone", lastActivityAt: 1},
+					{projectId: "-p-unknown", lastActivityAt: 2},
+				],
+				PROJECTS,
+			),
+		}).toStrictEqual({
+			empty: {projectId: null, folderName: null, rule: "none"},
+			folderless: {projectId: null, folderName: null, rule: "none"},
+		});
 	});
 });

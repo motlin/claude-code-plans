@@ -23,6 +23,7 @@ import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {getComposerDefaults} from "../src/lib/composer-state";
 import {requestHomeComposerPrefill} from "../src/lib/home-composer-focus";
 import {SSE_EVENTS} from "../src/lib/hook-events";
+import {createGroup, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";
 import {installLocalStorage} from "./fake-storage";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
@@ -499,6 +500,42 @@ describe("HomeComposer", () => {
 
 		await waitFor(() => {
 			expect(router.state.location.pathname).toBe("/session/new-session");
+		});
+	});
+
+	it("adds the launched session to the custom group whose + started it", async () => {
+		launchResponse = async () =>
+			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));
+		const {router, eventSource} = await renderApp();
+		const work = createGroup("Work");
+		setPendingLaunchGroup(work.id);
+		await typePrompt("fix the flaky test");
+		fireEvent.click(screen.getByRole("button", {name: "Send"}));
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
+		act(() => {
+			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "new-session", cwd: "/users/dev/it's", model: ""});
+		});
+
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/session/new-session");
+		});
+		expect(readSessionGroupState().assignments).toStrictEqual({"new-session": work.id});
+	});
+
+	it("adds a session sent with ⌘⏎ to the pending custom group by herdr's id", async () => {
+		launchResponse = async () =>
+			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: "stay-session"}));
+		await renderApp();
+		const work = createGroup("Work");
+		setPendingLaunchGroup(work.id);
+		const textarea = await typePrompt("fix the flaky test");
+
+		fireEvent.keyDown(textarea, {key: "Enter", code: "Enter", metaKey: true});
+
+		await waitFor(() => {
+			expect(readSessionGroupState().assignments).toStrictEqual({"stay-session": work.id});
 		});
 	});
 

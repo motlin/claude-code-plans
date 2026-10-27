@@ -101,6 +101,36 @@ export function isProjectGroupKey(key: string): boolean {
 	return key.startsWith("project-");
 }
 
+export interface CustomGroupLaunchTarget {
+	/** The project a new session in this custom group launches in, or null when none is known. */
+	projectId: string | null;
+	folderName: string | null;
+	/** Upstream `$R`: one folder shared by every session, else the most recently active session's. */
+	rule: "shared" | "most_recent" | "none";
+}
+
+/**
+ * Where a custom group's + starts a session (upstream `$R` + `wu`): the folder its sessions share,
+ * else the folder of the most recently active one. Sessions whose folder is gone don't count.
+ */
+export function customGroupLaunchTarget(
+	rows: readonly {projectId: string; lastActivityAt: number}[],
+	projects: readonly {id: string; name: string; projectPath: string | null}[],
+): CustomGroupLaunchTarget {
+	const launchable = new Map(
+		projects.flatMap((project) => (project.projectPath === null ? [] : [[project.id, project]])),
+	);
+	const placed = rows.filter((row) => launchable.has(row.projectId));
+	const newest = placed.reduce<(typeof placed)[number] | undefined>(
+		(best, row) => (best === undefined || row.lastActivityAt > best.lastActivityAt ? row : best),
+		undefined,
+	);
+	const project = newest === undefined ? undefined : launchable.get(newest.projectId);
+	if (project === undefined) return {projectId: null, folderName: null, rule: "none"};
+	const shared = placed.every((row) => row.projectId === project.id);
+	return {projectId: project.id, folderName: project.name, rule: shared ? "shared" : "most_recent"};
+}
+
 /** Completed, Older, Recents and Pinned show this many rows, and each Show more click reveals this many more (upstream `truncateAt: 5`). */
 export const GROUP_PAGE_SIZE = 5;
 

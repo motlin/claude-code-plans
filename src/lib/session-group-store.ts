@@ -174,6 +174,23 @@ export function assign(sessionId: string, groupId: string | null, options: Assig
 	write({groups: state.groups, assignments, order});
 }
 
+let pendingLaunchGroupId: string | null = null;
+
+/**
+ * Upstream `setDraftCustomGroupId`: the custom group the next session launched from home joins, set
+ * by that group's +, or null to drop it.
+ */
+export function setPendingLaunchGroup(groupId: string | null): void {
+	pendingLaunchGroupId = groupId;
+}
+
+/** Add a just-launched session to the pending launch group, if any, consuming it. */
+export function assignLaunchedSession(sessionId: string): void {
+	const groupId = pendingLaunchGroupId;
+	pendingLaunchGroupId = null;
+	if (groupId !== null) assign(sessionId, groupId);
+}
+
 /** Replace a group's manual in-group order; an empty list clears it. Unknown groups are ignored. */
 export function setGroupOrder(groupId: string, sessionIds: readonly string[]): void {
 	const state = readSessionGroupState();
