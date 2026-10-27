@@ -15,11 +15,11 @@ export function HomeTitlebar() {
 
 /**
  * Upstream's /code landing shell: the "New session" titlebar, then a scrolling body and a bottom
- * dock in an 840px centered column with 32px/40px gutters (25px on a phone).
+ * dock in an 840px centered column with 32px/40px gutters (16px/24px once the tile is ≤560px).
  */
 export function HomePage({children, dock}: Readonly<{children?: ReactNode; dock?: ReactNode}>) {
 	return (
-		<div className="flex h-full min-h-0 flex-col">
+		<div className="@container/tile-slot flex h-full min-h-0 flex-col">
 			<HomeTitlebar />
 			<div className={`flex min-h-0 flex-1 flex-col ${HOME_COLUMN}`}>
 				<div

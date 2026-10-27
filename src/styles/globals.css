@@ -1679,6 +1679,12 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 			--tile-title-start: max(0px, calc(var(--top-left-clearance-start, 0px) - 9px));
 			--session-dock-bottom: max(0px, calc(env(safe-area-inset-bottom) - 9px));
 		}
+
+		[data-route-tile-shell="home"] {
+			/* Upstream's home chat card sits 9px from the start and 1px from the end, like the session card. */
+			padding-inline: 9px 1px;
+			--tile-title-start: max(0px, calc(var(--top-left-clearance-start, 0px) - 9px));
+		}
 	}
 
 	.chat-column {

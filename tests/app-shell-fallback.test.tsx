@@ -368,10 +368,12 @@ describe("AppShellFallback", () => {
 		expect({
 			shell: shell?.hasAttribute("data-route-tile-shell"),
 			homeFirst: shell?.firstElementChild?.firstElementChild === home,
+			tileSlot: home?.className.split(" ").includes("@container/tile-slot"),
 			titlebar: home?.firstElementChild?.className,
 		}).toStrictEqual({
 			shell: true,
 			homeFirst: true,
+			tileSlot: true,
 			titlebar: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
 		});
 	});

@@ -172,7 +172,7 @@ function ArtifactsSkeleton() {
 /** The home page while it loads, in its own layout: "New session" titlebar, Sessions rows and the home composer. */
 function HomeSkeleton({chin}: {chin: ShellChinLabels | null}) {
 	return (
-		<div data-testid="home-skeleton" className="flex h-full min-h-0 flex-col">
+		<div data-testid="home-skeleton" className="@container/tile-slot flex h-full min-h-0 flex-col">
 			<HomeTitlebar />
 			<div className={`min-h-0 flex-1 overflow-hidden ${HOME_COLUMN}`}>
 				<section className="flex flex-col gap-2 pt-6">
