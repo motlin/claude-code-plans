@@ -35,7 +35,7 @@ export function HomeComposer() {
 	const toast = useToast();
 	const activeSessions = useActiveSessionsIfAvailable();
 	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
-	const [pendingLaunch, setPendingLaunch] = useState<PendingLaunch | null>(null);
+	const [pendingLaunch, setPendingLaunch] = useState<(PendingLaunch & {worktree: boolean}) | null>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 
 	const {
@@ -108,7 +108,7 @@ export function HomeComposer() {
 				else assignLaunchedSession(sessionId);
 				toast({kind: "success", message: `Started a session in ${project.name}`});
 			} else {
-				setPendingLaunch({cwd: request.cwd, since, sessionId});
+				setPendingLaunch({cwd: request.cwd, since, sessionId, worktree: worktree.useWorktree});
 			}
 		} catch {
 			const copied = await writeClipboardText(buildClaudeCopyCommand(request));
@@ -135,7 +135,13 @@ export function HomeComposer() {
 				onSend={(prompt, launchOptions) => void launch(prompt, launchOptions)}
 				onSendAndStay={(prompt, launchOptions) => void launch(prompt, launchOptions, true)}
 				disabled={launching}
-				deliveryHint={pendingLaunch === null ? undefined : `Starting session in ${pendingLaunch.cwd}…`}
+				deliveryHint={
+					pendingLaunch === null
+						? undefined
+						: pendingLaunch.worktree
+							? "Creating worktree…"
+							: `Starting session in ${pendingLaunch.cwd}…`
+				}
 				chin={chin}
 				environment={
 					<ProjectPicker

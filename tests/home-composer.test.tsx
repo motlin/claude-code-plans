@@ -435,6 +435,33 @@ describe("HomeComposer", () => {
 		});
 	});
 
+	it("reads Creating worktree… while a --worktree launch is pending", async () => {
+		launchResponse = async () =>
+			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));
+		localStorage.setItem(HOME_WORKTREE_STORAGE_KEY, "true");
+		await renderApp();
+		await typePrompt("hello");
+
+		fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+		expect((await screen.findByText(/^(Creating worktree|Starting session in)/)).textContent).toBe(
+			"Creating worktree…",
+		);
+	});
+
+	it("reads Starting session in {cwd}… while a launch without a worktree is pending", async () => {
+		launchResponse = async () =>
+			Promise.resolve(Response.json({ok: true, tabId: "t1", paneId: "p1", sessionId: null}));
+		await renderApp();
+		await typePrompt("hello");
+
+		fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+		expect((await screen.findByText(/^(Creating worktree|Starting session in)/)).textContent).toBe(
+			"Starting session in /users/dev/it's…",
+		);
+	});
+
 	it("turns Worktree on from the folder picker footer and launches with --worktree", async () => {
 		await renderApp();
 		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
