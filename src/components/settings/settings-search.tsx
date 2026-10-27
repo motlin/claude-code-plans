@@ -42,6 +42,11 @@ function rowKey(row: SettingsResultRow): string {
 	return row.kind === "child" ? `child/${row.tab}/${row.rowSlug}` : `${row.kind}/${row.tab}`;
 }
 
+/** "3 more matches in Claude Code": the "+N more" row's label and, after "Showing ", its announcement. */
+function moreMatches(count: number, section: string): string {
+	return `${count} more ${count === 1 ? "match" : "matches"} in ${section}`;
+}
+
 /** Upstream's result row: a section hit (icon, name, optional via line), an indented child, or "+N more". */
 function ResultRow({
 	row,
@@ -90,11 +95,7 @@ function ResultRow({
 	return (
 		<button
 			{...rowProps}
-			aria-label={
-				row.kind === "child"
-					? `${row.title} in ${section}`
-					: `${row.count} more ${row.count === 1 ? "match" : "matches"} in ${section}`
-			}
+			aria-label={row.kind === "child" ? `${row.title} in ${section}` : moreMatches(row.count, section)}
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-3 ${INDENT_CLASS}`}>
 				{row.kind === "child" ? (
@@ -118,6 +119,7 @@ function ResultRow({
 export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: string) => void}) {
 	const [query, setQuery] = useState("");
 	const [expanded, setExpanded] = useState<ReadonlySet<SettingsTab>>(() => new Set());
+	const [announcement, setAnnouncement] = useState("");
 	const [active, setActive] = useState(0);
 	const anchorRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -132,10 +134,14 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 		scrollerRef.current?.querySelector("[data-highlighted]")?.scrollIntoView({block: "nearest"});
 	}, [active, rows]);
 
+	const collapse = () => {
+		setExpanded(new Set());
+		setAnnouncement("");
+	};
 	const clear = () => {
 		setQuery("");
 		setActive(0);
-		setExpanded(new Set());
+		collapse();
 	};
 	// Upstream's dismissal (Escape, outside press, select): clear, then blur so a second Escape reaches the dialog.
 	const reset = () => {
@@ -146,6 +152,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 	const choose = (row: SettingsResultRow) => {
 		if (row.kind === "more") {
 			setExpanded((previous) => new Set([...previous, row.tab]));
+			setAnnouncement(`Showing ${moreMatches(row.count, settingsTabLabels[row.tab])}`);
 			return;
 		}
 		reset();
@@ -171,7 +178,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 					value={query}
 					onChange={(event) => {
 						const next = event.target.value;
-						if (normalizeSettingsQuery(next) !== normalizeSettingsQuery(query)) setExpanded(new Set());
+						if (normalizeSettingsQuery(next) !== normalizeSettingsQuery(query)) collapse();
 						setQuery(next);
 						setActive(0);
 					}}
@@ -230,7 +237,9 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 							finalFocus={false}
 							className="w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none"
 						>
-							<p role="status" className="sr-only" />
+							<p role="status" className="sr-only">
+								{announcement}
+							</p>
 							<div
 								ref={scrollerRef}
 								className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1"

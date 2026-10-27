@@ -358,6 +358,95 @@ describe("settings search", () => {
 		});
 	});
 
+	const HO_COLLAPSED = [
+		"hit: Transcript",
+		"Hook warnings in Transcript",
+		"Hook errors in Transcript",
+		"Passed hooks in Transcript",
+		"2 more matches in Transcript",
+		"hit: ApplicationTerminal host",
+		"hit: Sessions",
+		"Show AI titles in Sessions",
+		"Show working-copy changes strip in Sessions",
+	];
+	const HO_EXPANDED = [
+		"hit: Transcript",
+		"Hook warnings in Transcript",
+		"Hook errors in Transcript",
+		"Passed hooks in Transcript",
+		"Show compact summaries inline in Transcript",
+		"Show transcript-only system records in Transcript",
+		"hit: ApplicationTerminal host",
+		"hit: Sessions",
+		"Show AI titles in Sessions",
+		"Show working-copy changes strip in Sessions",
+	];
+
+	/** The popover rows, the sr-only status text, and whether the field kept focus. */
+	function moreState(): {rows: string[]; status: string; inputFocused: boolean} {
+		const popover = screen.getByRole("dialog", {name: "Search results"});
+		return {
+			rows: popoverRows(popover),
+			status: within(popover).getByRole("status").textContent,
+			inputFocused: document.activeElement === screen.getByRole("combobox", {name: "Search settings"}),
+		};
+	}
+
+	it.each<[string, (input: HTMLElement) => void]>([
+		[
+			"click",
+			() => {
+				fireEvent.click(screen.getByRole("button", {name: "2 more matches in Transcript"}));
+			},
+		],
+		[
+			"Enter",
+			(input) => {
+				for (let i = 0; i < 4; i++) fireEvent.keyDown(input, {key: "ArrowDown"});
+				fireEvent.keyDown(input, {key: "Enter"});
+			},
+		],
+	])("%s on +N more expands the section in place and announces it", async (_how, expand) => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("combobox", {name: "Search settings"});
+		input.focus();
+
+		fireEvent.change(input, {target: {value: "ho"}});
+		await screen.findByRole("dialog", {name: "Search results"});
+		const before = moreState();
+		expand(input);
+
+		expect({before, after: moreState(), hash: router.state.location.hash}).toStrictEqual({
+			before: {rows: HO_COLLAPSED, status: "", inputFocused: true},
+			after: {
+				rows: HO_EXPANDED,
+				status: "Showing 2 more matches in Transcript",
+				inputFocused: true,
+			},
+			hash: "settings/general",
+		});
+	});
+
+	it("collapses +N more when the normalised query changes, not on a whitespace-only edit", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("combobox", {name: "Search settings"});
+		input.focus();
+
+		fireEvent.change(input, {target: {value: "ho"}});
+		fireEvent.click(await screen.findByRole("button", {name: "2 more matches in Transcript"}));
+		fireEvent.change(input, {target: {value: "ho "}});
+		const sameQuery = moreState();
+		fireEvent.change(input, {target: {value: "h"}});
+		fireEvent.change(input, {target: {value: "ho"}});
+
+		expect({sameQuery: sameQuery.rows, changed: moreState()}).toStrictEqual({
+			sameQuery: HO_EXPANDED,
+			changed: {rows: HO_COLLAPSED, status: "", inputFocused: true},
+		});
+	});
+
 	it.each<[string, string, string]>([
 		// Section-name-only and keyword-only hits get rows of their own and switch the tab only.
 		["general", "hit: General", "settings/general"],
