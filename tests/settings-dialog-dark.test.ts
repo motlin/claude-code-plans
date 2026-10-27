@@ -53,4 +53,20 @@ describe("settings dialog in dark (wave 90, W90-13)", () => {
 			dark: {track: "hsl(0 0% 100% / 0.05)", ink: "var(--upstream-text-secondary)"},
 		});
 	});
+
+	it("draws the Switch track with upstream's --cds-switch-track: alpha-3/alpha-4 (rgb(11 11 11) at .2/.35) in light and alpha-2/alpha-3 (white at .1/.2) in dark", () => {
+		expect({
+			light: {
+				track: token(":root", "--settings-switch-track"),
+				hover: token(":root", "--settings-switch-track-hover"),
+			},
+			dark: {
+				track: token(".dark", "--settings-switch-track"),
+				hover: token(".dark", "--settings-switch-track-hover"),
+			},
+		}).toStrictEqual({
+			light: {track: "rgb(11 11 11 / 0.2)", hover: "rgb(11 11 11 / 0.35)"},
+			dark: {track: "hsl(0 0% 100% / 0.1)", hover: "hsl(0 0% 100% / 0.2)"},
+		});
+	});
 });

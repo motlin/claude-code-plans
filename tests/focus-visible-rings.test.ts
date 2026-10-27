@@ -68,7 +68,7 @@ describe("hand-rolled focus rings", () => {
 				"src/components/settings/segmented-control.tsx",
 				`transition-shadow duration-[60ms] hover:text-primary ${SHADOW_FOCUS}`,
 			),
-			switch: has("src/components/settings/switch.tsx", `data-[disabled]:opacity-50 ${SHADOW_FOCUS}`),
+			switch: has("src/components/settings/switch.tsx", `data-[disabled]:opacity-40 ${SHADOW_FOCUS}`),
 			messageActions: has(
 				"src/components/message-actions.tsx",
 				`text-ink-muted outline-none ${SHADOW_FOCUS} transition-colors`,
