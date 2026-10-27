@@ -187,17 +187,19 @@ const PluginJsonSchema = z.object({
 		.catch(undefined),
 });
 
-export async function listPlugins(claudeDir: string = join(homedir(), ".claude")): Promise<PluginInfo[]> {
-	const registryPath = join(claudeDir, "plugins", "installed_plugins.json");
-	let registry: z.infer<typeof PluginRegistrySchema>;
+/** `plugins/installed_plugins.json`, or null when it is missing or unreadable. */
+export async function readPluginRegistry(claudeDir: string): Promise<z.infer<typeof PluginRegistrySchema> | null> {
 	try {
-		const raw = await readFile(registryPath, "utf-8");
-		const parsed = PluginRegistrySchema.safeParse(JSON.parse(raw));
-		if (!parsed.success) return [];
-		registry = parsed.data;
+		const raw = await readFile(join(claudeDir, "plugins", "installed_plugins.json"), "utf-8");
+		return PluginRegistrySchema.safeParse(JSON.parse(raw)).data ?? null;
 	} catch {
-		return [];
+		return null;
 	}
+}
+
+export async function listPlugins(claudeDir: string = join(homedir(), ".claude")): Promise<PluginInfo[]> {
+	const registry = await readPluginRegistry(claudeDir);
+	if (registry === null) return [];
 
 	const plugins: PluginInfo[] = [];
 

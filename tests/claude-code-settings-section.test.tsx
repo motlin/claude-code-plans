@@ -8,6 +8,7 @@ import {SettingsProvider} from "../src/components/settings-provider";
 import {ClaudeCodeSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
 import type {ClaudeCodeSettingsState} from "../src/lib/claude-code-settings-schema";
+import type {OutputStyles} from "../src/lib/output-style-options";
 import {installLocalStorage} from "./fake-storage";
 
 interface Posted {
@@ -17,7 +18,10 @@ interface Posted {
 }
 
 /** A fake /api/claude-code-settings: GET serves `state`; each POST waits for a test-controlled reply. */
-function fakeEndpoint(initial: ClaudeCodeSettingsState) {
+function fakeEndpoint(
+	initial: ClaudeCodeSettingsState,
+	styles: OutputStyles = {builtIns: ["Explanatory", "Learning"], customs: []},
+) {
 	let state = initial;
 	const posts: Posted[] = [];
 	const pending: Array<(reply: "ok" | "conflict" | "fail") => void> = [];
@@ -25,6 +29,7 @@ function fakeEndpoint(initial: ClaudeCodeSettingsState) {
 		new Response(JSON.stringify(body), {status, headers: {"Content-Type": "application/json"}});
 
 	const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async (input, init) => {
+		if (input.endsWith("/api/output-styles")) return json(styles);
 		if (!input.endsWith("/api/claude-code-settings")) return new Promise<Response>(() => {});
 		if (init?.method !== "POST") return json(state);
 		const body = JSON.parse(String(init.body)) as Posted;
@@ -146,6 +151,12 @@ describe("Claude Code settings ▸ Sessions", () => {
 					title: "Dynamic workflows",
 					description:
 						"Let Claude run multiple agents in parallel for complex tasks. Workflows can use a lot of your usage limit quickly.",
+				},
+				{
+					slug: "output-style",
+					title: "Output style",
+					description:
+						"How Claude structures its responses in Code sessions. Applies to new sessions; the session menu can override it for a single session.",
 				},
 				{
 					slug: "local-sandbox",
@@ -386,5 +397,127 @@ describe("Claude Code settings ▸ Sessions", () => {
 				alerts: screen.queryAllByRole("alert").length,
 			}).toStrictEqual({checked: "true", alerts: 0});
 		});
+	});
+});
+
+describe("Claude Code settings ▸ Sessions ▸ Output style", () => {
+	function trigger(): HTMLElement {
+		return within(row("output-style")).getByRole("combobox");
+	}
+
+	function openOptions() {
+		fireEvent.click(trigger());
+		return within(row("output-style"))
+			.getAllByRole("option")
+			.map((option) => ({
+				label: option.textContent,
+				selected: option.getAttribute("aria-selected"),
+				disabled: option.getAttribute("aria-disabled"),
+			}));
+	}
+
+	function pick(label: string) {
+		fireEvent.click(trigger());
+		fireEvent.click(within(row("output-style")).getByRole("option", {name: label}));
+	}
+
+	async function stylesLoaded() {
+		await settled();
+		await waitFor(() => {
+			expect(trigger().getAttribute("aria-disabled")).toBeNull();
+		});
+	}
+
+	it("offers Default, the built-ins and the custom styles in a 160px select", async () => {
+		vi.stubGlobal(
+			"fetch",
+			fakeEndpoint({mtimeMs: 1, values: {}}, {builtIns: ["Explanatory", "Learning"], customs: ["Terse"]})
+				.fetchMock,
+		);
+		await renderTab();
+		await stylesLoaded();
+
+		expect({
+			trigger: trigger().textContent,
+			width: trigger().closest(".w-\\[160px\\]") !== null,
+			options: openOptions(),
+		}).toStrictEqual({
+			trigger: "Default",
+			width: true,
+			options: [
+				{label: "Default", selected: "true", disabled: null},
+				{label: "Explanatory", selected: "false", disabled: null},
+				{label: "Learning", selected: "false", disabled: null},
+				{label: "Terse", selected: "false", disabled: null},
+			],
+		});
+	});
+
+	it("disables the select and reads Loading… while settings load", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Promise<Response>(() => {})),
+		);
+		await renderTab();
+
+		expect({
+			disabled: trigger().getAttribute("aria-disabled"),
+			description: row("output-style").querySelector("[data-settings-desc]")?.textContent,
+		}).toStrictEqual({disabled: "true", description: "Loading…"});
+	});
+
+	it("appends an uninstalled current style as a disabled item and shows it as the value", async () => {
+		vi.stubGlobal("fetch", fakeEndpoint({mtimeMs: 1, values: {outputStyle: "Gone"}}).fetchMock);
+		await renderTab();
+		await stylesLoaded();
+
+		expect({trigger: trigger().textContent, options: openOptions()}).toStrictEqual({
+			trigger: "Gone",
+			options: [
+				{label: "Default", selected: "false", disabled: null},
+				{label: "Explanatory", selected: "false", disabled: null},
+				{label: "Learning", selected: "false", disabled: null},
+				{label: "Gone", selected: "true", disabled: "true"},
+			],
+		});
+	});
+
+	it("writes the picked style, and deletes the key when Default is picked", async () => {
+		const endpoint = fakeEndpoint({mtimeMs: 1, values: {}});
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await stylesLoaded();
+
+		pick("Explanatory");
+		expect(trigger().textContent).toBe("Explanatory");
+		await endpoint.reply(0, "ok");
+		await waitFor(() => {
+			expect(trigger().textContent).toBe("Explanatory");
+		});
+		pick("Default");
+		await waitFor(() => {
+			expect(endpoint.posts).toHaveLength(2);
+		});
+		await endpoint.reply(1, "ok");
+		await waitFor(() => {
+			expect(trigger().textContent).toBe("Default");
+		});
+
+		expect(endpoint.posts).toStrictEqual([
+			{key: "outputStyle", value: "Explanatory", expectedMtimeMs: 1},
+			{key: "outputStyle", expectedMtimeMs: 2},
+		]);
+	});
+
+	it("does not write when the picked style is already the current one", async () => {
+		const endpoint = fakeEndpoint({mtimeMs: 1, values: {outputStyle: "default"}});
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await stylesLoaded();
+
+		pick("Default");
+		await act(async () => {});
+
+		expect(endpoint.posts).toStrictEqual([]);
 	});
 });

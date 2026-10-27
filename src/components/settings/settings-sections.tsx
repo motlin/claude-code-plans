@@ -37,6 +37,8 @@ import {useClaudeCodeSetting} from "./use-claude-code-setting";
 import {DisabledReason} from "../ui/disabled-reason";
 import type {ClaudeCodeSettingKey, ClaudeCodeSettingsState} from "../../lib/claude-code-settings-schema";
 import {ThemedCombobox} from "./themed-combobox";
+import {outputStylesQueryOptions} from "../../lib/api/output-styles";
+import {DEFAULT_OUTPUT_STYLE, outputStyleOptions} from "../../lib/output-style-options";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../../lib/api/application-settings";
 
 /**
@@ -891,6 +893,12 @@ function CodeAppearanceSection() {
 	);
 }
 
+const WRITE_FAILED_ALERT = (
+	<p className="text-footnote text-danger">
+		<span role="alert">Couldn’t save this setting.</span>
+	</p>
+);
+
 /** One settings.json switch row, bound through /api/claude-code-settings. */
 function ClaudeCodeSwitchRow({
 	slug,
@@ -919,13 +927,7 @@ function ClaudeCodeSwitchRow({
 			slug={slug}
 			title={title}
 			description={setting.loading ? "Loading…" : description}
-			below={
-				setting.writeFailed ? (
-					<p className="text-footnote text-danger">
-						<span role="alert">Couldn’t save this setting.</span>
-					</p>
-				) : undefined
-			}
+			below={setting.writeFailed ? WRITE_FAILED_ALERT : undefined}
 		>
 			<DisabledReason reason={reason}>
 				<Switch
@@ -936,6 +938,46 @@ function ClaudeCodeSwitchRow({
 					}}
 				/>
 			</DisabledReason>
+		</SettingsRow>
+	);
+}
+
+/**
+ * Upstream's Output style select: Default, the CLI built-ins and the installed custom styles, written
+ * to settings.json `outputStyle` (Default deletes the key).
+ */
+function OutputStyleRow() {
+	const setting = useClaudeCodeSetting("outputStyle");
+	const styles = useQuery(outputStylesQueryOptions);
+	const {value, options} = outputStyleOptions(
+		styles.data,
+		typeof setting.value === "string" ? setting.value : DEFAULT_OUTPUT_STYLE,
+	);
+
+	return (
+		<SettingsRow
+			slug="output-style"
+			title="Output style"
+			description={
+				setting.loading
+					? "Loading…"
+					: "How Claude structures its responses in Code sessions. Applies to new sessions; the session menu can override it for a single session."
+			}
+			below={setting.writeFailed ? WRITE_FAILED_ALERT : undefined}
+		>
+			<div className="w-[160px]">
+				<ThemedCombobox
+					aria-label="Output style"
+					value={value}
+					options={options}
+					disabled={setting.loading || setting.unavailable}
+					onValueChange={(next) => {
+						if (next === value) return;
+						setting.write(next === DEFAULT_OUTPUT_STYLE ? undefined : next);
+					}}
+					className="w-full"
+				/>
+			</div>
 		</SettingsRow>
 	);
 }
@@ -982,6 +1024,7 @@ function LocalSessionsSection() {
 				isOn={(value) => value !== false}
 				valueFor={(on) => (on ? undefined : false)}
 			/>
+			<OutputStyleRow />
 			<ClaudeCodeSwitchRow
 				slug="local-sandbox"
 				title="Local sandbox"

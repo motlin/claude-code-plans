@@ -14,6 +14,8 @@ import {useSettingsRowIds} from "./settings-row-context";
 interface ComboboxOption<T extends string> {
 	value: T;
 	label: string;
+	/** Shown (and checked when current) but not selectable, like upstream's uninstalled output style. */
+	disabled?: boolean;
 }
 
 interface ThemedComboboxProps<T extends string> {
@@ -22,6 +24,7 @@ interface ThemedComboboxProps<T extends string> {
 	options: ReadonlyArray<ComboboxOption<T>>;
 	"aria-label": string;
 	className?: string;
+	disabled?: boolean;
 }
 
 export function ThemedCombobox<T extends string>({
@@ -30,6 +33,7 @@ export function ThemedCombobox<T extends string>({
 	options,
 	"aria-label": ariaLabel,
 	className,
+	disabled = false,
 }: ThemedComboboxProps<T>) {
 	const row = useSettingsRowIds();
 	const baseId = useId();
@@ -68,7 +72,7 @@ export function ThemedCombobox<T extends string>({
 	};
 
 	const choose = (option: ComboboxOption<T> | undefined) => {
-		if (option === undefined) return;
+		if (option === undefined || option.disabled === true) return;
 		onValueChange(option.value);
 		setOpen(false);
 		triggerRef.current?.focus();
@@ -109,6 +113,8 @@ export function ThemedCombobox<T extends string>({
 				aria-haspopup="listbox"
 				aria-expanded={open}
 				aria-controls={open ? listboxId : undefined}
+				aria-disabled={disabled ? true : undefined}
+				disabled={disabled}
 				onClick={() => {
 					if (open) setOpen(false);
 					else openPopup();
@@ -119,7 +125,7 @@ export function ThemedCombobox<T extends string>({
 						openPopup();
 					}
 				}}
-				className="flex h-8 w-full items-center justify-between gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] pr-2 pl-3 text-left text-body text-primary outline-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+				className="flex h-8 w-full items-center justify-between gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] pr-2 pl-3 text-left text-body text-primary outline-none enabled:hover:bg-fill-ghost-hover disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 			>
 				<span className="min-w-0 truncate">{current?.label ?? value}</span>
 				<ChevronDown aria-hidden="true" className="size-4 shrink-0 text-[var(--settings-muted)]" />
@@ -157,6 +163,7 @@ export function ThemedCombobox<T extends string>({
 										id={`${baseId}-${option.value}`}
 										role="option"
 										aria-selected={selected}
+										aria-disabled={option.disabled === true ? true : undefined}
 										data-highlighted={index === activeIndex ? "" : undefined}
 										onMouseEnter={() => {
 											setActiveIndex(index);
@@ -167,7 +174,7 @@ export function ThemedCombobox<T extends string>({
 										onClick={() => {
 											choose(option);
 										}}
-										className="flex h-8 cursor-default items-center gap-1 rounded-r6 px-2.5 text-body text-primary select-none data-[highlighted]:bg-fill-ghost-hover"
+										className="flex h-8 cursor-default items-center gap-1 rounded-r6 px-2.5 text-body text-primary select-none data-[highlighted]:bg-fill-ghost-hover aria-disabled:opacity-50"
 									>
 										<span className="min-w-0 flex-1 truncate">{option.label}</span>
 										<span className="-mr-1 flex size-5 shrink-0 items-center justify-center">

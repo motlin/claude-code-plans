@@ -42,6 +42,8 @@ describe("rankSettingsSections grouping", () => {
 		["font code", [{tab: "claude-code", rows: [["code-font", "Code font"]]}]],
 		["font size", [{tab: "general", rows: [["transcript-text-size", "Transcript text size"]]}]],
 		["dark mode", [{tab: "general", rows: [["theme", "Theme"]]}]],
+		["terse", [{tab: "claude-code", rows: [["output-style", "Output style"]]}]],
+		["response style", [{tab: "claude-code", rows: [["output-style", "Output style"]]}]],
 		// A keyword-only section hit has no rows.
 		["tmux", [{tab: "application", rows: []}]],
 		// A section-name match outranks row matches elsewhere.
@@ -281,7 +283,7 @@ describe("buildSettingsResultRows", () => {
 				{kind: "hit", tab: "ai-features", via: "Summary button", rowSlug: "summary-button"},
 				{kind: "hit", tab: "application", via: "Shell tabs", rowSlug: "shell-tabs"},
 				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
-				{kind: "hit", tab: "claude-code", via: "Local sandbox", rowSlug: "local-sandbox"},
+				{kind: "hit", tab: "claude-code", via: "Output style", rowSlug: "output-style"},
 				{
 					kind: "hit",
 					tab: "claude-config",

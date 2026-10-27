@@ -39,6 +39,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{tab: "claude-code", rowSlug: "default-transcript-view", title: "Default transcript view"},
 	{tab: "claude-code", rowSlug: "allow-bypass-permissions-mode", title: "Allow bypass permissions mode"},
 	{tab: "claude-code", rowSlug: "dynamic-workflows", title: "Dynamic workflows"},
+	{
+		tab: "claude-code",
+		rowSlug: "output-style",
+		title: "Output style",
+		searchPhrases: ["concise", "terse", "brief", "response style"],
+	},
 	{tab: "claude-code", rowSlug: "local-sandbox", title: "Local sandbox"},
 	{tab: "transcript", rowSlug: "thinking", title: "Thinking"},
 	{tab: "transcript", rowSlug: "tools", title: "Tools"},
