@@ -37,6 +37,7 @@ import type {
 	ApiRequestBlobContentBlockSchema,
 	ApiRequestBlobRoleSchema,
 	AttachmentPayloadSchema,
+	ClassifierArtifactAttestationSchema,
 	ClassifierArtifactPublishEnvSchema,
 	ClassifierArtifactShareModeSchema,
 	ClassifierArtifactShareRoleSchema,
@@ -1424,6 +1425,11 @@ const classifierArtifactPublishEnvLabels = {
 	prod: "Production",
 } satisfies Record<z.infer<typeof ClassifierArtifactPublishEnvSchema>, string>;
 
+/** Classifier context `artifacts.by_slug{}.attested` (src/lib/schemas.ts). */
+const classifierArtifactAttestationLabels = {
+	first_party_type: "First-party type",
+} satisfies Record<z.infer<typeof ClassifierArtifactAttestationSchema>, string>;
+
 /** WebSearch `mode` (src/lib/tool-input-schemas.ts). */
 const webSearchModeLabels = {
 	standard: "Standard",
@@ -1635,6 +1641,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	ArtifactLiveSubscriptionSchema: artifactLiveSubscriptionLabels,
 	ArtifactAccessLevelSchema: artifactAccessLevelLabels,
 	ArtifactUserScopeSchema: artifactUserScopeLabels,
+	ClassifierArtifactAttestationSchema: classifierArtifactAttestationLabels,
 	ClassifierArtifactPublishEnvSchema: classifierArtifactPublishEnvLabels,
 	ClassifierArtifactShareModeSchema: classifierArtifactShareModeLabels,
 	ClassifierArtifactShareRoleSchema: classifierArtifactShareRoleLabels,

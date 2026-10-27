@@ -2040,10 +2040,15 @@ export const ClassifierArtifactShareModeSchema = z.enum(["owner"]);
 export const ClassifierArtifactShareRoleSchema = z.enum(["owner"]);
 /** The environment an artifact was published to. */
 export const ClassifierArtifactPublishEnvSchema = z.enum(["prod"]);
+/** Why the classifier trusts an artifact without probing its share state. */
+export const ClassifierArtifactAttestationSchema = z.enum(["first_party_type"]);
 
 /** The classifier's cached share/permission probe for one artifact, keyed by artifact id in `artifacts.by_slug`. */
 const ClassifierArtifactSchema = z
 	.object({
+		// Set on an artifact trusted without a share probe; `share` is then absent.
+		attested: ClassifierArtifactAttestationSchema.optional(),
+		// Absent on an attested artifact.
 		share: z
 			.object({
 				mode: ClassifierArtifactShareModeSchema,
@@ -2066,7 +2071,8 @@ const ClassifierArtifactSchema = z
 				// Whether a capability grant was seen for this artifact in the session.
 				grant_observed: z.boolean(),
 			})
-			.strict(),
+			.strict()
+			.optional(),
 		// Set when the session published this artifact.
 		published_env: ClassifierArtifactPublishEnvSchema.optional(),
 	})

@@ -74,6 +74,7 @@ import {
 } from "../src/lib/settings-hash";
 import {
 	AttachmentPayloadSchema,
+	ClassifierArtifactAttestationSchema,
 	ClassifierArtifactPublishEnvSchema,
 	ClassifierArtifactShareModeSchema,
 	ClassifierArtifactShareRoleSchema,
@@ -144,6 +145,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["GroupColorSchema", GroupColorSchema],
 	["ArtifactAccessLevelSchema", ArtifactAccessLevelSchema],
 	["ArtifactUserScopeSchema", ArtifactUserScopeSchema],
+	["ClassifierArtifactAttestationSchema", ClassifierArtifactAttestationSchema],
 	["ClassifierArtifactPublishEnvSchema", ClassifierArtifactPublishEnvSchema],
 	["ClassifierArtifactShareModeSchema", ClassifierArtifactShareModeSchema],
 	["ClassifierArtifactShareRoleSchema", ClassifierArtifactShareRoleSchema],

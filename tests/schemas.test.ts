@@ -2709,6 +2709,34 @@ describe("JsonlRecordSchema observed on the work machine 2026-10-22", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses classifier artifacts attested as a first-party type with no share probe", () => {
+		const fixture = jsonlRecordFixtures["api-request"];
+		const [safeguard] = fixture.params.safeguards;
+		const classifierContext = safeguard!.classifier_context;
+		const record = {
+			...fixture,
+			params: {
+				...fixture.params,
+				safeguards: [
+					{
+						...safeguard!,
+						classifier_context: {
+							...classifierContext,
+							artifacts: {
+								...classifierContext.artifacts,
+								by_slug: {
+									"7dfcf06e-b15d-4b48-aeaf-1d6edfc6d7a0": {attested: "first_party_type"},
+								},
+							},
+						},
+					},
+				],
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses classifier artifacts with a failed share probe, an unprobed published share, by_path, and last_publish", () => {
 		const fixture = jsonlRecordFixtures["api-request"];
 		const [safeguard] = fixture.params.safeguards;
