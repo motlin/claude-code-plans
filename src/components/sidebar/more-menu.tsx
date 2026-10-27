@@ -66,11 +66,12 @@ export function MoreNavMenu({
 							const Icon = item.icon;
 							const badge = badgeFor(item.section);
 							return (
-								<MenuItem key={item.section} onSelect={() => void navigate({to: item.to})}>
-									<span className="flex min-w-0 items-center gap-2">
-										<span className="flex size-5 shrink-0 items-center justify-center">
-											<Icon aria-hidden="true" className="size-4" />
-										</span>
+								<MenuItem
+									key={item.section}
+									icon={<Icon aria-hidden="true" />}
+									onSelect={() => void navigate({to: item.to})}
+								>
+									<span className="flex min-w-0 items-center">
 										<span className="truncate">{item.label}</span>
 										{badge !== null && badge.count > 0 && (
 											<span
@@ -85,7 +86,9 @@ export function MoreNavMenu({
 							);
 						})}
 						{overflow.length > 0 && <MenuSeparator />}
+						{/* Upstream keeps an empty icon slot here so the label lines up with the items above. */}
 						<MenuItem
+							icon={null}
 							onSelect={() => {
 								setEditing(true);
 							}}

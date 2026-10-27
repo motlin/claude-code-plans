@@ -194,6 +194,35 @@ describe("sidebar More menu", () => {
 		});
 	});
 
+	it("leads every item with upstream's 20px icon slot, empty on Edit sidebar…", async () => {
+		await renderSidebar();
+		const menu = await openMoreMenu();
+
+		const slots = within(menu)
+			.getAllByRole("menuitem")
+			.map((item) => {
+				const slot = item.firstElementChild;
+				const classes = slot?.className.split(" ") ?? [];
+				return {
+					label: item.textContent,
+					slot: classes.includes("size-5") && classes.includes("[&_svg]:size-5"),
+					glyph: Boolean(slot?.querySelector("svg")),
+				};
+			});
+		expect(slots).toStrictEqual([
+			{label: "Projects", slot: true, glyph: true},
+			{label: "Scheduled", slot: true, glyph: true},
+			{label: "Background jobs", slot: true, glyph: true},
+			{label: "Active", slot: true, glyph: true},
+			{label: "Terminals", slot: true, glyph: true},
+			{label: "Approvals", slot: true, glyph: true},
+			{label: "Notifications", slot: true, glyph: true},
+			{label: "Tasks", slot: true, glyph: true},
+			{label: "Sessions", slot: true, glyph: true},
+			{label: "Edit sidebar…", slot: true, glyph: false},
+		]);
+	});
+
 	it("navigates when a hidden section is selected", async () => {
 		const {router} = await renderSidebar();
 		const menu = await openMoreMenu();
