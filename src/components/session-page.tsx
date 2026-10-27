@@ -1165,6 +1165,7 @@ function SessionView({
 											}}
 											summary={aiSummary}
 											transcriptView={transcriptView}
+											railToggleFoldable
 											paneToggles={
 												<SessionPaneControls
 													railAvailable

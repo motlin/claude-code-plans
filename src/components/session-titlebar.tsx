@@ -12,7 +12,9 @@ import {
 	Tag,
 	Users,
 } from "lucide-react";
-import {type ReactNode, useEffect, useRef, useState} from "react";
+import type {ReactNode} from "react";
+
+import {foldBudget} from "../lib/titlebar-fold";
 
 import {useSessionRename} from "../hooks/use-session-rename";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
@@ -31,7 +33,8 @@ import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 import {useSessionMenuRunner} from "./use-session-menu-runner";
 import {SessionTitleButton} from "./session-title-heading";
 import {useSessionTitleShortcuts} from "./use-session-title-shortcuts";
-import {TitlebarFoldedContext} from "./titlebar-folded-context";
+import {TitlebarHiddenCountContext} from "./titlebar-fold-context";
+import {useTitlebarFold} from "./use-titlebar-fold";
 import {useToast} from "./toast-context";
 import {
 	ContextMenu,
@@ -47,12 +50,6 @@ import {
 	MenuTrigger,
 } from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
-
-/** Below this titlebar width the origin pills collapse to icons, like upstream's `data-pills-compact` (tile-slot ≤560px). */
-const PILLS_COMPACT_BELOW_PX = 560;
-
-/** At or below this width the chat tile is squeezed and the trail's rail, Changes and Files fold into View options. */
-const TRAIL_FOLDS_AT_PX = 320;
 
 const TITLE_CLASS =
 	"-mx-1 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -106,29 +103,6 @@ function downloadUrl(href: string): void {
 	anchor.href = href;
 	anchor.download = "";
 	anchor.click();
-}
-
-/** The titlebar's width, which collapses the origin pills and folds the trail toggles into View options. */
-function useTitlebarMeasure() {
-	const ref = useRef<HTMLDivElement>(null);
-	const [width, setWidth] = useState<number | null>(null);
-	useEffect(() => {
-		const element = ref.current;
-		if (element === null || typeof ResizeObserver === "undefined") return undefined;
-		const observer = new ResizeObserver((entries) => {
-			const measured = entries[0]?.contentRect.width;
-			if (measured !== undefined) setWidth(measured);
-		});
-		observer.observe(element);
-		return () => {
-			observer.disconnect();
-		};
-	}, []);
-	return {
-		ref,
-		compact: width !== null && width < PILLS_COMPACT_BELOW_PX,
-		folded: width !== null && width <= TRAIL_FOLDS_AT_PX,
-	};
 }
 
 type PillIcon = React.ComponentType<{
@@ -349,13 +323,16 @@ export interface SessionTitlebarProps {
 	summary?: string | null;
 	/** Adds the Transcript view ▸ submenu to the header menu. */
 	transcriptView?: SessionHeaderTranscriptView;
+	/** The trail leads with the session rail toggle, which folds first and allows one more hidden button. */
+	railToggleFoldable?: boolean;
 }
 
 /**
  * claude.ai/code's 32px session titlebar. Lead: the parent-session back pill
  * (subagent transcripts only), the rename title button (right-click opens the header menu at the pointer), the chevron header
  * menu and the origin pills (local badges), which collapse
- * to icons when narrow. Trail: the Changes toggle, then View options.
+ * to icons once the title truncates. Trail: the pane toggles, which fold into
+ * View options one at a time as the title drops under 100px, then View options.
  */
 export function SessionTitlebar({
 	sessionId,
@@ -366,6 +343,7 @@ export function SessionTitlebar({
 	viewOptions,
 	summary = null,
 	transcriptView,
+	railToggleFoldable = false,
 }: SessionTitlebarProps) {
 	const rename = useSessionRename(sessionId, data.title);
 	const cwd = data.cwd ?? data.projectPath;
@@ -378,7 +356,11 @@ export function SessionTitlebar({
 	});
 	const menuRename = useRenameAfterMenuClose(rename.startEditing);
 	const contextRename = useRenameAfterMenuClose(rename.startEditing);
-	const {ref, compact, folded} = useTitlebarMeasure();
+	const {
+		ref,
+		hiddenCount,
+		pillsCompact: compact,
+	} = useTitlebarFold(foldBudget({railToggleFoldable, hiddenCount: 0}).maxHidden);
 	const modelLabel = formatModelName(data.model);
 	const repositoryName = data.pr?.repository.slice(data.pr.repository.lastIndexOf("/") + 1).trim();
 
@@ -530,10 +512,10 @@ export function SessionTitlebar({
 				data-titlebar-trail=""
 				className="relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary"
 			>
-				<TitlebarFoldedContext.Provider value={folded}>
+				<TitlebarHiddenCountContext.Provider value={hiddenCount}>
 					{paneToggles}
 					{viewOptions}
-				</TitlebarFoldedContext.Provider>
+				</TitlebarHiddenCountContext.Provider>
 			</div>
 		</div>
 	);

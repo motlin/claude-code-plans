@@ -9,7 +9,8 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionTitlebar} from "../src/components/session-titlebar";
 import {ToastProvider} from "../src/components/toast";
 import {SESSION_STICKY_HEADER_CLASS} from "../src/components/titlebar-classes";
-import {useTitlebarFolded} from "../src/components/titlebar-folded-context";
+import {useTitlebarHiddenCount} from "../src/components/titlebar-fold-context";
+import {foldBudget, splitPanes} from "../src/lib/titlebar-fold";
 import {topLeftClearance} from "../src/lib/top-left-clearance";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {sessionOpenInQueryOptions, type SessionDetailData} from "../src/lib/api/sessions";
@@ -67,7 +68,7 @@ const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promis
 const writeText = vi.fn<(text: string) => Promise<void>>();
 const openMock = vi.fn<typeof window.open>();
 
-type ResizeCallback = (entries: Array<{contentRect: {width: number}}>) => void;
+type ResizeCallback = () => void;
 const resizeCallbacks: ResizeCallback[] = [];
 
 class TestResizeObserver {
@@ -79,9 +80,95 @@ class TestResizeObserver {
 	disconnect(): void {}
 }
 
+/**
+ * A flex-row model of the titlebar for jsdom, which has no layout: the trail
+ * is its 24px padding plus 30px per button, the lead is a 40px spacer and
+ * chevron, a 300px title and the pills (80px, or 20px compact), and the title
+ * truncates to whatever the trail leaves.
+ */
+const TITLE_NATURAL_PX = 300;
+const LEAD_FIXED_PX = 40;
+const STEP_PX = 30;
+let rowPx = 1200;
+
+function rowGeometry(root: Element) {
+	const compact = root.querySelector("[data-titlebar-lead]")?.hasAttribute("data-pills-compact") ?? false;
+	const pillsPx = compact ? 20 : 80;
+	const trailPx =
+		24 + STEP_PX * (root.querySelector("[data-titlebar-trail]")?.querySelectorAll("button").length ?? 0);
+	const leadPx = Math.max(
+		LEAD_FIXED_PX + pillsPx,
+		Math.min(LEAD_FIXED_PX + TITLE_NATURAL_PX + pillsPx, rowPx - trailPx),
+	);
+	return {leadPx, trailPx, titlePx: leadPx - LEAD_FIXED_PX - pillsPx};
+}
+
+function modelRect(element: Element): DOMRect | null {
+	const root = element.closest("[data-testid=session-titlebar]");
+	if (root === null) return null;
+	const {leadPx, trailPx, titlePx} = rowGeometry(root);
+	if (element === root) return DOMRect.fromRect({x: 0, y: 0, width: rowPx, height: 32});
+	if (element.hasAttribute("data-titlebar-lead")) return DOMRect.fromRect({x: 0, y: 0, width: leadPx, height: 32});
+	if (element.hasAttribute("data-titlebar-trail"))
+		return DOMRect.fromRect({x: rowPx - trailPx, y: 0, width: trailPx, height: 32});
+	if (element.hasAttribute("data-titlebar-title")) return DOMRect.fromRect({x: 7, y: 0, width: titlePx, height: 24});
+	return null;
+}
+
+const geometryOverrides: Array<[string, PropertyDescriptor | undefined]> = [];
+
+/** Shadows an Element geometry getter on HTMLElement.prototype, falling back to jsdom's for elements the model doesn't cover. */
+function overrideGetter(
+	key: "clientWidth" | "scrollWidth" | "offsetWidth",
+	get: (element: HTMLElement) => number | null,
+) {
+	const inherited =
+		Object.getOwnPropertyDescriptor(HTMLElement.prototype, key) ??
+		Object.getOwnPropertyDescriptor(Element.prototype, key);
+	geometryOverrides.push([key, Object.getOwnPropertyDescriptor(HTMLElement.prototype, key)]);
+	Object.defineProperty(HTMLElement.prototype, key, {
+		configurable: true,
+		get(this: HTMLElement) {
+			return get(this) ?? inherited?.get?.call(this);
+		},
+	});
+}
+
+function installRowModel() {
+	rowPx = 1200;
+	const originalRect = Element.prototype.getBoundingClientRect;
+	geometryOverrides.push([
+		"getBoundingClientRect",
+		Object.getOwnPropertyDescriptor(HTMLElement.prototype, "getBoundingClientRect"),
+	]);
+	Object.defineProperty(HTMLElement.prototype, "getBoundingClientRect", {
+		configurable: true,
+		writable: true,
+		value(this: HTMLElement) {
+			return modelRect(this) ?? originalRect.call(this);
+		},
+	});
+	overrideGetter("clientWidth", (element) => {
+		if (element.hasAttribute("data-titlebar-title")) return modelRect(element)?.width ?? 0;
+		return element.matches("[data-testid=session-titlebar]") ? rowPx : null;
+	});
+	overrideGetter("scrollWidth", (element) => (element.hasAttribute("data-titlebar-title") ? TITLE_NATURAL_PX : null));
+	overrideGetter("offsetWidth", (element) =>
+		element.parentElement?.hasAttribute("data-titlebar-toggles") ? STEP_PX : null,
+	);
+}
+
+function uninstallRowModel() {
+	for (const [key, descriptor] of geometryOverrides.splice(0).toReversed()) {
+		if (descriptor === undefined) Reflect.deleteProperty(HTMLElement.prototype, key);
+		else Object.defineProperty(HTMLElement.prototype, key, descriptor);
+	}
+}
+
 function resizeTitlebar(width: number) {
+	rowPx = width;
 	act(() => {
-		for (const callback of resizeCallbacks) callback([{contentRect: {width}}]);
+		for (const callback of resizeCallbacks) callback();
 	});
 }
 
@@ -93,7 +180,10 @@ async function flush() {
 	});
 }
 
-async function renderTitlebar(data: SessionDetailData, slots: {withSlots?: boolean; viewOptions?: ReactNode} = {}) {
+async function renderTitlebar(
+	data: SessionDetailData,
+	slots: {withSlots?: boolean; viewOptions?: ReactNode; paneToggles?: ReactNode; railToggleFoldable?: boolean} = {},
+) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -126,6 +216,8 @@ async function renderTitlebar(data: SessionDetailData, slots: {withSlots?: boole
 					}
 				: {})}
 			{...(slots.viewOptions === undefined ? {} : {viewOptions: slots.viewOptions})}
+			{...(slots.paneToggles === undefined ? {} : {paneToggles: slots.paneToggles})}
+			{...(slots.railToggleFoldable === undefined ? {} : {railToggleFoldable: slots.railToggleFoldable})}
 		/>
 	);
 	const rootRoute = createRootRoute({
@@ -155,6 +247,7 @@ function controlsIn(container: Element): string[] {
 
 beforeEach(() => {
 	resizeCallbacks.length = 0;
+	installRowModel();
 	vi.stubGlobal("ResizeObserver", TestResizeObserver);
 	vi.stubGlobal("fetch", fetchMock);
 	vi.stubGlobal("open", openMock);
@@ -171,6 +264,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+	uninstallRowModel();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 	__unreadStoreTesting.reset();
@@ -406,41 +500,96 @@ describe("SessionTitlebar pill collapse", () => {
 		});
 	});
 
-	it("keeps the labels until the titlebar drops under 560px, upstream's tile-slot container query", async () => {
+	it("compacts once the title truncates with no free space and re-expands only with 96px to spare, as upstream's qt", async () => {
 		const titlebar = await renderTitlebar({
 			...baseDetail,
 			model: "claude-haiku-4-5-20251001",
 		});
-		resizeTitlebar(600);
-		const at600 = compactState(titlebar);
-		resizeTitlebar(560);
-		const at560 = compactState(titlebar);
-		resizeTitlebar(559);
-		const at559 = compactState(titlebar);
+		resizeTitlebar(444);
+		const at444 = compactState(titlebar);
+		resizeTitlebar(443);
+		const at443 = compactState(titlebar);
+		resizeTitlebar(460);
+		const at460 = compactState(titlebar);
+		resizeTitlebar(500);
+		const at500 = compactState(titlebar);
 
-		expect({at600, at560, at559}).toStrictEqual({
-			at600: {compact: false, srOnlyLabels: [false]},
-			at560: {compact: false, srOnlyLabels: [false]},
-			at559: {compact: true, srOnlyLabels: [true]},
+		expect({at444, at443, at460, at500}).toStrictEqual({
+			at444: {compact: false, srOnlyLabels: [false]},
+			at443: {compact: true, srOnlyLabels: [true]},
+			at460: {compact: true, srOnlyLabels: [true]},
+			at500: {compact: false, srOnlyLabels: [false]},
 		});
 	});
 });
 
-function FoldedProbe() {
-	return <output data-testid="folded">{String(useTitlebarFolded())}</output>;
+/** Stands in for SessionPaneControls: the rail toggle, Changes and Files fold as the hidden count grows. */
+function FoldProbe({rail = true}: {rail?: boolean}) {
+	const hiddenCount = useTitlebarHiddenCount();
+	const {railToggleFolded, hiddenMainPanes} = foldBudget({railToggleFoldable: rail, hiddenCount});
+	const {inline} = splitPanes(
+		[
+			{label: "Changes", active: false},
+			{label: "Files", active: false},
+		],
+		hiddenMainPanes,
+	);
+	return (
+		<>
+			{rail && !railToggleFolded && <button type="button" aria-label="Hide session rail" />}
+			<div data-titlebar-toggles="">
+				{inline.map((pane) => (
+					<button key={pane.label} type="button" aria-label={pane.label} />
+				))}
+			</div>
+			<button type="button" aria-label="View options" />
+			<output data-testid="hidden">{hiddenCount}</output>
+		</>
+	);
 }
 
 describe("SessionTitlebar trail fold", () => {
-	it("keeps the trail toggles out of View options at 400px and folds them once the tile is 320px or narrower", async () => {
-		await renderTitlebar(baseDetail, {viewOptions: <FoldedProbe />});
-		resizeTitlebar(400);
-		const at400 = screen.getByTestId("folded").textContent;
-		resizeTitlebar(321);
-		const at321 = screen.getByTestId("folded").textContent;
-		resizeTitlebar(320);
-		const at320 = screen.getByTestId("folded").textContent;
+	function foldState(titlebar: HTMLElement) {
+		const trail = titlebar.querySelector("[data-titlebar-trail]");
+		if (trail === null) throw new Error("titlebar trail missing");
+		return {
+			hidden: Number(screen.getByTestId("hidden").textContent),
+			compact: titlebar.querySelector("[data-titlebar-lead]")?.hasAttribute("data-pills-compact"),
+			trail: controlsIn(trail),
+		};
+	}
 
-		expect({at400, at321, at320}).toStrictEqual({at400: "false", at321: "false", at320: "true"});
+	it("compacts the pills, then folds the rail, Changes and Files one step at a time as the title drops under 100px", async () => {
+		const titlebar = await renderTitlebar(baseDetail, {paneToggles: <FoldProbe />, railToggleFoldable: true});
+		resizeTitlebar(1200);
+		const at1200 = foldState(titlebar);
+		resizeTitlebar(500);
+		const at500 = foldState(titlebar);
+		resizeTitlebar(300);
+		const at300 = foldState(titlebar);
+		resizeTitlebar(260);
+		const at260 = foldState(titlebar);
+		resizeTitlebar(200);
+		const at200 = foldState(titlebar);
+		resizeTitlebar(1200);
+		const wideAgain = foldState(titlebar);
+
+		expect({at1200, at500, at300, at260, at200, wideAgain}).toStrictEqual({
+			at1200: {hidden: 0, compact: false, trail: ["Hide session rail", "Changes", "Files", "View options"]},
+			at500: {hidden: 0, compact: true, trail: ["Hide session rail", "Changes", "Files", "View options"]},
+			at300: {hidden: 1, compact: true, trail: ["Changes", "Files", "View options"]},
+			at260: {hidden: 2, compact: true, trail: ["Files", "View options"]},
+			at200: {hidden: 7, compact: true, trail: ["View options"]},
+			wideAgain: {hidden: 0, compact: false, trail: ["Hide session rail", "Changes", "Files", "View options"]},
+		});
+	});
+
+	it("caps the hidden count at 6 when the trail has no rail toggle", async () => {
+		await renderTitlebar(baseDetail, {paneToggles: <FoldProbe rail={false} />});
+		resizeTitlebar(260);
+		resizeTitlebar(200);
+
+		expect(screen.getByTestId("hidden").textContent).toBe("6");
 	});
 });
 

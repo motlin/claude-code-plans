@@ -17,7 +17,7 @@ import {
 	useSessionRailFitState,
 } from "../src/components/session-rail/use-session-rail-docked";
 import {SettingsProvider} from "../src/components/settings-provider";
-import {TitlebarFoldedContext} from "../src/components/titlebar-folded-context";
+import {TitlebarHiddenCountContext} from "../src/components/titlebar-fold-context";
 import {SessionPaneControls} from "../src/components/view-options-menu";
 import type {PaneKind} from "../src/lib/pane-layout";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
@@ -191,42 +191,71 @@ describe("session rail toggle", () => {
 		});
 	});
 
-	it("folds the rail, Changes and Files into View options when the chat tile is squeezed, as upstream", async () => {
-		registerKinds("changes", "files");
-		render(
+	function renderFolded(hiddenCount: number) {
+		const tree = (count: number) => (
 			<SettingsProvider>
 				<TileHost sessionId="rail-session">
-					<TitlebarFoldedContext.Provider value>
+					<TitlebarHiddenCountContext.Provider value={count}>
 						<SessionPaneControls facts={{}} railAvailable />
-					</TitlebarFoldedContext.Provider>
+					</TitlebarHiddenCountContext.Provider>
 				</TileHost>
-			</SettingsProvider>,
+			</SettingsProvider>
 		);
-		const before = trail();
+		const {rerender} = render(tree(hiddenCount));
+		return (count: number) => {
+			rerender(tree(count));
+		};
+	}
+
+	async function foldedState() {
+		const buttons = screen.queryAllByRole("button").map((button) => button.getAttribute("aria-label") ?? "");
 		fireEvent.click(screen.getByRole("button", {name: "View options"}));
 		await settle();
-		const rows = [...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem]")].map((item) => [
-			item.getAttribute("role"),
-			item.textContent,
-		]);
+		const rows = [...screen.getByRole("menu").querySelectorAll<HTMLElement>("[role^=menuitem]")].map(
+			(item) => item.textContent,
+		);
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		await settle();
+		return {buttons, rows, separators: screen.queryAllByRole("separator").length};
+	}
+
+	it("folds the rail first, then Changes, then Files into View options, as upstream's measured fold", async () => {
+		registerKinds("changes", "files");
+		const setHidden = renderFolded(1);
+		const one = await foldedState();
+		setHidden(2);
+		const two = await foldedState();
+		setHidden(3);
+		const three = await foldedState();
+		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		await settle();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Show session rail"}));
 		await settle();
 
-		expect({
-			before,
-			rows,
-			separators: screen.queryAllByRole("separator").length,
-			stored: readSessionRailShown(),
-		}).toStrictEqual({
-			before: [],
-			rows: [
-				["menuitem", "Show session rail"],
-				["menuitemcheckbox", "Changes⌃Control⇧ShiftD"],
-				["menuitemcheckbox", "Files⇧Shift⌘CommandF"],
-			],
-			separators: 0,
+		expect({one, two, three, stored: readSessionRailShown()}).toStrictEqual({
+			one: {buttons: ["Changes", "Files", "View options"], rows: ["Show session rail"], separators: 0},
+			two: {
+				buttons: ["Files", "View options"],
+				rows: ["Show session rail", "Changes⌃Control⇧ShiftD"],
+				separators: 0,
+			},
+			three: {
+				buttons: ["View options"],
+				rows: ["Show session rail", "Changes⌃Control⇧ShiftD", "Files⇧Shift⌘CommandF"],
+				separators: 0,
+			},
 			stored: true,
 		});
+	});
+
+	it("folds inactive panes before the open one, as upstream", async () => {
+		registerKinds("changes", "files");
+		const setHidden = renderFolded(0);
+		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		await settle();
+		setHidden(2);
+
+		expect(trail()).toStrictEqual([["Changes", "true"]]);
 	});
 
 	it("is absent when the session supplies no rail", () => {

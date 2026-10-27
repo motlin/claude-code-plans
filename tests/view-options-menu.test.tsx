@@ -320,7 +320,7 @@ describe("SessionPaneControls", () => {
 		expect(onExpandChat).toHaveBeenCalledTimes(1);
 	});
 
-	it("keeps Changes and Files as 26px titlebar icons at every width, as upstream never folds them", () => {
+	it("keeps Changes and Files as titlebar icons while the titlebar hides nothing", () => {
 		registerKinds("terminal", "changes", "files");
 		renderControls();
 

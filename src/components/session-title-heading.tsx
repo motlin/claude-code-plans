@@ -28,6 +28,7 @@ export function SessionTitleButton({
 				aria-label={`${rename.title}, rename session`}
 				{...(hasSummary ? {"aria-description": summary} : {})}
 				onClick={rename.startEditing}
+				data-titlebar-title=""
 				className={className}
 			>
 				{rename.title}

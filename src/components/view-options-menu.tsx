@@ -4,11 +4,13 @@ import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {bindingsFor} from "../lib/shortcuts/match";
 import {bindingToKeys, type ShortcutId} from "../lib/shortcuts/registry";
+import {foldBudget, splitPanes} from "../lib/titlebar-fold";
 import {usePaneDefinitions} from "./panes/pane-registry";
 import {usePaneHost} from "./panes/pane-host-context";
 import {SessionRailMenuItem, SessionRailToggle} from "./session-rail/session-rail-slot";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
-import {useTitlebarFolded} from "./titlebar-folded-context";
+import {useTitlebarHiddenCount} from "./titlebar-fold-context";
+import {TITLEBAR_TOGGLES_ATTRIBUTE} from "./use-titlebar-fold";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 import {viewOptionsItems} from "./view-options-items";
@@ -111,9 +113,10 @@ function ViewOptionsMenu({
  * The titlebar trail's pane controls, upstream's set and DOM: the session rail
  * toggle and a bare 1x16 separator (the trail's 4px gap each side), then the
  * Changes and Files toggles in their own group, then View options ⋮
- * holding the other panes and Expand chat. Only a chat tile squeezed to 320px
- * or narrower folds the rail, Changes and Files into the top of the menu. The
- * trigger shows only when the menu has items.
+ * holding the other panes and Expand chat. The titlebar's measured fold hides
+ * buttons into the top of the menu one at a time: the rail first, then the
+ * inactive panes, then the open one. The trigger shows only when the menu has
+ * items.
  */
 export function SessionPaneControls({
 	facts,
@@ -128,29 +131,32 @@ export function SessionPaneControls({
 }) {
 	const host = usePaneHost();
 	const definitions = usePaneDefinitions();
-	const folded = useTitlebarFolded();
+	const {railToggleFolded, hiddenMainPanes} = foldBudget({
+		railToggleFoldable: railAvailable,
+		hiddenCount: useTitlebarHiddenCount(),
+	});
 	const registered = new Set(definitions.keys());
-	const shown = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind));
-	const otherEntries = viewOptionsItems({registered, isOpen: host.isOpen, facts});
-	const menuEntries = folded ? [...shown, ...otherEntries] : otherEntries;
-	const railFolded = railAvailable && folded;
+	const shown = MAIN_PANE_TOGGLES.filter((entry) => registered.has(entry.kind)).map((entry) => ({
+		...entry,
+		active: host.isOpen(entry.kind),
+	}));
+	const {folded, inline} = splitPanes(shown, hiddenMainPanes);
+	const menuEntries = [...folded, ...viewOptionsItems({registered, isOpen: host.isOpen, facts})];
 	return (
 		<>
-			{railAvailable && !folded && (
+			{railAvailable && !railToggleFolded && (
 				<>
 					<SessionRailToggle />
 					<span role="separator" aria-orientation="vertical" className="h-4 w-px shrink-0 bg-border" />
 				</>
 			)}
-			{!folded && (
-				<div className="flex items-center gap-1 empty:hidden">
-					{shown.map((entry) => (
-						<MainPaneToggle key={entry.kind} entry={entry} />
-					))}
-				</div>
-			)}
-			{(railFolded || menuEntries.length > 0 || onExpandChat !== undefined) && (
-				<ViewOptionsMenu railFolded={railFolded} entries={menuEntries} onExpandChat={onExpandChat} />
+			<div {...{[TITLEBAR_TOGGLES_ATTRIBUTE]: ""}} className="flex items-center gap-1 empty:hidden">
+				{inline.map((entry) => (
+					<MainPaneToggle key={entry.kind} entry={entry} />
+				))}
+			</div>
+			{(railToggleFolded || menuEntries.length > 0 || onExpandChat !== undefined) && (
+				<ViewOptionsMenu railFolded={railToggleFolded} entries={menuEntries} onExpandChat={onExpandChat} />
 			)}
 		</>
 	);
