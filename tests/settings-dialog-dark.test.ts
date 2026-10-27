@@ -25,7 +25,7 @@ describe("settings dialog in dark (wave 90, W90-13)", () => {
 		}).toStrictEqual({pane: true, darkShadow: true, lightShadow: true});
 	});
 
-	it("divides rows at white/0.05 and draws the segmented control on a white/0.05 track with secondary ink", () => {
+	it("divides rows at white/0.05 and draws the segmented control on a white/0.05 track with secondary ink in both themes (upstream text-secondary, light rgb(82,81,78))", () => {
 		expect({
 			rowDivider: source("src/components/settings/settings-row.tsx").includes(
 				"dark:[&>:not([hidden])~:not([hidden])]:border-white/5",
@@ -36,6 +36,7 @@ describe("settings dialog in dark (wave 90, W90-13)", () => {
 			light: {
 				track: token(":root", "--settings-segmented-track"),
 				ink: token(":root", "--settings-segmented-ink"),
+				textSecondary: token(":root", "--upstream-text-secondary"),
 			},
 			dark: {
 				track: token(".dark", "--settings-segmented-track"),
@@ -44,7 +45,11 @@ describe("settings dialog in dark (wave 90, W90-13)", () => {
 		}).toStrictEqual({
 			rowDivider: true,
 			segmentedInk: true,
-			light: {track: "rgb(11 11 11 / 0.05)", ink: "var(--settings-muted)"},
+			light: {
+				track: "rgb(11 11 11 / 0.05)",
+				ink: "var(--upstream-text-secondary)",
+				textSecondary: "rgb(82 81 78)",
+			},
 			dark: {track: "hsl(0 0% 100% / 0.05)", ink: "var(--upstream-text-secondary)"},
 		});
 	});

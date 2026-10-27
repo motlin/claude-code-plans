@@ -432,7 +432,7 @@ html[data-interface-font="dyslexic"] {
 	--menu-switch-track: var(--settings-switch-track);
 	--menu-switch-track-hover: var(--settings-switch-track-hover);
 	--settings-segmented-track: rgb(11 11 11 / 0.05);
-	--settings-segmented-ink: var(--settings-muted);
+	--settings-segmented-ink: var(--upstream-text-secondary);
 	--settings-segmented-thumb: #fff;
 	--settings-field-bg: rgba(255, 255, 255, 0.5);
 
