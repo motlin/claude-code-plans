@@ -202,6 +202,11 @@ export const jsonlRecordFixtures = {
 		folder: "/tmp/test/dev-mods/session-alice-100",
 		sessionId: "session-alice-100",
 	},
+	"tools-used": {
+		type: "tools-used",
+		tools: ["Bash", "Read"],
+		sessionId: "session-alice-100",
+	},
 	"api-request": {
 		type: "api-request",
 		sessionId: "session-alice-100",

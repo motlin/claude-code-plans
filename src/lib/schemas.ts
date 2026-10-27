@@ -1927,6 +1927,15 @@ const DevModsRecordSchema = z
 	})
 	.strict();
 
+// Names the tools a session has used so far.
+const ToolsUsedRecordSchema = z
+	.object({
+		type: z.literal("tools-used"),
+		tools: z.array(z.string()),
+		sessionId: z.string(),
+	})
+	.strict();
+
 // ---------------------------------------------------------------------------
 // API request log (CLI 2.1.300+)
 //
@@ -2305,6 +2314,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 	ArtifactCommentMonitorRecordSchema,
 	ArtifactAutoreactLedgerRecordSchema,
 	DevModsRecordSchema,
+	ToolsUsedRecordSchema,
 	ApiRequestRecordSchema,
 	ApiRequestBlobRecordSchema,
 	ApiRequestShapeRecordSchema,

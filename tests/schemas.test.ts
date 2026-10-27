@@ -1677,6 +1677,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 				paths: ["/Users/test/.claude/uploads/sess-123/56ef1955-image.png"],
 			}),
 			{type: "dev-mods", folder: "/tmp/dev-mods/sess-123", sessionId: "sess-123"},
+			{type: "tools-used", tools: ["Bash"], sessionId: "sess-123"},
 		];
 
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);

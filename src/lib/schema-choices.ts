@@ -922,6 +922,7 @@ const jsonlRecordVariants = {
 	"artifact-comment-monitor": true,
 	"artifact-autoreact-ledger": true,
 	"dev-mods": true,
+	"tools-used": true,
 	"api-request": true,
 	"api-request-blob": true,
 	"api-request-shape": true,
