@@ -18,8 +18,31 @@ function chord(binding: Binding): string {
 }
 
 describe("shortcut registry", () => {
-	it("lists the 43 upstream web entries plus the page-scoped ⌘F search and the desktop-only ⌥⌘F", () => {
-		expect(SHORTCUT_IDS).toHaveLength(45);
+	it("lists the 43 upstream web entries plus the page-scoped and Settings ⌘F searches and the desktop-only ⌥⌘F", () => {
+		expect(SHORTCUT_IDS).toHaveLength(46);
+	});
+
+	it("binds upstream's Settings ⌘F search, sharing the page ⌘F and kept out of the ⌘/ dialog", () => {
+		expect({
+			definition: getShortcut("settings_search"),
+			mac: bindingsFor("settings_search", true).map(bindingToKeys),
+			windows: bindingsFor("settings_search", false, true).map(bindingToKeys),
+		}).toStrictEqual({
+			definition: {
+				description: "Search settings",
+				group: "general",
+				bindings: [
+					{key: "f", modifiers: ["cmd"], platform: "mac"},
+					{key: "f", modifiers: ["ctrl"], platform: "non-mac"},
+				],
+				ownerSlug: "settings-search-popover",
+				enabled: true,
+				hiddenFromDialog: true,
+				sharesBindingWith: "page_search",
+			},
+			mac: ["cmd+f"],
+			windows: ["ctrl+f"],
+		});
 	});
 
 	it("binds upstream's desktop-only ⌥⌘F Toggle fast mode, kept out of the web ⌘/ dialog", () => {
@@ -88,13 +111,14 @@ describe("shortcut registry", () => {
 		}
 	});
 
-	it("lets only Rewind share Esc with Stop, and Queue for later share ⌘⏎ with Send and stay", () => {
+	it("lets only Settings search share ⌘F with page search, Rewind share Esc with Stop, and Queue for later share ⌘⏎ with Send and stay", () => {
 		expect(
 			SHORTCUT_IDS.flatMap((id) => {
 				const other = getShortcut(id).sharesBindingWith;
 				return other === undefined ? [] : [[id, other]];
 			}),
 		).toStrictEqual([
+			["settings_search", "page_search"],
 			["rewind_session", "stop_response"],
 			["send_and_stay", "queue_for_later"],
 		]);
@@ -202,6 +226,7 @@ describe("shortcut registry", () => {
 			"focus_next_region",
 			"focus_previous_region",
 			"page_search",
+			"settings_search",
 			"stop_response",
 			"rewind_session",
 			"toggle_changes",

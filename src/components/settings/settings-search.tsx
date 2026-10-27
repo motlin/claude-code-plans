@@ -2,6 +2,7 @@
 import {Popover} from "@base-ui/react/popover";
 import {Search} from "lucide-react";
 import {type MouseEvent, useEffect, useId, useMemo, useRef, useState} from "react";
+import {useShortcut} from "../../hooks/use-shortcut";
 import {settingsTabLabels} from "../../lib/schema-choices";
 import type {SettingsTab} from "../../lib/settings-hash";
 import {
@@ -148,6 +149,23 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 		clear();
 		inputRef.current?.blur();
 	};
+
+	// Upstream's ⌘F / Ctrl+F anywhere in Settings focuses and selects the field, instead of the browser's find.
+	// It yields inside a nested dialog (e.g. a confirm), and is unbound once Settings closes.
+	useShortcut(
+		"settings_search",
+		(event) => {
+			const input = inputRef.current;
+			const settings = input?.closest('[role="dialog"]');
+			const target = event.target instanceof Element ? event.target : null;
+			const targetDialog = target?.closest('[role="dialog"],[role="alertdialog"]') ?? null;
+			if (input === null || (targetDialog !== null && targetDialog !== settings)) return false;
+			input.focus();
+			input.select();
+			return true;
+		},
+		{allowInModal: true, priority: 1},
+	);
 
 	const choose = (row: SettingsResultRow) => {
 		if (row.kind === "more") {

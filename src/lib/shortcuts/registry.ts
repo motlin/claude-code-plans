@@ -257,6 +257,16 @@ export const SHORTCUTS = {
 		enabled: true,
 		hiddenFromDialog: true,
 	},
+	settings_search: {
+		description: "Search settings",
+		group: "general",
+		bindings: cmdOrCtrl("f"),
+		ownerSlug: "settings-search-popover",
+		enabled: true,
+		hiddenFromDialog: true,
+		// Bound only while the Settings dialog is open, where it outranks the page toolbar's ⌘F.
+		sharesBindingWith: "page_search",
+	},
 	stop_response: {
 		description: "Stop Claude’s response",
 		group: "general",

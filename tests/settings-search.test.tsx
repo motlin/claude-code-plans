@@ -13,6 +13,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsDialog} from "../src/components/settings/settings-dialog";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {ToolbarSearch} from "../src/components/toolbar-search";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {SettingsTabSchema} from "../src/lib/settings-hash";
 import {SETTINGS_INDEX} from "../src/lib/settings-search";
@@ -55,6 +56,7 @@ function buildRouter(initialEntry: string) {
 				<ThemeProvider>
 					<SettingsProvider>
 						<Outlet />
+						<ToolbarSearch label="Search page" placeholder="Search" search="" onSearch={() => {}} />
 						<SettingsDialog />
 					</SettingsProvider>
 				</ThemeProvider>
@@ -116,6 +118,7 @@ describe("settings search", () => {
 		cleanup();
 		vi.useRealTimers();
 		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
 		Reflect.deleteProperty(Element.prototype, "scrollIntoView");
 	});
 
@@ -674,5 +677,112 @@ describe("settings search", () => {
 		});
 
 		expect(searchState(input)).toStrictEqual({value: "", focused: false, results: false, settings: true});
+	});
+
+	const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)";
+
+	/** Fill the field, then blur it so focus is back on the body. */
+	async function blurredQuery(value: string) {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		fireEvent.change(input, {target: {value}});
+		input.blur();
+		return input;
+	}
+
+	function findState(input: HTMLInputElement, notPrevented: boolean) {
+		return {
+			notPrevented,
+			focused: document.activeElement === input,
+			selection: [input.selectionStart, input.selectionEnd],
+			pageSearchExpanded: screen.queryByRole("button", {name: "Search page", hidden: true}) === null,
+		};
+	}
+
+	it("Ctrl+F from the body focuses and selects the field, and the page's ⌘F search stays closed", async () => {
+		const input = await blurredQuery("font");
+		input.setSelectionRange(4, 4);
+
+		const notPrevented = fireEvent.keyDown(document.body, {key: "f", code: "KeyF", ctrlKey: true});
+
+		expect(findState(input, notPrevented)).toStrictEqual({
+			notPrevented: false,
+			focused: true,
+			selection: [0, 4],
+			pageSearchExpanded: false,
+		});
+	});
+
+	it("⌘F focuses and selects the field on mac", async () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		const input = await blurredQuery("font");
+		input.setSelectionRange(4, 4);
+
+		const notPrevented = fireEvent.keyDown(document.body, {key: "f", code: "KeyF", metaKey: true});
+
+		expect(findState(input, notPrevented)).toStrictEqual({
+			notPrevented: false,
+			focused: true,
+			selection: [0, 4],
+			pageSearchExpanded: false,
+		});
+	});
+
+	it.each([
+		{name: "⌘ and Ctrl together", modifiers: {metaKey: true, ctrlKey: true}},
+		{name: "Ctrl+Alt", modifiers: {ctrlKey: true, altKey: true}},
+		{name: "Ctrl+Shift", modifiers: {ctrlKey: true, shiftKey: true}},
+	])("leaves $name+F to the browser", async ({modifiers}) => {
+		const input = await blurredQuery("font");
+		input.setSelectionRange(4, 4);
+
+		const notPrevented = fireEvent.keyDown(document.body, {key: "f", code: "KeyF", ...modifiers});
+
+		expect(findState(input, notPrevented)).toStrictEqual({
+			notPrevented: true,
+			focused: false,
+			selection: [4, 4],
+			pageSearchExpanded: false,
+		});
+	});
+
+	it("leaves Ctrl+F to the browser inside a nested dialog", async () => {
+		const input = await blurredQuery("font");
+		input.setSelectionRange(4, 4);
+		const nested = document.createElement("div");
+		nested.setAttribute("role", "alertdialog");
+		const confirm = document.createElement("button");
+		nested.append(confirm);
+		document.body.append(nested);
+		confirm.focus();
+
+		const notPrevented = fireEvent.keyDown(confirm, {key: "f", code: "KeyF", ctrlKey: true});
+		nested.remove();
+
+		expect(findState(input, notPrevented)).toStrictEqual({
+			notPrevented: true,
+			focused: false,
+			selection: [4, 4],
+			pageSearchExpanded: false,
+		});
+	});
+
+	it("releases Ctrl+F once Settings closes, so the page's search claims it again", async () => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		await act(async () => {
+			await router.navigate({to: "/", hash: ""});
+		});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Settings"})).toBeNull();
+		});
+
+		const notPrevented = fireEvent.keyDown(document.body, {key: "f", code: "KeyF", ctrlKey: true});
+
+		expect({notPrevented, pageSearch: screen.queryByRole("searchbox") !== null}).toStrictEqual({
+			notPrevented: false,
+			pageSearch: true,
+		});
 	});
 });
