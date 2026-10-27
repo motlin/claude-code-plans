@@ -20,6 +20,10 @@ import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
 import {prGlyph} from "../../lib/pr-status";
+import {approvalsQueryOptions} from "../../lib/api/approvals";
+import {blockedDetail} from "../../lib/blocked-detail";
+import {sessionMetaLine, type SessionMetaLine} from "../../lib/session-meta-line";
+import {MetaLine} from "./meta-line";
 import {sessionRowIconKind, type SessionStateKind} from "../../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../../lib/unread-store";
 import type {GroupAppearance} from "../../lib/group-appearance";
@@ -78,6 +82,10 @@ const ROWS_CLASS = "flex flex-col gap-[var(--sb-row-stack-gap)]";
 
 export const ROW_CLASS =
 	"flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] no-underline";
+
+/** Upstream's described variant (`xL` described): ROW_CLASS stacked into two lines, with no fixed height. */
+const DESCRIBED_ROW_CLASS =
+	"df-described-row flex w-full shrink-0 flex-col items-stretch justify-center rounded-[var(--sb-radius)] px-[var(--sb-row-px)] text-left text-[length:var(--sb-row-font)] no-underline";
 
 /**
  * A section header's trailing controls, as upstream lays them out: Group and sort revealed on hover
@@ -266,6 +274,7 @@ export function GroupSection({
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
+	const place: RowPlace = {heading: group.label, underNeedsInput: group.key === NEEDS_INPUT_GROUP_KEY};
 	const sectionElement = useRef<HTMLDivElement | null>(null);
 	const rows = useMemo(() => allRows(group), [group]);
 	const rowKeys = useMemo(() => rows.map((row) => row.sessionId), [rows]);
@@ -395,6 +404,7 @@ export function GroupSection({
 										selected={row.sessionId === activeItemId}
 										pinnedIds={pinnedIds}
 										envGlyph={envGlyph}
+										place={place}
 									/>
 								</div>
 								{nested !== undefined && (
@@ -405,6 +415,7 @@ export function GroupSection({
 										familyHeadIds={familyHeadIds}
 										dragRowProps={dragRowProps}
 										envGlyph={envGlyph}
+										place={place}
 									/>
 								)}
 							</Fragment>
@@ -457,6 +468,7 @@ export function GroupSection({
 								selected={row.sessionId === activeItemId}
 								pinnedIds={pinnedIds}
 								envGlyph={envGlyph}
+								place={place}
 							/>
 						</div>
 					))}
@@ -619,6 +631,7 @@ function SessionFamily({
 	familyHeadIds,
 	dragRowProps,
 	envGlyph,
+	place,
 }: {
 	head: SidebarSessionRow;
 	nested: readonly SidebarSessionRow[];
@@ -626,6 +639,7 @@ function SessionFamily({
 	familyHeadIds: readonly string[];
 	dragRowProps: ((id: string) => SidebarDragRowProps) | undefined;
 	envGlyph: boolean;
+	place: RowPlace;
 }) {
 	const {collapsedFamilies} = useSidebarState();
 	const collapsed = collapsedFamilies.includes(familyKey(head.sessionId));
@@ -695,6 +709,7 @@ function SessionFamily({
 								selected={child.sessionId === activeItemId}
 								pinnedIds={undefined}
 								envGlyph={envGlyph}
+								place={place}
 								lineage={parentTitle === undefined ? "Nested session" : `Forked from ${parentTitle}`}
 							/>
 						</div>
@@ -756,6 +771,7 @@ function SessionRowLink({
 	selected,
 	pinnedIds,
 	envGlyph,
+	place,
 	lineage,
 }: {
 	row: SidebarSessionRow;
@@ -763,6 +779,8 @@ function SessionRowLink({
 	pinnedIds: readonly string[] | undefined;
 	/** Draw the settled row's environment glyph in the trailing slot. */
 	envGlyph: boolean;
+	/** The section the row sits in, which the metadata line avoids repeating. */
+	place: RowPlace;
 	/** Screen-reader note on a nested row, e.g. "Forked from {title}". */
 	lineage?: string;
 }) {
@@ -774,11 +792,33 @@ function SessionRowLink({
 	const {settings} = useSettings();
 	const blocked = row.bucket === "blocked";
 	const hintId = useId();
+	const metaLine = useRowMetaLine(row, pinnedIds === undefined && settings.sessionListPrefs.showMetadata, place);
 	// Upstream draws no PR tail on pinned rows.
 	const prTail =
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
 			? prGlyph(row.session.prStatus).state
 			: undefined;
+	const rowClass = metaLine === undefined ? ROW_CLASS : DESCRIBED_ROW_CLASS;
+	const titleLine = (
+		<>
+			{/* Upstream starts the title 10px into the row; the trailing span below keeps it clear of the 24px slot */}
+			<span data-row-label className="min-w-0 flex-1 ps-2">
+				<SessionRowTitle
+					render={(title) => (
+						<FadeLabel text={title}>
+							{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
+							{row.archived && <span className="sr-only"> Archived</span>}
+							<SidebarRowSrText session={row.session} />
+						</FadeLabel>
+					)}
+				/>
+			</span>
+			{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it */}
+			<span className="shrink-0 flex items-center gap-1.5 text-xs text-ink-muted me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
+				{prTail !== undefined && <PrTailGlyph state={prTail} />}
+			</span>
+		</>
+	);
 	return (
 		<SessionHoverCard
 			sessionId={row.sessionId}
@@ -811,29 +851,25 @@ function SessionRowLink({
 					onClick={(event) => {
 						if (selection?.onRowClick(row.sessionId, event) === true) event.preventDefault();
 					}}
-					className={`${ROW_CLASS} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
+					className={`${rowClass} text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] data-[selected=focused]:text-primary data-[multi-selected]:bg-[var(--sb-session-selected)] data-[multi-selected]:text-primary`}
 				>
-					{/* Upstream starts the title 10px into the row; the trailing span below keeps it clear of the 24px slot */}
-					<span data-row-label className="min-w-0 flex-1 ps-2">
-						<SessionRowTitle
-							render={(title) => (
-								<FadeLabel text={title}>
-									{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
-									{row.archived && <span className="sr-only"> Archived</span>}
-									<SidebarRowSrText session={row.session} />
-								</FadeLabel>
-							)}
-						/>
-					</span>
+					{metaLine === undefined ? (
+						titleLine
+					) : (
+						<>
+							<span className="df-described-title flex min-w-0 items-center gap-[var(--sb-row-gap)]">
+								{titleLine}
+							</span>
+							<span className="df-row-description flex min-w-0 items-center text-ink-muted ps-2">
+								<MetaLine line={metaLine} />
+							</span>
+						</>
+					)}
 					{lineage !== undefined && (
 						<span data-family-lineage className="sr-only">
 							{lineage}
 						</span>
 					)}
-					{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it */}
-					<span className="shrink-0 flex items-center gap-1.5 text-xs text-ink-muted me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
-						{prTail !== undefined && <PrTailGlyph state={prTail} />}
-					</span>
 				</Link>
 				{blocked && (
 					<span id={hintId} data-find-omitted="" className="sr-only select-none">
@@ -875,4 +911,33 @@ function FadeLabel({text, children}: {text: string; children?: ReactNode}) {
 			</span>
 		</span>
 	);
+}
+
+/** Where a row sits: its section heading, and whether that section is Needs input. */
+interface RowPlace {
+	heading: string;
+	underNeedsInput: boolean;
+}
+
+/** The state grouping's Needs input section, whose heading already says a row is blocked. */
+const NEEDS_INPUT_GROUP_KEY = "state-blocked";
+
+/** A row's described second line (Show ▸ Metadata), or undefined for a one-line row. */
+function useRowMetaLine(row: SidebarSessionRow, enabled: boolean, place: RowPlace): SessionMetaLine | undefined {
+	const blocked = row.bucket === "blocked";
+	const {data: toolName} = useQuery({
+		...approvalsQueryOptions(),
+		enabled: enabled && blocked,
+		select: (data) => data.approvals.find((approval) => approval.sessionId === row.sessionId)?.toolName,
+	});
+	if (!enabled) return undefined;
+	return sessionMetaLine({
+		bucket: row.bucket,
+		underNeedsInput: place.underNeedsInput,
+		reason: blocked ? blockedDetail(toolName) : undefined,
+		pr: row.session.pr,
+		branch: row.session.gitBranch,
+		folder: row.session.projectName,
+		heading: place.heading,
+	});
 }

@@ -93,7 +93,7 @@ describe("hand-rolled focus rings", () => {
 			groupLabel: has("src/components/sidebar/session-group-section.tsx", `text-left ${ROW_FOCUS}`),
 			sessionRow: has(
 				"src/components/sidebar/session-group-section.tsx",
-				`\${ROW_CLASS} text-secondary ${ROW_FOCUS} data-[selected=focused]:text-primary`,
+				`\${rowClass} text-secondary ${ROW_FOCUS} data-[selected=focused]:text-primary`,
 			),
 			overflowRow: has(
 				"src/components/sidebar/session-group-section.tsx",

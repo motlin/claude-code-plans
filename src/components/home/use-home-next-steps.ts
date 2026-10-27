@@ -2,6 +2,7 @@ import {useInfiniteQuery, useMutation, useQuery, useQueryClient} from "@tanstack
 import {useNavigate} from "@tanstack/react-router";
 
 import {approvalsQueryOptions} from "../../lib/api/approvals";
+import {blockedDetail} from "../../lib/blocked-detail";
 import {homeDismissalsQueryOptions, postHomeDismissal, type HomeDismissals} from "../../lib/api/home-dismissals";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
 import {nextStepKey, prNextStepCandidates, selectNextSteps, type NextStepCandidate} from "../../lib/home-next-steps";
@@ -25,7 +26,7 @@ function waitingSessionCandidates(
 			subject: row.sessionId,
 			stamp: row.lastActivityAt,
 			title: row.title.trim(),
-			detail: toolName !== undefined && toolName !== "AskUserQuestion" ? "Needs permission" : "Asked a question",
+			detail: blockedDetail(toolName),
 		}));
 }
 

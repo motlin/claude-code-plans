@@ -1235,3 +1235,79 @@ describe("SessionGroups per-project New session +", () => {
 		});
 	});
 });
+
+describe("SessionGroups described rows (Show ▸ Metadata)", () => {
+	const described = [
+		{...session("d1", "Idle on main", "done", 5), gitBranch: "main", projectName: "claude-code-plans"},
+		{...session("b1", "Blocked asking", "blocked", 3), gitBranch: "main"},
+		{...session("p1", "Pinned on main", "done", 8), gitBranch: "main", projectName: "claude-code-plans"},
+		session("n1", "No branch", "done", 9),
+	];
+	const describeRows = (container: HTMLElement) =>
+		Object.fromEntries(
+			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
+				const line = link.querySelector(".df-row-description .df-meta-line");
+				return [
+					rowTitle(link.querySelector("[data-row-label]")),
+					{
+						described: link.classList.contains("df-described-row"),
+						oneLine: link.classList.contains("h-[var(--sb-row-h)]"),
+						titleWrap: link.querySelector(":scope > .df-described-title > [data-row-label]") !== null,
+						line: line === null ? null : {text: line.textContent, title: line.getAttribute("title")},
+					},
+				];
+			}),
+		);
+	const oneLine = {described: false, oneLine: true, titleWrap: false, line: null};
+
+	afterEach(() => {
+		localStorage.removeItem("ccp-session-list-prefs");
+		localStorage.removeItem(PIN_STORAGE_KEY);
+	});
+
+	it("gives unpinned rows upstream's described shell and meta line only with Metadata on", async () => {
+		localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds: ["p1"], pinnedOrder: ["p1"]}));
+		const off = describeRows((await renderGroups(described)).container);
+		cleanup();
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true}),
+		);
+		const byState = describeRows((await renderGroups(described)).container);
+		cleanup();
+		const byProject = describeRows(
+			(
+				await renderGroups(described, {
+					prefs: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "project", showMetadata: true},
+				})
+			).container,
+		);
+
+		const line = (text: string, title: string) => ({
+			described: true,
+			oneLine: false,
+			titleWrap: true,
+			line: {text, title},
+		});
+		expect({off, byState, byProject}).toStrictEqual({
+			off: {
+				"Pinned on main": oneLine,
+				"Blocked asking": oneLine,
+				"Idle on main": oneLine,
+				"No branch": oneLine,
+			},
+			byState: {
+				"Pinned on main": oneLine,
+				"Blocked asking": line("Asked a question", "Asked a question"),
+				"Idle on main": line("mainclaude-code-plans", "main, claude-code-plans"),
+				"No branch": line("project-n1", "project-n1"),
+			},
+			byProject: {
+				"Pinned on main": oneLine,
+				"Blocked asking": line("BlockedAsked a question", "Blocked, Asked a question"),
+				"Idle on main": line("main", "main"),
+				"No branch": oneLine,
+			},
+		});
+	});
+});
