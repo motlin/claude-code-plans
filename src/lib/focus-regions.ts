@@ -17,16 +17,119 @@ export function isAvailable(region: HTMLElement): boolean {
 	return typeof region.checkVisibility === "function" ? region.checkVisibility() : true;
 }
 
+const FOCUS_REGION_LANDING_ATTR = "data-focus-region-landing";
+const AROUND_ATTR = "data-focus-region-around";
+const INSIDE_ATTR = "data-focus-region-inside";
+const POSITIONED = new Set(["relative", "absolute", "fixed", "sticky"]);
+const MODIFIER_KEYS = new Set([
+	"Alt",
+	"AltGraph",
+	"CapsLock",
+	"Control",
+	"Fn",
+	"FnLock",
+	"Hyper",
+	"Meta",
+	"NumLock",
+	"OS",
+	"ScrollLock",
+	"Shift",
+	"Super",
+	"Symbol",
+	"SymbolLock",
+]);
+
+/** The clear function of each document's live landing; a new landing clears the old one first. */
+const liveLandings = new WeakMap<Document, () => void>();
+
+type LandOptions = {
+	/** The element that draws the ring when it isn't the focused element (the composer card around its prompt). */
+	ringOn?: HTMLElement;
+	/** Clear on the next non-modifier keydown or beforeinput, for text-entry landings. */
+	clearOnInput?: boolean;
+};
+
+/**
+ * Upstream's focus-region landing `U()`: focus the target (programmatically
+ * focusable only for the landing) and mark the ring element
+ * `data-focus-region-landing` — `"overlay"` when it is positioned, so the CSS
+ * draws the focus shadow as an inset ::after, else `""` for a plain box-shadow.
+ * The ring clears when focus moves elsewhere (except into an unrelated dialog),
+ * on pointerdown on the ring element, or on input for `clearOnInput` landings.
+ */
+function landFocus(target: HTMLElement, {ringOn = target, clearOnInput = false}: LandOptions = {}): void {
+	const doc = target.ownerDocument;
+	const view = doc.defaultView;
+	liveLandings.get(doc)?.();
+
+	let addedTabIndex = !target.hasAttribute("tabindex") && target.tabIndex < 0;
+	const tabIndexObserver = view === null ? undefined : new view.MutationObserver(() => (addedTabIndex = false));
+	if (addedTabIndex) {
+		target.setAttribute("tabindex", "-1");
+		tabIndexObserver?.observe(target, {attributeFilter: ["tabindex"]});
+	}
+	const position = view?.getComputedStyle(ringOn).position ?? "";
+	ringOn.setAttribute(FOCUS_REGION_LANDING_ATTR, POSITIONED.has(position) ? "overlay" : "");
+	if (ringOn !== target) {
+		ringOn.setAttribute(AROUND_ATTR, "");
+		target.setAttribute(INSIDE_ATTR, "");
+	}
+	target.focus({preventScroll: true, focusVisible: true});
+
+	const onKeyDown = (event: KeyboardEvent) => {
+		if (!MODIFIER_KEYS.has(event.key)) clear();
+	};
+	const onFocusMoved = (next: EventTarget | null) => {
+		if (next === target) return;
+		const dialog = next instanceof Element ? next.closest('[role="dialog"], [role="alertdialog"]') : null;
+		if (dialog !== null && !dialog.contains(ringOn) && !ringOn.contains(dialog)) return;
+		clear();
+	};
+	const onFocusIn = (event: FocusEvent) => {
+		onFocusMoved(event.target);
+	};
+	const onBlur = () => {
+		onFocusMoved(doc.activeElement);
+	};
+	function clear() {
+		if (addedTabIndex && (tabIndexObserver?.takeRecords().length ?? 0) === 0) target.removeAttribute("tabindex");
+		tabIndexObserver?.disconnect();
+		ringOn.removeAttribute(FOCUS_REGION_LANDING_ATTR);
+		ringOn.removeAttribute(AROUND_ATTR);
+		target.removeAttribute(INSIDE_ATTR);
+		doc.removeEventListener("focusin", onFocusIn, true);
+		view?.removeEventListener("blur", onBlur);
+		ringOn.removeEventListener("pointerdown", clear);
+		target.removeEventListener("keydown", onKeyDown);
+		target.removeEventListener("beforeinput", clear);
+		if (liveLandings.get(doc) === clear) liveLandings.delete(doc);
+	}
+
+	if (doc.activeElement !== target) {
+		clear();
+		return;
+	}
+	doc.addEventListener("focusin", onFocusIn, true);
+	view?.addEventListener("blur", onBlur);
+	ringOn.addEventListener("pointerdown", clear);
+	if (clearOnInput) {
+		target.addEventListener("keydown", onKeyDown);
+		target.addEventListener("beforeinput", clear);
+	}
+	liveLandings.set(doc, clear);
+}
+
 function focusRegion(region: HTMLElement): void {
 	const entry = [...region.querySelectorAll<HTMLElement>(`[${FOCUS_REGION_ENTRY_ATTR}]`)].find(
 		(candidate) => candidate.closest(`[${FOCUS_REGION_ATTR}]`) === region,
 	);
 	if (entry !== undefined) {
-		entry.focus();
+		// The composer's ring goes on its card, as upstream rings `[data-cds="ChatComposer"] > *`.
+		const card = entry.closest<HTMLElement>("[data-composer-card]");
+		landFocus(entry, {ringOn: card !== null && region.contains(card) ? card : entry, clearOnInput: true});
 		return;
 	}
-	if (region.tabIndex < 0 && !region.hasAttribute("tabindex")) region.tabIndex = -1;
-	region.focus({preventScroll: true});
+	landFocus(region);
 }
 
 /** Move focus to the next or previous available region; false when there is none. */

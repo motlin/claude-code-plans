@@ -850,11 +850,18 @@ html[data-interface-font="dyslexic"] {
 	box-shadow: var(--focus-shadow);
 }
 
-/* Upstream's focus-region landing ring: a jump (palette "Jump to question")
-   marks the landed card `data-focus-region-landing="overlay"`, which swaps its
-   own outline for the focus shadow drawn as an ::after 2px inside the card.
-   Unlayered so the `outline: none` beats the approval card's focus-visible
-   outline utility, as upstream's does. */
+/* Upstream's focus-region landing ring: an F6 or jump landing marks the ring
+   element `data-focus-region-landing` — `""` draws the focus shadow on the
+   element itself, `"overlay"` (a positioned element) swaps its own outline for
+   the focus shadow drawn as an ::after 2px inside it. Unlayered so the
+   `outline: none` beats the approval card's focus-visible outline utility, as
+   upstream's does. */
+[data-focus-region-landing=""]:focus,
+[data-focus-region-landing=""][data-focus-region-around]:focus-within {
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	box-shadow: var(--focus-shadow);
+}
 [data-focus-region-landing="overlay"]:focus,
 [data-focus-region-landing="overlay"][data-focus-region-around]:focus-within,
 [data-focus-region-inside]:focus {
@@ -869,6 +876,45 @@ html[data-interface-font="dyslexic"] {
 	border-radius: inherit;
 	pointer-events: none;
 	opacity: 1;
+	outline: 2px solid transparent;
+	outline-offset: -2px;
+	box-shadow: var(--focus-shadow);
+}
+/* Upstream's `.dframe-content` landing: main's ring sits 2px inside it under
+   any overlay above z-index 100 (web: --df-chrome-bar-height is 0). */
+main[data-focus-region="main"][data-focus-region-landing]:focus {
+	box-shadow: none;
+	outline: none;
+}
+main[data-focus-region="main"][data-focus-region-landing]:focus::after {
+	content: "";
+	position: absolute;
+	inset: 2px;
+	z-index: 100;
+	pointer-events: none;
+	outline: 2px solid transparent;
+	outline-offset: -2px;
+	box-shadow: var(--focus-shadow);
+}
+/* Local divergence: list pages scroll `main` itself (upstream's .dframe-content
+   doesn't scroll), so an absolute ::after would scroll away with the content.
+   There the ring is a zero-net-height sticky ::before sized to main by
+   container units, which stays 2px inside main's viewport at any scroll. */
+main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus {
+	container-type: size;
+}
+main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus::after {
+	content: none;
+}
+main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus::before {
+	content: "";
+	display: block;
+	position: sticky;
+	top: 2px;
+	height: calc(100cqh - 4px);
+	margin: 0 2px calc(4px - 100cqh);
+	z-index: 100;
+	pointer-events: none;
 	outline: 2px solid transparent;
 	outline-offset: -2px;
 	box-shadow: var(--focus-shadow);

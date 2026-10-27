@@ -40,4 +40,53 @@ describe("focus region landing ring", () => {
 			],
 		});
 	});
+
+	it("draws the plain landing ring as the focus shadow, and main's overlay ring 2px inside it", () => {
+		expect({
+			plain: declarations(
+				'[data-focus-region-landing=""]:focus,\n[data-focus-region-landing=""][data-focus-region-around]:focus-within',
+			),
+			mainHide: declarations('main[data-focus-region="main"][data-focus-region-landing]:focus'),
+			mainRing: declarations('main[data-focus-region="main"][data-focus-region-landing]:focus::after'),
+		}).toStrictEqual({
+			plain: ["outline: 2px solid transparent", "outline-offset: 2px", "box-shadow: var(--focus-shadow)"],
+			mainHide: ["box-shadow: none", "outline: none"],
+			mainRing: [
+				'content: ""',
+				"position: absolute",
+				"inset: 2px",
+				"z-index: 100",
+				"pointer-events: none",
+				"outline: 2px solid transparent",
+				"outline-offset: -2px",
+				"box-shadow: var(--focus-shadow)",
+			],
+		});
+	});
+
+	it("keeps main's ring in view while a scrolling main scrolls, as a sticky ::before sized by container units", () => {
+		const scrolling =
+			'main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-region-landing]:focus';
+		expect({
+			container: declarations(scrolling),
+			noAfter: declarations(`${scrolling}::after`),
+			ring: declarations(`${scrolling}::before`),
+		}).toStrictEqual({
+			container: ["container-type: size"],
+			noAfter: ["content: none"],
+			ring: [
+				'content: ""',
+				"display: block",
+				"position: sticky",
+				"top: 2px",
+				"height: calc(100cqh - 4px)",
+				"margin: 0 2px calc(4px - 100cqh)",
+				"z-index: 100",
+				"pointer-events: none",
+				"outline: 2px solid transparent",
+				"outline-offset: -2px",
+				"box-shadow: var(--focus-shadow)",
+			],
+		});
+	});
 });

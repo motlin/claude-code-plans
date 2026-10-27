@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {useFocusRegionShortcuts} from "../src/hooks/use-focus-regions";
@@ -21,10 +21,12 @@ function Harness({hideSecondPane = false}: {hideSecondPane?: boolean}) {
 			<nav aria-label="Sidebar" {...region("navigation")}>
 				<a href="/">Home</a>
 			</nav>
-			<main aria-label="Main" {...region("main")}>
+			<main aria-label="Main" {...region("main")} style={{position: "relative"}}>
 				<button type="button">Transcript action</button>
 				<div aria-label="Composer" {...region("composer")}>
-					<textarea aria-label="Prompt" {...entry} />
+					<div data-composer-card="" data-testid="card" style={{position: "relative"}}>
+						<textarea aria-label="Prompt" {...entry} />
+					</div>
 				</div>
 				<section aria-label="Files" {...region("pane")}>
 					<button type="button">Files action</button>
@@ -162,5 +164,168 @@ describe("focusRegionByName", () => {
 			composer: focusRegionByName(document, "composer"),
 			focused: document.activeElement?.textContent,
 		}).toStrictEqual({navigation: false, composer: false, focused: "Elsewhere"});
+	});
+});
+
+const LANDING_ATTRS = ["data-focus-region-landing", "data-focus-region-around", "data-focus-region-inside", "tabindex"];
+
+function landingAttrs(element: Element): Record<string, string | null> {
+	return Object.fromEntries(LANDING_ATTRS.map((name) => [name, element.getAttribute(name)]));
+}
+
+describe("F6 landing ring", () => {
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+	});
+
+	it("marks a static region with a plain ring and a positioned region with the overlay ring", () => {
+		render(<Harness />);
+		const sidebar = screen.getByRole("navigation", {name: "Sidebar"});
+		const main = screen.getByRole("main", {name: "Main"});
+
+		pressF6();
+		const onSidebar = {sidebar: landingAttrs(sidebar), main: landingAttrs(main)};
+		pressF6();
+		const onMain = {sidebar: landingAttrs(sidebar), main: landingAttrs(main)};
+
+		expect({onSidebar, onMain}).toStrictEqual({
+			onSidebar: {
+				sidebar: {
+					"data-focus-region-landing": "",
+					"data-focus-region-around": null,
+					"data-focus-region-inside": null,
+					tabindex: "-1",
+				},
+				main: {
+					"data-focus-region-landing": null,
+					"data-focus-region-around": null,
+					"data-focus-region-inside": null,
+					tabindex: null,
+				},
+			},
+			onMain: {
+				sidebar: {
+					"data-focus-region-landing": null,
+					"data-focus-region-around": null,
+					"data-focus-region-inside": null,
+					tabindex: null,
+				},
+				main: {
+					"data-focus-region-landing": "overlay",
+					"data-focus-region-around": null,
+					"data-focus-region-inside": null,
+					tabindex: "-1",
+				},
+			},
+		});
+	});
+
+	it("rings the composer card around the prompt and clears on the next key", () => {
+		render(<Harness />);
+		const card = screen.getByTestId("card");
+		const prompt = screen.getByRole("textbox", {name: "Prompt"});
+
+		pressF6();
+		pressF6();
+		pressF6();
+		const landed = {card: landingAttrs(card), prompt: landingAttrs(prompt), focused: focusedName()};
+		fireEvent.keyDown(prompt, {key: "Shift"});
+		const afterModifier = card.getAttribute("data-focus-region-landing");
+		fireEvent.keyDown(prompt, {key: "a"});
+
+		expect({
+			landed,
+			afterModifier,
+			afterKey: {card: landingAttrs(card), prompt: landingAttrs(prompt)},
+		}).toStrictEqual({
+			landed: {
+				card: {
+					"data-focus-region-landing": "overlay",
+					"data-focus-region-around": "",
+					"data-focus-region-inside": null,
+					tabindex: null,
+				},
+				prompt: {
+					"data-focus-region-landing": null,
+					"data-focus-region-around": null,
+					"data-focus-region-inside": "",
+					tabindex: null,
+				},
+				focused: "Prompt",
+			},
+			afterModifier: "overlay",
+			afterKey: {
+				card: {
+					"data-focus-region-landing": null,
+					"data-focus-region-around": null,
+					"data-focus-region-inside": null,
+					tabindex: null,
+				},
+				prompt: {
+					"data-focus-region-landing": null,
+					"data-focus-region-around": null,
+					"data-focus-region-inside": null,
+					tabindex: null,
+				},
+			},
+		});
+	});
+
+	it("keeps a region ring through keys, and clears it on pointerdown on the ring", () => {
+		render(<Harness />);
+		const main = screen.getByRole("main", {name: "Main"});
+
+		pressF6();
+		pressF6();
+		fireEvent.keyDown(main, {key: "a"});
+		const afterKey = main.getAttribute("data-focus-region-landing");
+		fireEvent.pointerDown(main);
+
+		expect({afterKey, afterPointer: landingAttrs(main)}).toStrictEqual({
+			afterKey: "overlay",
+			afterPointer: {
+				"data-focus-region-landing": null,
+				"data-focus-region-around": null,
+				"data-focus-region-inside": null,
+				tabindex: null,
+			},
+		});
+	});
+
+	it("clears when focus moves elsewhere, but not into an unrelated dialog", () => {
+		render(
+			<>
+				<Harness />
+				<div role="dialog" aria-label="Dialog">
+					<button type="button">Dialog action</button>
+				</div>
+			</>,
+		);
+		const main = screen.getByRole("main", {name: "Main"});
+
+		pressF6();
+		pressF6();
+		act(() => {
+			screen.getByRole("button", {name: "Dialog action"}).focus();
+		});
+		const afterDialog = main.getAttribute("data-focus-region-landing");
+		act(() => {
+			screen.getByRole("button", {name: "Transcript action"}).focus();
+		});
+
+		expect({afterDialog, afterFocus: landingAttrs(main)}).toStrictEqual({
+			afterDialog: "overlay",
+			afterFocus: {
+				"data-focus-region-landing": null,
+				"data-focus-region-around": null,
+				"data-focus-region-inside": null,
+				tabindex: null,
+			},
+		});
 	});
 });
