@@ -94,8 +94,14 @@ interface LaunchCall {
 
 let launchCalls: LaunchCall[] = [];
 let launchResponse: () => Promise<Response> = async () => new Promise<Response>(() => {});
+let folderStatusCalls: string[] = [];
+let folderStatusResponse: (() => Response) | null = null;
 
 async function fetchMock(url: string, init?: RequestInit): Promise<Response> {
+	if (url.startsWith("/api/home/folder-status?")) {
+		folderStatusCalls.push(url);
+		if (folderStatusResponse !== null) return folderStatusResponse();
+	}
 	if (url === "/api/herdr/launch") {
 		launchCalls.push({url, init});
 		return launchResponse();
@@ -184,6 +190,8 @@ describe("HomeComposer", () => {
 
 	beforeEach(() => {
 		launchCalls = [];
+		folderStatusCalls = [];
+		folderStatusResponse = null;
 		launchResponse = async () => new Promise<Response>(() => {});
 		TestEventSource.current = null;
 		installLocalStorage();
@@ -483,6 +491,29 @@ describe("HomeComposer", () => {
 			cwd: "/users/dev/it's",
 			prompt: "hello",
 			args: ["--worktree"],
+		});
+	});
+
+	it("fetches the selected folder's git status and hides the Worktree footer for a non-git folder", async () => {
+		folderStatusResponse = () =>
+			Response.json({isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0});
+		localStorage.setItem(HOME_WORKTREE_STORAGE_KEY, "true");
+		await renderApp();
+		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
+		await waitFor(() => {
+			expect(screen.queryByTestId("environment-bar-worktree")).toBeNull();
+		});
+		fireEvent.keyDown(screen.getByRole("textbox", {name: "Search projects"}), {key: "Escape"});
+		await typePrompt("hello");
+
+		fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+		await waitFor(() => {
+			expect(launchCalls.length).toBe(1);
+		});
+		expect({folderStatusCalls, launch: launchBody(launchCalls[0])}).toStrictEqual({
+			folderStatusCalls: ["/api/home/folder-status?path=%2Fusers%2Fdev%2Fit%27s"],
+			launch: {cwd: "/users/dev/it's", prompt: "hello"},
 		});
 	});
 

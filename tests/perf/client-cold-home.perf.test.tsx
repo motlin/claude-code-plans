@@ -97,9 +97,18 @@ const ENDPOINTS: Array<{path: string; module: string; params?: Record<string, st
 	},
 ];
 
-/** herdr is a live process the lab never talks to; it answers as an installation with no panes. */
+/**
+ * herdr is a live process the lab never talks to; it answers as an installation with no panes. The fixture cwd
+ * isn't a real directory, so the launch folder's git status answers as a clean checkout of its default branch.
+ */
 const STATIC_FIXTURES: Record<string, unknown> = {
 	"/api/herdr-panes": {panes: [], writesEnabled: false},
+	[`/api/home/folder-status?path=${encodeURIComponent(FIXTURE_CWD)}`]: {
+		isGitRepo: true,
+		headBranch: "main",
+		defaultBranch: "main",
+		uncommittedFiles: 0,
+	},
 };
 
 let root: string;

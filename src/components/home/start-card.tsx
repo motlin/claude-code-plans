@@ -8,7 +8,7 @@ import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {Popover, PopoverContent} from "../ui/popover";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
-import {useHomeLaunchFolder} from "./launch-folder";
+import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
 import {START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
 import {useNextStepsHold} from "./use-next-steps-hold";
@@ -514,5 +514,22 @@ function RestRow({
 /** The start card bound to the shared home launch folder. */
 export function HomeStartCard({nextSteps}: Readonly<{nextSteps?: NextStepsListProps | undefined}>) {
 	const {projects, selected, select} = useHomeLaunchFolder();
-	return <StartCard projects={projects} selected={selected} onSelect={select} nextSteps={nextSteps} />;
+	const {takeFromRow} = useHomeWorktree();
+	return (
+		<StartCard
+			projects={projects}
+			selected={selected}
+			onSelect={select}
+			nextSteps={
+				nextSteps === undefined
+					? undefined
+					: {
+							...nextSteps,
+							onTurnOnWorktree: (candidate) => {
+								takeFromRow(candidate.subject);
+							},
+						}
+			}
+		/>
+	);
 }

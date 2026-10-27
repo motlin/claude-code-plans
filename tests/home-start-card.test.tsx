@@ -5,13 +5,21 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {useEffect, useRef, useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {HOME_RECENT_LIMIT, HomeLaunchFolderProvider} from "../src/components/home/launch-folder";
+import {
+	HOME_RECENT_LIMIT,
+	HomeLaunchFolderProvider,
+	useHomeLaunchFolder,
+	useHomeWorktree,
+} from "../src/components/home/launch-folder";
+import {ProjectPicker} from "../src/components/home/project-picker";
 import {HomeStartCard, StartCard} from "../src/components/home/start-card";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {onHomeComposerFocusRequest, requestHomeLaunchFolder} from "../src/lib/home-composer-focus";
+import {HOME_WORKTREE_STORAGE_KEY} from "../src/lib/home-worktree-pref";
 import {selectNextSteps, type NextStepCandidate} from "../src/lib/home-next-steps";
 import type {StartProject} from "../src/lib/palette-start-session";
+import {installLocalStorage} from "./fake-storage";
 
 const PROJECTS: StartProject[] = [1, 2, 3, 4, 5].map((n) => ({
 	id: `-users-dev-p${n}`,
@@ -210,7 +218,7 @@ describe("StartCard", () => {
 });
 
 /** The home start card under its launch-folder provider, with p1 the most recently active project. */
-function renderHomeStartCard() {
+function renderHomeStartCard(nextSteps?: Parameters<typeof HomeStartCard>[0]["nextSteps"]) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false, staleTime: Infinity}}});
 	queryClient.setQueryData(
 		projectsQueryOptions().queryKey,
@@ -233,10 +241,18 @@ function renderHomeStartCard() {
 	return render(
 		<QueryClientProvider client={queryClient}>
 			<HomeLaunchFolderProvider>
-				<HomeStartCard />
+				<HomeStartCard nextSteps={nextSteps} />
+				<FolderChip />
 			</HomeLaunchFolderProvider>
 		</QueryClientProvider>,
 	);
+}
+
+/** Stands in for the composer's folder chip, with the footer's Worktree switch on the shared state. */
+function FolderChip() {
+	const {projects, selected, select} = useHomeLaunchFolder();
+	const worktree = useHomeWorktree();
+	return <ProjectPicker projects={projects} selected={selected} onSelect={select} worktree={worktree} />;
 }
 
 function currentFolder() {
@@ -262,5 +278,36 @@ describe("home launch-folder request", () => {
 		});
 
 		expect({before, after: currentFolder()}).toStrictEqual({before: "p1", after: "p2"});
+	});
+});
+
+describe("Next steps Turn on Worktree", () => {
+	const worktreeApart: NextStepCandidate = {
+		id: "worktree-apart",
+		kind: "worktree",
+		subject: "/Users/dev/projects/p1",
+		stamp: 0,
+		title: "Turn on Worktree",
+		detail: "Session running here",
+		tooltipText:
+			"Another session is running in this folder. Worktree gives this session its own copy, so their changes stay apart.",
+		dismissLabel: "Dismiss the Worktree suggestion",
+	};
+
+	it("flips the folder footer's Worktree switch on and stores the preference", () => {
+		const storage = installLocalStorage();
+		renderHomeStartCard({
+			rows: selectNextSteps({candidates: [worktreeApart], dismissed: {}}),
+			onOpen: () => {},
+			onDismiss: () => {},
+		});
+
+		fireEvent.click(screen.getByRole("button", {name: /Turn on Worktree/}));
+		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
+
+		expect({
+			checked: screen.getByRole("switch", {name: "Worktree"}).getAttribute("aria-checked"),
+			stored: storage.getItem(HOME_WORKTREE_STORAGE_KEY),
+		}).toStrictEqual({checked: "true", stored: "true"});
 	});
 });

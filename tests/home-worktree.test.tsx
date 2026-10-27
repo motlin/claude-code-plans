@@ -150,6 +150,60 @@ describe("useHomeWorktree", () => {
 		expect(storage.getItem(HOME_WORKTREE_STORAGE_KEY)).toBe("true");
 	});
 
+	it("marks a folder taken only while Worktree stays on after a Next steps press, until the draft ends", () => {
+		renderHome();
+		const takenNow = () => [handle("card").isTaken("/a"), handle("card").isTaken("/b")];
+
+		act(() => {
+			handle("card").takeFromRow("/a");
+		});
+		expect({
+			state: read("composer"),
+			stored: storage.getItem(HOME_WORKTREE_STORAGE_KEY),
+			taken: takenNow(),
+		}).toStrictEqual({
+			state: {enabled: true, supported: true, useWorktree: true},
+			stored: "true",
+			taken: [true, false],
+		});
+
+		act(() => {
+			handle("composer").setForDraft(false);
+		});
+		const overriddenOff = takenNow();
+		act(() => {
+			handle("composer").setForDraft(null);
+		});
+		const backOn = takenNow();
+		act(() => {
+			handle("composer").set(false);
+		});
+		act(() => {
+			handle("composer").set(true);
+		});
+		const handToggled = takenNow();
+		act(() => {
+			handle("card").takeFromRow("/b");
+		});
+		act(() => {
+			handle("composer").endDraft();
+		});
+
+		expect({
+			overriddenOff,
+			backOn,
+			handToggled,
+			ended: takenNow(),
+			state: read("card"),
+		}).toStrictEqual({
+			overriddenOff: [false, false],
+			backOn: [true, false],
+			handToggled: [false, false],
+			ended: [false, false],
+			state: {enabled: true, supported: true, useWorktree: true},
+		});
+	});
+
 	it('ignores a stored value other than "true"', () => {
 		storage.setItem(HOME_WORKTREE_STORAGE_KEY, "yes");
 		renderHome();

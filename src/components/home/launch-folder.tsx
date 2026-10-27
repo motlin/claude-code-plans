@@ -27,8 +27,12 @@ interface WorktreeState {
 	pref: boolean;
 	/** This draft's override (upstream's per-opening `Jp` state); null follows the preference. */
 	draft: boolean | null;
+	/** Folders whose Next steps "Turn on Worktree" row was pressed in this draft. */
+	taken: ReadonlySet<string>;
 	set: (enabled: boolean) => void;
 	setForDraft: (enabled: boolean | null) => void;
+	takeFromRow: (folder: string) => void;
+	endDraft: () => void;
 }
 
 interface SharedLaunchFolder {
@@ -41,23 +45,36 @@ interface SharedLaunchFolder {
 function useWorktreeState(): WorktreeState {
 	const [pref, setPref] = useState(false);
 	const [draft, setDraft] = useState<boolean | null>(null);
+	const [taken, setTaken] = useState<ReadonlySet<string>>(() => new Set());
 	useEffect(() => {
 		setPref(readHomeWorktreePref());
 	}, []);
-	return useMemo(
-		() => ({
+	return useMemo(() => {
+		// A hand toggle clears the draft override and writes the preference, as upstream's `set`.
+		const set = (enabled: boolean) => {
+			setDraft(null);
+			setPref(enabled);
+			writeHomeWorktreePref(enabled);
+			// Turning it off un-takes every row, so turning it back on by hand doesn't read as a press.
+			if (!enabled) setTaken(new Set());
+		};
+		return {
 			pref,
 			draft,
-			// A hand toggle clears the draft override and writes the preference, as upstream's `set`.
-			set: (enabled: boolean) => {
-				setDraft(null);
-				setPref(enabled);
-				writeHomeWorktreePref(enabled);
-			},
+			taken,
+			set,
 			setForDraft: setDraft,
-		}),
-		[pref, draft],
-	);
+			// Upstream's worktree-apart press: `set(true)` (it writes the pref) and records the row taken.
+			takeFromRow: (folder: string) => {
+				set(true);
+				setTaken((previous) => new Set(previous).add(folder));
+			},
+			endDraft: () => {
+				setDraft(null);
+				setTaken(new Set());
+			},
+		};
+	}, [pref, draft, taken]);
 }
 
 const LaunchFolderContext = createContext<SharedLaunchFolder | null>(null);
@@ -130,6 +147,14 @@ export interface HomeWorktree {
 	set: (enabled: boolean) => void;
 	/** Overrides only this draft; null goes back to the preference. */
 	setForDraft: (enabled: boolean | null) => void;
+	/** The selected folder's git status, undefined while unknown (the folder picker hides its footer on false). */
+	isGitRepo: boolean | undefined;
+	/** A Next steps "Turn on Worktree" press: turns Worktree on and marks the folder's row taken. */
+	takeFromRow: (folder: string) => void;
+	/** The folder's row was pressed in this draft and Worktree is still on, so it reads "Worktree is on". */
+	isTaken: (folder: string) => boolean;
+	/** The launch ends the draft: its override and taken rows go back to the preference. */
+	endDraft: () => void;
 }
 
 /**
@@ -139,8 +164,18 @@ export interface HomeWorktree {
 export function useHomeWorktree(isGitRepo?: boolean): HomeWorktree {
 	const shared = useContext(LaunchFolderContext);
 	const local = useWorktreeState();
-	const {pref, draft, set, setForDraft} = shared?.worktree ?? local;
+	const {pref, draft, taken, set, setForDraft, takeFromRow, endDraft} = shared?.worktree ?? local;
 	const enabled = draft ?? pref;
 	const supported = isGitRepo ?? true;
-	return {enabled, supported, useWorktree: supported && enabled, set, setForDraft};
+	return {
+		enabled,
+		supported,
+		useWorktree: supported && enabled,
+		set,
+		setForDraft,
+		isGitRepo,
+		takeFromRow,
+		isTaken: (folder) => enabled && taken.has(folder),
+		endDraft,
+	};
 }

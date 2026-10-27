@@ -7,6 +7,7 @@ import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
 import {useSlashCommands} from "../../hooks/use-slash-commands";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
 import {composerDefaultsQueryOptions} from "../../lib/api/composer-defaults";
+import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
 import {launchHerdrSession} from "../../lib/api/herdr";
 import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
@@ -45,7 +46,8 @@ export function HomeComposer() {
 		launching,
 		setLaunching,
 	} = useHomeLaunchFolder();
-	const worktree = useHomeWorktree();
+	const {data: folderStatus} = useQuery(homeFolderStatusQueryOptions(project?.projectPath));
+	const worktree = useHomeWorktree(folderStatus?.isGitRepo);
 	const slashMenu = useSlashCommands(project?.projectPath ?? undefined);
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
@@ -102,7 +104,7 @@ export function HomeComposer() {
 		try {
 			const {sessionId} = await launchHerdrSession(request);
 			// The launch ends this draft, so its Worktree override goes back to the preference.
-			worktree.setForDraft(null);
+			worktree.endDraft();
 			if (stay) {
 				if (sessionId === null) setPendingLaunchGroup(null);
 				else assignLaunchedSession(sessionId);
