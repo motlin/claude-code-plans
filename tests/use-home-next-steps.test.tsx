@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, render, waitFor} from "@testing-library/react";
+import type {ReactElement} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
@@ -13,6 +14,11 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 
+import {
+	HomeLaunchFolderProvider,
+	useHomeLaunchFolder,
+	type HomeLaunchFolder,
+} from "../src/components/home/launch-folder";
 import {useHomeNextSteps} from "../src/components/home/use-home-next-steps";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
@@ -66,6 +72,7 @@ afterEach(() => {
 async function renderHook(
 	queryClient: QueryClient,
 	describeRow: (candidate: NextStepCandidate) => string | null = (candidate) => candidate.detail,
+	wrap: (probe: ReactElement) => ReactElement = (probe) => probe,
 ): Promise<((string | null)[] | undefined)[]> {
 	const frames: ((string | null)[] | undefined)[] = [];
 	function Probe() {
@@ -80,7 +87,7 @@ async function renderHook(
 			</QueryClientProvider>
 		),
 	});
-	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/", component: Probe});
+	const homeRoute = createRoute({getParentRoute: () => rootRoute, path: "/", component: () => wrap(<Probe />)});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([homeRoute]),
 		history: createMemoryHistory({initialEntries: ["/"]}),
@@ -287,6 +294,111 @@ describe("useHomeNextSteps", () => {
 				erroredClient([{...listItem("seen"), state: "ended", bucket: "done"}]),
 				describeRow,
 			);
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual([]);
+			});
+		});
+	});
+
+	describe("lifecycle", () => {
+		function project(name: string) {
+			return {
+				id: `-projects-${name}`,
+				name,
+				projectPath: `/projects/${name}`,
+				sessionCount: 1,
+				memoryCount: 0,
+				planCount: 0,
+				taskCount: 0,
+				activeCount: 1,
+				lastActivity: new Date().toISOString(),
+			};
+		}
+
+		function lifecycleClient(): QueryClient {
+			const queryClient = seededClient();
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [
+					{
+						sessions: [
+							{...listItem("live"), state: "idle", bucket: "done"},
+							{
+								...listItem("failed"),
+								state: "ended",
+								bucket: "blocked",
+								unseenError: true,
+								erroredAt: "1999-12-31T00:00:01.000Z",
+							},
+						],
+						nextCursor: null,
+					},
+				],
+				pageParams: [null],
+			});
+			queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+			queryClient.setQueryData(projectsQueryOptions().queryKey, [project("alpha"), project("beta")]);
+			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+				isGitRepo: true,
+				headBranch: "feature",
+				defaultBranch: "main",
+				uncommittedFiles: 2,
+			});
+			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/beta").queryKey, {
+				isGitRepo: true,
+				headBranch: "main",
+				defaultBranch: "main",
+				uncommittedFiles: 0,
+			});
+			return queryClient;
+		}
+
+		it("recomputes the folder rows when the folder changes and drops them all while launching", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+			);
+			let launchFolder: HomeLaunchFolder | undefined;
+			function Controls() {
+				launchFolder = useHomeLaunchFolder();
+				return null;
+			}
+			const frames = await renderHook(
+				lifecycleClient(),
+				(candidate) => `${candidate.id} ${candidate.title}`,
+				(probe) => (
+					<HomeLaunchFolderProvider>
+						<Controls />
+						{probe}
+					</HomeLaunchFolderProvider>
+				),
+			);
+			act(() => {
+				launchFolder?.select("-projects-alpha");
+			});
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual([
+					"resume-session Title failed",
+					"worktree-apart Turn on Worktree",
+					"continue-branch Continue uncommitted work",
+				]);
+			});
+
+			act(() => {
+				launchFolder?.select("-projects-beta");
+			});
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual([]);
+			});
+
+			act(() => {
+				launchFolder?.select("-projects-alpha");
+			});
+			await waitFor(() => {
+				expect(frames.at(-1)).toHaveLength(3);
+			});
+			act(() => {
+				launchFolder?.setLaunching(true);
+			});
 			await waitFor(() => {
 				expect(frames.at(-1)).toStrictEqual([]);
 			});
