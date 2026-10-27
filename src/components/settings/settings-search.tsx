@@ -178,115 +178,108 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 	};
 
 	return (
-		<>
-			<div
-				ref={anchorRef}
-				className="flex h-8 shrink-0 items-center gap-3 rounded-r6 bg-[var(--settings-field-bg)] px-2 text-secondary shadow-[inset_0_0_0_1px_var(--color-border)] not-dark:shadow-[inset_0_0_0_1px_rgb(11_11_11/0.1)] not-dark:has-[:focus-visible]:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#2a78d6,0_0_6px_1px_#cde2fb] dark:focus-within:ring-2 dark:focus-within:ring-accent-100/40"
-			>
-				<Search aria-hidden="true" className="size-5 shrink-0" />
-				<input
-					ref={inputRef}
-					type="text"
-					role="combobox"
-					aria-label="Search settings"
-					aria-expanded={open}
-					aria-controls={open ? listId : undefined}
-					aria-autocomplete="list"
-					placeholder="Search"
-					value={query}
-					onChange={(event) => {
-						const next = event.target.value;
-						if (normalizeSettingsQuery(next) !== normalizeSettingsQuery(query)) collapse();
-						setQuery(next);
-						setActive(0);
-					}}
-					onKeyDown={(event) => {
-						// Upstream ignores keys mid-composition and while the query is empty.
-						if (event.nativeEvent.isComposing || !hasQuery) return;
-						const count = rows.length;
-						if (event.key === "Tab") {
-							clear();
-						} else if (event.key === "ArrowDown") {
-							event.preventDefault();
-							setActive((index) => (count === 0 ? 0 : (index + 1) % count));
-						} else if (event.key === "ArrowUp") {
-							event.preventDefault();
-							setActive((index) => (count === 0 ? 0 : (index - 1 + count) % count));
-						} else if (event.key === "Enter") {
-							event.preventDefault();
-							const row = rows[active];
-							if (row !== undefined && !event.repeat) choose(row);
-						} else if (event.key === "Escape") {
-							event.preventDefault();
-							event.stopPropagation();
-							reset();
-						}
-					}}
-					className="min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-[var(--settings-muted)]"
-				/>
-			</div>
-			<Popover.Root
-				open={open}
-				onOpenChange={(next, details) => {
-					if (next) return;
-					// Clicks back into the field keep the results open.
-					if (
-						details.event.target instanceof Node &&
-						anchorRef.current?.contains(details.event.target) === true
-					) {
-						return;
-					}
-					reset();
-				}}
-			>
-				<Popover.Portal>
-					<Popover.Positioner
-						anchor={anchorRef}
-						side="bottom"
-						align="start"
-						sideOffset={4}
-						className="z-[60]"
+		<Popover.Root
+			open={open}
+			onOpenChange={(next, details) => {
+				if (next) return;
+				// Clicks back into the field keep the results open.
+				if (
+					details.event.target instanceof Node &&
+					anchorRef.current?.contains(details.event.target) === true
+				) {
+					return;
+				}
+				reset();
+			}}
+		>
+			{/* Upstream's field is the popover's trigger: a non-native button div around a plain input. */}
+			<Popover.Trigger nativeButton={false} render={<div ref={anchorRef} />}>
+				{/* Comfortable density: h-control 32, px-sm 8, gap-sm 12, radius 8. Clicking anywhere focuses the input. */}
+				{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's pointer shortcut; the input inside is the keyboard control */}
+				<div
+					onClick={() => inputRef.current?.focus()}
+					className="flex h-8 w-full cursor-text items-center gap-3 rounded-r6 px-2 bg-[var(--settings-field-bg)] shadow-field-ring transition duration-150 [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus"
+				>
+					<Search aria-hidden="true" className="size-5 shrink-0 text-[var(--settings-muted)]" />
+					<input
+						ref={inputRef}
+						type="text"
+						aria-label="Search settings"
+						placeholder="Search"
+						value={query}
+						onChange={(event) => {
+							const next = event.target.value;
+							if (normalizeSettingsQuery(next) !== normalizeSettingsQuery(query)) collapse();
+							setQuery(next);
+							setActive(0);
+						}}
+						onKeyDown={(event) => {
+							// Upstream ignores keys mid-composition and while the query is empty.
+							if (event.nativeEvent.isComposing || !hasQuery) return;
+							const count = rows.length;
+							if (event.key === "Tab") {
+								clear();
+							} else if (event.key === "ArrowDown") {
+								event.preventDefault();
+								setActive((index) => (count === 0 ? 0 : (index + 1) % count));
+							} else if (event.key === "ArrowUp") {
+								event.preventDefault();
+								setActive((index) => (count === 0 ? 0 : (index - 1 + count) % count));
+							} else if (event.key === "Enter") {
+								event.preventDefault();
+								const row = rows[active];
+								if (row !== undefined && !event.repeat) choose(row);
+							} else if (event.key === "Escape") {
+								event.preventDefault();
+								event.stopPropagation();
+								reset();
+							}
+						}}
+						className="min-w-0 flex-1 border-0 bg-transparent p-0 text-body text-primary outline-none placeholder:text-[var(--settings-muted)]"
+					/>
+				</div>
+			</Popover.Trigger>
+			<Popover.Portal>
+				<Popover.Positioner anchor={anchorRef} side="bottom" align="start" sideOffset={4} className="z-[60]">
+					<Popover.Popup
+						id={listId}
+						data-cds="Popover"
+						aria-label="Search results"
+						initialFocus={false}
+						finalFocus={false}
+						className="w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none"
 					>
-						<Popover.Popup
-							id={listId}
-							data-cds="Popover"
-							aria-label="Search results"
-							initialFocus={false}
-							finalFocus={false}
-							className="w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none"
+						<p role="status" className="sr-only">
+							{announcement}
+						</p>
+						<div
+							ref={scrollerRef}
+							className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1"
 						>
-							<p role="status" className="sr-only">
-								{announcement}
-							</p>
-							<div
-								ref={scrollerRef}
-								className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1"
-							>
-								{rows.length === 0 ? (
-									// Upstream's xl search icon over "No matching settings"; gap-sm and px-md are 12px at comfortable density.
-									<div className="flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]">
-										<SearchX aria-hidden="true" className="size-7" />
-										<span className="text-body">No matching settings</span>
-									</div>
-								) : (
-									rows.map((row, index) => (
-										<ResultRow
-											key={rowKey(row)}
-											row={row}
-											query={query}
-											highlighted={index === active}
-											onChoose={choose}
-											onHighlight={() => {
-												setActive(index);
-											}}
-										/>
-									))
-								)}
-							</div>
-						</Popover.Popup>
-					</Popover.Positioner>
-				</Popover.Portal>
-			</Popover.Root>
-		</>
+							{rows.length === 0 ? (
+								// Upstream's xl search icon over "No matching settings"; gap-sm and px-md are 12px at comfortable density.
+								<div className="flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]">
+									<SearchX aria-hidden="true" className="size-7" />
+									<span className="text-body">No matching settings</span>
+								</div>
+							) : (
+								rows.map((row, index) => (
+									<ResultRow
+										key={rowKey(row)}
+										row={row}
+										query={query}
+										highlighted={index === active}
+										onChoose={choose}
+										onHighlight={() => {
+											setActive(index);
+										}}
+									/>
+								))
+							)}
+						</div>
+					</Popover.Popup>
+				</Popover.Positioner>
+			</Popover.Portal>
+		</Popover.Root>
 	);
 }

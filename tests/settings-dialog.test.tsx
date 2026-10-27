@@ -421,7 +421,7 @@ describe("SettingsDialog at phone width", () => {
 			tabs: within(tablist)
 				.getAllByRole("tab")
 				.map((tab) => ({label: tab.textContent, selected: tab.getAttribute("aria-selected")})),
-			search: within(dialog).getAllByRole("combobox", {name: "Search settings"}).length,
+			search: within(dialog).getAllByRole("textbox", {name: "Search settings"}).length,
 			scrollForward: within(dialog).getAllByRole("button", {name: "Scroll forward"}).length,
 		}).toStrictEqual({
 			sideNav: null,

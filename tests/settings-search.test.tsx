@@ -196,7 +196,7 @@ describe("settings search", () => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 
-		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {
+		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {
 			target: {value: "view"},
 		});
 
@@ -234,7 +234,7 @@ describe("settings search", () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 
-		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {
+		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {
 			target: {value: "theme"},
 		});
 
@@ -284,7 +284,7 @@ describe("settings search", () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 
-		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {target: {value: "ho"}});
+		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "ho"}});
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
 		const [status, scroller] = [...popover.children];
@@ -391,7 +391,7 @@ describe("settings search", () => {
 		return {
 			rows: popoverRows(popover),
 			status: within(popover).getByRole("status").textContent,
-			inputFocused: document.activeElement === screen.getByRole("combobox", {name: "Search settings"}),
+			inputFocused: document.activeElement === screen.getByRole("textbox", {name: "Search settings"}),
 		};
 	}
 
@@ -412,7 +412,7 @@ describe("settings search", () => {
 	])("%s on +N more expands the section in place and announces it", async (_how, expand) => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("combobox", {name: "Search settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
 		input.focus();
 
 		fireEvent.change(input, {target: {value: "ho"}});
@@ -435,7 +435,7 @@ describe("settings search", () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 
-		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {target: {value: "zzzq"}});
+		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "zzzq"}});
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
 		const empty = popover.children[1].firstElementChild;
@@ -457,10 +457,54 @@ describe("settings search", () => {
 		});
 	});
 
+	it("renders upstream's comfortable field: a Popover.Trigger div around a plain input, focused by a click anywhere", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
+		const field = input.parentElement;
+		const trigger = field?.parentElement;
+		const icon = field?.querySelector("svg");
+		input.blur();
+		if (field !== null) fireEvent.click(field);
+		const focusedByClick = document.activeElement === input;
+
+		fireEvent.change(input, {target: {value: "font"}});
+		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const space = fireEvent.keyDown(input, {key: " "});
+
+		expect({
+			trigger: {
+				tag: trigger?.tagName.toLowerCase(),
+				role: trigger?.getAttribute("role"),
+				hasPopup: trigger?.getAttribute("aria-haspopup"),
+				expanded: trigger?.getAttribute("aria-expanded"),
+				controls: trigger?.getAttribute("aria-controls") === popover.id,
+			},
+			field: field?.getAttribute("class"),
+			icon: {ariaHidden: icon?.getAttribute("aria-hidden"), className: icon?.getAttribute("class")},
+			input: {
+				type: input.getAttribute("type"),
+				role: input.getAttribute("role"),
+				expanded: input.getAttribute("aria-expanded"),
+				autocomplete: input.getAttribute("aria-autocomplete"),
+			},
+			focusedByClick,
+			spaceTypes: space,
+		}).toStrictEqual({
+			trigger: {tag: "div", role: "button", hasPopup: "dialog", expanded: "true", controls: true},
+			// h-control 32, px-sm 8, gap-sm 12 and radius 8 (rounded-r6) at comfortable density.
+			field: "flex h-8 w-full cursor-text items-center gap-3 rounded-r6 px-2 bg-[var(--settings-field-bg)] shadow-field-ring transition duration-150 [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus",
+			icon: {ariaHidden: "true", className: "lucide lucide-search size-5 shrink-0 text-[var(--settings-muted)]"},
+			input: {type: "text", role: null, expanded: null, autocomplete: null},
+			focusedByClick: true,
+			spaceTypes: true,
+		});
+	});
+
 	it("collapses +N more when the normalised query changes, not on a whitespace-only edit", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("combobox", {name: "Search settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
 		input.focus();
 
 		fireEvent.change(input, {target: {value: "ho"}});
@@ -484,7 +528,7 @@ describe("settings search", () => {
 		const router = await renderAt("/#settings/claude-code");
 		await screen.findByRole("dialog", {name: "Settings"});
 
-		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {target: {value: query}});
+		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: query}});
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
 		expect(popoverRows(popover)).toStrictEqual([row]);
@@ -499,7 +543,7 @@ describe("settings search", () => {
 	it("Enter picks the first row, even a keyword-only hit", async () => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("combobox", {name: "Search settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
 
 		fireEvent.change(input, {target: {value: "herdr"}});
 		fireEvent.keyDown(input, {key: "Enter"});
@@ -531,7 +575,7 @@ describe("settings search", () => {
 	it("highlights the first row, and the arrows move the highlight with wrap-around", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("combobox", {name: "Search settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
 
 		fireEvent.change(input, {target: {value: "font"}});
 		await screen.findByRole("dialog", {name: "Search results"});
@@ -551,7 +595,7 @@ describe("settings search", () => {
 	it("resets the highlight to the first row whenever the query changes", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("combobox", {name: "Search settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
 
 		fireEvent.change(input, {target: {value: "font"}});
 		fireEvent.keyDown(input, {key: "ArrowDown"});
@@ -564,7 +608,7 @@ describe("settings search", () => {
 	it("ignores keys while an IME is composing", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("combobox", {name: "Search settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
 
 		fireEvent.change(input, {target: {value: "font"}});
 		fireEvent.keyDown(input, {key: "ArrowDown", isComposing: true});
@@ -575,7 +619,7 @@ describe("settings search", () => {
 	it("Enter picks the highlighted row and ignores key repeat", async () => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("combobox", {name: "Search settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
 
 		fireEvent.change(input, {target: {value: "font"}});
 		fireEvent.keyDown(input, {key: "ArrowUp"});
@@ -597,7 +641,7 @@ describe("settings search", () => {
 	it("moves the single highlight with the pointer and keeps focus in the input on mousedown", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole("combobox", {name: "Search settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
 		input.focus();
 
 		fireEvent.change(input, {target: {value: "font"}});
@@ -627,7 +671,7 @@ describe("settings search", () => {
 	it("Escape clears the query and blurs the field without closing Settings; a second Escape closes it", async () => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
 		input.focus();
 		fireEvent.change(input, {target: {value: "font"}});
 		await screen.findByRole("dialog", {name: "Search results"});
@@ -653,7 +697,7 @@ describe("settings search", () => {
 	it("Tab clears the query", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
 		input.focus();
 		fireEvent.change(input, {target: {value: "font"}});
 		await screen.findByRole("dialog", {name: "Search results"});
@@ -666,7 +710,7 @@ describe("settings search", () => {
 	it("an outside press closes and clears the results; a press in the field keeps them open", async () => {
 		await renderAt("/#settings/general");
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
 		input.focus();
 		fireEvent.change(input, {target: {value: "font"}});
 		await screen.findByRole("dialog", {name: "Search results"});
@@ -692,7 +736,7 @@ describe("settings search", () => {
 	it("selecting a result clears the query and blurs the field", async () => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
 		input.focus();
 		fireEvent.change(input, {target: {value: "font"}});
 		await screen.findByRole("dialog", {name: "Search results"});
@@ -711,7 +755,7 @@ describe("settings search", () => {
 	async function blurredQuery(value: string) {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
-		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
 		fireEvent.change(input, {target: {value}});
 		input.blur();
 		return input;

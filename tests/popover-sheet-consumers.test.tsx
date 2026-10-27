@@ -155,7 +155,7 @@ describe("anchored-upstream popovers under a coarse pointer at 420px", () => {
 	it("keeps the settings search results anchored to their input", () => {
 		stubCoarseAtWidth(420);
 		render(<SettingsSearch onSelect={() => {}} />);
-		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {target: {value: "theme"}});
+		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "theme"}});
 		expect({
 			popup: document.querySelector("[role=listbox], [role=dialog]") !== null,
 			presentation: document.querySelector("[data-presentation]"),
