@@ -84,6 +84,29 @@ describe("General settings ▸ Appearance", () => {
 		});
 	});
 
+	it("leaves out upstream's not-applicable rows and keeps exactly the five Appearance rows in order", async () => {
+		stubNotification("granted");
+		await renderGeneral();
+
+		const appearance = screen.getByRole("heading", {name: "Appearance"}).closest("section");
+		const titles = (scope: HTMLElement) =>
+			within(scope)
+				.queryAllByRole("group")
+				.filter((group) => group.hasAttribute("data-settings-row"))
+				.map((group) => group.querySelector(".settings-row-title")?.textContent);
+		const allTitles = titles(document.body);
+
+		expect({
+			appearance: appearance === null ? null : titles(appearance),
+			notApplicable: ["Chat font", "Preferred browser", "Language", "Style", "Speed"].filter((title) =>
+				allTitles.includes(title),
+			),
+		}).toStrictEqual({
+			appearance: ["Theme", "Transcript text size", "Transcript width", "Motion", "Hide chrome"],
+			notApplicable: [],
+		});
+	});
+
 	it("renders Theme as icon-only System/Light/Dark radios bound to the theme provider", async () => {
 		stubNotification("granted");
 		await renderGeneral();

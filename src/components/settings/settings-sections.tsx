@@ -789,6 +789,7 @@ function ResetAllSettings() {
 	);
 }
 
+// Upstream also shows Chat font (claude.ai chat only, no effect on Code transcripts), Tasks › Preferred browser (Cowork) and Voice; not applicable locally.
 export function GeneralSettings() {
 	return (
 		<>
