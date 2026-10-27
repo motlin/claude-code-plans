@@ -24,14 +24,15 @@ import {
 	type SkillDetail,
 	type SkillSummary,
 } from "../src/lib/api/customize";
-import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
+import {PHONE_SHEET_QUERY, SETTINGS_PHONE_QUERY} from "../src/lib/use-phone-sheet";
 import {redirectToSettingsDialog} from "../src/routes/settings";
 import {installLocalStorage} from "./fake-storage";
 
-function stubBrowser(phone = false) {
+/** Stub matchMedia so exactly the given queries match. */
+function stubBrowser(matching: readonly string[] = []) {
 	installLocalStorage();
 	vi.stubGlobal("matchMedia", (query: string) => ({
-		matches: phone && query === PHONE_SHEET_QUERY,
+		matches: matching.includes(query),
 		media: query,
 		onchange: null,
 		addEventListener: () => {},
@@ -397,7 +398,7 @@ describe("SettingsDialog", () => {
 
 describe("SettingsDialog at phone width", () => {
 	beforeEach(() => {
-		stubBrowser(true);
+		stubBrowser([PHONE_SHEET_QUERY, SETTINGS_PHONE_QUERY]);
 	});
 
 	afterEach(() => {
@@ -421,7 +422,7 @@ describe("SettingsDialog at phone width", () => {
 			tabs: within(tablist)
 				.getAllByRole("tab")
 				.map((tab) => ({label: tab.textContent, selected: tab.getAttribute("aria-selected")})),
-			search: within(dialog).getAllByRole("textbox", {name: "Search settings"}).length,
+			search: within(dialog).queryAllByRole("textbox", {name: "Search settings"}).length,
 			scrollForward: within(dialog).getAllByRole("button", {name: "Scroll forward"}).length,
 		}).toStrictEqual({
 			sideNav: null,
@@ -443,9 +444,24 @@ describe("SettingsDialog at phone width", () => {
 				{label: "Claude Config", selected: "false"},
 				{label: "Setup", selected: "false"},
 			],
-			search: 1,
+			search: 0,
 			scrollForward: 1,
 		});
+	});
+
+	it("uses upstream's 767px breakpoint, so 640-767px gets the tab strip and no search either", async () => {
+		cleanup();
+		vi.unstubAllGlobals();
+		stubBrowser([SETTINGS_PHONE_QUERY]);
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+
+		expect({
+			query: SETTINGS_PHONE_QUERY,
+			sideNav: within(dialog).queryByRole("navigation"),
+			tablists: within(dialog).getAllByRole("tablist", {name: "Settings"}).length,
+			search: within(dialog).queryAllByRole("textbox", {name: "Search settings"}).length,
+		}).toStrictEqual({query: "(max-width: 767px)", sideNav: null, tablists: 1, search: 0});
 	});
 
 	it("switches tabs from the strip through the hash", async () => {
