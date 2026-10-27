@@ -1,7 +1,7 @@
 // Base UI Popover, not ui/popover: structurally anchored to its input.
 import {Popover} from "@base-ui/react/popover";
 import {Search} from "lucide-react";
-import {useId, useMemo, useRef, useState} from "react";
+import {type MouseEvent, useEffect, useId, useMemo, useRef, useState} from "react";
 import {settingsTabLabels} from "../../lib/schema-choices";
 import type {SettingsTab} from "../../lib/settings-hash";
 import {
@@ -29,9 +29,14 @@ function Highlighted({label, query}: {label: string; query: string}) {
 
 // Upstream's cds menu-item row at comfortable density (gap-xs 8, radius 8) plus `h-auto !px-1 py-1.5`.
 const ROW_CLASS =
-	"flex w-full items-center gap-2 rounded-r6 h-auto !px-1 py-1.5 text-start text-body font-normal text-primary select-none outline-none hover:bg-fill-ghost-hover data-[highlighted]:bg-fill-ghost-hover";
+	"flex w-full items-center gap-2 rounded-r6 h-auto !px-1 py-1.5 text-start text-body font-normal text-primary select-none outline-none data-[highlighted]:bg-fill-ghost-hover";
 // 20px icon + comfortable gap-sm (12px).
 const INDENT_CLASS = "ps-[32px]";
+
+/** Upstream's row mousedown: keep focus (and the open popover) in the search input. */
+function keepInputFocus(event: MouseEvent) {
+	event.preventDefault();
+}
 
 function rowKey(row: SettingsResultRow): string {
 	return row.kind === "child" ? `child/${row.tab}/${row.rowSlug}` : `${row.kind}/${row.tab}`;
@@ -41,23 +46,31 @@ function rowKey(row: SettingsResultRow): string {
 function ResultRow({
 	row,
 	query,
+	highlighted,
 	onChoose,
+	onHighlight,
 }: {
 	row: SettingsResultRow;
 	query: string;
+	highlighted: boolean;
 	onChoose: (row: SettingsResultRow) => void;
+	onHighlight: () => void;
 }) {
 	const section = settingsTabLabels[row.tab];
+	const rowProps = {
+		type: "button",
+		"data-highlighted": highlighted ? "" : undefined,
+		onMouseDown: keepInputFocus,
+		onMouseMove: onHighlight,
+		onClick: () => {
+			onChoose(row);
+		},
+		className: ROW_CLASS,
+	} as const;
 	if (row.kind === "hit") {
 		const Icon = SETTINGS_TAB_ICONS[row.tab];
 		return (
-			<button
-				type="button"
-				onClick={() => {
-					onChoose(row);
-				}}
-				className={ROW_CLASS}
-			>
+			<button {...rowProps}>
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="flex items-center gap-3">
 						<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5 text-secondary" />
@@ -76,16 +89,12 @@ function ResultRow({
 	}
 	return (
 		<button
-			type="button"
+			{...rowProps}
 			aria-label={
 				row.kind === "child"
 					? `${row.title} in ${section}`
 					: `${row.count} more ${row.count === 1 ? "match" : "matches"} in ${section}`
 			}
-			onClick={() => {
-				onChoose(row);
-			}}
-			className={ROW_CLASS}
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-3 ${INDENT_CLASS}`}>
 				{row.kind === "child" ? (
@@ -110,10 +119,18 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 	const [query, setQuery] = useState("");
 	const [dismissed, setDismissed] = useState(false);
 	const [expanded, setExpanded] = useState<ReadonlySet<SettingsTab>>(() => new Set());
+	const [active, setActive] = useState(0);
 	const anchorRef = useRef<HTMLDivElement>(null);
+	const scrollerRef = useRef<HTMLDivElement>(null);
 	const listId = useId();
 	const rows = useMemo(() => buildSettingsResultRows(query, expanded), [query, expanded]);
-	const open = !dismissed && query.trim().length > 0;
+	const hasQuery = query.trim().length > 0;
+	const open = !dismissed && hasQuery;
+
+	// Upstream keeps the highlighted row in view as the arrows (or a re-ranked list) move it.
+	useEffect(() => {
+		scrollerRef.current?.querySelector("[data-highlighted]")?.scrollIntoView({block: "nearest"});
+	}, [active, rows]);
 
 	const choose = (row: SettingsResultRow) => {
 		if (row.kind === "more") {
@@ -121,6 +138,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 			return;
 		}
 		setQuery("");
+		setActive(0);
 		setDismissed(false);
 		setExpanded(new Set());
 		onSelect(row.tab, row.rowSlug);
@@ -146,19 +164,27 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 						const next = event.target.value;
 						if (normalizeSettingsQuery(next) !== normalizeSettingsQuery(query)) setExpanded(new Set());
 						setQuery(next);
+						setActive(0);
 						setDismissed(false);
 					}}
 					onKeyDown={(event) => {
-						if (event.key === "Escape" && open) {
+						// Upstream ignores keys mid-composition and while the query is empty.
+						if (event.nativeEvent.isComposing || !hasQuery) return;
+						const count = rows.length;
+						if (event.key === "ArrowDown") {
+							event.preventDefault();
+							setActive((index) => (count === 0 ? 0 : (index + 1) % count));
+						} else if (event.key === "ArrowUp") {
+							event.preventDefault();
+							setActive((index) => (count === 0 ? 0 : (index - 1 + count) % count));
+						} else if (event.key === "Enter") {
+							event.preventDefault();
+							const row = rows[active];
+							if (row !== undefined && !event.repeat) choose(row);
+						} else if (event.key === "Escape" && open) {
 							event.preventDefault();
 							event.stopPropagation();
 							setDismissed(true);
-						} else if (event.key === "Enter") {
-							const [first] = rows;
-							if (first !== undefined) {
-								event.preventDefault();
-								choose(first);
-							}
 						}
 					}}
 					className="min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-[var(--settings-muted)]"
@@ -195,14 +221,26 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 							className="w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none"
 						>
 							<p role="status" className="sr-only" />
-							<div className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1">
+							<div
+								ref={scrollerRef}
+								className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1"
+							>
 								{rows.length === 0 ? (
 									<p className="px-2.5 py-1.5 text-footnote text-[var(--settings-muted)]">
 										No results
 									</p>
 								) : (
-									rows.map((row) => (
-										<ResultRow key={rowKey(row)} row={row} query={query} onChoose={choose} />
+									rows.map((row, index) => (
+										<ResultRow
+											key={rowKey(row)}
+											row={row}
+											query={query}
+											highlighted={index === active}
+											onChoose={choose}
+											onHighlight={() => {
+												setActive(index);
+											}}
+										/>
 									))
 								)}
 							</div>

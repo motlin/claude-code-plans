@@ -97,11 +97,17 @@ function flashingRows(): {row: string; title: boolean}[] {
 
 describe("settings search", () => {
 	let scrolled: string[];
+	let highlightScrolls: Array<{row: string; options: unknown}>;
 
 	beforeEach(() => {
 		stubBrowser();
 		scrolled = [];
-		Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
+		highlightScrolls = [];
+		Element.prototype.scrollIntoView = function scrollIntoView(this: Element, options?: unknown) {
+			if (this.hasAttribute("data-highlighted")) {
+				highlightScrolls.push({row: this.getAttribute("aria-label") ?? `hit: ${this.textContent}`, options});
+				return;
+			}
 			scrolled.push(this.getAttribute("data-settings-row") ?? this.tagName);
 		};
 	});
@@ -265,7 +271,7 @@ describe("settings search", () => {
 	}
 
 	const ROW =
-		"flex w-full items-center gap-2 rounded-r6 h-auto !px-1 py-1.5 text-start text-body font-normal text-primary select-none outline-none hover:bg-fill-ghost-hover data-[highlighted]:bg-fill-ghost-hover";
+		"flex w-full items-center gap-2 rounded-r6 h-auto !px-1 py-1.5 text-start text-body font-normal text-primary select-none outline-none data-[highlighted]:bg-fill-ghost-hover";
 	const ICON = "size-5 shrink-0 p-0.5 text-secondary";
 	const TRUNCATE = "min-w-0 flex-1 truncate";
 	const INDENTED = "flex min-w-0 flex-1 items-center gap-3 ps-[32px]";
@@ -382,6 +388,111 @@ describe("settings search", () => {
 
 		await waitFor(() => {
 			expect(router.state.location.hash).toBe("settings/application");
+		});
+	});
+
+	/** The popover rows, with the highlighted one marked. */
+	function highlightedRows(): string[] {
+		const popover = screen.getByRole("dialog", {name: "Search results"});
+		return within(popover)
+			.getAllByRole("button")
+			.map((button) => {
+				const name = button.getAttribute("aria-label") ?? `hit: ${button.textContent}`;
+				return button.getAttribute("data-highlighted") === "" ? `> ${name}` : name;
+			});
+	}
+
+	const FONT_ROWS = [
+		"hit: Claude Code",
+		"Code font in Claude Code",
+		"Interface font in Claude Code",
+		"hit: GeneralTranscript text size",
+	];
+	const marked = (index: number) => FONT_ROWS.map((row, i) => (i === index ? `> ${row}` : row));
+
+	it("highlights the first row, and the arrows move the highlight with wrap-around", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("combobox", {name: "Search settings"});
+
+		fireEvent.change(input, {target: {value: "font"}});
+		await screen.findByRole("dialog", {name: "Search results"});
+		const seen = [highlightedRows()];
+		for (const key of ["ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowUp", "ArrowUp"]) {
+			fireEvent.keyDown(input, {key});
+			seen.push(highlightedRows());
+		}
+
+		expect(seen).toStrictEqual([marked(0), marked(1), marked(2), marked(3), marked(0), marked(3), marked(2)]);
+		expect(highlightScrolls.at(-1)).toStrictEqual({
+			row: "Interface font in Claude Code",
+			options: {block: "nearest"},
+		});
+	});
+
+	it("resets the highlight to the first row whenever the query changes", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("combobox", {name: "Search settings"});
+
+		fireEvent.change(input, {target: {value: "font"}});
+		fireEvent.keyDown(input, {key: "ArrowDown"});
+		fireEvent.keyDown(input, {key: "ArrowDown"});
+		fireEvent.change(input, {target: {value: "font "}});
+
+		expect(highlightedRows()).toStrictEqual(marked(0));
+	});
+
+	it("ignores keys while an IME is composing", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("combobox", {name: "Search settings"});
+
+		fireEvent.change(input, {target: {value: "font"}});
+		fireEvent.keyDown(input, {key: "ArrowDown", isComposing: true});
+
+		expect(highlightedRows()).toStrictEqual(marked(0));
+	});
+
+	it("Enter picks the highlighted row and ignores key repeat", async () => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("combobox", {name: "Search settings"});
+
+		fireEvent.change(input, {target: {value: "font"}});
+		fireEvent.keyDown(input, {key: "ArrowUp"});
+		fireEvent.keyDown(input, {key: "Enter", repeat: true});
+		expect({hash: router.state.location.hash, rows: highlightedRows()}).toStrictEqual({
+			hash: "settings/general",
+			rows: marked(3),
+		});
+
+		fireEvent.keyDown(input, {key: "ArrowUp"});
+		fireEvent.keyDown(input, {key: "Enter"});
+
+		await waitFor(() => {
+			expect(router.state.location.hash).toBe("settings/claude-code");
+		});
+		expect(scrolled).toStrictEqual(["interface-font"]);
+	});
+
+	it("moves the single highlight with the pointer and keeps focus in the input on mousedown", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("combobox", {name: "Search settings"});
+		input.focus();
+
+		fireEvent.change(input, {target: {value: "font"}});
+		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const second = within(popover).getByRole("button", {name: "Code font in Claude Code"});
+		fireEvent.mouseMove(second);
+		const rows = highlightedRows();
+		const notPrevented = fireEvent.mouseDown(second);
+
+		expect({rows, notPrevented, focused: document.activeElement === input}).toStrictEqual({
+			rows: marked(1),
+			notPrevented: false,
+			focused: true,
 		});
 	});
 });
