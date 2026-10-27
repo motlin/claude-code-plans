@@ -53,7 +53,7 @@ export function Switch({
 		>
 			<span
 				aria-hidden="true"
-				className={`block size-4 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none ${
+				className={`block size-4 rounded-full bg-white shadow-sm transition-transform duration-[120ms] ease-[cubic-bezier(0.34,1.3,0.64,1)] motion-reduce:transition-none ${
 					checked ? "translate-x-4" : "translate-x-0"
 				}`}
 			/>

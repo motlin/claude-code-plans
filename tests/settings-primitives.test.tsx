@@ -257,6 +257,19 @@ describe("Switch", () => {
 			legacyDisabled: false,
 		});
 	});
+
+	it("slides the knob with upstream's duration-snap ease-overshoot (120ms cubic-bezier(0.34,1.3,0.64,1)), off under reduced motion", () => {
+		render(<Switch checked onCheckedChange={() => {}} aria-label="Knob" />);
+		const knob = screen.getByRole("switch", {name: "Knob"}).firstElementChild;
+		const classes = knob?.className.split(" ") ?? [];
+
+		expect({
+			transition: classes.includes("transition-transform"),
+			duration: classes.includes("duration-[120ms]"),
+			easing: classes.includes("ease-[cubic-bezier(0.34,1.3,0.64,1)]"),
+			reduced: classes.includes("motion-reduce:transition-none"),
+		}).toStrictEqual({transition: true, duration: true, easing: true, reduced: true});
+	});
 });
 
 describe("SegmentedControl", () => {
