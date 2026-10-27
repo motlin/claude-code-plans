@@ -1,6 +1,6 @@
 import {Link} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
-import {lazy, type ReactNode, Suspense, useState} from "react";
+import {type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useRef, useState} from "react";
 import {ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2} from "lucide-react";
 import {matchedVerbosityPreset, useSettings, type Motion, type Settings, type Verbosity} from "../settings-context";
 import {InterfaceFontSchema} from "../../lib/appearance";
@@ -710,47 +710,82 @@ function ApplicationToggleRow({
 	);
 }
 
+const RESET_QUIET_BUTTON =
+	"h-8 rounded-r6 px-3 text-body text-primary shadow-[inset_0_0_0_1px_rgb(11_11_11/0.1)] transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)]";
+const RESET_DANGER_BUTTON =
+	"h-8 rounded-r6 bg-[#d03b3b] px-3 text-body font-medium text-white transition-colors hover:bg-[#b93333] focus-visible:shadow-focus focus-visible:outline-hidden";
+
+/** Local-only (upstream has no reset); kept in the shared row anatomy with an inline confirm in the control slot. */
 function ResetAllSettings() {
 	const {resetAll} = useSettings();
 	const [confirmReset, setConfirmReset] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const cancelRef = useRef<HTMLButtonElement>(null);
+	const restoreFocus = useRef(false);
+
+	useEffect(() => {
+		if (confirmReset) cancelRef.current?.focus();
+		else if (restoreFocus.current) triggerRef.current?.focus();
+		restoreFocus.current = false;
+	}, [confirmReset]);
+
+	const close = () => {
+		restoreFocus.current = true;
+		setConfirmReset(false);
+	};
+
+	// Escape backs out of the confirm without reaching the dialog, which would close.
+	const cancelOnEscape = (event: KeyboardEvent<HTMLButtonElement>) => {
+		if (event.key !== "Escape") return;
+		event.preventDefault();
+		event.stopPropagation();
+		close();
+	};
 
 	return (
-		<div className="border-t border-border pt-6">
-			{confirmReset ? (
-				<div className="flex items-center gap-3">
-					<span className="text-sm text-secondary">Reset all settings to defaults?</span>
+		<SettingsSection>
+			<SettingsRow
+				slug="reset-settings"
+				title="Reset settings"
+				description="Restore every Claude Code Browser setting to its default."
+			>
+				{confirmReset ? (
+					<div className="flex items-center gap-2">
+						<button
+							ref={cancelRef}
+							type="button"
+							onClick={close}
+							onKeyDown={cancelOnEscape}
+							className={RESET_QUIET_BUTTON}
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							onClick={() => {
+								resetAll();
+								close();
+							}}
+							onKeyDown={cancelOnEscape}
+							className={RESET_DANGER_BUTTON}
+						>
+							Reset
+						</button>
+					</div>
+				) : (
 					<button
+						ref={triggerRef}
 						type="button"
 						onClick={() => {
-							resetAll();
-							setConfirmReset(false);
+							setConfirmReset(true);
 						}}
-						className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-red-700"
+						className={RESET_QUIET_BUTTON}
 					>
-						Confirm
+						Reset all{"\u2026"}
 					</button>
-					<button
-						type="button"
-						onClick={() => {
-							setConfirmReset(false);
-						}}
-						className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
-					>
-						Cancel
-					</button>
-				</div>
-			) : (
-				<button
-					type="button"
-					onClick={() => {
-						setConfirmReset(true);
-					}}
-					className="rounded-md border border-border px-3 py-1.5 text-sm text-secondary transition-colors hover:bg-surface-0"
-				>
-					Reset all to defaults
-				</button>
-			)}
-		</div>
+				)}
+			</SettingsRow>
+		</SettingsSection>
 	);
 }
 

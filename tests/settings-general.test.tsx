@@ -285,3 +285,90 @@ describe("General settings ▸ Notifications", () => {
 		});
 	});
 });
+
+describe("General settings ▸ Reset", () => {
+	const triggerClass =
+		"h-8 rounded-r6 px-3 text-body text-primary shadow-[inset_0_0_0_1px_rgb(11_11_11/0.1)] transition-colors hover:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)]";
+	const dangerClass =
+		"h-8 rounded-r6 bg-[#d03b3b] px-3 text-body font-medium text-white transition-colors hover:bg-[#b93333] focus-visible:shadow-focus focus-visible:outline-hidden";
+
+	function resetRow() {
+		const row = document.querySelector('[data-settings-row="reset-settings"]');
+		const section = row?.closest("section");
+		return {
+			title: row?.querySelector(".settings-row-title")?.textContent,
+			description: row?.querySelector("[data-settings-desc]")?.textContent,
+			sectionHeading: section?.querySelector("h3")?.textContent ?? null,
+			lastSection: section === document.querySelector("section:last-of-type"),
+			buttons: [...(row?.querySelectorAll("[data-settings-control] button") ?? [])].map((button) => ({
+				name: button.textContent,
+				className: button.className,
+			})),
+		};
+	}
+
+	it("renders as a settings row in a final untitled section with a quiet Reset all… button", async () => {
+		stubNotification("granted");
+		await renderGeneral();
+
+		expect(resetRow()).toStrictEqual({
+			title: "Reset settings",
+			description: "Restore every Claude Code Browser setting to its default.",
+			sectionHeading: null,
+			lastSection: true,
+			buttons: [{name: "Reset all\u2026", className: triggerClass}],
+		});
+	});
+
+	it("swaps in Cancel and a danger Reset button in the same control slot", async () => {
+		stubNotification("granted");
+		await renderGeneral();
+
+		fireEvent.click(screen.getByRole("button", {name: "Reset all\u2026"}));
+
+		expect({
+			buttons: resetRow().buttons,
+			focused: document.activeElement?.textContent,
+		}).toStrictEqual({
+			buttons: [
+				{name: "Cancel", className: triggerClass},
+				{name: "Reset", className: dangerClass},
+			],
+			focused: "Cancel",
+		});
+	});
+
+	it("cancels on Escape inside the slot without letting the key reach the dialog", async () => {
+		stubNotification("granted");
+		await renderGeneral();
+		const outer = vi.fn<(event: KeyboardEvent) => void>();
+		document.addEventListener("keydown", outer);
+
+		fireEvent.click(screen.getByRole("button", {name: "Reset all\u2026"}));
+		fireEvent.keyDown(screen.getByRole("button", {name: "Cancel"}), {key: "Escape"});
+		document.removeEventListener("keydown", outer);
+
+		expect({
+			buttons: resetRow().buttons.map((button) => button.name),
+			reachedDocument: outer.mock.calls.length,
+			focused: document.activeElement?.textContent,
+		}).toStrictEqual({buttons: ["Reset all\u2026"], reachedDocument: 0, focused: "Reset all\u2026"});
+	});
+
+	it("resets every setting to its default when Reset is confirmed", async () => {
+		stubNotification("granted");
+		localStorage.setItem("ccp-chrome-hidden", "true");
+		await renderGeneral();
+
+		fireEvent.click(screen.getByRole("button", {name: "Reset all\u2026"}));
+		fireEvent.click(screen.getByRole("button", {name: "Reset"}));
+
+		expect({
+			hideChrome: switchState("Hide chrome"),
+			buttons: resetRow().buttons.map((button) => button.name),
+		}).toStrictEqual({
+			hideChrome: {checked: "false", disabled: false},
+			buttons: ["Reset all\u2026"],
+		});
+	});
+});

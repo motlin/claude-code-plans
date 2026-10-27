@@ -25,23 +25,30 @@ export function SettingsSection({
 }: {
 	/** Defaults to the kebab-cased title. */
 	id?: string;
-	title: string;
+	/** Omit for an untitled trailing section (no header, no id). */
+	title?: string;
 	subtitle?: ReactNode;
 	children: ReactNode;
 }) {
 	return (
-		<section id={id ?? sectionId(title)} data-settings-section-titled="" className="mb-10 last:mb-0">
-			<div data-settings-group-header="" className="mb-4 flex items-start justify-between gap-7">
-				<div className="flex min-w-0 flex-col gap-1">
-					<h3
-						data-settings-group-title=""
-						className="settings-row-title self-start text-[15px] leading-[20px] font-[580] text-primary outline-none"
-					>
-						{title}
-					</h3>
-					{subtitle === undefined ? null : <div className="text-footnote text-secondary">{subtitle}</div>}
+		<section
+			id={id ?? (title === undefined ? undefined : sectionId(title))}
+			data-settings-section-titled={title === undefined ? undefined : ""}
+			className="mb-10 last:mb-0"
+		>
+			{title === undefined ? null : (
+				<div data-settings-group-header="" className="mb-4 flex items-start justify-between gap-7">
+					<div className="flex min-w-0 flex-col gap-1">
+						<h3
+							data-settings-group-title=""
+							className="settings-row-title self-start text-[15px] leading-[20px] font-[580] text-primary outline-none"
+						>
+							{title}
+						</h3>
+						{subtitle === undefined ? null : <div className="text-footnote text-secondary">{subtitle}</div>}
+					</div>
 				</div>
-			</div>
+			)}
 			<div className="[&>:not([hidden])~:not([hidden])]:border-t [&>:not([hidden])~:not([hidden])]:border-subtle dark:[&>:not([hidden])~:not([hidden])]:border-white/5 not-dark:[&>:not([hidden])~:not([hidden])]:border-primary/5">
 				{children}
 			</div>
