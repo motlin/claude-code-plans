@@ -97,38 +97,42 @@ function RecentEnvironments({
 				const content = (
 					<>
 						<Folder aria-hidden="true" className="size-4 shrink-0" />
-						<span className="min-w-0 flex-1 truncate text-start" title={shortenCwd(project.projectPath)}>
-							{project.name}
-						</span>
+						<span className="min-w-0 flex-1 truncate text-start">{project.name}</span>
 					</>
 				);
 				return (
 					<li key={project.id} aria-current={current ? true : undefined} className="px-1 pt-0.5 first:pt-1">
-						{current ? (
-							<div className={ROW_CLASS}>
-								{content}
-								<Check
-									data-start-card-check
-									aria-hidden="true"
-									className="size-4 shrink-0 text-primary"
-								/>
-							</div>
-						) : (
-							<button
-								type="button"
-								onClick={() => {
-									choose(project.id);
-								}}
-								className={`${ROW_CLASS} transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
-							>
-								{content}
-							</button>
-						)}
+						<Tooltip content={shortenCwd(project.projectPath)} align="start" className="flex w-full">
+							{current ? (
+								<div className={ROW_CLASS}>
+									{content}
+									<Check
+										data-start-card-check
+										aria-hidden="true"
+										className="size-4 shrink-0 text-primary"
+									/>
+								</div>
+							) : (
+								<button
+									type="button"
+									onClick={() => {
+										choose(project.id);
+									}}
+									className={`${ROW_CLASS} transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus`}
+								>
+									{content}
+								</button>
+							)}
+						</Tooltip>
 					</li>
 				);
 			})}
 			<li className="pt-1">
-				<div aria-hidden="true" className="border-t border-[var(--card-outline)]" />
+				<div
+					aria-hidden="true"
+					className="border-t border-[var(--card-outline)]"
+					style={{marginInline: "var(--ring-inner, 1px)"}}
+				/>
 				<div className="p-1">
 					<ProjectPicker
 						variant="choose"

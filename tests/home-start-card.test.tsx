@@ -48,9 +48,9 @@ describe("StartCard", () => {
 		render(<StartCard projects={PROJECTS} selected={PROJECTS[4]} onSelect={() => {}} />);
 
 		expect(rows()).toStrictEqual([
-			{text: "p1", current: null, title: "~/projects/p1", button: "p1", check: false},
-			{text: "p2", current: null, title: "~/projects/p2", button: "p2", check: false},
-			{text: "p5", current: "true", title: "~/projects/p5", button: null, check: true},
+			{text: "p1", current: null, title: null, button: "p1", check: false},
+			{text: "p2", current: null, title: null, button: "p2", check: false},
+			{text: "p5", current: "true", title: null, button: null, check: true},
 			{
 				text: "Choose environment",
 				current: null,
@@ -93,6 +93,52 @@ describe("StartCard", () => {
 			calls: onSelect.mock.calls,
 			focused: document.activeElement?.getAttribute("aria-label"),
 		}).toStrictEqual({calls: [["-users-dev-p2"]], focused: "Prompt"});
+	});
+
+	it("shows the current row's shortened cwd in a start-aligned tooltip instead of a title attribute", () => {
+		vi.useFakeTimers();
+		try {
+			const {container} = render(<StartCard projects={PROJECTS} selected={PROJECTS[4]} onSelect={() => {}} />);
+			const current = container.querySelector<HTMLElement>("li[aria-current] > span")!;
+
+			fireEvent.pointerEnter(current);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const tooltip = screen.getByRole("tooltip");
+
+			expect({
+				titles: container.querySelectorAll("[title]").length,
+				text: tooltip.textContent,
+				align: tooltip.dataset["align"],
+			}).toStrictEqual({titles: 0, text: "~/projects/p5", align: "start"});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("insets the divider and keeps the Choose environment row highlighted while its picker is open", async () => {
+		const {container} = render(<StartCard projects={PROJECTS} selected={PROJECTS[0]} onSelect={() => {}} />);
+		const trigger = screen.getByRole("button", {name: "Choose environment"});
+
+		fireEvent.click(trigger);
+		await screen.findByRole("listbox", {name: "Projects"});
+		const chevron = trigger.querySelector("svg")!;
+
+		expect({
+			divider: container.querySelector<HTMLElement>("li > [aria-hidden].border-t")?.style.marginInline,
+			row: trigger.parentElement?.className,
+			expanded: trigger.getAttribute("aria-expanded"),
+			button: trigger.className,
+			chevron: chevron.getAttribute("class"),
+		}).toStrictEqual({
+			divider: "var(--ring-inner, 1px)",
+			row: "group/row relative",
+			expanded: "true",
+			button: "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 text-secondary outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden",
+			chevron:
+				"lucide lucide-chevron-down size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary",
+		});
 	});
 
 	it("opens the project picker from Choose environment and focuses the composer on a pick", async () => {

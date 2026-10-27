@@ -27,7 +27,11 @@ const OPTION_CLASS =
 
 /** The start card's "Choose environment" row, which opens the same picker below it. */
 const CHOOSE_CLASS =
-	"group/choose flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 text-secondary outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden";
+
+/** Upstream's CaretDown ink: muted at rest, secondary while the row is hovered, keyboard-focused or open. */
+const CHOOSE_CARET_CLASS =
+	"size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
 
 interface ProjectPickerProps {
 	projects: readonly StartProject[];
@@ -113,13 +117,19 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 	return (
 		<Popover.Root open={open} onOpenChange={handleOpenChange}>
 			{variant === "choose" ? (
-				<Popover.Trigger ref={triggerRef} aria-haspopup="dialog" aria-expanded={open} className={CHOOSE_CLASS}>
-					<span className="truncate">Choose environment</span>
-					<ChevronDown
-						aria-hidden="true"
-						className="size-3 shrink-0 text-ink-muted transition-colors group-hover/choose:text-secondary"
-					/>
-				</Popover.Trigger>
+				<div className="group/row relative">
+					<Popover.Trigger
+						ref={triggerRef}
+						aria-haspopup="dialog"
+						aria-expanded={open}
+						className={CHOOSE_CLASS}
+					>
+						<span className="flex min-w-0 flex-1 items-center gap-1">
+							<span className="min-w-0 max-w-full truncate">Choose environment</span>
+						</span>
+						<ChevronDown aria-hidden="true" className={CHOOSE_CARET_CLASS} />
+					</Popover.Trigger>
+				</div>
 			) : (
 				<Popover.Trigger
 					// oxlint-disable-next-line jsx-a11y/role-has-required-aria-props -- Base UI's Popover.Trigger sets aria-controls to the popup it opens
