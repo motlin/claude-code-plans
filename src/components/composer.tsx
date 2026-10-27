@@ -115,12 +115,17 @@ function workingPlaceholder(isMac: boolean): string {
 	return `⏎ to send, ${isMac ? "⌘⏎" : "Ctrl⏎"} to queue for later`;
 }
 
+/**
+ * The prompt follows Transcript text size via `--prompt-text-size` / `--prompt-line-height`
+ * (upstream's `--cmp-font-size` / `--cmp-line-height`). The `--upstream-*-body` overrides
+ * keep the coarse-pointer text-entry floor (globals.css) on the prompt size too.
+ */
 const EDITOR_CLASS =
-	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 font-sans text-[14px]/[20px] [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50";
+	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 font-sans text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50";
 
 /** Overlays ghost text after the prompt, lined up with the textarea's text (and its coarse-pointer floor). */
 const GHOST_OVERLAY_CLASS =
-	"pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-1 pl-1 font-sans text-[14px]/[20px] break-words whitespace-pre-wrap text-entry-floored";
+	"pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-1 pl-1 font-sans text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] break-words whitespace-pre-wrap text-entry-floored";
 
 /** Paints the whole prompt over a transparent textarea, so it also follows the coarse-pointer send gutter. */
 const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] pointer-coarse:right-[51px]`;

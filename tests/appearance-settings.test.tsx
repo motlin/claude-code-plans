@@ -17,7 +17,14 @@ import {ClaudeCodeSettings, GeneralSettings, TranscriptSettings} from "../src/co
 import {ThemeProvider} from "../src/components/theme-provider";
 import {installLocalStorage} from "./fake-storage";
 
-const HTML_VARS = ["--font-sans", "--max-content-width", "--transcript-text-size", "--transcript-leading"] as const;
+const HTML_VARS = [
+	"--font-sans",
+	"--max-content-width",
+	"--transcript-text-size",
+	"--transcript-leading",
+	"--prompt-text-size",
+	"--prompt-line-height",
+] as const;
 
 function htmlVars(): Record<(typeof HTML_VARS)[number], string> {
 	const style = document.documentElement.style;
@@ -81,9 +88,9 @@ describe("appearance setting schemas", () => {
 			fonts: [true, true, true, false, false],
 			sizes: [true, true, true, false, false],
 			sizePx: {
-				sm: {fontSize: 13, lineHeight: 18},
-				md: {fontSize: 14, lineHeight: 20},
-				lg: {fontSize: 16, lineHeight: 24},
+				sm: {fontSize: 13, lineHeight: 18.57, promptLineHeight: 18},
+				md: {fontSize: 14, lineHeight: 20, promptLineHeight: 20},
+				lg: {fontSize: 15, lineHeight: 22, promptLineHeight: 21},
 			},
 			defaults: {
 				interfaceFont: "sans",
@@ -124,19 +131,25 @@ describe("Claude Code settings ▸ Appearance", () => {
 				"--max-content-width": "768px",
 				"--transcript-text-size": "14px",
 				"--transcript-leading": "20px",
+				"--prompt-text-size": "14px",
+				"--prompt-line-height": "20px",
 			},
 			changed: {
 				"--font-sans": SYSTEM_FONT_STACK,
 				"--max-content-width": "1280px",
-				"--transcript-text-size": "16px",
-				"--transcript-leading": "24px",
+				"--transcript-text-size": "15px",
+				"--transcript-leading": "22px",
+				"--prompt-text-size": "15px",
+				"--prompt-line-height": "21px",
 			},
 			stored: {font: "system", size: "lg", width: "wide"},
 			reverted: {
 				"--font-sans": "",
 				"--max-content-width": "1280px",
 				"--transcript-text-size": "13px",
-				"--transcript-leading": "18px",
+				"--transcript-leading": "18.57px",
+				"--prompt-text-size": "13px",
+				"--prompt-line-height": "18px",
 			},
 		});
 	});

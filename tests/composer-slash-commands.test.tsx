@@ -337,6 +337,28 @@ describe("Composer slash commands", () => {
 		}).toStrictEqual({floored: true, coarse: []});
 	});
 
+	it("sizes the prompt and its overlay from Transcript text size's --prompt-text-size / --prompt-line-height", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "/mo"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		const sizeTokens = (className: string) =>
+			className
+				.split(" ")
+				.filter((token) => /^(text-\[|leading-|\[--upstream-(text|leading)-body)/.test(token))
+				.toSorted();
+		const expected = [
+			"[--upstream-leading-body:var(--prompt-line-height,20px)]",
+			"[--upstream-text-body:var(--prompt-text-size,14px)]",
+			"leading-[var(--prompt-line-height,20px)]",
+			"text-[length:var(--prompt-text-size,14px)]",
+		];
+
+		expect({
+			textarea: sizeTokens(textarea.className),
+			overlay: sizeTokens(screen.getByTestId("slash-argument-hint").parentElement?.className ?? ""),
+		}).toStrictEqual({textarea: expected, overlay: expected});
+	});
+
 	it("shows upstream's 'Type to filter' ghost 2px after a bare / and hides it once filtering or dismissed", () => {
 		const {textarea} = setup();
 		const ghost = (): {text: string; ariaHidden: string | null; className: string} | null => {
@@ -363,7 +385,9 @@ describe("Composer slash commands", () => {
 
 		expect({
 			bare,
-			floored: overlay.includes("text-entry-floored") && overlay.includes("text-[14px]/[20px]"),
+			floored:
+				overlay.includes("text-entry-floored") &&
+				overlay.includes("text-[length:var(--prompt-text-size,14px)]"),
 			filtering,
 			midLine,
 			dismissed,
