@@ -19,6 +19,7 @@ import {useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
 import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
 import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
+import {useTypeToFocus} from "../hooks/use-type-to-focus";
 import type {ComposerState} from "../lib/composer-state";
 import {type QueuedPrompt, queuedForLater, queuedStatusText} from "../lib/composer-queue";
 import {type HistoryNavigator, historyKeyApplies, historyNavigator} from "../lib/prompt-history";
@@ -205,7 +206,7 @@ interface ComposerProps {
 	promptHistory?: readonly string[] | undefined;
 	/** Subscribes to requests that replace the draft, focus it and put the caret at the end. */
 	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
-	/** Upstream's `isPanelActive`: only the active pane's composer gives its file input the upload id. */
+	/** Upstream's `isPanelActive`: only the active pane's composer gives its file input the upload id and takes type-to-focus keys. */
 	active?: boolean | undefined;
 	/** Opens the Rewind picker for a sent `/rewind`; absent, `/rewind` reaches the CLI as typed. */
 	onRewind?: (() => void) | undefined;
@@ -515,6 +516,8 @@ export function Composer({
 }: ComposerProps) {
 	const {text: prompt, setText: setPrompt, clear: clearDraft} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	// Only the active pane's composer takes keys typed outside any field (upstream `paneOwnsTypeToFocus`).
+	useTypeToFocus(textareaRef, active && !disabled);
 	// Optional: composers rendered outside the app shell (tests, previews) have no toaster.
 	const toast = useContext(ToastContext);
 	// The session's Background tasks pane, which `/workflows` opens; null on the home composer.
