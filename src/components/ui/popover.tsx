@@ -94,6 +94,8 @@ export interface PopoverContentProps {
 	structurallyAnchored?: boolean;
 	/** The sheet's sr-only DismissButton text. */
 	closeLabel?: string;
+	/** Lands on the anchored Popup; a sheet has no pointer to track. */
+	onPointerEnter?: () => void;
 }
 
 type PopoverSheetModule = typeof import("./popover-sheet");
@@ -136,6 +138,7 @@ export function PopoverContent({
 	className,
 	structurallyAnchored = false,
 	closeLabel = "Close",
+	onPointerEnter,
 }: PopoverContentProps) {
 	const {sheet, treeId, dismiss} = useContext(PopoverSheetContext);
 	if (sheet && !structurallyAnchored) {
@@ -148,7 +151,12 @@ export function PopoverContent({
 	return (
 		<BasePopover.Portal>
 			<BasePopover.Positioner side={side} align={align} sideOffset={sideOffset} className="z-[130]">
-				<BasePopover.Popup {...(className === undefined ? {} : {className})}>{children}</BasePopover.Popup>
+				<BasePopover.Popup
+					{...(className === undefined ? {} : {className})}
+					{...(onPointerEnter === undefined ? {} : {onPointerEnter})}
+				>
+					{children}
+				</BasePopover.Popup>
 			</BasePopover.Positioner>
 		</BasePopover.Portal>
 	);

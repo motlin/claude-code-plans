@@ -3,7 +3,7 @@ import {useId, useLayoutEffect, useRef, useState, type RefObject} from "react";
 
 import {useShortcut} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
-import type {NextStepCandidate, NextStepId, NextStepRow} from "../../lib/home-next-steps";
+import {selectNextSteps, type NextStepCandidate, type NextStepId, type NextStepRow} from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {Popover, PopoverContent} from "../ui/popover";
 import {Tooltip} from "../ui/tooltip";
@@ -11,6 +11,7 @@ import type {StartProject} from "../../lib/palette-start-session";
 import {useHomeLaunchFolder} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
 import {START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
+import {useNextStepsHold} from "./use-next-steps-hold";
 
 /** Upstream shows at most three recent environments. */
 const ROW_LIMIT = 3;
@@ -172,9 +173,20 @@ const DISMISS_SLOT_CLASS = `pointer-events-none absolute inset-y-0 end-1 flex it
 /** Rows that carry upstream's "Blocked" status before their title. */
 const BLOCKED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
 
-function nextStepRowKey(row: NextStepRow<NextStepCandidate>): string {
-	return row.type === "row" ? `${row.candidate.id}:${row.candidate.subject}` : "blocked-sessions";
+function candidateKey(candidate: NextStepCandidate): string {
+	return `${candidate.id}:${candidate.subject}`;
 }
+
+function nextStepRowKey(row: NextStepRow<NextStepCandidate>): string {
+	return row.type === "row" ? candidateKey(row.candidate) : "blocked-sessions";
+}
+
+function rowCandidates(row: NextStepRow<NextStepCandidate>): NextStepCandidate[] {
+	return row.type === "row" ? [row.candidate] : row.rest;
+}
+
+/** Upstream's double-click window: a click this soon after one on a row that has since gone is swallowed. */
+const CLICK_GUARD_MS = 500;
 
 function StepSpacer() {
 	return (
@@ -211,15 +223,40 @@ function StepLine({candidate, listed = false}: Readonly<{candidate: NextStepCand
  * seats folded into a "Claude is blocked in N more sessions" row whose popup lists the rest. Each row's
  * dismiss shows on hover, keyboard focus, or always on touch. Like upstream, a pointer dismiss focuses the composer;
  * a keyboard dismiss (the X is `:focus-visible`) focuses the last remaining row once the removal commits, else
- * `onEmptyFocus`.
+ * `onEmptyFocus`. While the pointer or focus is in the list its rows are held (`useNextStepsHold`), and a fast second
+ * click can't land on a row that slid up under the pointer.
  */
 export function NextStepsList({
-	rows,
+	rows: incoming,
 	onOpen,
 	onDismiss,
 	onEmptyFocus = requestHomeComposerFocus,
 }: Readonly<NextStepsListProps>) {
-	const listRef = useRef<HTMLUListElement>(null);
+	const [openRest, setOpenRest] = useState<string | null>(null);
+	const candidates = incoming.flatMap(rowCandidates);
+	const hold = useNextStepsHold({keys: candidates.map(candidateKey), pinned: openRest !== null});
+	const {held} = hold;
+	const rows =
+		held === null || candidates.every((c) => held.has(candidateKey(c)))
+			? incoming
+			: selectNextSteps({candidates: candidates.filter((c) => held.has(candidateKey(c))), dismissed: {}});
+	if (
+		hold.focus !== null &&
+		!rows.some(
+			(row) =>
+				nextStepRowKey(row) === hold.focus || rowCandidates(row).some((c) => candidateKey(c) === hold.focus),
+		)
+	) {
+		hold.dropFocus();
+	}
+	if (openRest !== null && !rows.some((row) => nextStepRowKey(row) === openRest)) setOpenRest(null);
+	const closeRest = () => {
+		setOpenRest(null);
+		hold.recheckPointer();
+	};
+	// The time and row key of the last click in the list, for upstream's double-click guard.
+	const lastClick = useRef<{at: number; key?: string | undefined}>({at: -Infinity});
+	const listRef = hold.groupRef;
 	// The keys of a keyboard-dismissed row; its focus handoff waits until the dismissal's re-render drops them.
 	const pendingFocusKeys = useRef<ReadonlySet<string> | null>(null);
 	const onEmptyFocusRef = useRef(onEmptyFocus);
@@ -259,9 +296,28 @@ export function NextStepsList({
 			aria-label="Next steps"
 			data-start-card-setup
 			className={`${CARD_CLASS} gap-0.5 p-1 ${START_CARD_SETUP_HIDE_CLASS}`}
+			onClickCapture={(event) => {
+				if (event.detail === 0) return;
+				const at = performance.now();
+				const target = event.target instanceof Element ? event.target : null;
+				if (target === null || !event.currentTarget.contains(target)) {
+					lastClick.current = {at};
+					return;
+				}
+				const previous = lastClick.current;
+				if (
+					at - previous.at < CLICK_GUARD_MS &&
+					![...event.currentTarget.children].some((li) => li.getAttribute("data-row-key") === previous.key)
+				) {
+					event.stopPropagation();
+					return;
+				}
+				lastClick.current = {at, key: target.closest("li")?.getAttribute("data-row-key") ?? undefined};
+			}}
+			{...hold.groupProps}
 		>
 			{rows.map((row) => {
-				const candidates = row.type === "row" ? [row.candidate] : row.rest;
+				const candidates = rowCandidates(row);
 				const key = nextStepRowKey(row);
 				const dismissLabel = row.type === "row" ? `Dismiss “${row.candidate.title}”` : row.dismissLabel;
 				return (
@@ -270,7 +326,17 @@ export function NextStepsList({
 							{row.type === "row" ? (
 								<StepRowButton candidate={row.candidate} onOpen={onOpen} />
 							) : (
-								<RestRow title={row.title} rest={row.rest} onOpen={onOpen} />
+								<RestRow
+									title={row.title}
+									rest={row.rest}
+									onOpen={onOpen}
+									open={openRest === key}
+									onOpenChange={(open) => {
+										if (open) setOpenRest(key);
+										else closeRest();
+									}}
+									onPopupPointerEnter={hold.groupProps.onPointerLeave}
+								/>
 							)}
 							<span className={DISMISS_SLOT_CLASS}>
 								<Tooltip content="Dismiss">
@@ -279,6 +345,7 @@ export function NextStepsList({
 										data-next-step-dismiss
 										aria-label={dismissLabel}
 										onClick={(event) => {
+											if (row.type === "rest") closeRest();
 											dismiss(event.currentTarget, key, candidates);
 										}}
 										className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
@@ -343,18 +410,29 @@ function RestRow({
 	title,
 	rest,
 	onOpen,
+	open,
+	onOpenChange,
+	onPopupPointerEnter,
 }: Readonly<{
 	title: string;
 	rest: readonly NextStepCandidate[];
 	onOpen: (subject: string) => void;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	/** Entering the portalled popup counts as leaving the list, like upstream. */
+	onPopupPointerEnter: () => void;
 }>) {
-	const [open, setOpen] = useState(false);
 	const openListed = (subject: string) => {
-		setOpen(false);
+		onOpenChange(false);
 		onOpen(subject);
 	};
 	return (
-		<Popover.Root open={open} onOpenChange={setOpen}>
+		<Popover.Root
+			open={open}
+			onOpenChange={(next) => {
+				onOpenChange(next);
+			}}
+		>
 			<Popover.Trigger data-next-step-open className={STEP_BUTTON_CLASS}>
 				<span className="min-w-0 flex-1 truncate text-secondary">{title}</span>
 				<ChevronDown aria-hidden="true" className={STEP_CARET_CLASS} />
@@ -364,6 +442,7 @@ function RestRow({
 				side="bottom"
 				align="start"
 				sideOffset={6}
+				onPointerEnter={onPopupPointerEnter}
 				className="max-h-[var(--available-height)] min-w-[var(--anchor-width)] max-w-[min(26rem,90vw)] overflow-y-auto rounded-r7 bg-surface-3 shadow-[var(--menu-shadow)] break-words outline-none"
 			>
 				<ul role="list" className="flex flex-col gap-0.5 p-1">

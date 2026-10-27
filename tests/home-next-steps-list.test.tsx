@@ -422,3 +422,124 @@ describe("NextStepsList", () => {
 		expect(container.innerHTML).toBe("");
 	});
 });
+
+function listOf(candidates: NextStepCandidate[], onDismiss: (candidates: NextStepCandidate[]) => void = () => {}) {
+	return (
+		<NextStepsList rows={selectNextSteps({candidates, dismissed: {}})} onOpen={() => {}} onDismiss={onDismiss} />
+	);
+}
+
+function subjects(...ids: number[]): NextStepCandidate[] {
+	const all = blocked(Math.max(...ids));
+	return ids.map((id) => all[id - 1]!);
+}
+
+describe("NextStepsList hold", () => {
+	it("freezes the rows while the pointer is over the list and lets a new one in on leave", () => {
+		const {rerender} = render(listOf(blocked(3)));
+		const list = screen.getByRole("list", {name: "Next steps"});
+
+		fireEvent.pointerEnter(list);
+		rerender(listOf(blocked(4)));
+		const held = rowTexts();
+		fireEvent.pointerLeave(list);
+
+		expect({held, released: rowTexts()}).toStrictEqual({
+			held: [
+				"Blocked Task 1Asked a question",
+				"Blocked Task 2Needs permission",
+				"Blocked Task 3Asked a question",
+			],
+			released: [
+				"Blocked Task 1Asked a question",
+				"Blocked Task 2Needs permission",
+				"Claude is blocked in 2 more sessions",
+			],
+		});
+	});
+
+	it("holds while focus is inside the list, still applies removals, and releases on blur out", () => {
+		const {rerender} = render(listOf(blocked(3)));
+		const first = screen.getByRole("button", {name: /^Blocked Task 1/});
+
+		fireEvent.focus(first);
+		rerender(listOf(subjects(1, 3, 4)));
+		const held = rowTexts();
+		fireEvent.blur(first, {relatedTarget: null});
+
+		expect({held, released: rowTexts()}).toStrictEqual({
+			held: ["Blocked Task 1Asked a question", "Blocked Task 3Asked a question"],
+			released: [
+				"Blocked Task 1Asked a question",
+				"Blocked Task 3Asked a question",
+				"Blocked Task 4Needs permission",
+			],
+		});
+	});
+
+	it("releases the hold when the focused row disappears", () => {
+		const {rerender} = render(listOf(blocked(3)));
+
+		fireEvent.focus(screen.getByRole("button", {name: /^Blocked Task 2/}));
+		rerender(listOf(subjects(1, 3, 4)));
+
+		expect(rowTexts()).toStrictEqual([
+			"Blocked Task 1Asked a question",
+			"Blocked Task 3Asked a question",
+			"Blocked Task 4Needs permission",
+		]);
+	});
+});
+
+describe("NextStepsList double-click guard", () => {
+	function RemovingList({onDismiss}: Readonly<{onDismiss: (candidates: NextStepCandidate[]) => void}>) {
+		const [candidates, setCandidates] = useState(() => blocked(3));
+		return listOf(candidates, (dismissed) => {
+			onDismiss(dismissed);
+			setCandidates((previous) => previous.filter((c) => !dismissed.includes(c)));
+		});
+	}
+
+	it("swallows a click within 500ms of one on a row that has since gone", () => {
+		let now = 1000;
+		const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+		try {
+			const onDismiss = vi.fn<(candidates: NextStepCandidate[]) => void>();
+			render(<RemovingList onDismiss={onDismiss} />);
+
+			fireEvent.click(screen.getByRole("button", {name: "Dismiss “Task 1”"}), {detail: 1});
+			now += 200;
+			fireEvent.click(screen.getByRole("button", {name: "Dismiss “Task 2”"}), {detail: 2});
+			const afterDoubleClick = rowTexts();
+			now += 600;
+			fireEvent.click(screen.getByRole("button", {name: "Dismiss “Task 2”"}), {detail: 1});
+
+			expect({
+				dismissed: onDismiss.mock.calls.map(([candidates]) => candidates.map((c) => c.subject)),
+				afterDoubleClick,
+			}).toStrictEqual({
+				dismissed: [["s1"], ["s2"]],
+				afterDoubleClick: ["Blocked Task 2Needs permission", "Blocked Task 3Asked a question"],
+			});
+		} finally {
+			clock.mockRestore();
+		}
+	});
+
+	it("lets a quick second click through when the first click's row is still there", () => {
+		let now = 1000;
+		const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+		try {
+			const onOpen = vi.fn<(sessionId: string) => void>();
+			render(<NextStepsList rows={rowsOf(2)} onOpen={onOpen} onDismiss={() => {}} />);
+
+			fireEvent.click(screen.getByRole("button", {name: /^Blocked Task 1/}), {detail: 1});
+			now += 100;
+			fireEvent.click(screen.getByRole("button", {name: /^Blocked Task 2/}), {detail: 1});
+
+			expect(onOpen.mock.calls).toStrictEqual([["s1"], ["s2"]]);
+		} finally {
+			clock.mockRestore();
+		}
+	});
+});
