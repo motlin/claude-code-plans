@@ -33,6 +33,9 @@ import {HookSetup} from "../hook-setup";
 import {SegmentedControl} from "./segmented-control";
 import {SettingsRow, SettingsSection} from "./settings-row";
 import {Switch} from "./switch";
+import {useClaudeCodeSetting} from "./use-claude-code-setting";
+import {DisabledReason} from "../ui/disabled-reason";
+import type {ClaudeCodeSettingKey, ClaudeCodeSettingsState} from "../../lib/claude-code-settings-schema";
 import {ThemedCombobox} from "./themed-combobox";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../../lib/api/application-settings";
 
@@ -888,11 +891,115 @@ function CodeAppearanceSection() {
 	);
 }
 
+/** One settings.json switch row, bound through /api/claude-code-settings. */
+function ClaudeCodeSwitchRow({
+	slug,
+	title,
+	description,
+	settingKey,
+	isOn,
+	valueFor,
+	disabledReason,
+}: {
+	slug: string;
+	title: string;
+	description: ReactNode;
+	settingKey: ClaudeCodeSettingKey;
+	isOn: (value: string | boolean | undefined) => boolean;
+	/** The value to write for each position; undefined deletes the key. */
+	valueFor: (on: boolean) => string | boolean | undefined;
+	disabledReason?: (state: ClaudeCodeSettingsState) => string | null;
+}) {
+	const setting = useClaudeCodeSetting(settingKey);
+	const reason = setting.state === undefined ? null : (disabledReason?.(setting.state) ?? null);
+	const checked = isOn(setting.value);
+
+	return (
+		<SettingsRow
+			slug={slug}
+			title={title}
+			description={setting.loading ? "Loading…" : description}
+			below={
+				setting.writeFailed ? (
+					<p className="text-footnote text-danger">
+						<span role="alert">Couldn’t save this setting.</span>
+					</p>
+				) : undefined
+			}
+		>
+			<DisabledReason reason={reason}>
+				<Switch
+					checked={checked}
+					disabled={setting.loading || setting.unavailable || reason !== null}
+					onCheckedChange={(next) => {
+						setting.write(valueFor(next));
+					}}
+				/>
+			</DisabledReason>
+		</SettingsRow>
+	);
+}
+
+/**
+ * Upstream's desktop Sessions section (`#local-sessions`), whose rows write Claude Code's own
+ * settings.json. Local sessions are Claude Code CLIs on this computer, so the rows apply here too.
+ */
+function LocalSessionsSection() {
+	return (
+		<SettingsSection id="local-sessions" title="Sessions">
+			<ClaudeCodeSwitchRow
+				slug="allow-bypass-permissions-mode"
+				title="Allow bypass permissions mode"
+				description={
+					<>
+						Bypass all permission checks and let Claude work uninterrupted. This works well for workflows
+						like fixing lint errors or generating boilerplate code. Letting Claude run arbitrary commands is
+						risky and can result in data loss, system corruption, or data exfiltration (e.g., via prompt
+						injection attacks).{" "}
+						<a
+							data-cds="TextLink"
+							href="https://code.claude.com/docs/en/security"
+							target="_blank"
+							rel="noopener"
+							className="text-link inline cursor-pointer"
+						>
+							See best practices for safe usage<span className="sr-only">(opens in new tab)</span>
+						</a>
+					</>
+				}
+				settingKey="skipDangerousModePermissionPrompt"
+				isOn={(value) => value === true}
+				valueFor={(on) => (on ? true : undefined)}
+				disabledReason={(state) =>
+					state.bypassPermissionsModeDisabled === true ? "Managed by your organization" : null
+				}
+			/>
+			<ClaudeCodeSwitchRow
+				slug="dynamic-workflows"
+				title="Dynamic workflows"
+				description="Let Claude run multiple agents in parallel for complex tasks. Workflows can use a lot of your usage limit quickly."
+				settingKey="enableWorkflows"
+				isOn={(value) => value !== false}
+				valueFor={(on) => (on ? undefined : false)}
+			/>
+			<ClaudeCodeSwitchRow
+				slug="local-sandbox"
+				title="Local sandbox"
+				description="Runs commands from Claude Code in an isolated sandbox. Applies to new sessions."
+				settingKey="sandbox.enabled"
+				isOn={(value) => value === true}
+				valueFor={(on) => on}
+			/>
+		</SettingsSection>
+	);
+}
+
 export function ClaudeCodeSettings() {
 	return (
 		<>
 			<CodeAppearanceSection />
 			<AppearanceSection />
+			<LocalSessionsSection />
 		</>
 	);
 }

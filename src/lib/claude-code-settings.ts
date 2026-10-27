@@ -1,4 +1,9 @@
-import {z} from "zod";
+import {
+	CLAUDE_CODE_SETTING_KEYS,
+	type ClaudeCodeSettingKey,
+	ClaudeCodeSettingPatchSchema,
+	type ClaudeCodeSettingsState,
+} from "./claude-code-settings-schema";
 import {isRecord} from "./narrow";
 import {ClaudeSettingsSchema} from "./runtime-schemas";
 import {rejectCrossSite} from "./same-origin-guard";
@@ -12,33 +17,7 @@ import {
 	writeSettingsAtomically,
 } from "./settings-file";
 
-/**
- * Scalar settings.json keys the Claude Code settings tab may write. Dotted
- * keys are nested paths. Nothing outside this list is ever written here.
- */
-export const CLAUDE_CODE_SETTING_KEYS = [
-	"outputStyle",
-	"remoteControlAtStartup",
-	"skipDangerousModePermissionPrompt",
-	"sandbox.enabled",
-	"enableWorkflows",
-] as const;
-
-export type ClaudeCodeSettingKey = (typeof CLAUDE_CODE_SETTING_KEYS)[number];
 type ClaudeCodeSettingValue = string | boolean;
-
-const ClaudeCodeSettingsStateSchema = z.strictObject({
-	mtimeMs: z.number().nullable(),
-	values: z.partialRecord(z.enum(CLAUDE_CODE_SETTING_KEYS), z.union([z.string(), z.boolean()])),
-});
-export type ClaudeCodeSettingsState = z.infer<typeof ClaudeCodeSettingsStateSchema>;
-
-/** `value` omitted (undefined) deletes the key. */
-const ClaudeCodeSettingPatchSchema = z.strictObject({
-	key: z.enum(CLAUDE_CODE_SETTING_KEYS),
-	value: z.unknown().optional(),
-	expectedMtimeMs: z.number().nullable(),
-});
 
 export type ClaudeCodeSettingPatchResult =
 	| {ok: true; state: ClaudeCodeSettingsState}
@@ -76,7 +55,11 @@ function toState(loaded: LoadedSettings): ClaudeCodeSettingsState {
 		const value = pick(loaded.settings, keyPath(key));
 		if (isValidValue(key, value)) values[key] = value;
 	}
-	return {mtimeMs: loaded.mtimeMs, values};
+	const state: ClaudeCodeSettingsState = {mtimeMs: loaded.mtimeMs, values};
+	if (pick(loaded.settings, ["permissions", "disableBypassPermissionsMode"]) === "disable") {
+		state.bypassPermissionsModeDisabled = true;
+	}
+	return state;
 }
 
 /** The allow-listed values and mtime of settings.json. */

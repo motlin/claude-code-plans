@@ -3,12 +3,12 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
-	CLAUDE_CODE_SETTING_KEYS,
 	handleClaudeCodeSettingsGet,
 	handleClaudeCodeSettingsPost,
 	patchClaudeCodeSetting,
 	readClaudeCodeSettings,
 } from "../src/lib/claude-code-settings";
+import {CLAUDE_CODE_SETTING_KEYS} from "../src/lib/claude-code-settings-schema";
 import {ClaudeSettingsSchema} from "../src/lib/schemas";
 
 let claudeDir: string;
@@ -68,6 +68,17 @@ describe("readClaudeCodeSettings", () => {
 		expect(await readClaudeCodeSettings(claudeDir)).toStrictEqual({
 			mtimeMs,
 			values: {outputStyle: "Learning", enableWorkflows: false, "sandbox.enabled": true},
+		});
+	});
+
+	it("flags bypass permissions mode as disabled when permissions.disableBypassPermissionsMode is disable", async () => {
+		const mtimeMs = writeSettings(
+			'{\n  "skipDangerousModePermissionPrompt": true,\n  "permissions": {"disableBypassPermissionsMode": "disable"}\n}\n',
+		);
+		expect(await readClaudeCodeSettings(claudeDir)).toStrictEqual({
+			mtimeMs,
+			values: {skipDangerousModePermissionPrompt: true},
+			bypassPermissionsModeDisabled: true,
 		});
 	});
 

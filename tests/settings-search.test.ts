@@ -179,7 +179,13 @@ describe("rankSettingsSections", () => {
 			],
 		],
 		// 5 + best row rank; phrases score 4.
-		["mode", [{tab: "general", score: 9, rows: [["theme", 4]]}]],
+		[
+			"mode",
+			[
+				{tab: "claude-code", score: 7, rows: [["allow-bypass-permissions-mode", 2]]},
+				{tab: "general", score: 9, rows: [["theme", 4]]},
+			],
+		],
 	])("scores sections for %j", (query, expected) => {
 		const actual = rankSettingsSections(query).map((section) => ({
 			tab: section.tab,
@@ -275,13 +281,13 @@ describe("buildSettingsResultRows", () => {
 				{kind: "hit", tab: "ai-features", via: "Summary button", rowSlug: "summary-button"},
 				{kind: "hit", tab: "application", via: "Shell tabs", rowSlug: "shell-tabs"},
 				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
+				{kind: "hit", tab: "claude-code", via: "Local sandbox", rowSlug: "local-sandbox"},
 				{
 					kind: "hit",
 					tab: "claude-config",
 					via: "Claude Code settings files",
 					rowSlug: "claude-code-settings-files",
 				},
-				{kind: "hit", tab: "claude-code", via: "Terminal colors", rowSlug: "terminal-colors"},
 			],
 		],
 	])("lays out rows for %j", (query, expected) => {

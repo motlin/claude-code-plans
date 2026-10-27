@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -11,11 +12,13 @@ import {installLocalStorage} from "./fake-storage";
 
 async function renderClaudeCode() {
 	render(
-		<ThemeProvider>
-			<SettingsProvider>
-				<ClaudeCodeSettings />
-			</SettingsProvider>
-		</ThemeProvider>,
+		<QueryClientProvider client={new QueryClient()}>
+			<ThemeProvider>
+				<SettingsProvider>
+					<ClaudeCodeSettings />
+				</SettingsProvider>
+			</ThemeProvider>
+		</QueryClientProvider>,
 	);
 	await act(async () => {});
 }
@@ -31,6 +34,11 @@ function preview(name: string) {
 
 beforeEach(() => {
 	installLocalStorage();
+	// The Sessions rows load /api/claude-code-settings; keep them loading and off the network.
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => new Promise<Response>(() => {})),
+	);
 	vi.stubGlobal(
 		"matchMedia",
 		vi.fn(() => ({matches: false, addEventListener: () => {}, removeEventListener: () => {}})),
@@ -44,12 +52,12 @@ afterEach(() => {
 });
 
 describe("Claude Code settings ▸ Code appearance", () => {
-	it("ids its sections code-appearance and appearance, like upstream's Claude Code tab", async () => {
+	it("ids its sections code-appearance, appearance and local-sessions, like upstream's Claude Code tab", async () => {
 		await renderClaudeCode();
 
 		expect(
 			[...document.querySelectorAll("section[data-settings-section-titled]")].map((section) => section.id),
-		).toStrictEqual(["code-appearance", "appearance"]);
+		).toStrictEqual(["code-appearance", "appearance", "local-sessions"]);
 	});
 
 	it("re-renders the dark preview with the chosen theme", async () => {
@@ -132,8 +140,14 @@ describe("Claude Code settings ▸ Code appearance", () => {
 				"w-8 shrink-0 pr-2 text-right opacity-50 select-none",
 			],
 			words: [
-				{text: '" +', className: "bg-[color-mix(in_srgb,var(--upstream-git-removed)_30%,transparent)]"},
-				{text: "${name}!", className: "bg-[color-mix(in_srgb,var(--upstream-git-added)_30%,transparent)]"},
+				{
+					text: '" +',
+					className: "bg-[color-mix(in_srgb,var(--upstream-git-removed)_30%,transparent)]",
+				},
+				{
+					text: "${name}!",
+					className: "bg-[color-mix(in_srgb,var(--upstream-git-added)_30%,transparent)]",
+				},
 			],
 		});
 	});

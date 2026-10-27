@@ -63,10 +63,15 @@ interface SettingsRowProps {
 	children?: ReactNode;
 	/** Extra content under the description (warnings, notes). */
 	footnote?: ReactNode;
+	/**
+	 * Content under the whole row (a write-failure alert). Like upstream, the row then becomes a
+	 * column (`flex-col gap-sm py-md`) around its inner title/control row.
+	 */
+	below?: ReactNode;
 	className?: string;
 }
 
-export function SettingsRow({slug, title, description, children, footnote, className}: SettingsRowProps) {
+export function SettingsRow({slug, title, description, children, footnote, below, className}: SettingsRowProps) {
 	const baseId = useId();
 	const titleId = `${baseId}-title`;
 	const descriptionId = description === undefined ? undefined : `${baseId}-description`;
@@ -81,6 +86,31 @@ export function SettingsRow({slug, title, description, children, footnote, class
 		if (flashing && !flash.lit) rowRef.current?.scrollIntoView({block: "center", behavior: "smooth"});
 	}, [flash, flashing]);
 
+	const inner = (
+		<>
+			<div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+				<div id={titleId} className="text-body text-primary">
+					<span
+						className={`settings-row-title inline-block align-top ${lit ? "feature-anchor-highlight" : ""}`}
+					>
+						{title}
+					</span>
+				</div>
+				{description === undefined ? null : (
+					<div id={descriptionId} data-settings-desc="" className="text-body text-[var(--settings-muted)]">
+						{description}
+					</div>
+				)}
+				{footnote}
+			</div>
+			{children === undefined ? null : (
+				<div data-settings-control="" className="flex shrink-0 items-center">
+					{children}
+				</div>
+			)}
+		</>
+	);
+
 	return (
 		<SettingsRowContext.Provider value={rowIds}>
 			<div
@@ -92,31 +122,15 @@ export function SettingsRow({slug, title, description, children, footnote, class
 				// Upstream's data-settings-row is empty; here it holds the slug, which search and the deep-link flash key off.
 				data-settings-row={slug}
 				data-settings-item=""
-				className={`group/setting flex items-center justify-between gap-7 py-3 ${lit ? "feature-anchor-row-fill" : ""} ${className ?? ""}`}
+				className={`group/setting ${below === undefined ? "flex items-center justify-between gap-7" : "flex flex-col gap-2"} py-3 ${lit ? "feature-anchor-row-fill" : ""} ${className ?? ""}`}
 			>
-				<div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-					<div id={titleId} className="text-body text-primary">
-						<span
-							className={`settings-row-title inline-block align-top ${lit ? "feature-anchor-highlight" : ""}`}
-						>
-							{title}
-						</span>
-					</div>
-					{description === undefined ? null : (
-						<div
-							id={descriptionId}
-							data-settings-desc=""
-							className="text-body text-[var(--settings-muted)]"
-						>
-							{description}
-						</div>
-					)}
-					{footnote}
-				</div>
-				{children === undefined ? null : (
-					<div data-settings-control="" className="flex shrink-0 items-center">
-						{children}
-					</div>
+				{below === undefined ? (
+					inner
+				) : (
+					<>
+						<div className="flex items-center justify-between gap-7">{inner}</div>
+						{below}
+					</>
 				)}
 			</div>
 		</SettingsRowContext.Provider>

@@ -2,6 +2,7 @@
 
 import {readFileSync} from "node:fs";
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -36,9 +37,11 @@ function htmlVars(): Record<(typeof HTML_VARS)[number], string> {
 
 async function renderTab(tab: React.ReactNode) {
 	render(
-		<ThemeProvider>
-			<SettingsProvider>{tab}</SettingsProvider>
-		</ThemeProvider>,
+		<QueryClientProvider client={new QueryClient()}>
+			<ThemeProvider>
+				<SettingsProvider>{tab}</SettingsProvider>
+			</ThemeProvider>
+		</QueryClientProvider>,
 	);
 	await act(async () => {});
 }
@@ -57,6 +60,11 @@ function checked(group: string): string | null {
 
 beforeEach(() => {
 	installLocalStorage();
+	// The Sessions rows load /api/claude-code-settings; keep them loading and off the network.
+	vi.stubGlobal(
+		"fetch",
+		vi.fn(async () => new Promise<Response>(() => {})),
+	);
 	vi.stubGlobal(
 		"matchMedia",
 		vi.fn(() => ({matches: false, addEventListener: () => {}, removeEventListener: () => {}})),
@@ -188,7 +196,12 @@ describe("Claude Code settings ▸ Appearance", () => {
 		}).toStrictEqual({
 			options: ["Sans", "System", "OpenDyslexic"],
 			placeholderBefore: "e.g. JetBrains Mono",
-			dyslexic: {dataset: "dyslexic", fontSans: "", stored: "dyslexic", placeholder: "e.g. OpenDyslexic Mono"},
+			dyslexic: {
+				dataset: "dyslexic",
+				fontSans: "",
+				stored: "dyslexic",
+				placeholder: "e.g. OpenDyslexic Mono",
+			},
 			reverted: null,
 			link: {
 				href: "/third-party-notices.txt",
