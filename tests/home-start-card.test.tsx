@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
-import {useEffect, useRef} from "react";
+import {useEffect, useRef, useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {HOME_RECENT_LIMIT, HomeLaunchFolderProvider} from "../src/components/home/launch-folder";
@@ -10,6 +10,7 @@ import {HomeStartCard, StartCard} from "../src/components/home/start-card";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {onHomeComposerFocusRequest, requestHomeLaunchFolder} from "../src/lib/home-composer-focus";
+import {selectNextSteps, type NextStepCandidate} from "../src/lib/home-next-steps";
 import type {StartProject} from "../src/lib/palette-start-session";
 
 const PROJECTS: StartProject[] = [1, 2, 3, 4, 5].map((n) => ({
@@ -111,6 +112,54 @@ describe("StartCard", () => {
 			calls: onSelect.mock.calls,
 			focused: document.activeElement?.getAttribute("aria-label"),
 		}).toStrictEqual({calls: [["-users-dev-p4"]], focused: "Prompt"});
+	});
+
+	it("focuses Choose environment when a keyboard dismiss empties Next steps", async () => {
+		function Card() {
+			const [candidates, setCandidates] = useState<NextStepCandidate[]>([
+				{id: "waiting-session", subject: "s1", stamp: 100, title: "Task 1", detail: "Asked a question"},
+			]);
+			return (
+				<StartCard
+					projects={PROJECTS}
+					selected={PROJECTS[0]}
+					onSelect={() => {}}
+					nextSteps={{
+						rows: selectNextSteps({candidates, dismissed: {}}),
+						onOpen: () => {},
+						onDismiss: (dismissed) => {
+							// Later, like React Query's batched observer update.
+							setTimeout(() => {
+								setCandidates((previous) => previous.filter((c) => !dismissed.includes(c)));
+							}, 50);
+						},
+					}}
+				/>
+			);
+		}
+		render(
+			<>
+				<Card />
+				<FakeComposer />
+			</>,
+		);
+		const x = screen.getByRole("button", {name: "Dismiss “Task 1”"});
+		const matches = x.matches.bind(x);
+		Object.defineProperty(x, "matches", {
+			value: (selector: string) => selector === ":focus-visible" || matches(selector),
+		});
+
+		fireEvent.click(x);
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 100);
+			});
+		});
+
+		expect({
+			focused: document.activeElement?.textContent,
+			nextSteps: screen.queryByRole("list", {name: "Next steps"}),
+		}).toStrictEqual({focused: "Choose environment", nextSteps: null});
 	});
 });
 

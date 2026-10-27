@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
-import {useEffect, useRef} from "react";
+import {useEffect, useRef, useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {NextStepsList} from "../src/components/home/start-card";
@@ -26,6 +26,47 @@ function FakeComposer() {
 	const ref = useRef<HTMLTextAreaElement>(null);
 	useEffect(() => onHomeComposerFocusRequest(() => ref.current?.focus()), []);
 	return <textarea ref={ref} aria-label="Prompt" />;
+}
+
+/** A list whose dismiss removes the rows a little later, like React Query's batched observer update. */
+function DismissingList({n, onEmptyFocus}: Readonly<{n: number; onEmptyFocus?: () => void}>) {
+	const [candidates, setCandidates] = useState(() => blocked(n));
+	return (
+		<NextStepsList
+			rows={selectNextSteps({candidates, dismissed: {}})}
+			onOpen={() => {}}
+			onDismiss={(dismissed) => {
+				setTimeout(() => {
+					setCandidates((previous) => previous.filter((c) => !dismissed.includes(c)));
+				}, 50);
+			}}
+			{...(onEmptyFocus === undefined ? {} : {onEmptyFocus})}
+		/>
+	);
+}
+
+/** Makes the element report `:focus-visible`, as a keyboard-focused button does. */
+function asFocusVisible(element: HTMLElement): HTMLElement {
+	const matches = element.matches.bind(element);
+	Object.defineProperty(element, "matches", {
+		value: (selector: string) => selector === ":focus-visible" || matches(selector),
+	});
+	return element;
+}
+
+/** Waits out DismissingList's deferred removal. */
+async function settle() {
+	await act(async () => {
+		await new Promise((resolve) => {
+			setTimeout(resolve, 100);
+		});
+	});
+}
+
+function rowTexts() {
+	return [...document.querySelectorAll("[aria-label='Next steps'] > li [data-next-step-open]")].map(
+		(button) => button.textContent,
+	);
 }
 
 afterEach(() => {
@@ -238,28 +279,74 @@ describe("NextStepsList", () => {
 		});
 	});
 
-	it("moves focus to the previous row after a dismiss, else the composer", () => {
-		const onDismiss = vi.fn<(candidates: NextStepCandidate[]) => void>();
+	it("moves focus to the composer after a pointer dismiss", async () => {
 		render(
 			<>
-				<NextStepsList rows={rowsOf(3)} onOpen={() => {}} onDismiss={onDismiss} />
+				<DismissingList n={3} />
 				<FakeComposer />
 			</>,
 		);
 
 		fireEvent.click(screen.getByRole("button", {name: "Dismiss “Task 2”"}));
-		const afterSecond = document.activeElement?.textContent;
-		fireEvent.click(screen.getByRole("button", {name: "Dismiss “Task 1”"}));
+		await settle();
 
 		expect({
-			afterSecond,
-			afterFirst: document.activeElement?.getAttribute("aria-label"),
-			dismissed: onDismiss.mock.calls.map(([candidates]) => candidates.map((c) => c.subject)),
+			focused: document.activeElement?.getAttribute("aria-label"),
+			rows: rowTexts(),
 		}).toStrictEqual({
-			afterSecond: "Blocked Task 1Asked a question",
-			afterFirst: "Prompt",
-			dismissed: [["s2"], ["s1"]],
+			focused: "Prompt",
+			rows: ["Blocked Task 1Asked a question", "Blocked Task 3Asked a question"],
 		});
+	});
+
+	it("moves focus to the last remaining row after a keyboard dismiss", async () => {
+		render(
+			<>
+				<DismissingList n={3} />
+				<FakeComposer />
+			</>,
+		);
+
+		fireEvent.click(asFocusVisible(screen.getByRole("button", {name: "Dismiss “Task 2”"})));
+		await settle();
+
+		expect({
+			focused: document.activeElement?.textContent,
+			rows: rowTexts(),
+		}).toStrictEqual({
+			focused: "Blocked Task 3Asked a question",
+			rows: ["Blocked Task 1Asked a question", "Blocked Task 3Asked a question"],
+		});
+	});
+
+	it("dismisses the rest row by keyboard and focuses the last remaining row", async () => {
+		render(
+			<>
+				<DismissingList n={5} />
+				<FakeComposer />
+			</>,
+		);
+
+		fireEvent.click(asFocusVisible(screen.getByRole("button", {name: "Dismiss 3 blocked sessions"})));
+		await settle();
+
+		expect({
+			focused: document.activeElement?.textContent,
+			rows: rowTexts(),
+		}).toStrictEqual({
+			focused: "Blocked Task 2Needs permission",
+			rows: ["Blocked Task 1Asked a question", "Blocked Task 2Needs permission"],
+		});
+	});
+
+	it("hands focus to onEmptyFocus when a keyboard dismiss empties the list", async () => {
+		const onEmptyFocus = vi.fn<() => void>();
+		render(<DismissingList n={1} onEmptyFocus={onEmptyFocus} />);
+
+		fireEvent.click(asFocusVisible(screen.getByRole("button", {name: "Dismiss “Task 1”"})));
+		await settle();
+
+		expect({calls: onEmptyFocus.mock.calls, rows: rowTexts()}).toStrictEqual({calls: [[]], rows: []});
 	});
 
 	it("opens a start-aligned stacked title + detail tooltip above a row, described by a hidden title span", () => {

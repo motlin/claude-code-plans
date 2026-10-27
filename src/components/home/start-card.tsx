@@ -1,5 +1,5 @@
 import {Check, ChevronDown, Folder, X} from "lucide-react";
-import {useId, useRef, useState} from "react";
+import {useId, useLayoutEffect, useRef, useState, type RefObject} from "react";
 
 import {useShortcut} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
@@ -46,6 +46,7 @@ interface StartCardProps {
  * sessions and failing PRs. Upstream's cloud environments have no local equivalent.
  */
 export function StartCard({projects, selected, onSelect, nextSteps}: StartCardProps) {
+	const chooseRef = useRef<HTMLButtonElement>(null);
 	const hasNextSteps = nextSteps !== undefined && nextSteps.rows.length > 0;
 	if (projects.length === 0 && !hasNextSteps) return null;
 
@@ -53,11 +54,19 @@ export function StartCard({projects, selected, onSelect, nextSteps}: StartCardPr
 		onSelect(projectId);
 		requestHomeComposerFocus();
 	};
+	// Upstream's keyboard-dismiss fallback once Next steps empties: the "Choose environment" row, else the composer.
+	const focusChooseEnvironment = () => {
+		const chooseButton = chooseRef.current;
+		if (chooseButton?.isConnected === true) chooseButton.focus();
+		else requestHomeComposerFocus();
+	};
 
 	return (
 		<div data-start-card className="flex w-full min-w-0 flex-col items-center gap-3 p-px">
-			{projects.length > 0 && <RecentEnvironments projects={projects} selected={selected} choose={choose} />}
-			{hasNextSteps && <NextStepsList {...nextSteps} />}
+			{projects.length > 0 && (
+				<RecentEnvironments projects={projects} selected={selected} choose={choose} chooseRef={chooseRef} />
+			)}
+			{hasNextSteps && <NextStepsList onEmptyFocus={focusChooseEnvironment} {...nextSteps} />}
 		</div>
 	);
 }
@@ -66,10 +75,12 @@ function RecentEnvironments({
 	projects,
 	selected,
 	choose,
+	chooseRef,
 }: {
 	projects: readonly StartProject[];
 	selected: StartProject | undefined;
 	choose: (projectId: string) => void;
+	chooseRef: RefObject<HTMLButtonElement | null>;
 }) {
 	const rows = visibleRows(projects, selected);
 	// Upstream's ⌥⌘1…9 picks the Nth environment preset; locally the Nth row. Digits past the
@@ -118,7 +129,13 @@ function RecentEnvironments({
 			<li className="pt-1">
 				<div aria-hidden="true" className="border-t border-[var(--card-outline)]" />
 				<div className="p-1">
-					<ProjectPicker variant="choose" projects={projects} selected={selected} onSelect={choose} />
+					<ProjectPicker
+						variant="choose"
+						projects={projects}
+						selected={selected}
+						onSelect={choose}
+						triggerRef={chooseRef}
+					/>
 				</div>
 			</li>
 		</ul>
@@ -130,6 +147,8 @@ export interface NextStepsListProps {
 	/** Opens the row's session (its subject). */
 	onOpen: (subject: string) => void;
 	onDismiss: (candidates: NextStepCandidate[]) => void;
+	/** Where a keyboard dismiss sends focus when no row remains; the composer by default. */
+	onEmptyFocus?: (() => void) | undefined;
 }
 
 // Upstream's row reveal: on hover, keyboard focus inside the row, or while its popup is open. Spelled out in full
@@ -152,6 +171,10 @@ const DISMISS_SLOT_CLASS = `pointer-events-none absolute inset-y-0 end-1 flex it
 
 /** Rows that carry upstream's "Blocked" status before their title. */
 const BLOCKED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
+
+function nextStepRowKey(row: NextStepRow<NextStepCandidate>): string {
+	return row.type === "row" ? `${row.candidate.id}:${row.candidate.subject}` : "blocked-sessions";
+}
 
 function StepSpacer() {
 	return (
@@ -186,18 +209,47 @@ function StepLine({candidate, listed = false}: Readonly<{candidate: NextStepCand
 /**
  * Upstream's start-card "Next steps" list: up to three seats of Blocked session and failing-PR rows, a family past its
  * seats folded into a "Claude is blocked in N more sessions" row whose popup lists the rest. Each row's
- * dismiss shows on hover, keyboard focus, or always on touch; after a dismiss, focus moves to the
- * previous row, else the composer.
+ * dismiss shows on hover, keyboard focus, or always on touch. Like upstream, a pointer dismiss focuses the composer;
+ * a keyboard dismiss (the X is `:focus-visible`) focuses the last remaining row once the removal commits, else
+ * `onEmptyFocus`.
  */
-export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListProps>) {
+export function NextStepsList({
+	rows,
+	onOpen,
+	onDismiss,
+	onEmptyFocus = requestHomeComposerFocus,
+}: Readonly<NextStepsListProps>) {
 	const listRef = useRef<HTMLUListElement>(null);
+	// The keys of a keyboard-dismissed row; its focus handoff waits until the dismissal's re-render drops them.
+	const pendingFocusKeys = useRef<ReadonlySet<string> | null>(null);
+	const onEmptyFocusRef = useRef(onEmptyFocus);
+	onEmptyFocusRef.current = onEmptyFocus;
+	const rowKeys = rows.map(nextStepRowKey);
+
+	useLayoutEffect(() => {
+		const pending = pendingFocusKeys.current;
+		if (pending === null || rowKeys.some((key) => pending.has(key))) return;
+		pendingFocusKeys.current = null;
+		const items = [...(listRef.current?.children ?? [])];
+		const last = items.map((li) => li.querySelector<HTMLButtonElement>("button")).findLast(Boolean);
+		if (last) last.focus();
+		else onEmptyFocusRef.current();
+	});
+	// The parent unmounts the list with its last row.
+	useLayoutEffect(
+		() => () => {
+			if (pendingFocusKeys.current !== null) onEmptyFocusRef.current();
+		},
+		[],
+	);
+
 	if (rows.length === 0) return null;
 
-	const dismiss = (index: number, candidates: NextStepCandidate[]) => {
-		const previous = listRef.current?.querySelectorAll<HTMLButtonElement>("[data-next-step-open]")[index - 1];
+	const dismiss = (button: HTMLButtonElement, key: string, candidates: NextStepCandidate[]) => {
+		const keyboard = button.matches(":focus-visible");
+		pendingFocusKeys.current = keyboard ? new Set([key]) : null;
 		onDismiss(candidates);
-		if (previous) previous.focus();
-		else requestHomeComposerFocus();
+		if (!keyboard) requestHomeComposerFocus();
 	};
 
 	return (
@@ -208,9 +260,9 @@ export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListP
 			data-start-card-setup
 			className={`${CARD_CLASS} gap-0.5 p-1 ${START_CARD_SETUP_HIDE_CLASS}`}
 		>
-			{rows.map((row, index) => {
+			{rows.map((row) => {
 				const candidates = row.type === "row" ? [row.candidate] : row.rest;
-				const key = row.type === "row" ? `${row.candidate.id}:${row.candidate.subject}` : "blocked-sessions";
+				const key = nextStepRowKey(row);
 				const dismissLabel = row.type === "row" ? `Dismiss “${row.candidate.title}”` : row.dismissLabel;
 				return (
 					<li key={key} data-row-key={key}>
@@ -226,8 +278,8 @@ export function NextStepsList({rows, onOpen, onDismiss}: Readonly<NextStepsListP
 										type="button"
 										data-next-step-dismiss
 										aria-label={dismissLabel}
-										onClick={() => {
-											dismiss(index, candidates);
+										onClick={(event) => {
+											dismiss(event.currentTarget, key, candidates);
 										}}
 										className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 									>

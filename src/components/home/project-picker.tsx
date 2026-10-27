@@ -1,7 +1,7 @@
 // Base UI Popover, not ui/popover: combobox picker, anchored like Add repository.
 import {Popover} from "@base-ui/react/popover";
 import {Check, ChevronDown, Folder} from "lucide-react";
-import {type KeyboardEvent, useId, useRef, useState} from "react";
+import {type KeyboardEvent, type Ref, useId, useRef, useState} from "react";
 
 import {useShortcut} from "../../hooks/use-shortcut";
 import type {StartProject} from "../../lib/palette-start-session";
@@ -35,6 +35,8 @@ interface ProjectPickerProps {
 	onSelect: (projectId: string) => void;
 	/** `chip` is the composer's combobox chip; `choose` is the start card's "Choose environment" row. */
 	variant?: "chip" | "choose";
+	/** The trigger button, for callers that move focus to it. */
+	triggerRef?: Ref<HTMLButtonElement> | undefined;
 }
 
 /** Restore focus to the trigger on close unless the selection handler already moved it elsewhere. */
@@ -43,7 +45,7 @@ function keepFocusInPopup(popup: HTMLElement | null): boolean {
 	return active === null || active === document.body || popup?.contains(active) === true;
 }
 
-export function ProjectPicker({projects, selected, onSelect, variant = "chip"}: ProjectPickerProps) {
+export function ProjectPicker({projects, selected, onSelect, variant = "chip", triggerRef}: ProjectPickerProps) {
 	const baseId = useId();
 	const popupRef = useRef<HTMLDivElement>(null);
 	const listboxId = `${baseId}-listbox`;
@@ -111,7 +113,7 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip"}: 
 	return (
 		<Popover.Root open={open} onOpenChange={handleOpenChange}>
 			{variant === "choose" ? (
-				<Popover.Trigger aria-haspopup="dialog" aria-expanded={open} className={CHOOSE_CLASS}>
+				<Popover.Trigger ref={triggerRef} aria-haspopup="dialog" aria-expanded={open} className={CHOOSE_CLASS}>
 					<span className="truncate">Choose environment</span>
 					<ChevronDown
 						aria-hidden="true"
