@@ -125,3 +125,55 @@ describe("density sidebar geometry", () => {
 		);
 	});
 });
+
+describe("described session rows", () => {
+	function declarations(selector: string): Record<string, string> {
+		return Object.fromEntries(
+			[
+				...block(`\n${selector}`)
+					.slice(selector.length + 3)
+					.matchAll(/([\w-]+):\s*([^;]+);/g),
+			].map((match) => [match[1], match[2]?.replaceAll(/\s+/g, " ").replace("( ", "(").replace(" )", ")")]),
+		);
+	}
+
+	it("adds upstream's described tuck/trim tokens on :root and the 24px described line on the phone sheet", () => {
+		const root = block(":root");
+		const sheet = block("\n.phone-sheet");
+		expect({
+			tuck: token(root, "--sb-described-tuck"),
+			trim: token(root, "--sb-described-trim"),
+			rootLine: token(root, "--sb-described-line"),
+			phoneLine: token(sheet, "--sb-described-line"),
+		}).toStrictEqual({
+			tuck: "4px",
+			trim: "calc(var(--sb-described-tuck) / 2)",
+			rootLine: null,
+			phoneLine: "24px",
+		});
+	});
+
+	it("copies upstream's .df-described-row, .df-row-description and .df-meta-line rules", () => {
+		expect({
+			row: declarations(".df-described-row"),
+			lines: declarations(".df-described-title,\n.df-row-description"),
+			description: declarations(".df-row-description"),
+			metaLine: declarations(".df-meta-line"),
+			metaLineRtl: declarations('.df-meta-line:where(:root[dir="rtl"] :dir(rtl))'),
+		}).toStrictEqual({
+			row: {
+				"padding-block":
+					"calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim))",
+				"row-gap": "2px",
+			},
+			lines: {height: "calc(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))"},
+			description: {"font-size": "var(--sb-group-font)", "line-height": "16px", gap: "6px"},
+			metaLine: {
+				overflow: "clip",
+				"padding-inline-end": "12px",
+				"mask-image": "linear-gradient(90deg, #000 calc(100% - 12px), transparent)",
+			},
+			metaLineRtl: {"mask-image": "linear-gradient(270deg, #000 calc(100% - 12px), transparent)"},
+		});
+	});
+});

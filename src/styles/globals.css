@@ -446,6 +446,9 @@ html[data-interface-font="dyslexic"] {
 	--sb-icon: 20px;
 	--sb-leading-slot: 28px;
 	--sb-row-ctl: 24px;
+	/* Upstream .dframe-root --df-described-tuck and .df-session-list --df-described-trim (two-line described rows) */
+	--sb-described-tuck: 4px;
+	--sb-described-trim: calc(var(--sb-described-tuck) / 2);
 	/* Upstream sets a row's trailing control flush with its end: a 272px row's slot at x=256 */
 	--sb-row-ctl-inset: 0px;
 	--sb-radius: 8px;
@@ -1113,6 +1116,8 @@ html[data-interface-font="dyslexic"] {
 	--sb-row-h: 44px;
 	--sb-row-ctl: 36px;
 	--sb-row-ctl-inset: 4px;
+	/* Upstream's phone sheet sizes each described-row line from 24px, not the 36px control */
+	--sb-described-line: 24px;
 	/* :root resolves the row-height label band at 32px; re-resolve it against the 44px rows */
 	--sb-group-band-h: var(--sb-row-h);
 	transform: translate(-100%);
@@ -1885,6 +1890,37 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 /* Upstream .df-label-inset: the row padding plus .df-session-list's iconless pad (10px), else the icon inset. */
 .df-label-inset {
 	padding-left: calc(var(--sb-row-px) + var(--sb-iconless-pad, calc((var(--sb-leading-slot) - var(--sb-icon)) / 2)));
+}
+
+/* Upstream .df-described-row: a two-line session row (Show > Metadata), its title line where a one-line row's text sits. */
+.df-described-row {
+	padding-block: calc(
+		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim)
+	);
+	row-gap: 2px;
+}
+
+/* Upstream .df-row-description: the metadata line in the group-heading font. */
+.df-row-description {
+	font-size: var(--sb-group-font);
+	line-height: 16px;
+	gap: 6px;
+}
+
+.df-described-title,
+.df-row-description {
+	height: calc(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck));
+}
+
+/* Upstream .df-session-list .df-meta-line: long branches/folders clip under a 12px end fade, no ellipsis. */
+.df-meta-line {
+	overflow: clip;
+	padding-inline-end: 12px;
+	mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent);
+}
+
+.df-meta-line:where(:root[dir="rtl"] :dir(rtl)) {
+	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), transparent);
 }
 
 /* Upstream .dframe-fade-label: an overflowing row title fades out instead of ending in an ellipsis. */
