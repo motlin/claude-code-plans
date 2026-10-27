@@ -8,8 +8,11 @@ import {Route as RootRoute} from "../src/routes/__root";
 
 afterEach(cleanup);
 
+/** Class lists compared as sets, so the formatter's class sorting can't break the assertion. */
+const classSet = (className: string | undefined) => (className ?? "").split(" ").toSorted();
+
 describe("404 page", () => {
-	it("centres upstream's not-found: the wordmark, a 20/28 serif 'Page not found', its line and a filled Go back home", async () => {
+	it("lays out upstream's not-found grid: wordmark wrapper, h2 'Page not found', h3 line and the button wrapper", async () => {
 		const NotFound = RootRoute.options.notFoundComponent;
 		if (NotFound === undefined) throw new Error("no notFoundComponent");
 		const root = createRootRoute({component: () => <Outlet />, notFoundComponent: NotFound});
@@ -17,30 +20,47 @@ describe("404 page", () => {
 		await router.load();
 		render(<RouterProvider router={router} />);
 
-		const heading = await screen.findByRole("heading", {level: 1});
+		const heading = await screen.findByRole("heading", {level: 2});
 		const home = screen.getByRole("link", {name: "Go back home"});
-		const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
+		const page = heading.closest("[data-not-found]");
+		const wordmark = screen.getByRole("img", {name: "Claude Code Browser"});
 		expect({
-			heading: heading.textContent,
-			headingType: classes(heading).filter((name) =>
-				["font-voice", "text-[20px]/[28px]", "font-normal"].includes(name),
+			page: classSet(page?.className),
+			children: Array.from(page?.children ?? [], (child) => ({
+				tag: child.tagName.toLowerCase(),
+				className: classSet(child.className),
+				text: child.textContent,
+			})),
+			wordmarkParent: wordmark.parentElement === page?.firstElementChild,
+			wordmarkHidden: Array.from(wordmark.childNodes, (node) =>
+				node instanceof Element ? node.getAttribute("aria-hidden") : node.textContent,
 			),
-			line: heading.nextElementSibling?.textContent,
-			home: [home.getAttribute("href"), classes(home).includes("bg-fill-primary")],
-			// Upstream leaves 48px from the wordmark to the heading: the 24px stack gap plus 24px.
-			wordmarkGap: classes(heading.closest("[data-not-found]")?.firstElementChild).filter((name) =>
-				name.startsWith("mb-"),
-			),
-			centred: classes(heading.closest("[data-not-found]")).filter((name) =>
-				["items-center", "justify-center", "text-center"].includes(name),
-			),
+			homeParent: home.parentElement === page?.lastElementChild,
+			homeHref: home.getAttribute("href"),
+			h1: screen.queryByRole("heading", {level: 1}),
 		}).toStrictEqual({
-			heading: "Page not found",
-			headingType: ["font-voice", "text-[20px]/[28px]", "font-normal"],
-			line: "Claude can help with many things, but finding this page isn’t one of them.",
-			home: ["/", true],
-			wordmarkGap: ["mb-6"],
-			centred: ["items-center", "justify-center", "text-center"],
+			page: classSet(
+				"grid h-[calc(100dvh-4.5rem)] max-sm:h-[calc(100dvh-9rem)] min-h-min place-content-center gap-2 px-4 pt-24 pb-32 mx-auto w-fit max-w-2xl text-center",
+			),
+			children: [
+				{tag: "div", className: classSet("mb-10 text-center"), text: "Claude Code Browser"},
+				{
+					tag: "h2",
+					className: classSet("font-voice text-balance text-[20px]/[28px] font-normal text-primary"),
+					text: "Page not found",
+				},
+				{
+					tag: "h3",
+					className: classSet("text-balance text-[14px]/[18px] font-normal text-secondary"),
+					text: "Claude can help with many things, but finding this page isn’t one of them.",
+				},
+				{tag: "div", className: classSet("mx-0 mt-4 min-w-[16rem]"), text: "Go back home"},
+			],
+			wordmarkParent: true,
+			wordmarkHidden: ["true", "true"],
+			homeParent: true,
+			homeHref: "/",
+			h1: null,
 		});
 	});
 
@@ -52,23 +72,23 @@ describe("404 page", () => {
 		await router.load();
 		render(<RouterProvider router={router} />);
 
-		await screen.findByRole("heading", {level: 1});
-		const wordmark = document.querySelector("[data-not-found]")?.firstElementChild;
+		await screen.findByRole("heading", {level: 2});
+		const wordmark = screen.getByRole("img", {name: "Claude Code Browser"});
 		expect({
-			children: Array.from(wordmark?.childNodes ?? [], (node) =>
+			children: Array.from(wordmark.childNodes, (node) =>
 				node instanceof Element
 					? `${node.tagName.toLowerCase()}[${node.getAttribute("data-cds")}]`
 					: node.textContent,
 			),
-			spark: wordmark?.querySelector("svg")?.getAttribute("width"),
+			spark: wordmark.querySelector("svg")?.getAttribute("width"),
 			// Upstream's 24px lockup draws the 24-unit spark, then the wordmark from x=30: a 6px gap.
-			row: wordmark?.className
+			row: wordmark.className
 				.split(" ")
-				.filter((name) => ["flex", "items-center"].includes(name) || name.startsWith("gap-")),
+				.filter((name) => ["inline-flex", "items-center"].includes(name) || name.startsWith("gap-")),
 		}).toStrictEqual({
-			children: ["svg[Spark]", "Claude Code Browser"],
+			children: ["svg[Spark]", "span[null]"],
 			spark: "24",
-			row: ["flex", "items-center", "gap-1.5"],
+			row: ["inline-flex", "items-center", "gap-1.5"],
 		});
 	});
 });

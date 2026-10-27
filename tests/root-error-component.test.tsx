@@ -31,7 +31,7 @@ describe("DefaultErrorComponent", () => {
 
 		const homeLink = screen.getByRole("link", {name: "Go back home"});
 		expect({
-			heading: screen.getByRole("heading").textContent,
+			heading: screen.getByRole("heading", {level: 2}).textContent,
 			description: screen.getByText("Claude can help with many things, but finding this page isn’t one of them.")
 				.textContent,
 			detail: screen.getByText("/api/reviews/missing-review -> 404 Not Found").textContent,
