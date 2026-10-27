@@ -1,5 +1,6 @@
 import {useInfiniteQuery, useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
+import {useRef} from "react";
 
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {blockedDetail} from "../../lib/blocked-detail";
@@ -31,15 +32,18 @@ function waitingSessionCandidates(
 }
 
 /**
- * The start card's Next steps list, fed by the sidebar's recent sessions, their PRs and the home
- * dismissals; undefined until those have loaded.
+ * The start card's Next steps list, fed by the sidebar's recent sessions, their PRs, the pending
+ * approvals and the home dismissals. Like upstream, it is undefined until every source has settled
+ * (so a permission prompt never first renders as "Asked a question"), then latched: a later reset or
+ * refetch that drops a source's data keeps the last list instead of unmounting it.
  */
 export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const {data: recent} = useInfiniteQuery(recentSessionsInfiniteQueryOptions());
-	const {data: approvals} = useQuery(approvalsQueryOptions());
+	const {data: approvals, isFetched: approvalsFetched} = useQuery(approvalsQueryOptions());
 	const {data: dismissals} = useQuery(homeDismissalsQueryOptions);
+	const latched = useRef<NextStepsListProps | undefined>(undefined);
 
 	const dismiss = useMutation({
 		mutationFn: postHomeDismissal,
@@ -51,7 +55,7 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 		onSuccess: (data) => queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, data),
 	});
 
-	if (recent === undefined || dismissals === undefined) return undefined;
+	if (recent === undefined || dismissals === undefined || !approvalsFetched) return latched.current;
 
 	const sessions = recent.pages.flatMap((page) => page.sessions);
 	const approvalTools = new Map(
@@ -68,7 +72,7 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 			})),
 	);
 
-	return {
+	latched.current = {
 		rows: selectNextSteps({
 			candidates: [...waitingSessionCandidates(sessions, approvalTools), ...prNextStepCandidates(prs)],
 			dismissed: dismissals.dismissals,
@@ -78,4 +82,5 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 			for (const candidate of candidates) dismiss.mutate(nextStepKey(candidate));
 		},
 	};
+	return latched.current;
 }
