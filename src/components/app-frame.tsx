@@ -1,6 +1,7 @@
 import {useCallback, useRef, useState, type ReactNode} from "react";
 import {topLeftClearanceStyle} from "../lib/top-left-clearance";
-import {useNarrowViewport, usePhoneSheet} from "../lib/use-phone-sheet";
+import {useNarrowViewport} from "../lib/sidebar-store";
+import {usePhoneSheet} from "../lib/use-phone-sheet";
 import {DensityProvider, useScopeDensity} from "./ui/density";
 import {Sidebar, SidebarEdgeHandle} from "./sidebar/index";
 import {PHONE_SHEET_TRANSITION_MS, PhoneSheet, PhoneSheetTrigger} from "./sidebar/phone-sheet";
@@ -8,8 +9,9 @@ import {PHONE_SHEET_TRANSITION_MS, PhoneSheet, PhoneSheetTrigger} from "./sideba
 /**
  * The app's sidebar + main split. Below 640px it follows claude.ai/code's phone layout: the
  * root carries `data-phone-sheet="left"`, a floating trigger opens the sidebar as a
- * full-screen sheet, and <main> is inert while the sheet is open. From 640 to 767px the sidebar
- * is forced collapsed (trigger + hover peek) without changing the persisted preference.
+ * full-screen sheet, and <main> is inert while the sheet is open. From 640px up to upstream's
+ * width-aware threshold (≤700px at the default 288px width, ≤749px at 420) the sidebar is forced
+ * collapsed (trigger + hover peek) without changing the persisted preference.
  */
 export function AppFrame({
 	collapsed,

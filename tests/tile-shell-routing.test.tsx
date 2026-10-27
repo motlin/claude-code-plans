@@ -54,6 +54,7 @@ vi.mock("../src/hooks/use-capabilities", () => ({useCapabilities: () => ({showWo
 vi.mock("../src/lib/sidebar-store", () => ({
 	useSidebarState: () => ({collapsed: false}),
 	useSidebarToggleShortcut: () => {},
+	useNarrowViewport: () => false,
 }));
 vi.mock("../src/lib/perf/field-journeys", () => ({startLaunchJourneys: () => {}}));
 vi.mock("../src/lib/hmr-persist", () => ({

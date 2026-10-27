@@ -252,7 +252,7 @@ export function AppShellFallback({
 			<div
 				aria-label="Sidebar"
 				style={{"--sidebar-width": `${DEFAULT_SIDEBAR_STATE.width}px`}}
-				className="relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
+				className="relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] min-[701px]:flex"
 			>
 				<div className="flex h-11 shrink-0 items-center px-2">
 					<div className="flex w-8 shrink-0 justify-center self-start pt-3">

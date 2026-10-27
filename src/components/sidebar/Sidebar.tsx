@@ -53,7 +53,7 @@ export function Sidebar({
 	collapsed: boolean;
 	/** Overrides the persisted toggle on the expanded sidebar's Hide button. */
 	onToggle?: () => void;
-	/** 640–767px: collapse is forced, so the trigger opens the peek rather than toggling the pref. */
+	/** 640px to the width-aware narrow threshold: collapse is forced, so the trigger opens the peek rather than toggling the pref. */
 	narrowViewport?: boolean;
 	/** Renders the phone-sheet contents (Close + wordmark header) instead of a docked sidebar. */
 	onPhoneSheetClose?: () => void;
@@ -198,12 +198,14 @@ export function Sidebar({
 		return <CollapsedSidebar narrowViewport={narrowViewport}>{body}</CollapsedSidebar>;
 	}
 
+	// `min-[701px]:flex` only matters before hydration: afterwards AppFrame renders this docked nav solely
+	// above the width-aware narrow threshold (always > 700px), so CSS never hides it there.
 	return (
 		<nav
 			aria-label="Sidebar"
 			data-focus-region="navigation"
 			style={{"--sidebar-width": `${width}px`}}
-			className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] md:flex"
+			className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] min-[701px]:flex"
 		>
 			<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
 				{/* Pinned to the collapsed trigger's 12,12 spot so the toggle never moves between states. */}
@@ -398,7 +400,7 @@ const PEEK_ID = "sidebar-peek-popover";
  * (the expanded Hide sidebar toggle's spot) whose hover (or the invisible bridge beneath it)
  * slides in upstream's `#frame-peek-popover`: a 288px full-height panel at the left edge whose
  * 48px top padding leaves room for the still-visible trigger beside the wordmark.
- * In the forced-collapse regime (640–767px) a click toggles the peek open instead of expanding
+ * In the forced-collapse regime (640px to the narrow threshold) a click toggles the peek open instead of expanding
  * the persisted preference.
  */
 /** Upstream's peek close grace (ms) after the pointer leaves the trigger, bridge or body. */

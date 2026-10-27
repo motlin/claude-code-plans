@@ -2,7 +2,7 @@ import {useSyncExternalStore} from "react";
 import {z} from "zod";
 
 import {useShortcut} from "../hooks/use-shortcut";
-import {NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY} from "./use-phone-sheet";
+import {narrowViewportQuery, PHONE_SHEET_QUERY, useMediaQuery} from "./use-phone-sheet";
 
 export const SIDEBAR_STORAGE_KEY = "ccb-sidebar";
 
@@ -86,11 +86,16 @@ function matches(query: string): boolean {
 }
 
 /**
- * Upstream's `toggleCollapsed`: in the narrow forced-collapse band (640–767px) it toggles the hover
+ * Upstream's `toggleCollapsed`: in the narrow forced-collapse band (640px up to the width-aware
+ * `narrowViewportQuery`) it toggles the hover
  * peek and leaves the persisted preference alone; elsewhere it flips `collapsed`.
  */
 export function toggleSidebar(): void {
-	if (peekToggleListeners.size > 0 && matches(NARROW_VIEWPORT_QUERY) && !matches(PHONE_SHEET_QUERY)) {
+	if (
+		peekToggleListeners.size > 0 &&
+		matches(narrowViewportQuery(readSidebarState().width)) &&
+		!matches(PHONE_SHEET_QUERY)
+	) {
 		for (const listener of peekToggleListeners) listener();
 		return;
 	}
@@ -191,4 +196,12 @@ export function useSidebarToggleShortcut(): void {
 		},
 		{allowInEditable: true},
 	);
+}
+
+/**
+ * Upstream's `isNarrowViewport`: true at or below `narrowViewportQuery(sidebarWidth)`, where the sidebar
+ * renders collapsed with hover peek. Lives here, not in use-phone-sheet, because it reads the stored width.
+ */
+export function useNarrowViewport(): boolean {
+	return useMediaQuery(narrowViewportQuery(useSidebarState().width));
 }

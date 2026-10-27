@@ -3,8 +3,13 @@ import {useSyncExternalStore} from "react";
 /** claude.ai/code turns the sidebar into a full-screen sheet below 40rem (640px). */
 export const PHONE_SHEET_QUERY = "(width < 40rem)";
 
-/** Below 48rem (768px) claude.ai/code forces the sidebar collapsed whatever the stored pref. */
-export const NARROW_VIEWPORT_QUERY = "(width < 48rem)";
+/**
+ * claude.ai/code's narrow-viewport query (`JJ`/`$C`): the sidebar is forced collapsed whatever the
+ * stored pref at ≤ max(700, ceil(sidebarWidth) + 329)px, so ≤700px at the default 288 and ≤749px at 420.
+ */
+export function narrowViewportQuery(sidebarWidth: number): string {
+	return `(max-width: ${Math.max(700, Math.ceil(sidebarWidth) + 329)}px)`;
+}
 
 function mediaQuery(query: string): MediaQueryList | null {
 	if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
@@ -44,9 +49,4 @@ export const COARSE_POINTER_QUERY = "(pointer: coarse)";
  */
 export function useCoarsePointer(): boolean {
 	return useMediaQuery(COARSE_POINTER_QUERY);
-}
-
-/** True below 768px, where the sidebar renders collapsed with hover peek (upstream `isNarrowViewport`). */
-export function useNarrowViewport(): boolean {
-	return useMediaQuery(NARROW_VIEWPORT_QUERY);
 }

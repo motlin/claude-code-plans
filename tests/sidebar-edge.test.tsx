@@ -14,7 +14,7 @@ import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {readSidebarState, useSidebarState, writeSidebarState} from "../src/lib/sidebar-store";
-import {NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
+import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {installLocalStorage} from "./fake-storage";
 
 function seedQueryClient(): QueryClient {
@@ -36,11 +36,17 @@ function seedQueryClient(): QueryClient {
 	return queryClient;
 }
 
+/** Evaluates a `(max-width: Npx)` query against the mocked width, as the browser would. */
+function matchesMaxWidth(query: string, width: number): boolean {
+	const match = /^\(max-width: (\d+)px\)$/.exec(query);
+	return match !== null && width <= Number(match[1]);
+}
+
 function mockViewport(width: number) {
 	vi.stubGlobal(
 		"matchMedia",
 		vi.fn((query: string) => ({
-			matches: query === PHONE_SHEET_QUERY ? width < 640 : query === NARROW_VIEWPORT_QUERY ? width < 768 : false,
+			matches: query === PHONE_SHEET_QUERY ? width < 640 : matchesMaxWidth(query, width),
 			media: query,
 			onchange: null,
 			addEventListener: () => undefined,

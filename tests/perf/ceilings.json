@@ -61,17 +61,17 @@
 		"raisedAt": "2026-10-26"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 620775,
+		"ceiling": 627395,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Workflows in the Background tasks pane (2026-10-24): the eager task extraction tracks Workflow launches as a workflow kind and the session page hands the pane its workflow runs; the workflow task card itself loads with the deferred pane. Session cold JS had drifted to 620015 gzip within tolerance at 8fb65f6a and this takes it to 620775 gzip / 1863214 raw. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Sidebar-width-aware narrow viewport (2026-10-27): upstream's max(700, ceil(width) + 329)px query replaces the fixed 768px one; the function itself minifies to ~90 bytes, and the rest is rolldown re-lettering the shared density chunk's exports in every importer. Session cold JS had drifted to 626779 gzip / 1885291 raw, 204 bytes under the 1% tolerance, and this takes it to 627395 gzip / 1886305 raw. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-24"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1867207,
+		"ceiling": 1886305,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "⌘K Compose paste-to-attachment (2026-10-25): the palette's paste handler, the restored pasted-text chip kind and its chip icon. Session cold JS had drifted to just under the 1% tolerance and this takes it to 622207 gzip / 1867207 raw. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Sidebar-width-aware narrow viewport (2026-10-27): upstream's max(700, ceil(width) + 329)px query replaces the fixed 768px one; the function itself minifies to ~90 bytes, and the rest is rolldown re-lettering the shared density chunk's exports in every importer. Session cold JS had drifted to 626779 gzip / 1885291 raw, 204 bytes under the 1% tolerance, and this takes it to 627395 gzip / 1886305 raw. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-25"
 	},
 	"client.coldHome.default.commitsToRows": {

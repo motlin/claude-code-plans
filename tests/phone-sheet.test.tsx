@@ -29,7 +29,7 @@ import {
 	useSidebarToggleShortcut,
 	writeSidebarState,
 } from "../src/lib/sidebar-store";
-import {COARSE_POINTER_QUERY, NARROW_VIEWPORT_QUERY, PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
+import {COARSE_POINTER_QUERY, narrowViewportQuery, PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {readFileSync} from "node:fs";
 import {installLocalStorage} from "./fake-storage";
 
@@ -52,6 +52,12 @@ function seedQueryClient(): QueryClient {
 	return queryClient;
 }
 
+/** Evaluates a `(max-width: Npx)` query against the mocked width, as the browser would. */
+function matchesMaxWidth(query: string, width: number): boolean {
+	const match = /^\(max-width: (\d+)px\)$/.exec(query);
+	return match !== null && width <= Number(match[1]);
+}
+
 function mockViewport(width: number, {coarse = false}: {coarse?: boolean} = {}) {
 	vi.stubGlobal(
 		"matchMedia",
@@ -59,9 +65,9 @@ function mockViewport(width: number, {coarse = false}: {coarse?: boolean} = {}) 
 			matches:
 				query === PHONE_SHEET_QUERY
 					? width < 640
-					: query === NARROW_VIEWPORT_QUERY
-						? width < 768
-						: query === COARSE_POINTER_QUERY && coarse,
+					: query === COARSE_POINTER_QUERY
+						? coarse
+						: matchesMaxWidth(query, width),
 			media: query,
 			onchange: null,
 			addEventListener: () => undefined,
@@ -429,7 +435,7 @@ describe("phone sheet sidebar", () => {
 });
 
 describe("narrow viewport forced collapse", () => {
-	it("renders collapsed between 640 and 767px without touching the stored preference", async () => {
+	it("renders collapsed at 700px (the default 288px sidebar's narrow threshold) without touching the stored preference", async () => {
 		mockViewport(700);
 		writeSidebarState({...readSidebarState(), collapsed: false});
 		const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
@@ -514,16 +520,64 @@ describe("narrow viewport forced collapse", () => {
 		});
 	});
 
-	it("docks the expanded sidebar at 768px and wider", async () => {
-		mockViewport(768);
-		writeSidebarState({...readSidebarState(), collapsed: false});
+	it("keeps the default-width sidebar docked at 720px, above upstream's max(700, width + 329) threshold", async () => {
+		mockViewport(720);
+		writeSidebarState({...readSidebarState(), collapsed: false, width: 288});
 		const {container} = await renderFrame();
 
 		expect({
 			collapsed: screen.queryByTestId("sidebar-collapsed"),
+			// The docked nav's own breakpoint must not hide it below 768px (it was `hidden md:flex`).
+			navigationShownFrom: [
+				...(container.querySelector("nav[data-focus-region=navigation]")?.classList ?? []),
+			].filter((token) => token === "hidden" || token.endsWith(":flex")),
 			hide: screen.getByRole("button", {name: "Hide sidebar"}).tagName,
 			clearance: clearanceVars(container),
-		}).toStrictEqual({collapsed: null, hide: "BUTTON", clearance: {start: "", top: ""}});
+		}).toStrictEqual({
+			collapsed: null,
+			navigationShownFrom: ["hidden", "min-[701px]:flex"],
+			hide: "BUTTON",
+			clearance: {start: "", top: ""},
+		});
+	});
+
+	it("moves the narrow threshold with the sidebar width: a 420px sidebar collapses at 740px and docks at 750px", async () => {
+		writeSidebarState({...readSidebarState(), collapsed: false, width: 420});
+		const storedBefore = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+		const layoutAt = async (width: number) => {
+			mockViewport(width);
+			await renderFrame();
+			const layout = {
+				collapsed: screen.queryByTestId("sidebar-collapsed") !== null,
+				hide: screen.queryByRole("button", {name: "Hide sidebar"}) !== null,
+			};
+			cleanup();
+			return layout;
+		};
+
+		expect({
+			at740: await layoutAt(740),
+			at750: await layoutAt(750),
+			stored: window.localStorage.getItem(SIDEBAR_STORAGE_KEY),
+		}).toStrictEqual({
+			at740: {collapsed: true, hide: false},
+			at750: {collapsed: false, hide: true},
+			stored: storedBefore,
+		});
+	});
+
+	it("builds upstream's narrow query from the sidebar width: max(700, ceil(width) + 329)", () => {
+		expect({
+			default: narrowViewportQuery(288),
+			max: narrowViewportQuery(420),
+			min: narrowViewportQuery(232),
+			fractional: narrowViewportQuery(400.2),
+		}).toStrictEqual({
+			default: "(max-width: 700px)",
+			max: "(max-width: 749px)",
+			min: "(max-width: 700px)",
+			fractional: "(max-width: 730px)",
+		});
 	});
 
 	it("marks the main column with the upstream data-perf-region anchor", async () => {
