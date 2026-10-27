@@ -45,6 +45,19 @@ afterEach(() => {
 });
 
 describe("ToastProvider", () => {
+	it("is a notifications F6 stop only while it holds a toast", () => {
+		render(
+			<ToastProvider>
+				<Trigger options={{message: "Link copied to clipboard.", kind: "success"}} />
+			</ToastProvider>,
+		);
+		const stops = () => document.querySelectorAll('[data-focus-region="notifications"]').length;
+		const before = stops();
+		fireEvent.click(screen.getByRole("button", {name: "fire"}));
+
+		expect({before, after: stops()}).toStrictEqual({before: 0, after: 1});
+	});
+
 	it("renders a success toast in the polite live region", () => {
 		renderWithToast({message: "Link copied to clipboard.", kind: "success"});
 

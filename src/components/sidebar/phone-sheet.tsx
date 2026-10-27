@@ -27,6 +27,7 @@ export function PhoneSheetTrigger({
 			aria-label="Show sidebar"
 			aria-expanded={open}
 			aria-controls={PHONE_SHEET_ID}
+			data-focus-region="navigation"
 			onClick={onOpen}
 			style={{
 				left: `${PHONE_SIDEBAR_TOGGLE.left}px`,

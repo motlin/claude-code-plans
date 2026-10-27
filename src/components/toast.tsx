@@ -81,6 +81,7 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 			{children}
 			<div
 				data-position="bottom-right"
+				{...(toasts.length > 0 ? {"data-focus-region": "notifications"} : {})}
 				className="pointer-events-none fixed right-4 bottom-4 z-[100] w-[360px] max-w-[calc(100vw-2rem)]"
 			>
 				<div role="status" aria-live="polite" className={REGION_CLASS}>

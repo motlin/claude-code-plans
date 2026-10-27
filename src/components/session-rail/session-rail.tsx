@@ -253,6 +253,7 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 		<aside
 			aria-label="Session details"
 			tabIndex={-1}
+			data-focus-region="session-details"
 			className="flex h-full min-h-0 w-[var(--session-rail-w,17.5rem)] flex-col font-sans outline-none"
 		>
 			<div

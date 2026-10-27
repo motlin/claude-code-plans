@@ -329,3 +329,149 @@ describe("F6 landing ring", () => {
 		});
 	});
 });
+
+function SessionPageHarness({question = false, toast = false}: {question?: boolean; toast?: boolean}) {
+	useFocusRegionShortcuts();
+	return (
+		<>
+			<aside aria-label="Session details" {...region("session-details")}>
+				<button type="button">Rail action</button>
+			</aside>
+			<button type="button" aria-label="Show sidebar" {...region("navigation")} />
+			<main aria-label="Main" {...region("main")}>
+				{question && (
+					<div aria-label="Question" {...region("question")}>
+						<button type="button">Answer</button>
+					</div>
+				)}
+				<div aria-label="Composer" {...region("composer")}>
+					<div data-composer-card="">
+						<textarea aria-label="Prompt" {...entry} />
+					</div>
+				</div>
+				<button type="button" aria-label="Title, rename session" {...region("header")} />
+			</main>
+			{toast && (
+				<div aria-label="Notifications" {...region("notifications")}>
+					<button type="button">Dismiss</button>
+				</div>
+			)}
+		</>
+	);
+}
+
+function cycle(times: number, shiftKey = false): (string | null)[] {
+	const visited: (string | null)[] = [];
+	for (let i = 0; i < times; i++) {
+		pressF6(shiftKey);
+		visited.push(focusedName());
+	}
+	return visited;
+}
+
+describe("F6 stops on a session page", () => {
+	beforeEach(() => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+	});
+
+	it("visits the regions in upstream order from the composer, never main", () => {
+		render(<SessionPageHarness />);
+		screen.getByRole("textbox", {name: "Prompt"}).focus();
+
+		expect({forward: cycle(4), backward: cycle(4, true)}).toStrictEqual({
+			forward: ["Session details", "Show sidebar", "Title, rename session", "Prompt"],
+			backward: ["Title, rename session", "Show sidebar", "Session details", "Prompt"],
+		});
+	});
+
+	it("lands on button stops without a landing ring of their own", () => {
+		render(<SessionPageHarness />);
+		const toggle = screen.getByRole("button", {name: "Show sidebar"});
+		const title = screen.getByRole("button", {name: "Title, rename session"});
+
+		pressF6();
+		const onToggle = landingAttrs(toggle);
+		pressF6();
+
+		expect({onToggle, onTitle: landingAttrs(title), focused: focusedName()}).toStrictEqual({
+			onToggle: {
+				"data-focus-region-landing": null,
+				"data-focus-region-around": null,
+				"data-focus-region-inside": null,
+				tabindex: null,
+			},
+			onTitle: {
+				"data-focus-region-landing": null,
+				"data-focus-region-around": null,
+				"data-focus-region-inside": null,
+				tabindex: null,
+			},
+			focused: "Title, rename session",
+		});
+	});
+
+	it("skips a pending question from outside, and leaves it normally from inside", () => {
+		render(<SessionPageHarness question />);
+		screen.getByRole("textbox", {name: "Prompt"}).focus();
+		const fromOutside = cycle(4);
+		screen.getByRole("button", {name: "Answer"}).focus();
+		const fromInside = [...cycle(1), ...cycle(1, true), ...cycle(1, true)];
+
+		expect({fromOutside, fromInside}).toStrictEqual({
+			fromOutside: ["Session details", "Show sidebar", "Title, rename session", "Prompt"],
+			fromInside: ["Prompt", "Title, rename session", "Show sidebar"],
+		});
+	});
+
+	it("adds the notifications stop last while a toast is shown", () => {
+		render(<SessionPageHarness toast />);
+		screen.getByRole("textbox", {name: "Prompt"}).focus();
+
+		expect(cycle(3)).toStrictEqual(["Session details", "Notifications", "Show sidebar"]);
+	});
+
+	it("swallows auto-repeat without moving, and yields during IME composition", () => {
+		render(<SessionPageHarness />);
+		const prompt = screen.getByRole("textbox", {name: "Prompt"});
+		prompt.focus();
+
+		const repeat = new KeyboardEvent("keydown", {
+			key: "F6",
+			code: "F6",
+			repeat: true,
+			bubbles: true,
+			cancelable: true,
+		});
+		const composing = new KeyboardEvent("keydown", {
+			key: "F6",
+			code: "F6",
+			isComposing: true,
+			bubbles: true,
+			cancelable: true,
+		});
+		act(() => {
+			prompt.dispatchEvent(repeat);
+		});
+		const afterRepeat = focusedName();
+		act(() => {
+			prompt.dispatchEvent(composing);
+		});
+
+		expect({
+			afterRepeat,
+			repeatPrevented: repeat.defaultPrevented,
+			afterComposing: focusedName(),
+			composingPrevented: composing.defaultPrevented,
+		}).toStrictEqual({
+			afterRepeat: "Prompt",
+			repeatPrevented: true,
+			afterComposing: "Prompt",
+			composingPrevented: false,
+		});
+	});
+});

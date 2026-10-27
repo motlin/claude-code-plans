@@ -82,6 +82,8 @@ export function SidebarToggleButton({
 				aria-keyshortcuts={ariaKeyShortcuts}
 				aria-controls={controls?.id}
 				aria-expanded={controls?.expanded}
+				// Collapsed, the Show sidebar trigger stands in for the navigation F6 stop, as upstream.
+				{...(collapsed ? {"data-focus-region": "navigation"} : {})}
 				className={
 					className ??
 					"flex h-8 w-8 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover"

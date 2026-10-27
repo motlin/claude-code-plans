@@ -1,15 +1,41 @@
 /**
  * F6 / ⇧F6 landmark focus cycling, like claude.ai/code's focus_next_region /
  * focus_previous_region. Regions are marked with `data-focus-region` and
- * cycle in document order; the innermost region holding focus is current.
- * A region focuses its `data-focus-region-entry` descendant when it has one
- * (the composer's prompt), otherwise the region element itself.
+ * cycle in upstream's region order (document order within a name); the
+ * innermost region holding focus is current. A region focuses its
+ * `data-focus-region-entry` descendant when it has one (the composer's
+ * prompt), otherwise the region element itself.
  */
 
 export const FOCUS_REGION_ATTR = "data-focus-region";
 export const FOCUS_REGION_ENTRY_ATTR = "data-focus-region-entry";
 
 export type FocusRegionDirection = "next" | "previous";
+
+/**
+ * Upstream's region vocabulary `ve` in reading order, mapped onto the local
+ * regions: `side-chat` is its sidePanel, `session-details` its sessionDetails
+ * and `pane` its terminal/tile. `notifications` goes last, as upstream pushes it.
+ */
+const REGION_ORDER = [
+	"navigation",
+	"header",
+	"main",
+	"question",
+	"composer",
+	"side-chat",
+	"session-details",
+	"pane",
+	"notifications",
+];
+
+/** Regions F6 skips unless focus is already inside one, like upstream's `ye`. */
+const SKIP_UNLESS_CURRENT = new Set(["question"]);
+
+function regionRank(region: HTMLElement): number {
+	const rank = REGION_ORDER.indexOf(region.getAttribute(FOCUS_REGION_ATTR) ?? "");
+	return rank === -1 ? REGION_ORDER.length : rank;
+}
 
 /** Whether a region (or any landing target) is shown: not hidden, inert or aria-hidden. */
 export function isAvailable(region: HTMLElement): boolean {
@@ -43,6 +69,8 @@ const MODIFIER_KEYS = new Set([
 const liveLandings = new WeakMap<Document, () => void>();
 
 type LandOptions = {
+	/** False lands without a landing ring, for stops that draw their own focus-visible ring (upstream's `ring:!1`). */
+	ring?: boolean;
 	/** The element that draws the ring when it isn't the focused element (the composer card around its prompt). */
 	ringOn?: HTMLElement;
 	/** Clear on the next non-modifier keydown or beforeinput, for text-entry landings. */
@@ -57,7 +85,7 @@ type LandOptions = {
  * The ring clears when focus moves elsewhere (except into an unrelated dialog),
  * on pointerdown on the ring element, or on input for `clearOnInput` landings.
  */
-function landFocus(target: HTMLElement, {ringOn = target, clearOnInput = false}: LandOptions = {}): void {
+function landFocus(target: HTMLElement, {ring = true, ringOn = target, clearOnInput = false}: LandOptions = {}): void {
 	const doc = target.ownerDocument;
 	const view = doc.defaultView;
 	liveLandings.get(doc)?.();
@@ -68,11 +96,13 @@ function landFocus(target: HTMLElement, {ringOn = target, clearOnInput = false}:
 		target.setAttribute("tabindex", "-1");
 		tabIndexObserver?.observe(target, {attributeFilter: ["tabindex"]});
 	}
-	const position = view?.getComputedStyle(ringOn).position ?? "";
-	ringOn.setAttribute(FOCUS_REGION_LANDING_ATTR, POSITIONED.has(position) ? "overlay" : "");
-	if (ringOn !== target) {
-		ringOn.setAttribute(AROUND_ATTR, "");
-		target.setAttribute(INSIDE_ATTR, "");
+	if (ring) {
+		const position = view?.getComputedStyle(ringOn).position ?? "";
+		ringOn.setAttribute(FOCUS_REGION_LANDING_ATTR, POSITIONED.has(position) ? "overlay" : "");
+		if (ringOn !== target) {
+			ringOn.setAttribute(AROUND_ATTR, "");
+			target.setAttribute(INSIDE_ATTR, "");
+		}
 	}
 	target.focus({preventScroll: true, focusVisible: true});
 
@@ -129,16 +159,30 @@ function focusRegion(region: HTMLElement): void {
 		landFocus(entry, {ringOn: card !== null && region.contains(card) ? card : entry, clearOnInput: true});
 		return;
 	}
-	landFocus(region);
+	// A button stop (the session title, the collapsed sidebar's Show sidebar) shows its own focus-visible ring.
+	landFocus(region, {ring: !region.matches("button")});
 }
 
-/** Move focus to the next or previous available region; false when there is none. */
+/**
+ * Move focus to the next or previous available region; false when there is none.
+ * Like upstream's F6 `er()`/`ze()`: stops go in {@link REGION_ORDER}, `main`
+ * drops out when a header stop exists, and a question is only a stop while
+ * focus is inside it.
+ */
 export function cycleFocusRegion(root: Document, direction: FocusRegionDirection): boolean {
-	const regions = [...root.querySelectorAll<HTMLElement>(`[${FOCUS_REGION_ATTR}]`)].filter(isAvailable);
-	if (regions.length === 0) return false;
+	const available = [...root.querySelectorAll<HTMLElement>(`[${FOCUS_REGION_ATTR}]`)].filter(isAvailable);
+	const hasHeader = available.some((region) => region.getAttribute(FOCUS_REGION_ATTR) === "header");
 	const active = root.activeElement;
-	const current = active === null ? undefined : active.closest<HTMLElement>(`[${FOCUS_REGION_ATTR}]`);
-	const index = current === undefined || current === null ? -1 : regions.indexOf(current);
+	const current = active?.closest<HTMLElement>(`[${FOCUS_REGION_ATTR}]`) ?? null;
+	const regions = available
+		.filter((region) => {
+			const name = region.getAttribute(FOCUS_REGION_ATTR) ?? "";
+			if (name === "main" && hasHeader) return false;
+			return region === current || !SKIP_UNLESS_CURRENT.has(name);
+		})
+		.toSorted((a, b) => regionRank(a) - regionRank(b));
+	if (regions.length === 0) return false;
+	const index = current === null ? -1 : regions.indexOf(current);
 	const step = direction === "next" ? 1 : -1;
 	const start = index === -1 ? (direction === "next" ? -1 : regions.length) : index;
 	const target = regions[(start + step + regions.length) % regions.length];

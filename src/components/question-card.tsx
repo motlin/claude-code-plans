@@ -311,6 +311,7 @@ export function QuestionCard({
 			tabIndex={-1}
 			aria-label={question.question}
 			data-approval-card-root=""
+			data-focus-region="question"
 			data-approval-presentation="card"
 			onClick={(event) => {
 				event.stopPropagation();
