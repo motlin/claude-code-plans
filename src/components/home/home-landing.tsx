@@ -12,23 +12,30 @@ import {useHomeNextSteps} from "./use-home-next-steps";
  * card is centred above the composer and Next steps hides when it doesn't fit.
  */
 export function HomeLanding({dock}: Readonly<{dock?: ReactNode}>) {
+	return (
+		<HomeLaunchFolderProvider>
+			<HomeLandingBody dock={dock} />
+		</HomeLaunchFolderProvider>
+	);
+}
+
+/** Inside the provider, so Next steps reads the composer's launch folder and Worktree state. */
+function HomeLandingBody({dock}: Readonly<{dock?: ReactNode}>) {
 	const nextSteps = useHomeNextSteps();
 	const placementRef = useStartCardPlacement();
 
 	return (
-		<HomeLaunchFolderProvider>
-			<HomePage dock={dock}>
-				<div
-					ref={placementRef}
-					data-home-action-center
-					data-perf-ready={nextSteps === undefined ? undefined : ""}
-					className={START_CARD_WRAPPER_CLASS}
-				>
-					<div className="flex w-full flex-col">
-						<HomeStartCard nextSteps={nextSteps} />
-					</div>
+		<HomePage dock={dock}>
+			<div
+				ref={placementRef}
+				data-home-action-center
+				data-perf-ready={nextSteps === undefined ? undefined : ""}
+				className={START_CARD_WRAPPER_CLASS}
+			>
+				<div className="flex w-full flex-col">
+					<HomeStartCard nextSteps={nextSteps} />
 				</div>
-			</HomePage>
-		</HomeLaunchFolderProvider>
+			</div>
+		</HomePage>
 	);
 }

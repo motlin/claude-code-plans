@@ -170,6 +170,21 @@ export function prNextStepCandidates(prs: readonly PrNextStepSource[]): NextStep
 	]);
 }
 
+/**
+ * Upstream's `runningHere`: a session runs in exactly the launch folder (its project, not a subfolder's).
+ * Upstream reads a desktop `isRunning` flag; locally any live CLI counts, since two CLIs editing one
+ * checkout is the hazard the Worktree row warns about.
+ */
+export function sessionRunningIn(
+	sessions: readonly {project: string; state: string; archived: boolean}[],
+	projectId: string | undefined,
+): boolean {
+	return (
+		projectId !== undefined &&
+		sessions.some((session) => session.project === projectId && session.state !== "ended" && !session.archived)
+	);
+}
+
 /** The launch folder's state that upstream's folder-scoped rows (`qoe`) read. */
 export interface FolderNextStepSource {
 	folder: string | undefined;

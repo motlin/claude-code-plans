@@ -5,10 +5,19 @@ import {useRef} from "react";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {blockedDetail} from "../../lib/blocked-detail";
 import {homeDismissalsQueryOptions, postHomeDismissal, type HomeDismissals} from "../../lib/api/home-dismissals";
+import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
-import {nextStepKey, prNextStepCandidates, selectNextSteps, type NextStepCandidate} from "../../lib/home-next-steps";
+import {
+	folderNextStepCandidates,
+	nextStepKey,
+	prNextStepCandidates,
+	selectNextSteps,
+	sessionRunningIn,
+	type NextStepCandidate,
+} from "../../lib/home-next-steps";
 import {selectHomePrs} from "../../lib/home-prs";
 import {toGroupRow} from "../sidebar/sidebar-session-row";
+import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import type {NextStepsListProps} from "./start-card";
 
 /**
@@ -33,9 +42,10 @@ function waitingSessionCandidates(
 
 /**
  * The start card's Next steps list, fed by the sidebar's recent sessions, their PRs, the pending
- * approvals and the home dismissals. Like upstream, it is undefined until every source has settled
- * (so a permission prompt never first renders as "Asked a question"), then latched: a later reset or
- * refetch that drops a source's data keeps the last list instead of unmounting it.
+ * approvals, the launch folder (read under `HomeLaunchFolderProvider`) and the home dismissals. Like
+ * upstream, it is undefined until every source has settled (so a permission prompt never first renders
+ * as "Asked a question"), then latched: a later reset or refetch that drops a source's data keeps the
+ * last list instead of unmounting it.
  */
 export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const navigate = useNavigate();
@@ -43,6 +53,10 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const {data: recent} = useInfiniteQuery(recentSessionsInfiniteQueryOptions());
 	const {data: approvals, isFetched: approvalsFetched} = useQuery(approvalsQueryOptions());
 	const {data: dismissals} = useQuery(homeDismissalsQueryOptions);
+	const {selected, launching} = useHomeLaunchFolder();
+	const folder = selected?.projectPath;
+	const {data: git} = useQuery(homeFolderStatusQueryOptions(folder));
+	const worktree = useHomeWorktree(git?.isGitRepo);
 	const latched = useRef<NextStepsListProps | undefined>(undefined);
 
 	const dismiss = useMutation({
@@ -72,9 +86,25 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 			})),
 	);
 
+	// Only the Worktree row for now: the continue-branch prefill and resume-session error rows aren't wired yet.
+	const folderCandidates = folderNextStepCandidates({
+		folder,
+		git,
+		runningHere: sessionRunningIn(sessions, selected?.id),
+		worktreeOn: worktree.enabled,
+		worktreeTaken: folder !== undefined && worktree.isTaken(folder),
+		used: new Set(),
+		failed: null,
+		launching,
+	}).filter((candidate) => candidate.id === "worktree-apart");
+
 	latched.current = {
 		rows: selectNextSteps({
-			candidates: [...waitingSessionCandidates(sessions, approvalTools), ...prNextStepCandidates(prs)],
+			candidates: [
+				...waitingSessionCandidates(sessions, approvalTools),
+				...folderCandidates,
+				...prNextStepCandidates(prs),
+			],
 			dismissed: dismissals.dismissals,
 		}),
 		onOpen: (id) => void navigate({to: "/session/$id", params: {id}}),

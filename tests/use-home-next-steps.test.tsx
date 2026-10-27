@@ -16,6 +16,8 @@ import {
 import {useHomeNextSteps} from "../src/components/home/use-home-next-steps";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
+import {homeFolderStatusQueryOptions} from "../src/lib/api/home-folder-status";
+import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../src/lib/api/sessions";
 
 const MINUTE = 60 * 1000;
@@ -150,5 +152,70 @@ describe("useHomeNextSteps", () => {
 		});
 
 		expect(frames.slice(settledAt)).toStrictEqual(frames.slice(settledAt).map(() => ["Needs permission"]));
+	});
+
+	describe("Session running here", () => {
+		function folderClient(state: SessionListItem["state"], project = "-projects-alpha"): QueryClient {
+			const queryClient = seededClient();
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [
+					{
+						sessions: [{...listItem("live"), project, state, bucket: "done"}],
+						nextCursor: null,
+					},
+				],
+				pageParams: [null],
+			});
+			queryClient.setQueryData(approvalsQueryOptions().queryKey, {
+				approvals: [],
+			});
+			queryClient.setQueryData(projectsQueryOptions().queryKey, [
+				{
+					id: "-projects-alpha",
+					name: "alpha",
+					projectPath: "/projects/alpha",
+					sessionCount: 1,
+					memoryCount: 0,
+					planCount: 0,
+					taskCount: 0,
+					activeCount: 1,
+					lastActivity: new Date().toISOString(),
+				},
+			]);
+			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+				isGitRepo: true,
+				headBranch: "main",
+				defaultBranch: "main",
+				uncommittedFiles: 0,
+			});
+			return queryClient;
+		}
+
+		it("suggests Turn on Worktree while a live CLI runs in the launch folder", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+			);
+			const frames = await renderHook(folderClient("idle"));
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual(["Session running here"]);
+			});
+		});
+
+		it("doesn't for an ended session or one in another folder", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+			);
+			const ended = await renderHook(folderClient("ended"));
+			await waitFor(() => {
+				expect(ended.at(-1)).toStrictEqual([]);
+			});
+			cleanup();
+			const elsewhere = await renderHook(folderClient("idle", "-projects-alpha-sub"));
+			await waitFor(() => {
+				expect(elsewhere.at(-1)).toStrictEqual([]);
+			});
+		});
 	});
 });

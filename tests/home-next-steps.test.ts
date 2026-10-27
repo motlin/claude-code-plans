@@ -10,6 +10,7 @@ import {
 	reviewCommentsTitle,
 	type PrNextStepSource,
 	selectNextSteps,
+	sessionRunningIn,
 	type NextStepCandidate,
 	type NextStepId,
 } from "../src/lib/home-next-steps";
@@ -344,5 +345,22 @@ describe("folder next steps", () => {
 				rest: ["s3", "s9"],
 			},
 		]);
+	});
+});
+
+describe("sessionRunningIn", () => {
+	const live = {project: "-p", state: "idle", archived: false} as const;
+
+	it("counts a live, unarchived session in exactly the folder's project", () => {
+		expect([
+			sessionRunningIn([live], "-p"),
+			sessionRunningIn([{...live, state: "working"}], "-p"),
+			sessionRunningIn([{...live, state: "unknown"}], "-p"),
+			sessionRunningIn([{...live, state: "ended"}], "-p"),
+			sessionRunningIn([{...live, archived: true}], "-p"),
+			sessionRunningIn([{...live, project: "-p-sub"}], "-p"),
+			sessionRunningIn([live], undefined),
+			sessionRunningIn([], "-p"),
+		]).toStrictEqual([true, true, true, false, false, false, false, false]);
 	});
 });
