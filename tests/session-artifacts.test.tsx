@@ -305,6 +305,8 @@ describe("View options ▸ Artifacts", () => {
 
 		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: "Artifacts"}));
 		await settle();
+		fireEvent.click(screen.getByRole("button", {name: "View options"}));
+		await settle();
 
 		const pane = screen.getByRole("region", {name: "Artifacts"});
 		expect({

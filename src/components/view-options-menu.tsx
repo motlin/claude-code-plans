@@ -79,6 +79,7 @@ function ViewOptionsMenu({
 					return (
 						<MenuCheckboxItem
 							key={entry.kind}
+							closeOnClick
 							checked={host.isOpen(entry.kind)}
 							onCheckedChange={() => {
 								host.togglePane(entry.kind);

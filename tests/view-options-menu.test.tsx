@@ -191,11 +191,31 @@ describe("SessionPaneControls", () => {
 				setTimeout(resolve, 0);
 			});
 		});
+		await openViewOptions();
 
 		expect({
 			pane: within(screen.getByRole("region", {name: "links"})).getByText("links pane body").tagName,
 			checked: screen.getByRole("menuitemcheckbox", {name: /^Links/}).getAttribute("aria-checked"),
 		}).toStrictEqual({pane: "P", checked: "true"});
+	});
+
+	it("closes the menu on pick and refocuses View options, as upstream does", async () => {
+		registerKinds("background-tasks");
+		renderControls({backgroundTasks: {total: 2, running: 1}});
+		await openViewOptions();
+		fireEvent.click(screen.getByRole("menuitemcheckbox", {name: /^Background tasks/}));
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+
+		expect({
+			pane: within(screen.getByRole("region", {name: "background-tasks"})).getByText("background-tasks pane body")
+				.tagName,
+			menu: screen.queryByRole("menu"),
+			focused: document.activeElement?.getAttribute("aria-label"),
+		}).toStrictEqual({pane: "P", menu: null, focused: "View options"});
 	});
 
 	it("keeps a checked Plan item while the Plan pane is open without a plan, as upstream does", async () => {
@@ -216,6 +236,7 @@ describe("SessionPaneControls", () => {
 				</TileHost>
 			</SettingsProvider>,
 		);
+		await openViewOptions();
 
 		expect(menuRows()).toStrictEqual([["menuitemcheckbox", "Plan", "true"]]);
 	});
