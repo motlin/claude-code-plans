@@ -18,6 +18,7 @@ import {Sidebar} from "../src/components/sidebar/Sidebar";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
+import {ProjectListResponse, projectsQueryOptions} from "../src/lib/api/projects";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {ToastProvider} from "../src/components/toast";
 import {
@@ -132,12 +133,17 @@ describe("sidebar session list roving focus", () => {
 	});
 });
 
-async function renderSidebar(path = "/", sessions: readonly ReturnType<typeof session>[] = FIXTURE) {
+async function renderSidebar(
+	path = "/",
+	sessions: readonly ReturnType<typeof session>[] = FIXTURE,
+	projects: readonly unknown[] = [],
+) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
 		},
 	});
+	queryClient.setQueryData(projectsQueryOptions().queryKey, ProjectListResponse.parse(projects));
 	queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
 	queryClient.setQueryData(notificationsQueryOptions().queryKey, {notifications: []});
 	queryClient.setQueryData(activeSessionsQueryOptions(DEFAULTS.activeTimeoutSec * 1000).queryKey, []);
@@ -317,6 +323,48 @@ describe("sidebar body roving focus", () => {
 			press("ArrowLeft"),
 			press("ArrowDown"),
 		]).toEqual(["Group and sort", "New session", "New session", "Group and sort", "First row"]);
+	});
+
+	it("reaches a project header's New session in {group} + with ArrowRight, and Tab skips every +", async () => {
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"}),
+		);
+		await renderSidebar(
+			"/",
+			FIXTURE,
+			FIXTURE.map(({id, project, projectName}) => ({
+				id: project,
+				name: projectName,
+				projectPath: `/p/${id}`,
+				sessionCount: 1,
+				memoryCount: 0,
+				planCount: 0,
+				taskCount: 0,
+				activeCount: 0,
+				lastActivity: "2026-10-01T00:00:00Z",
+			})),
+		);
+
+		screen.getByRole("button", {name: "project-s2"}).focus();
+		expect({
+			along: [press("ArrowRight"), press("ArrowRight"), press("ArrowRight"), press("ArrowRight")],
+			back: [press("ArrowLeft"), press("ArrowLeft"), press("ArrowLeft"), press("ArrowLeft")],
+			stops: bodyTabStops(),
+			pluses: screen
+				.getAllByRole("button", {name: /^New session in /})
+				.map((button) => button.getAttribute("tabindex")),
+		}).toStrictEqual({
+			along: [
+				"More options for project-s2",
+				"Group and sort",
+				"New session in project-s2",
+				"New session in project-s2",
+			],
+			back: ["Group and sort", "More options for project-s2", "project-s2", "project-s2"],
+			stops: ["Search field", "New", "project-s2"],
+			pluses: ["-1", "-1", "-1"],
+		});
 	});
 
 	it("moves between a session row's link and its kebab with ArrowRight and ArrowLeft", async () => {
