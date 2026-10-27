@@ -7,6 +7,7 @@ import {
 	useRef,
 	useState,
 	type CSSProperties,
+	type FocusEvent,
 	type ReactNode,
 	type RefObject,
 } from "react";
@@ -47,7 +48,13 @@ function useSessionRailToggle() {
 }
 
 /** Upstream's first titlebar trail button: a ghost icon toggle, pressed while the rail shows. */
-export function SessionRailToggle() {
+export function SessionRailToggle({
+	onFocus,
+	onBlur,
+}: {
+	onFocus?: (event: FocusEvent<HTMLElement>) => void;
+	onBlur?: (event: FocusEvent<HTMLElement>) => void;
+} = {}) {
 	const {raise, pressed, label, toggle} = useSessionRailToggle();
 	return (
 		<Tooltip content={label} side="bottom">
@@ -58,6 +65,8 @@ export function SessionRailToggle() {
 				aria-pressed={pressed}
 				{...(raise === null ? {} : {"aria-expanded": raise.raised, "aria-controls": raise.overlayId})}
 				onClick={toggle}
+				onFocus={onFocus}
+				onBlur={onBlur}
 				className={TITLEBAR_RAIL_TOGGLE_CLASS}
 			>
 				<PanelRight aria-hidden="true" />

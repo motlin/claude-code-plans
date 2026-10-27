@@ -1,4 +1,5 @@
 import {EllipsisVertical, FileDiff, Files} from "lucide-react";
+import type {RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcutKeys} from "../hooks/use-shortcut";
@@ -10,6 +11,7 @@ import {usePaneHost} from "./panes/pane-host-context";
 import {SessionRailMenuItem, SessionRailToggle} from "./session-rail/session-rail-slot";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
 import {useTitlebarHiddenCount} from "./titlebar-fold-context";
+import {useFoldFocus} from "./use-fold-focus";
 import {TITLEBAR_TOGGLES_ATTRIBUTE} from "./use-titlebar-fold";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
@@ -48,10 +50,12 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
 }
 
 function ViewOptionsMenu({
+	triggerRef,
 	railFolded,
 	entries,
 	onExpandChat,
 }: {
+	triggerRef: RefObject<HTMLButtonElement | null>;
 	/** The Show/Hide session rail toggle, folded in from the trail. */
 	railFolded: boolean;
 	entries: readonly ViewOptionsItem[];
@@ -63,7 +67,7 @@ function ViewOptionsMenu({
 	return (
 		<Menu>
 			<Tooltip content="View options" side="bottom">
-				<MenuTrigger aria-label="View options" className={TITLEBAR_ICON_BUTTON_CLASS}>
+				<MenuTrigger ref={triggerRef} aria-label="View options" className={TITLEBAR_ICON_BUTTON_CLASS}>
 					<EllipsisVertical aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>
@@ -141,22 +145,33 @@ export function SessionPaneControls({
 		active: host.isOpen(entry.kind),
 	}));
 	const {folded, inline} = splitPanes(shown, hiddenMainPanes);
+	const {togglesRef, triggerRef, railFocusProps, togglesFocusProps} = useFoldFocus();
 	const menuEntries = [...folded, ...viewOptionsItems({registered, isOpen: host.isOpen, facts})];
 	return (
 		<>
 			{railAvailable && !railToggleFolded && (
 				<>
-					<SessionRailToggle />
+					<SessionRailToggle {...railFocusProps} />
 					<span role="separator" aria-orientation="vertical" className="h-4 w-px shrink-0 bg-border" />
 				</>
 			)}
-			<div {...{[TITLEBAR_TOGGLES_ATTRIBUTE]: ""}} className="flex items-center gap-1 empty:hidden">
+			<div
+				ref={togglesRef}
+				{...{[TITLEBAR_TOGGLES_ATTRIBUTE]: ""}}
+				{...togglesFocusProps}
+				className="flex items-center gap-1 empty:hidden"
+			>
 				{inline.map((entry) => (
 					<MainPaneToggle key={entry.kind} entry={entry} />
 				))}
 			</div>
 			{(railToggleFolded || menuEntries.length > 0 || onExpandChat !== undefined) && (
-				<ViewOptionsMenu railFolded={railToggleFolded} entries={menuEntries} onExpandChat={onExpandChat} />
+				<ViewOptionsMenu
+					triggerRef={triggerRef}
+					railFolded={railToggleFolded}
+					entries={menuEntries}
+					onExpandChat={onExpandChat}
+				/>
 			)}
 		</>
 	);

@@ -207,6 +207,12 @@ describe("session rail toggle", () => {
 		};
 	}
 
+	/** Tabs onto a trail button, so it matches `:focus-visible` like keyboard focus. */
+	function keyboardFocus(name: string) {
+		fireEvent.keyDown(document.body, {key: "Tab"});
+		screen.getByRole("button", {name}).focus();
+	}
+
 	async function foldedState() {
 		const buttons = screen.queryAllByRole("button").map((button) => button.getAttribute("aria-label") ?? "");
 		fireEvent.click(screen.getByRole("button", {name: "View options"}));
@@ -256,6 +262,53 @@ describe("session rail toggle", () => {
 		setHidden(2);
 
 		expect(trail()).toStrictEqual([["Changes", "true"]]);
+	});
+
+	it("moves keyboard focus to the last inline toggle when the focused one folds past the end", async () => {
+		registerKinds("changes", "files");
+		const setHidden = renderFolded(1);
+		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		await settle();
+		keyboardFocus("Files");
+		setHidden(2);
+		const afterFilesFolded = document.activeElement?.getAttribute("aria-label");
+		setHidden(3);
+
+		expect({
+			afterFilesFolded,
+			afterAllFolded: document.activeElement?.getAttribute("aria-label"),
+		}).toStrictEqual({
+			afterFilesFolded: "Changes",
+			afterAllFolded: "View options",
+		});
+	});
+
+	it("moves keyboard focus from the focused Changes toggle to Files when Changes folds", () => {
+		registerKinds("changes", "files");
+		const setHidden = renderFolded(1);
+		keyboardFocus("Changes");
+		setHidden(2);
+
+		expect(document.activeElement?.getAttribute("aria-label")).toBe("Files");
+	});
+
+	it("moves keyboard focus from the rail toggle to View options when the rail folds", () => {
+		registerKinds("changes", "files");
+		const setHidden = renderFolded(0);
+		keyboardFocus("Show session rail");
+		setHidden(1);
+
+		expect(document.activeElement?.getAttribute("aria-label")).toBe("View options");
+	});
+
+	it("leaves focus alone when an unfocused toggle folds", () => {
+		registerKinds("changes", "files");
+		const setHidden = renderFolded(1);
+		keyboardFocus("Files");
+		screen.getByRole("button", {name: "Files"}).blur();
+		setHidden(2);
+
+		expect(document.activeElement).toBe(document.body);
 	});
 
 	it("is absent when the session supplies no rail", () => {
