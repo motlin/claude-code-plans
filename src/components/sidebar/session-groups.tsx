@@ -45,7 +45,7 @@ import {familyKey, useSidebarState} from "../../lib/sidebar-store";
 import {assertNever} from "../../lib/assert-never";
 import {useSettings} from "../settings-context";
 import {useToast} from "../toast-context";
-import {LoadingBars} from "./primitives/LoadingBars";
+import {DescribedLoadingRows, LoadingBars} from "./primitives/LoadingBars";
 import {EmptyGroupSection, type EmptyListReason, GroupSection, ROW_CLASS} from "./session-group-section";
 import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
@@ -180,6 +180,7 @@ export function SessionGroups({
 				/>
 			);
 		}
+		if (settings.sessionListPrefs.showMetadata) return <DescribedLoadingRows />;
 		return (
 			<div className="px-2">
 				<LoadingBars />

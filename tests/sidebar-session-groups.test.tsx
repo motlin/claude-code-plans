@@ -79,6 +79,8 @@ async function renderGroups(
 		prefs?: SessionListPrefs;
 		projects?: unknown[];
 		initialPath?: string;
+		/** Return while the list still loads instead of waiting for a group or alert. */
+		loading?: boolean;
 	} = {},
 ) {
 	const queryClient =
@@ -120,6 +122,7 @@ async function renderGroups(
 	});
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
+	if (options.loading === true) return {...result, queryClient, router};
 	await waitFor(() => {
 		expect(result.container.querySelector("[data-group-toggle], [role=alert]")).toBeTruthy();
 	});
@@ -1265,6 +1268,37 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 	afterEach(() => {
 		localStorage.removeItem("ccp-session-list-prefs");
 		localStorage.removeItem(PIN_STORAGE_KEY);
+	});
+
+	it("renders upstream's two-line described skeleton rows while the list loads with Metadata on", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(async () => new Promise<Response>(() => {})),
+		);
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true}),
+		);
+		const {container} = await renderGroups([], {unseeded: true, loading: true});
+		const rows = [...container.querySelectorAll<HTMLElement>("[data-row]")].map((row) => ({
+			described: row.hasAttribute("data-described"),
+			className: row.className,
+			bars: [...row.children].map((line) => {
+				const bar = line.firstElementChild;
+				if (!(bar instanceof HTMLElement)) throw new Error("Expected a skeleton bar");
+				return {line: line.className, width: bar.style.width, height: bar.style.height};
+			}),
+		}));
+		const rowClass = "df-described-row flex flex-col items-stretch justify-center px-[var(--sb-row-px)]";
+		const bars = (title: string, description: string) => [
+			{line: "df-described-title flex min-w-0 items-center", width: title, height: "var(--sb-row-font)"},
+			{line: "df-row-description flex min-w-0 items-center", width: description, height: "var(--sb-group-font)"},
+		];
+		expect(rows).toStrictEqual([
+			{described: true, className: rowClass, bars: bars("68%", "54%")},
+			{described: true, className: rowClass, bars: bars("54%", "44%")},
+			{described: true, className: rowClass, bars: bars("44%", "68%")},
+		]);
 	});
 
 	it("gives unpinned rows upstream's described shell and meta line only with Metadata on", async () => {
