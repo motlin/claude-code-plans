@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type {ReactNode} from "react";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -9,7 +10,12 @@ import {RAIL_ROW_ACTION_CLASS} from "../src/components/session-rail/rail-row";
 import {railSectionAccessibility} from "../src/components/session-rail/rail-section-accessibility";
 import {SessionRail, type RailCard} from "../src/components/session-rail/session-rail";
 import {SessionRailSlot} from "../src/components/session-rail/session-rail-slot";
-import {useSessionRailDocked} from "../src/components/session-rail/use-session-rail-docked";
+import {railFit, railFits} from "../src/components/session-rail/rail-fit";
+import {
+	SessionRailFitContext,
+	useSessionRailDocked,
+	useSessionRailFitState,
+} from "../src/components/session-rail/use-session-rail-docked";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {TitlebarFoldedContext} from "../src/components/titlebar-folded-context";
 import {SessionPaneControls} from "../src/components/view-options-menu";
@@ -243,7 +249,7 @@ describe("session rail on a phone", () => {
 				docked: "false",
 				body: "P",
 				overlay: true,
-				card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md [--session-rail-w:100%]",
+				card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]",
 			},
 			closed: null,
 		});
@@ -298,6 +304,208 @@ describe("session rail and side panes", () => {
 				["Hide session rail", "true"],
 				["Changes", "false"],
 			],
+		});
+	});
+});
+
+describe("session rail fit by chat-panel width", () => {
+	let tileWidth = 600;
+	const observers: Array<() => void> = [];
+
+	beforeEach(() => {
+		tileWidth = 600;
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				constructor(callback: ResizeObserverCallback) {
+					observers.push(() => {
+						callback([], this);
+					});
+				}
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+			return DOMRect.fromRect({width: this.hasAttribute("data-tile") ? tileWidth : 1200, height: 800});
+		});
+	});
+
+	afterEach(() => {
+		observers.splice(0);
+	});
+
+	function FitTile({children}: {children: ReactNode}) {
+		const fit = useSessionRailFitState();
+		return (
+			<SessionRailFitContext.Provider value={fit}>
+				<div data-tile="" ref={fit.measureRef}>
+					{children}
+				</div>
+			</SessionRailFitContext.Provider>
+		);
+	}
+
+	function renderFitSession() {
+		return render(
+			<SettingsProvider>
+				<TileHost sessionId="rail-session">
+					<FitTile>
+						<SessionPaneControls facts={{}} railAvailable />
+						<DockedProbe />
+						<p>transcript</p>
+						<SessionRailSlot render={() => <p>rail body</p>} />
+					</FitTile>
+				</TileHost>
+			</SettingsProvider>,
+		);
+	}
+
+	function resizeTile(width: number) {
+		tileWidth = width;
+		act(() => {
+			for (const fire of observers) fire();
+		});
+	}
+
+	function toggleState() {
+		const toggle = screen.getByRole("button", {name: /session rail/});
+		return {
+			label: toggle.getAttribute("aria-label"),
+			pressed: toggle.getAttribute("aria-pressed"),
+			expanded: toggle.getAttribute("aria-expanded"),
+			controls: toggle.getAttribute("aria-controls"),
+		};
+	}
+
+	it("thresholds the fit at upstream's 611px alone and 771px beside a pane", () => {
+		expect([railFit(610), railFit(611), railFit(770), railFit(771)]).toStrictEqual([
+			"none",
+			"alone",
+			"alone",
+			"beside-pane",
+		]);
+		expect([railFits("alone", false), railFits("alone", true), railFits("beside-pane", true)]).toStrictEqual([
+			true,
+			false,
+			true,
+		]);
+	});
+
+	it("doesn't dock below the fit and raises an unpersisted overlay from the toggle, as upstream", async () => {
+		setSessionRailShown(true);
+		renderFitSession();
+		await settle();
+		const before = {
+			column: document.querySelector("[data-epitaxy-rail-column]"),
+			docked: screen.getByTestId("docked").textContent,
+			toggle: toggleState(),
+		};
+		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		await settle();
+		const overlay = screen.getByRole("group", {name: "Session details"});
+		const card = overlay.firstElementChild as HTMLElement;
+
+		expect({
+			before,
+			toggle: toggleState(),
+			overlay: {
+				id: overlay.id,
+				tabIndex: overlay.tabIndex,
+				className: overlay.className,
+				focused: document.activeElement === overlay,
+				card: card.className,
+				flat: card.hasAttribute("data-session-rail-flat"),
+				body: within(overlay).getByText("rail body").tagName,
+			},
+			stored: readSessionRailShown(),
+		}).toStrictEqual({
+			before: {
+				column: null,
+				docked: "false",
+				toggle: {label: "Show session rail", pressed: "false", expanded: "false", controls: overlay.id},
+			},
+			toggle: {label: "Hide session rail", pressed: "true", expanded: "true", controls: overlay.id},
+			overlay: {
+				id: overlay.id,
+				tabIndex: -1,
+				className:
+					"absolute inset-y-0 end-3 z-10 flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-2 outline-none",
+				focused: true,
+				card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]",
+				flat: true,
+				body: "P",
+			},
+			stored: true,
+		});
+	});
+
+	it("closes the overlay on an outside pointerdown or Escape, but not on the toggle", async () => {
+		renderFitSession();
+		await settle();
+		const toggle = screen.getByRole("button", {name: /session rail/});
+		fireEvent.click(toggle);
+		await settle();
+		fireEvent.pointerDown(toggle);
+		const afterToggleDown = screen.queryByRole("group", {name: "Session details"}) !== null;
+		fireEvent.pointerDown(screen.getByText("transcript"));
+		await settle();
+		const afterOutside = screen.queryByRole("group", {name: "Session details"});
+		fireEvent.click(toggle);
+		await settle();
+		fireEvent.keyDown(screen.getByRole("group", {name: "Session details"}), {key: "Escape"});
+		await settle();
+
+		expect({
+			afterToggleDown,
+			afterOutside,
+			afterEscape: screen.queryByRole("group", {name: "Session details"}),
+			refocused: document.activeElement === toggle,
+			toggle: toggleState(),
+			stored: readSessionRailShown(),
+		}).toStrictEqual({
+			afterToggleDown: true,
+			afterOutside: null,
+			afterEscape: null,
+			refocused: true,
+			toggle: {
+				label: "Show session rail",
+				pressed: "false",
+				expanded: "false",
+				controls: toggle.getAttribute("aria-controls"),
+			},
+			stored: false,
+		});
+	});
+
+	it("docks once the tile widens past the fit, clearing the overlay, and doesn't re-raise when it narrows", async () => {
+		setSessionRailShown(true);
+		renderFitSession();
+		await settle();
+		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		await settle();
+		resizeTile(700);
+		await settle();
+		const wide = {
+			column: document.querySelector("[data-epitaxy-rail-column]") !== null,
+			overlay: screen.queryByRole("group", {name: "Session details"}),
+			docked: screen.getByTestId("docked").textContent,
+			toggle: screen.getByRole("button", {name: /session rail/}).getAttribute("aria-expanded"),
+		};
+		resizeTile(600);
+		await settle();
+
+		expect({
+			wide,
+			narrow: {
+				column: document.querySelector("[data-epitaxy-rail-column]"),
+				overlay: screen.queryByRole("group", {name: "Session details"}),
+				docked: screen.getByTestId("docked").textContent,
+			},
+		}).toStrictEqual({
+			wide: {column: true, overlay: null, docked: "true", toggle: null},
+			narrow: {column: null, overlay: null, docked: "false"},
 		});
 	});
 });

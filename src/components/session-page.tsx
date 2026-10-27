@@ -10,7 +10,11 @@ import {latestBreakdown} from "../lib/context-breakdown";
 import {focusComposer, refillComposer, requestComposerTakeBack} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
-import {useSessionRailDocked} from "./session-rail/use-session-rail-docked";
+import {
+	SessionRailFitContext,
+	useSessionRailDocked,
+	useSessionRailFitState,
+} from "./session-rail/use-session-rail-docked";
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
 import {SessionChat} from "./session-chat";
 import {TranscriptTailContext} from "./transcript-tail-context";
@@ -221,20 +225,33 @@ const SessionRailCards = lazy(async () =>
 	import("./session-rail/session-rail-cards").then((module) => ({default: module.SessionRailCards})),
 );
 
-/** The chat tile with the session rail docked at its end while shown and no side pane is open. */
-function RailTileFrame({
-	railInputs,
-	runningBackgroundLaunches,
-	...props
-}: Omit<ComponentProps<typeof SessionTileFrame>, "rail" | "railDocked"> & {
+type RailTileFrameProps = Omit<ComponentProps<typeof SessionTileFrame>, "rail" | "railDocked" | "tileRef"> & {
 	railInputs: SessionRailInputs;
 	runningBackgroundLaunches: ReadonlyMap<string, string>;
-}) {
+};
+
+/** The chat tile with the session rail docked at its end while shown, fitting, and no side pane is open. */
+function RailTileFrame(props: RailTileFrameProps) {
+	const fit = useSessionRailFitState();
+	return (
+		<SessionRailFitContext.Provider value={fit}>
+			<RailTileFrameBody {...props} measureRef={fit.measureRef} />
+		</SessionRailFitContext.Provider>
+	);
+}
+
+function RailTileFrameBody({
+	railInputs,
+	runningBackgroundLaunches,
+	measureRef,
+	...props
+}: RailTileFrameProps & {measureRef: (node: HTMLElement | null) => void}) {
 	const railDocked = useSessionRailDocked();
 	return (
 		<SessionTileFrame
 			{...props}
 			railDocked={railDocked}
+			tileRef={measureRef}
 			rail={
 				<SessionRailSlot
 					render={() => (

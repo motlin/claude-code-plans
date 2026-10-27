@@ -23,6 +23,7 @@ export function SessionTileFrame({
 	restoredScrollY,
 	rail = null,
 	railDocked = false,
+	tileRef,
 }: {
 	sessionId: string;
 	header: ReactNode;
@@ -36,6 +37,8 @@ export function SessionTileFrame({
 	rail?: ReactNode;
 	/** Re-centres the chat column in the room the docked rail leaves. */
 	railDocked?: boolean;
+	/** The tile root, which the session rail measures to decide whether it fits. */
+	tileRef?: Ref<HTMLDivElement> | undefined;
 }) {
 	const router = useRouter();
 	const pendingRendered = useRef<(() => void) | undefined>(undefined);
@@ -115,7 +118,7 @@ export function SessionTileFrame({
 	};
 
 	return (
-		<div className={SESSION_TILE_CLASS} {...(railDocked ? {"data-session-rail-docked": ""} : {})}>
+		<div ref={tileRef} className={SESSION_TILE_CLASS} {...(railDocked ? {"data-session-rail-docked": ""} : {})}>
 			<div className="shrink-0">{header}</div>
 			<div className="relative flex min-h-0 flex-1 flex-col">
 				<div
