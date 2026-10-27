@@ -64,6 +64,7 @@ html[data-interface-font="dyslexic"] {
 	--color-backdrop: var(--upstream-backdrop);
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
+	--color-fill-ghost-selected: var(--upstream-fill-ghost-selected);
 	/* Upstream --cds-fill-field (bg-fill-field): the ⌘K Compose field and question-card input. */
 	--color-fill-field: var(--upstream-fill-field);
 	--color-fill-grip: var(--upstream-fill-grip);
@@ -267,6 +268,8 @@ html[data-interface-font="dyslexic"] {
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
 	--upstream-fill-control: hsl(0 0% 4% / 0.1);
 	--upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
+	/* Upstream's pressed rail toggle (session-presets gate): 10% ink. */
+	--upstream-fill-ghost-selected: rgb(11 11 11 / 0.1);
 	/* Upstream pane move/resize grips: 20% ink. */
 	--upstream-fill-grip: hsl(0 0% 4% / 0.2);
 	--upstream-fill-primary: hsl(0 0% 4%);
@@ -507,6 +510,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-backdrop: rgb(0 0 0 / 0.5);
 	--upstream-fill-control: hsl(0 0% 100% / 0.1);
 	--upstream-fill-ghost-hover: hsl(0 0% 100% / 0.075);
+	--upstream-fill-ghost-selected: rgb(255 255 255 / 0.15);
 	--upstream-fill-secondary: hsl(0 0% 100% / 0.1);
 	--upstream-fill-secondary-hover: hsl(0 0% 100% / 0.14);
 	--upstream-fill-secondary-ring: transparent;

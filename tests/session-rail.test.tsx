@@ -135,6 +135,21 @@ describe("session rail toggle", () => {
 		});
 	});
 
+	it("paints the pressed rail toggle ghost-selected with primary ink, not the accent blue", async () => {
+		renderSession();
+		fireEvent.click(screen.getByRole("button", {name: "Show session rail"}));
+		await settle();
+		const rail = screen.getByRole("button", {name: "Hide session rail"});
+
+		expect({
+			pressed: rail.getAttribute("aria-pressed"),
+			pressedPaint: rail.className.split(" ").filter((c) => c.startsWith("aria-pressed:")),
+		}).toStrictEqual({
+			pressed: "true",
+			pressedPaint: ["aria-pressed:bg-fill-ghost-selected", "aria-pressed:text-primary"],
+		});
+	});
+
 	it("sets a 1x16 separator between the rail toggle and Changes, as upstream", () => {
 		registerKinds("changes", "files");
 		renderSession();

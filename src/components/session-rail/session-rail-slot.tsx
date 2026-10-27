@@ -12,7 +12,7 @@ import {
 } from "react";
 
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
-import {TITLEBAR_ICON_BUTTON_CLASS} from "../titlebar-classes";
+import {TITLEBAR_RAIL_TOGGLE_CLASS} from "../titlebar-classes";
 import {MenuItem} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {
@@ -58,7 +58,7 @@ export function SessionRailToggle() {
 				aria-pressed={pressed}
 				{...(raise === null ? {} : {"aria-expanded": raise.raised, "aria-controls": raise.overlayId})}
 				onClick={toggle}
-				className={TITLEBAR_ICON_BUTTON_CLASS}
+				className={TITLEBAR_RAIL_TOGGLE_CLASS}
 			>
 				<PanelRight aria-hidden="true" />
 			</button>
