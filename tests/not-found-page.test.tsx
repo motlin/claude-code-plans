@@ -64,6 +64,23 @@ describe("404 page", () => {
 		});
 	});
 
+	it("draws Go back home as upstream's default-density cds Button with the shadow-focus ring", async () => {
+		const NotFound = RootRoute.options.notFoundComponent;
+		if (NotFound === undefined) throw new Error("no notFoundComponent");
+		const root = createRootRoute({component: () => <Outlet />, notFoundComponent: NotFound});
+		const router = createRouter({routeTree: root, history: createMemoryHistory({initialEntries: ["/nowhere"]})});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const home = await screen.findByRole("link", {name: "Go back home"});
+		// h-control 24, px-md 8, --cds-radius 6 (r5 here; r6 is 8px), text-body 13/19; comfortable would be 32/12/8/14-20.
+		expect(classSet(home.className)).toStrictEqual(
+			classSet(
+				"inline-flex h-6 items-center rounded-r5 px-2 text-[13px]/[19px] font-medium bg-fill-primary text-on-primary no-underline hover:bg-fill-primary-hover outline-none focus-visible:shadow-focus transition-shadow",
+			),
+		);
+	});
+
 	it("puts upstream's orange Claude spark before the wordmark in one row", async () => {
 		const NotFound = RootRoute.options.notFoundComponent;
 		if (NotFound === undefined) throw new Error("no notFoundComponent");

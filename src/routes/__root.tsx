@@ -253,7 +253,7 @@ function NotFoundContent({detail}: Readonly<{detail?: string}>) {
 			<div className="mx-0 mt-4 min-w-[16rem]">
 				<Link
 					to="/"
-					className="inline-flex h-8 items-center rounded-r6 bg-fill-primary px-3 text-[14px]/[20px] font-medium text-on-primary no-underline transition-colors hover:bg-fill-primary-hover"
+					className="inline-flex h-6 items-center rounded-r5 bg-fill-primary px-2 text-[13px]/[19px] font-medium text-on-primary no-underline outline-none transition-shadow hover:bg-fill-primary-hover focus-visible:shadow-focus"
 				>
 					Go back home
 				</Link>
