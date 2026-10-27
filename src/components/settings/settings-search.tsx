@@ -21,15 +21,17 @@ function Highlighted({label, query}: {label: string; query: string}) {
 	return (
 		<>
 			{parts.before}
-			<span className="text-accent-100">{parts.match}</span>
+			<span className="text-upstream-accent">{parts.match}</span>
 			{parts.after}
 		</>
 	);
 }
 
+// Upstream's cds menu-item row at comfortable density (gap-xs 8, radius 8) plus `h-auto !px-1 py-1.5`.
 const ROW_CLASS =
-	"flex w-full items-center gap-2 rounded-r6 px-1 py-1.5 text-start text-body text-primary transition-colors hover:bg-fill-ghost-hover focus-visible:bg-fill-ghost-hover focus-visible:outline-hidden";
-const INDENT_CLASS = "ps-[calc(20px+0.5rem)]";
+	"flex w-full items-center gap-2 rounded-r6 h-auto !px-1 py-1.5 text-start text-body font-normal text-primary select-none outline-none hover:bg-fill-ghost-hover data-[highlighted]:bg-fill-ghost-hover";
+// 20px icon + comfortable gap-sm (12px).
+const INDENT_CLASS = "ps-[32px]";
 
 function rowKey(row: SettingsResultRow): string {
 	return row.kind === "child" ? `child/${row.tab}/${row.rowSlug}` : `${row.kind}/${row.tab}`;
@@ -57,7 +59,7 @@ function ResultRow({
 				className={ROW_CLASS}
 			>
 				<span className="flex min-w-0 flex-1 flex-col">
-					<span className="flex items-center gap-2">
+					<span className="flex items-center gap-3">
 						<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5 text-secondary" />
 						<span className="min-w-0 flex-1 truncate">
 							<Highlighted label={section} query={query} />
@@ -85,13 +87,13 @@ function ResultRow({
 			}}
 			className={ROW_CLASS}
 		>
-			<span className={`flex min-w-0 flex-1 items-center gap-2 ${INDENT_CLASS}`}>
+			<span className={`flex min-w-0 flex-1 items-center gap-3 ${INDENT_CLASS}`}>
 				{row.kind === "child" ? (
 					<span className="min-w-0 flex-1 truncate">
 						<Highlighted label={row.title} query={query} />
 					</span>
 				) : (
-					<span className="min-w-0 flex-1 truncate text-[var(--settings-muted)]">+{row.count} more</span>
+					<span className="min-w-0 flex-1 truncate text-[var(--settings-muted)]">{`+${row.count} more`}</span>
 				)}
 			</span>
 		</button>
@@ -190,8 +192,9 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 							aria-label="Search results"
 							initialFocus={false}
 							finalFocus={false}
-							className="w-[280px] rounded-card bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none"
+							className="w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none"
 						>
+							<p role="status" className="sr-only" />
 							<div className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1">
 								{rows.length === 0 ? (
 									<p className="px-2.5 py-1.5 text-footnote text-[var(--settings-muted)]">

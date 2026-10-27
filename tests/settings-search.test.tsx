@@ -201,7 +201,7 @@ describe("settings search", () => {
 			"Working-copy review in AI features",
 			"Review behavior in AI features",
 		]);
-		expect([...popover.querySelectorAll(".text-accent-100")].map((match) => match.textContent)).toStrictEqual([
+		expect([...popover.querySelectorAll(".text-upstream-accent")].map((match) => match.textContent)).toStrictEqual([
 			"view",
 			"view",
 			"view",
@@ -235,10 +235,121 @@ describe("settings search", () => {
 		expect({
 			rows: popoverRows(popover),
 			icon: lines[0]?.firstElementChild?.tagName.toLowerCase(),
+			iconClass: lines[0]?.firstElementChild?.getAttribute("class"),
 			name: lines[0]?.textContent,
-			via: lines[1]?.textContent,
-			matches: [...popover.querySelectorAll(".text-accent-100")].map((match) => match.textContent),
-		}).toStrictEqual({rows: ["hit: GeneralTheme"], icon: "svg", name: "General", via: "Theme", matches: ["Theme"]});
+			via: shape(lines[1]),
+		}).toStrictEqual({
+			rows: ["hit: GeneralTheme"],
+			icon: "svg",
+			iconClass: `lucide lucide-settings ${ICON}`,
+			name: "General",
+			via: {
+				tag: "span",
+				className: "truncate ps-[32px] text-footnote text-[var(--settings-muted)]",
+				children: [accent("Theme")],
+			},
+		});
+	});
+
+	/** An element's tag, classes and children (text for leaves), for anatomy comparisons. */
+	type Shape = {tag: string; className: string; children: Array<Shape | string>};
+	function shape(element: Element): Shape {
+		return {
+			tag: element.tagName.toLowerCase(),
+			className: element.getAttribute("class") ?? "",
+			children: [...element.childNodes].flatMap((node): Array<Shape | string> => {
+				if (node instanceof Element) return [node.tagName.toLowerCase() === "svg" ? "svg" : shape(node)];
+				return node.textContent === "" ? [] : [node.textContent ?? ""];
+			}),
+		};
+	}
+
+	const ROW =
+		"flex w-full items-center gap-2 rounded-r6 h-auto !px-1 py-1.5 text-start text-body font-normal text-primary select-none outline-none hover:bg-fill-ghost-hover data-[highlighted]:bg-fill-ghost-hover";
+	const ICON = "size-5 shrink-0 p-0.5 text-secondary";
+	const TRUNCATE = "min-w-0 flex-1 truncate";
+	const INDENTED = "flex min-w-0 flex-1 items-center gap-3 ps-[32px]";
+	const accent = (text: string): Shape => ({tag: "span", className: "text-upstream-accent", children: [text]});
+
+	it("renders upstream's comfortable hit, child and more anatomy in a text-body popup", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+
+		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {target: {value: "ho"}});
+
+		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const [status, scroller] = [...popover.children];
+		expect({
+			popup: popover.className,
+			status: shape(status),
+			statusRole: status.getAttribute("role"),
+			scroller: scroller.className,
+			rows: within(popover)
+				.getAllByRole("button")
+				.slice(0, 5)
+				.map((button) => ({label: button.getAttribute("aria-label"), ...shape(button)})),
+		}).toStrictEqual({
+			popup: "w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none",
+			status: {tag: "p", className: "sr-only", children: []},
+			statusRole: "status",
+			scroller: "max-h-[min(320px,var(--available-height))] overflow-y-auto p-1",
+			rows: [
+				{
+					label: null,
+					tag: "button",
+					className: ROW,
+					children: [
+						{
+							tag: "span",
+							className: "flex min-w-0 flex-1 flex-col",
+							children: [
+								{
+									tag: "span",
+									className: "flex items-center gap-3",
+									children: ["svg", {tag: "span", className: TRUNCATE, children: ["Transcript"]}],
+								},
+							],
+						},
+					],
+				},
+				...(
+					[
+						["Hook warnings", [accent("Ho"), "ok warnings"]],
+						["Hook errors", [accent("Ho"), "ok errors"]],
+						["Passed hooks", ["Passed ", accent("ho"), "oks"]],
+					] satisfies Array<[string, Array<Shape | string>]>
+				).map(([title, text]) => ({
+					label: `${title} in Transcript`,
+					tag: "button",
+					className: ROW,
+					children: [
+						{
+							tag: "span",
+							className: INDENTED,
+							children: [{tag: "span", className: TRUNCATE, children: text}],
+						},
+					],
+				})),
+				{
+					label: "2 more matches in Transcript",
+					tag: "button",
+					className: ROW,
+					children: [
+						{
+							tag: "span",
+							className: INDENTED,
+							children: [
+								{
+									tag: "span",
+									className: `${TRUNCATE} text-[var(--settings-muted)]`,
+									children: ["+2 more"],
+								},
+							],
+						},
+					],
+				},
+			],
+		});
 	});
 
 	it.each<[string, string, string]>([
