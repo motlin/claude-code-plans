@@ -1892,10 +1892,13 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 	padding-left: calc(var(--sb-row-px) + var(--sb-iconless-pad, calc((var(--sb-leading-slot) - var(--sb-icon)) / 2)));
 }
 
-/* Upstream .df-described-row: a two-line session row (Show > Metadata), its title line where a one-line row's text sits. */
+/* Upstream .df-described-row: a two-line session row (Show > Metadata), its title line where a one-line row's text sits.
+   Padding uses upstream's described-line form: the same 6px on desktop (line unset, so ctl), and the 12px
+   upstream's phone sheet measures (row 66px, title line centred at 22px with the decoration). */
 .df-described-row {
 	padding-block: calc(
-		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim)
+		(var(--sb-row-h) - var(--sb-described-line, var(--sb-row-ctl))) / 2 + var(--sb-described-tuck) -
+			var(--sb-described-trim)
 	);
 	row-gap: 2px;
 }
@@ -1921,6 +1924,11 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 
 .df-meta-line:where(:root[dir="rtl"] :dir(rtl)) {
 	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), transparent);
+}
+
+/* Upstream's described row swaps top-1/2 for this, so the status mark and kebab centre on the title line. */
+[data-described] :is([data-row-decoration], [data-row-action]) {
+	top: calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim));
 }
 
 /* Upstream .dframe-fade-label: an overflowing row title fades out instead of ending in an ellipsis. */

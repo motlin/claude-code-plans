@@ -837,6 +837,7 @@ function SessionRowLink({
 				session={row.session}
 				kebabTabIndex={-1}
 				touchMenu={selected}
+				described={metaLine !== undefined}
 				// Upstream's row shell owns the background. The selected tint keys off the link's data-selected
 				// (which nav-scroll and roving focus watch), so switching rows mutates no extra attribute.
 				className="rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)]"

@@ -381,6 +381,7 @@ export function SessionActionsMenu({
 	className,
 	kebabTabIndex,
 	touchMenu = false,
+	described = false,
 }: {
 	session: SessionListItem;
 	/** The sidebar Pinned section's display order, when this row is rendered inside it. */
@@ -389,6 +390,8 @@ export function SessionActionsMenu({
 	kebabTabIndex?: number;
 	/** Keep the kebab visible at rest on touch, as upstream does only on the current session's row. */
 	touchMenu?: boolean;
+	/** The row is two-line (Show ▸ Metadata): CSS centres the kebab and decoration on its title line. */
+	described?: boolean;
 	children: ReactNode;
 	className?: string;
 }) {
@@ -461,6 +464,7 @@ export function SessionActionsMenu({
 				data-row=""
 				data-session-actions=""
 				data-touch-menu={touchMenu ? "" : undefined}
+				data-described={described ? "" : undefined}
 				data-menu-open={menuOpen ? "true" : undefined}
 				data-context-menu-open={contextMenuOpen ? "true" : undefined}
 				className={`group/session-row relative ${className ?? ""}`}

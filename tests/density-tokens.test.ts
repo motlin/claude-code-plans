@@ -163,7 +163,7 @@ describe("described session rows", () => {
 		}).toStrictEqual({
 			row: {
 				"padding-block":
-					"calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim))",
+					"calc((var(--sb-row-h) - var(--sb-described-line, var(--sb-row-ctl))) / 2 + var(--sb-described-tuck) - var(--sb-described-trim))",
 				"row-gap": "2px",
 			},
 			lines: {height: "calc(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))"},
@@ -174,6 +174,12 @@ describe("described session rows", () => {
 				"mask-image": "linear-gradient(90deg, #000 calc(100% - 12px), transparent)",
 			},
 			metaLineRtl: {"mask-image": "linear-gradient(270deg, #000 calc(100% - 12px), transparent)"},
+		});
+	});
+
+	it("centres a described row's decoration and kebab on the title line, as upstream's described top", () => {
+		expect(declarations("[data-described] :is([data-row-decoration], [data-row-action])")).toStrictEqual({
+			top: "calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim))",
 		});
 	});
 });

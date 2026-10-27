@@ -1253,12 +1253,14 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 						described: link.classList.contains("df-described-row"),
 						oneLine: link.classList.contains("h-[var(--sb-row-h)]"),
 						titleWrap: link.querySelector(":scope > .df-described-title > [data-row-label]") !== null,
+						// Re-centres the decoration and kebab on the title line (upstream's described `top`)
+						titleCentred: link.closest("[data-session-actions]")?.hasAttribute("data-described") === true,
 						line: line === null ? null : {text: line.textContent, title: line.getAttribute("title")},
 					},
 				];
 			}),
 		);
-	const oneLine = {described: false, oneLine: true, titleWrap: false, line: null};
+	const oneLine = {described: false, oneLine: true, titleWrap: false, titleCentred: false, line: null};
 
 	afterEach(() => {
 		localStorage.removeItem("ccp-session-list-prefs");
@@ -1287,6 +1289,7 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 			described: true,
 			oneLine: false,
 			titleWrap: true,
+			titleCentred: true,
 			line: {text, title},
 		});
 		expect({off, byState, byProject}).toStrictEqual({
