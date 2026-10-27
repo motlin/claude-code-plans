@@ -431,6 +431,32 @@ describe("settings search", () => {
 		});
 	});
 
+	it("renders upstream's comfortable empty state when nothing matches", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+
+		fireEvent.change(screen.getByRole("combobox", {name: "Search settings"}), {target: {value: "zzzq"}});
+
+		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const empty = popover.children[1].firstElementChild;
+		const icon = empty?.querySelector("svg");
+		expect({
+			empty: empty === null ? null : shape(empty),
+			icon: {ariaHidden: icon?.getAttribute("aria-hidden"), className: icon?.getAttribute("class")},
+			buttons: within(popover).queryAllByRole("button").length,
+		}).toStrictEqual({
+			// gap-sm and px-md at comfortable density are both 12px.
+			empty: {
+				tag: "div",
+				className:
+					"flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]",
+				children: ["svg", {tag: "span", className: "text-body", children: ["No matching settings"]}],
+			},
+			icon: {ariaHidden: "true", className: "lucide lucide-search-x size-7"},
+			buttons: 0,
+		});
+	});
+
 	it("collapses +N more when the normalised query changes, not on a whitespace-only edit", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});

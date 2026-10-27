@@ -1,6 +1,6 @@
 // Base UI Popover, not ui/popover: structurally anchored to its input.
 import {Popover} from "@base-ui/react/popover";
-import {Search} from "lucide-react";
+import {Search, SearchX} from "lucide-react";
 import {type MouseEvent, useEffect, useId, useMemo, useRef, useState} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
 import {settingsTabLabels} from "../../lib/schema-choices";
@@ -263,9 +263,11 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 								className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1"
 							>
 								{rows.length === 0 ? (
-									<p className="px-2.5 py-1.5 text-footnote text-[var(--settings-muted)]">
-										No results
-									</p>
+									// Upstream's xl search icon over "No matching settings"; gap-sm and px-md are 12px at comfortable density.
+									<div className="flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]">
+										<SearchX aria-hidden="true" className="size-7" />
+										<span className="text-body">No matching settings</span>
+									</div>
 								) : (
 									rows.map((row, index) => (
 										<ResultRow
