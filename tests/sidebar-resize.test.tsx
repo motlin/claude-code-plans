@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvider} from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
@@ -148,6 +148,68 @@ describe("sidebar resize handle", () => {
 		expect({collapsed: readSidebarState().collapsed, width: readSidebarState().width}).toStrictEqual({
 			collapsed: false,
 			width: 420,
+		});
+	});
+
+	function setInnerWidth(width: number): void {
+		vi.spyOn(window, "innerWidth", "get").mockReturnValue(width);
+	}
+
+	it("caps End and drag at innerWidth - 330 on a 700px window, like upstream", async () => {
+		setInnerWidth(700);
+		const handle = await renderSidebar();
+
+		fireEvent.keyDown(handle, {key: "End"});
+		const afterEnd = readSidebarState().width;
+		fireEvent.keyDown(handle, {key: "Home"});
+		fireEvent.pointerDown(handle, {clientX: 232, pointerId: 1});
+		fireEvent.pointerMove(handle, {clientX: 600, pointerId: 1});
+		fireEvent.pointerUp(handle, {clientX: 600, pointerId: 1});
+
+		expect({
+			afterEnd,
+			afterDrag: readSidebarState().width,
+			max: handle.getAttribute("aria-valuemax"),
+		}).toStrictEqual({afterEnd: 370, afterDrag: 370, max: "370"});
+	});
+
+	it("keeps the 420 ceiling on a 1400px window", async () => {
+		setInnerWidth(1400);
+		const handle = await renderSidebar();
+
+		fireEvent.keyDown(handle, {key: "End"});
+
+		expect({width: readSidebarState().width, max: handle.getAttribute("aria-valuemax")}).toStrictEqual({
+			width: 420,
+			max: "420",
+		});
+	});
+
+	it("never caps below the 232 floor on a tiny window", async () => {
+		setInnerWidth(500);
+		const handle = await renderSidebar();
+
+		fireEvent.keyDown(handle, {key: "End"});
+
+		expect({width: readSidebarState().width, max: handle.getAttribute("aria-valuemax")}).toStrictEqual({
+			width: 232,
+			max: "232",
+		});
+	});
+
+	it("recomputes the cap when the window resizes", async () => {
+		setInnerWidth(1400);
+		const handle = await renderSidebar();
+
+		setInnerWidth(700);
+		act(() => {
+			window.dispatchEvent(new Event("resize"));
+		});
+		fireEvent.keyDown(handle, {key: "End"});
+
+		expect({width: readSidebarState().width, max: handle.getAttribute("aria-valuemax")}).toStrictEqual({
+			width: 370,
+			max: "370",
 		});
 	});
 });

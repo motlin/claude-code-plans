@@ -5,6 +5,7 @@ import {
 	useEffect,
 	useRef,
 	useState,
+	useSyncExternalStore,
 	type KeyboardEvent as ReactKeyboardEvent,
 	type PointerEvent as ReactPointerEvent,
 	type ReactNode,
@@ -247,10 +248,11 @@ function SidebarWordmark({className}: {className?: string}) {
  */
 function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void}) {
 	const {keys} = useShortcutKeys("toggle_sidebar");
+	const max = useSidebarMaxWidth();
 	const handleProps = useResizableWidth({
 		label: "Resize sidebar",
 		min: SIDEBAR_MIN_WIDTH,
-		max: SIDEBAR_MAX_WIDTH,
+		max,
 		step: SIDEBAR_RESIZE_STEP,
 		edge: "end",
 		value: width,
@@ -288,8 +290,28 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
  */
 /** Upstream's `mF`: pointer travel (px) below which a press on the edge is a click. */
 const EDGE_CLICK_THRESHOLD_PX = 3;
-/** Upstream keeps at least this much width (px) for the content when committing a drag. */
-const EDGE_DRAG_CONTENT_RESERVE_PX = 330;
+/** Upstream keeps at least this much width (px) for the content when resizing the sidebar. */
+const SIDEBAR_CONTENT_RESERVE_PX = 330;
+
+/** Upstream's drag/End ceiling: `min(420, innerWidth − 330)`, never below the 232 floor. */
+function sidebarMaxWidth(): number {
+	return Math.max(
+		SIDEBAR_MIN_WIDTH,
+		Math.min(SIDEBAR_MAX_WIDTH, Math.floor(window.innerWidth) - SIDEBAR_CONTENT_RESERVE_PX),
+	);
+}
+
+function subscribeToWindowResize(onChange: () => void): () => void {
+	window.addEventListener("resize", onChange);
+	return () => {
+		window.removeEventListener("resize", onChange);
+	};
+}
+
+/** {@link sidebarMaxWidth}, recomputed on window resize; the fixed 420 during SSR. */
+function useSidebarMaxWidth(): number {
+	return useSyncExternalStore(subscribeToWindowResize, sidebarMaxWidth, () => SIDEBAR_MAX_WIDTH);
+}
 
 /** Expand or re-collapse live from an edge drag of `distance` px, like upstream's `aK`. */
 function applyEdgeDrag(distance: number): void {
@@ -298,11 +320,7 @@ function applyEdgeDrag(distance: number): void {
 		if (!state.collapsed) writeSidebarState({...state, collapsed: true});
 		return;
 	}
-	const max = Math.max(
-		SIDEBAR_MIN_WIDTH,
-		Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - EDGE_DRAG_CONTENT_RESERVE_PX),
-	);
-	const width = Math.round(Math.min(max, Math.max(SIDEBAR_MIN_WIDTH, distance)));
+	const width = Math.round(Math.min(sidebarMaxWidth(), Math.max(SIDEBAR_MIN_WIDTH, distance)));
 	if (state.collapsed || state.width !== width) writeSidebarState({...state, collapsed: false, width});
 }
 
