@@ -268,6 +268,23 @@ describe("collapsed sidebar peek", () => {
 		}).toEqual({text: true, describedBy: tooltip.id});
 	});
 
+	it.each([
+		{narrowViewport: true, size: "size-8", radius: "rounded-r6", position: ["left-2", "top-2"]},
+		{narrowViewport: false, size: "size-6", radius: "rounded-r5", position: ["left-3", "top-3"]},
+	])(
+		"sizes the collapsed trigger like upstream when narrowViewport=$narrowViewport",
+		async ({narrowViewport, size, radius, position}) => {
+			const trigger = await renderCollapsedSidebar({narrowViewport});
+			const root = screen.getByTestId("sidebar-collapsed");
+
+			expect({
+				size: trigger.classList.contains(size),
+				radius: trigger.classList.contains(radius),
+				position: position.map((cls) => root.classList.contains(cls)),
+			}).toEqual({size: true, radius: true, position: [true, true]});
+		},
+	);
+
 	it("keeps the forced-collapse peek open on tap until an outside press", async () => {
 		const trigger = await renderCollapsedSidebar({narrowViewport: true});
 		const root = screen.getByTestId("sidebar-collapsed");

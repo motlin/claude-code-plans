@@ -502,12 +502,13 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 				if (event.pointerType !== "mouse") return;
 				scheduleClose();
 			}}
-			className="group/peek absolute left-3 top-3 z-50 flex"
+			// Narrow (≤700px) takes upstream's comfortable `h-control w-control` 32px trigger at 8,8, the phone trigger's geometry.
+			className={`group/peek absolute z-50 flex ${narrowViewport ? "left-2 top-2" : "left-3 top-3"}`}
 		>
 			<div
 				data-testid="sidebar-peek-bridge"
 				aria-hidden="true"
-				className="pointer-events-none absolute -left-3 top-0 h-10 w-[288px] group-data-[hovering]/peek:pointer-events-auto"
+				className={`pointer-events-none absolute top-0 h-10 w-[288px] group-data-[hovering]/peek:pointer-events-auto ${narrowViewport ? "-left-2" : "-left-3"}`}
 			/>
 			<SidebarToggleButton
 				collapsed
@@ -519,7 +520,7 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 							},
 						}
 					: {})}
-				className="relative z-10 flex size-6 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
+				className={`relative z-10 flex items-center justify-center text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4 ${narrowViewport ? "size-8 rounded-r6" : "size-6 rounded-r5"}`}
 			/>
 			<nav
 				id={PEEK_ID}
