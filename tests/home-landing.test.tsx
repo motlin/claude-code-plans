@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -18,6 +18,7 @@ import {HomeLanding} from "../src/components/home/home-landing";
 import {HOME_RECENT_LIMIT, useHomeWorktree} from "../src/components/home/launch-folder";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
+import {type FolderPr, homeFolderPrQueryOptions} from "../src/lib/api/home-folder-pr";
 import {homeFolderStatusQueryOptions} from "../src/lib/api/home-folder-status";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import {projectsQueryOptions} from "../src/lib/api/projects";
@@ -278,6 +279,96 @@ describe("HomeLanding", () => {
 					name: /Continue uncommitted work/,
 				}),
 			).toBeTruthy();
+		} finally {
+			unsubscribe();
+		}
+	});
+
+	it("prefills upstream's fix prompt from a pressed Fix the failing checks row, hidden until a new failure or a new draft", async () => {
+		localStorage.clear();
+		const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () =>
+			Promise.resolve(new Response("{}", {status: 404})),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		const queryClient = new QueryClient({
+			defaultOptions: {queries: {retry: false, staleTime: Infinity}},
+		});
+		queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+			pages: [{sessions: [listItem("ended", {bucket: "done", state: "ended"})], nextCursor: null}],
+			pageParams: [null],
+		});
+		queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+		queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, {dismissals: {}});
+		queryClient.setQueryData(projectsQueryOptions().queryKey, [
+			{
+				id: "-projects-alpha",
+				name: "alpha",
+				projectPath: "/projects/alpha",
+				sessionCount: 1,
+				memoryCount: 0,
+				planCount: 0,
+				taskCount: 0,
+				activeCount: 0,
+				lastActivity: new Date().toISOString(),
+			},
+		]);
+		queryClient.setQueryData(recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey, {
+			sessions: [],
+			nextCursor: null,
+		});
+		queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+			isGitRepo: true,
+			headBranch: "feat/x",
+			defaultBranch: "main",
+			uncommittedFiles: 0,
+		});
+		const pr: NonNullable<FolderPr["pr"]> = {
+			repo: "owner/repo",
+			number: 7,
+			title: "Add the thing",
+			branch: "feat/x",
+			failing: true,
+			failingCheckName: "lint",
+			failureStamp: "s1\nlint",
+			unansweredReviewComments: 0,
+			newestReviewCommentId: 0,
+		};
+		const prKey = homeFolderPrQueryOptions("/projects/alpha", "feat/x").queryKey;
+		queryClient.setQueryData(prKey, {status: "found", pr});
+		const prefills: string[] = [];
+		const unsubscribe = onHomeComposerPrefillRequest((text) => prefills.push(text));
+		function EndDraft() {
+			const {endDraft} = useHomeWorktree();
+			return (
+				<button type="button" onClick={endDraft}>
+					End draft
+				</button>
+			);
+		}
+		const ciRow = () => screen.queryByRole("button", {name: /^Fix the failing checks/});
+		try {
+			await renderLanding(queryClient, <EndDraft />);
+
+			fireEvent.click(await screen.findByRole("button", {name: /^Fix the failing checks/}));
+
+			expect({prefills, row: ciRow()}).toStrictEqual({
+				prefills: ["Fix the failing CI checks on feat/x: find out why they fail and fix them."],
+				row: null,
+			});
+
+			act(() => {
+				queryClient.setQueryData(prKey, {status: "found", pr: {...pr, failureStamp: "s2\nlint"}});
+			});
+			fireEvent.click(await screen.findByRole("button", {name: /^Fix the failing checks/}));
+			expect(ciRow()).toBeNull();
+
+			fireEvent.click(screen.getByRole("button", {name: "End draft"}));
+
+			expect(await screen.findByRole("button", {name: /^Fix the failing checks/})).toBeTruthy();
+			expect({
+				prefills: prefills.length,
+				folderPrFetches: fetchMock.mock.calls.filter(([url]) => String(url).includes("folder-pr")).length,
+			}).toStrictEqual({prefills: 2, folderPrFetches: 0});
 		} finally {
 			unsubscribe();
 		}
