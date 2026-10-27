@@ -495,4 +495,95 @@ describe("settings search", () => {
 			focused: true,
 		});
 	});
+
+	/** The search field's value, whether it holds focus, and which dialogs are open. */
+	function searchState(input: HTMLInputElement) {
+		return {
+			value: input.value,
+			focused: document.activeElement === input,
+			results: screen.queryByRole("dialog", {name: "Search results"}) !== null,
+			settings: screen.queryByRole("dialog", {name: "Settings"}) !== null,
+		};
+	}
+
+	it("Escape clears the query and blurs the field without closing Settings; a second Escape closes it", async () => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		input.focus();
+		fireEvent.change(input, {target: {value: "font"}});
+		await screen.findByRole("dialog", {name: "Search results"});
+
+		const notPrevented = fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
+		const afterFirst = {...searchState(input), notPrevented, hash: router.state.location.hash};
+
+		fireEvent.keyDown(document.activeElement ?? document.body, {key: "Escape", code: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Settings"})).toBeNull();
+		});
+
+		expect(afterFirst).toStrictEqual({
+			value: "",
+			focused: false,
+			results: false,
+			settings: true,
+			notPrevented: false,
+			hash: "settings/general",
+		});
+	});
+
+	it("Tab clears the query", async () => {
+		await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		input.focus();
+		fireEvent.change(input, {target: {value: "font"}});
+		await screen.findByRole("dialog", {name: "Search results"});
+
+		fireEvent.keyDown(input, {key: "Tab", code: "Tab"});
+
+		expect(searchState(input)).toStrictEqual({value: "", focused: true, results: false, settings: true});
+	});
+
+	it("an outside press closes and clears the results; a press in the field keeps them open", async () => {
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		input.focus();
+		fireEvent.change(input, {target: {value: "font"}});
+		await screen.findByRole("dialog", {name: "Search results"});
+
+		fireEvent.pointerDown(input);
+		fireEvent.mouseDown(input);
+		const afterInside = searchState(input);
+
+		const heading = within(dialog).getAllByRole("heading")[0] ?? dialog;
+		fireEvent.pointerDown(heading);
+		fireEvent.mouseDown(heading);
+		fireEvent.click(heading);
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search results"})).toBeNull();
+		});
+
+		expect({afterInside, afterOutside: searchState(input)}).toStrictEqual({
+			afterInside: {value: "font", focused: true, results: true, settings: true},
+			afterOutside: {value: "", focused: false, results: false, settings: true},
+		});
+	});
+
+	it("selecting a result clears the query and blurs the field", async () => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole<HTMLInputElement>("combobox", {name: "Search settings"});
+		input.focus();
+		fireEvent.change(input, {target: {value: "font"}});
+		await screen.findByRole("dialog", {name: "Search results"});
+
+		fireEvent.keyDown(input, {key: "Enter"});
+		await waitFor(() => {
+			expect(router.state.location.hash).toBe("settings/claude-code");
+		});
+
+		expect(searchState(input)).toStrictEqual({value: "", focused: false, results: false, settings: true});
+	});
 });

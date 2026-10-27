@@ -117,30 +117,38 @@ function ResultRow({
  */
 export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: string) => void}) {
 	const [query, setQuery] = useState("");
-	const [dismissed, setDismissed] = useState(false);
 	const [expanded, setExpanded] = useState<ReadonlySet<SettingsTab>>(() => new Set());
 	const [active, setActive] = useState(0);
 	const anchorRef = useRef<HTMLDivElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const listId = useId();
 	const rows = useMemo(() => buildSettingsResultRows(query, expanded), [query, expanded]);
 	const hasQuery = query.trim().length > 0;
-	const open = !dismissed && hasQuery;
+	const open = hasQuery;
 
 	// Upstream keeps the highlighted row in view as the arrows (or a re-ranked list) move it.
 	useEffect(() => {
 		scrollerRef.current?.querySelector("[data-highlighted]")?.scrollIntoView({block: "nearest"});
 	}, [active, rows]);
 
+	const clear = () => {
+		setQuery("");
+		setActive(0);
+		setExpanded(new Set());
+	};
+	// Upstream's dismissal (Escape, outside press, select): clear, then blur so a second Escape reaches the dialog.
+	const reset = () => {
+		clear();
+		inputRef.current?.blur();
+	};
+
 	const choose = (row: SettingsResultRow) => {
 		if (row.kind === "more") {
 			setExpanded((previous) => new Set([...previous, row.tab]));
 			return;
 		}
-		setQuery("");
-		setActive(0);
-		setDismissed(false);
-		setExpanded(new Set());
+		reset();
 		onSelect(row.tab, row.rowSlug);
 	};
 
@@ -152,6 +160,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 			>
 				<Search aria-hidden="true" className="size-5 shrink-0" />
 				<input
+					ref={inputRef}
 					type="text"
 					role="combobox"
 					aria-label="Search settings"
@@ -165,13 +174,14 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 						if (normalizeSettingsQuery(next) !== normalizeSettingsQuery(query)) setExpanded(new Set());
 						setQuery(next);
 						setActive(0);
-						setDismissed(false);
 					}}
 					onKeyDown={(event) => {
 						// Upstream ignores keys mid-composition and while the query is empty.
 						if (event.nativeEvent.isComposing || !hasQuery) return;
 						const count = rows.length;
-						if (event.key === "ArrowDown") {
+						if (event.key === "Tab") {
+							clear();
+						} else if (event.key === "ArrowDown") {
 							event.preventDefault();
 							setActive((index) => (count === 0 ? 0 : (index + 1) % count));
 						} else if (event.key === "ArrowUp") {
@@ -181,10 +191,10 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 							event.preventDefault();
 							const row = rows[active];
 							if (row !== undefined && !event.repeat) choose(row);
-						} else if (event.key === "Escape" && open) {
+						} else if (event.key === "Escape") {
 							event.preventDefault();
 							event.stopPropagation();
-							setDismissed(true);
+							reset();
 						}
 					}}
 					className="min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-[var(--settings-muted)]"
@@ -201,7 +211,7 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 					) {
 						return;
 					}
-					setDismissed(true);
+					reset();
 				}}
 			>
 				<Popover.Portal>
