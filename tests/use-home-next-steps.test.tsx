@@ -19,6 +19,7 @@ import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
 import {homeFolderStatusQueryOptions} from "../src/lib/api/home-folder-status";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../src/lib/api/sessions";
+import type {NextStepCandidate} from "../src/lib/home-next-steps";
 
 const MINUTE = 60 * 1000;
 
@@ -62,11 +63,14 @@ afterEach(() => {
 });
 
 /** Renders the hook and records, per render, undefined or each row's detail. */
-async function renderHook(queryClient: QueryClient): Promise<((string | null)[] | undefined)[]> {
+async function renderHook(
+	queryClient: QueryClient,
+	describeRow: (candidate: NextStepCandidate) => string | null = (candidate) => candidate.detail,
+): Promise<((string | null)[] | undefined)[]> {
 	const frames: ((string | null)[] | undefined)[] = [];
 	function Probe() {
 		const nextSteps = useHomeNextSteps();
-		frames.push(nextSteps?.rows.map((row) => (row.type === "row" ? row.candidate.detail : row.type)));
+		frames.push(nextSteps?.rows.map((row) => (row.type === "row" ? describeRow(row.candidate) : row.type)));
 		return null;
 	}
 	const rootRoute = createRootRoute({
@@ -215,6 +219,76 @@ describe("useHomeNextSteps", () => {
 			const elsewhere = await renderHook(folderClient("idle", "-projects-alpha-sub"));
 			await waitFor(() => {
 				expect(elsewhere.at(-1)).toStrictEqual([]);
+			});
+		});
+	});
+
+	describe("Hit an error", () => {
+		function erroredClient(sessions: SessionListItem[]): QueryClient {
+			const queryClient = seededClient();
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [{sessions, nextCursor: null}],
+				pageParams: [null],
+			});
+			queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
+			queryClient.setQueryData(projectsQueryOptions().queryKey, [
+				{
+					id: "-projects-alpha",
+					name: "alpha",
+					projectPath: "/projects/alpha",
+					sessionCount: sessions.length,
+					memoryCount: 0,
+					planCount: 0,
+					taskCount: 0,
+					activeCount: 0,
+					lastActivity: new Date().toISOString(),
+				},
+			]);
+			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+				isGitRepo: true,
+				headBranch: "main",
+				defaultBranch: "main",
+				uncommittedFiles: 0,
+			});
+			return queryClient;
+		}
+
+		function errored(id: string, erroredAt: string, project = "-projects-alpha"): SessionListItem {
+			return {...listItem(id), project, state: "ended", bucket: "blocked", unseenError: true, erroredAt};
+		}
+
+		const describeRow = (candidate: NextStepCandidate) =>
+			`${candidate.id} ${candidate.title} · ${candidate.detail}`;
+
+		it("lists only the launch folder's newest errored session as a resume-session row, never as waiting", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+			);
+			const frames = await renderHook(
+				erroredClient([
+					errored("older", "1999-12-31T00:00:01.000Z"),
+					errored("newer", "1999-12-31T00:00:02.000Z"),
+					errored("elsewhere", "1999-12-31T00:00:03.000Z", "-projects-beta"),
+				]),
+				describeRow,
+			);
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual(["resume-session Title newer · Hit an error"]);
+			});
+		});
+
+		it("lists nothing once the error is seen", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+			);
+			const frames = await renderHook(
+				erroredClient([{...listItem("seen"), state: "ended", bucket: "done"}]),
+				describeRow,
+			);
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual([]);
 			});
 		});
 	});

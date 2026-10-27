@@ -98,7 +98,7 @@ function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, strin
 		forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 		pr: sessionPrLink(row),
 		turnEndedAt: row.turnEndedAt ?? undefined,
-		...(row.lastTurnErrored === 1 ? {lastTurnErrored: true} : {}),
+		...(row.erroredAt === null ? {} : {erroredAt: row.erroredAt}),
 		...remoteControlField(row.remoteControl),
 	};
 }

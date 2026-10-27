@@ -96,7 +96,7 @@ export function toSessionSummaryPayload(
 		mainState: main.state,
 		pendingInput,
 		awaitingPermission,
-		unseenError: unseen && entry.lastTurnErrored === true,
+		unseenError: unseen && entry.erroredAt !== undefined,
 		liveAgentCount,
 		backgroundTasks: activeSession?.backgroundTasks ?? [],
 		lastSubagentActivityAt: activeSession?.lastSubagentActivityAt ?? null,
@@ -128,7 +128,9 @@ export function toSessionSummaryPayload(
 		...(awaitingPermission ? {awaitingPermission: true} : {}),
 		...(registrySession === null ? {} : {processStartedAt: registrySession.startedAt}),
 		bucket,
-		...(reason === "error" ? {unseenError: true} : {}),
+		...(reason === "error" && entry.erroredAt !== undefined
+			? {unseenError: true, erroredAt: new Date(entry.erroredAt).toISOString()}
+			: {}),
 		liveAgentCount,
 		unseen,
 		blockedSince: blockedSince(main, registrySession, pendingInput ? pendingApproval : undefined),
@@ -196,7 +198,7 @@ export function buildSessionSummaryPayloadFromDb(
 			forkedFromSessionId: row.forkedFromSessionId ?? undefined,
 			pr: getSessionPrLink(db, sessionId) ?? undefined,
 			turnEndedAt: row.turnEndedAt ?? undefined,
-			...(row.lastTurnErrored === 1 ? {lastTurnErrored: true} : {}),
+			...(row.erroredAt === null ? {} : {erroredAt: row.erroredAt}),
 			...(row.remoteControl === 1 ? {remoteControl: true} : {}),
 		},
 		{

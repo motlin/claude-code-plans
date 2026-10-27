@@ -46,6 +46,8 @@ const SessionListItemSchema = z.object({
 	bucket: SessionBucketSchema,
 	/** Blocked on an unseen errored turn (bucket reason `error`); the row draws a warning triangle. */
 	unseenError: z.literal(true).optional(),
+	/** When the unseen errored turn failed (ISO); present exactly when `unseenError` is. */
+	erroredAt: z.string().optional(),
 	liveAgentCount: z.number(),
 	unseen: z.boolean(),
 	blockedSince: z.string().nullable(),

@@ -50,8 +50,8 @@ export const sessions = sqliteTable(
 		filePath: text("file_path").notNull(),
 		/** The newest turn_duration, stop-hook summary or away summary record, which outdates a stale "busy" registry status. */
 		turnEndedAt: integer("turn_ended_at"),
-		/** 1 when the main thread's newest assistant record is an API error message (`isApiErrorMessage`). */
-		lastTurnErrored: integer("last_turn_errored").notNull().default(0),
+		/** Epoch ms of the main thread's newest non-meta user or assistant record when it is an API error message (`isApiErrorMessage`). */
+		erroredAt: integer("errored_at"),
 		/** JSON array of the task ids (or teammate names) a successful TaskStop or KillShell in the main transcript stopped. */
 		stoppedTaskIdsJson: text("stopped_task_ids").notNull().default("[]"),
 	},

@@ -83,6 +83,8 @@ export interface SessionSummaryPayload {
 	bucket: SessionBucket;
 	/** The bucket's reason is `error` (an unseen errored turn); absent otherwise. */
 	unseenError?: true;
+	/** When the unseen errored turn failed (ISO); present exactly when `unseenError` is. */
+	erroredAt?: string;
 	/** Running subagent nodes (`endedAt === null`) rooted at this session. */
 	liveAgentCount: number;
 	/** Durable viewed state: finished work nobody has looked at yet. */

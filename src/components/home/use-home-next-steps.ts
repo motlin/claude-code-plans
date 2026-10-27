@@ -22,13 +22,15 @@ import type {NextStepsListProps} from "./start-card";
 
 /**
  * Upstream's waiting-session candidates: every titled, unarchived session awaiting input, asking a
- * question unless a non-AskUserQuestion permission prompt is pending.
+ * question unless a non-AskUserQuestion permission prompt is pending. A session blocked on its unseen
+ * error is the folder's resume-session row instead.
  */
 function waitingSessionCandidates(
 	sessions: readonly SessionListItem[],
 	approvalTools: ReadonlyMap<string, string>,
 ): NextStepCandidate[] {
 	return sessions
+		.filter((session) => session.unseenError !== true)
 		.map((session) => ({row: toGroupRow(session), toolName: approvalTools.get(session.id)}))
 		.filter(({row}) => row.bucket === "blocked" && !row.archived && row.title.trim() !== "")
 		.map(({row, toolName}) => ({
@@ -38,6 +40,25 @@ function waitingSessionCandidates(
 			title: row.title.trim(),
 			detail: blockedDetail(toolName),
 		}));
+}
+
+/**
+ * Upstream's failed session for the launch folder: the newest unarchived session in exactly that project
+ * that is blocked on an error nobody has seen since (the server's `erroredAt` carries all of its gates).
+ */
+function newestFailedSession(
+	sessions: readonly SessionListItem[],
+	projectId: string | undefined,
+): {sessionId: string; title: string; failedAt: number} | null {
+	let failed: {sessionId: string; title: string; failedAt: number} | null = null;
+	for (const session of sessions) {
+		if (session.project !== projectId || session.archived || session.erroredAt === undefined) continue;
+		const failedAt = Date.parse(session.erroredAt);
+		if (failed === null || failedAt > failed.failedAt) {
+			failed = {sessionId: session.id, title: session.title.trim(), failedAt};
+		}
+	}
+	return failed;
 }
 
 /**
@@ -87,7 +108,6 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 			})),
 	);
 
-	// No resume-session rows yet: there is no session error signal.
 	const folderCandidates = folderNextStepCandidates({
 		folder,
 		git,
@@ -95,7 +115,7 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 		worktreeOn: worktree.enabled,
 		worktreeTaken: folder !== undefined && worktree.isTaken(folder),
 		used,
-		failed: null,
+		failed: newestFailedSession(sessions, selected?.id),
 		launching,
 	});
 

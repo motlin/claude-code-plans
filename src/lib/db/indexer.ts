@@ -600,8 +600,8 @@ class SessionIndexState {
 	lastRecordAt: number | null = null;
 	/** The newest record that ends a turn: turn_duration, a stop-hook summary or an away summary. */
 	lastTurnEndAt: number | null = null;
-	/** The main thread's newest assistant record is an API error message, which upstream marks as a row error. */
-	lastTurnErrored = false;
+	/** When the main thread's newest non-meta user or assistant record is an API error message (upstream's row error), else null. */
+	erroredAt: number | null = null;
 	/** Task ids (or teammate names) each pending TaskStop or KillShell call targets, by tool_use id. */
 	readonly pendingStops = new Map<string, string>();
 	/** Task ids and teammate names a successful TaskStop or KillShell stopped. */
@@ -747,9 +747,13 @@ class SessionIndexState {
 		if (!isRecord(obj)) return;
 		const type = obj["type"];
 		if (type === "bridge-session") this.bridgeSessions.add(obj, this.sessionId);
-		if (type === "assistant" && obj["isSidechain"] !== true)
-			this.lastTurnErrored = obj["isApiErrorMessage"] === true;
 		const timestamp = obj["timestamp"];
+		if ((type === "user" || type === "assistant") && obj["isSidechain"] !== true && obj["isMeta"] !== true) {
+			this.erroredAt =
+				type === "assistant" && obj["isApiErrorMessage"] === true && typeof timestamp === "string"
+					? Date.parse(timestamp)
+					: null;
+		}
 		if (typeof timestamp === "string") {
 			const recordAt = Date.parse(timestamp);
 			if (recordAt > (this.lastRecordAt ?? -Infinity)) this.lastRecordAt = recordAt;
@@ -932,7 +936,7 @@ async function persistSessionIndexState(
 			mtimeMs: activityAt,
 			messageCount,
 			turnEndedAt: state.lastTurnEndAt,
-			lastTurnErrored: state.lastTurnErrored ? 1 : 0,
+			erroredAt: state.erroredAt,
 			stoppedTaskIdsJson: JSON.stringify([...state.stoppedTaskIds]),
 		};
 		updates["filePath"] = filePath;
@@ -989,7 +993,7 @@ async function persistSessionIndexState(
 				mtimeMs: activityAt,
 				filePath,
 				turnEndedAt: state.lastTurnEndAt,
-				lastTurnErrored: state.lastTurnErrored ? 1 : 0,
+				erroredAt: state.erroredAt,
 				stoppedTaskIdsJson: JSON.stringify([...state.stoppedTaskIds]),
 			})
 			.run();

@@ -440,7 +440,7 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		});
 		const errorOf = () => {
 			const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
-			return {bucket: payload?.bucket, unseenError: payload?.unseenError};
+			return {bucket: payload?.bucket, unseenError: payload?.unseenError, erroredAt: payload?.erroredAt};
 		};
 		const index = async (transcript: string) => {
 			await indexSession(transcript);
@@ -455,11 +455,20 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		await index(prompt + apiError + reply);
 		markSessionUnreviewed(db.index, "session-test-100", 2);
 		const recovered = errorOf();
+		const retry = record({
+			type: "user",
+			timestamp: "1999-12-31T00:00:03.000Z",
+			message: {role: "user", content: "Try again"},
+		});
+		await index(prompt + apiError + retry);
+		markSessionUnreviewed(db.index, "session-test-100", 2);
+		const retried = errorOf();
 
-		expect({unseen, seen, recovered}).toStrictEqual({
-			unseen: {bucket: "blocked", unseenError: true},
-			seen: {bucket: "done", unseenError: undefined},
-			recovered: {bucket: "done", unseenError: undefined},
+		expect({unseen, seen, recovered, retried}).toStrictEqual({
+			unseen: {bucket: "blocked", unseenError: true, erroredAt: "1999-12-31T00:00:02.000Z"},
+			seen: {bucket: "done", unseenError: undefined, erroredAt: undefined},
+			recovered: {bucket: "done", unseenError: undefined, erroredAt: undefined},
+			retried: {bucket: "done", unseenError: undefined, erroredAt: undefined},
 		});
 	});
 

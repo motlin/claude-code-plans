@@ -53,8 +53,8 @@ export interface SessionEntry {
 	pr?: SessionPrLink | undefined;
 	/** Epoch ms of the transcript's newest turn-ending record, from the index. */
 	turnEndedAt?: number | undefined;
-	/** The main thread's newest assistant record is an API error, from the index. */
-	lastTurnErrored?: true | undefined;
+	/** Epoch ms of the main thread's trailing API error record, from the index. */
+	erroredAt?: number | undefined;
 	/** Bridged to claude.ai/code by Remote Control, from the index. */
 	remoteControl?: true | undefined;
 }
