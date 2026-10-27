@@ -51,7 +51,7 @@ export async function readFolderGitStatus(
 }
 
 /** An absolute, normalized path to an existing directory; anything else (a file, `..`, a relative path) is refused. */
-async function validFolder(path: string | null): Promise<string | null> {
+export async function validFolder(path: string | null): Promise<string | null> {
 	if (path === null || path.includes("\0") || !isAbsolute(path) || normalize(path) !== path) return null;
 	const stats = await stat(path).catch(() => null);
 	return stats?.isDirectory() === true ? path : null;

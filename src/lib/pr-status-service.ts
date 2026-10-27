@@ -230,7 +230,8 @@ export function createPrStatusService({
 
 const GH_TIMEOUT_MS = 15 * 1000;
 
-async function runGhCommand(args: string[], cwd: string | undefined): Promise<string> {
+/** `gh` (argv, never a shell) with a timeout and prompts off; the real `GhRunner`. */
+export async function runGhCommand(args: string[], cwd: string | undefined): Promise<string> {
 	return new Promise((resolve, reject) => {
 		execFile(
 			"gh",
