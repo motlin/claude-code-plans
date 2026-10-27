@@ -52,12 +52,12 @@ afterEach(() => {
 });
 
 describe("Claude Code settings ▸ Code appearance", () => {
-	it("ids its sections code-appearance, appearance and local-sessions, like upstream's Claude Code tab", async () => {
+	it("ids its sections code-appearance, appearance, remote-control and local-sessions, like upstream's Claude Code tab", async () => {
 		await renderClaudeCode();
 
 		expect(
 			[...document.querySelectorAll("section[data-settings-section-titled]")].map((section) => section.id),
-		).toStrictEqual(["code-appearance", "appearance", "local-sessions"]);
+		).toStrictEqual(["code-appearance", "appearance", "remote-control", "local-sessions"]);
 	});
 
 	it("re-renders the dark preview with the chosen theme", async () => {

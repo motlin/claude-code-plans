@@ -1079,11 +1079,32 @@ function LocalSessionsSection() {
 	);
 }
 
+/**
+ * Upstream's desktop Remote Control section (`#remote-control`) when Remote Control isn't set up: only
+ * the default switch. Locally it writes settings.json `remoteControlAtStartup`; off writes `false`
+ * rather than deleting, because the CLI's own default is off.
+ */
+function RemoteControlSection() {
+	return (
+		<SettingsSection id="remote-control" title="Remote Control">
+			<ClaudeCodeSwitchRow
+				slug="connect-new-sessions-to-remote-control"
+				title="Connect new sessions to Remote Control"
+				description="Sessions you start on this computer connect to Remote Control automatically, so you can continue them from the terminal or claude.ai/code."
+				settingKey="remoteControlAtStartup"
+				isOn={(value) => value === true}
+				valueFor={(on) => on}
+			/>
+		</SettingsSection>
+	);
+}
+
 export function ClaudeCodeSettings() {
 	return (
 		<>
 			<CodeAppearanceSection />
 			<AppearanceSection />
+			<RemoteControlSection />
 			<LocalSessionsSection />
 		</>
 	);

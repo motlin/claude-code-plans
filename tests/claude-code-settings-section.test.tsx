@@ -148,7 +148,7 @@ describe("Claude Code settings ▸ Sessions", () => {
 				description: r.querySelector("[data-settings-desc]")?.textContent,
 			})),
 		}).toStrictEqual({
-			sections: ["code-appearance", "appearance", "local-sessions"],
+			sections: ["code-appearance", "appearance", "remote-control", "local-sessions"],
 			heading: "Sessions",
 			rows: [
 				{
@@ -414,6 +414,99 @@ describe("Claude Code settings ▸ Sessions", () => {
 				alerts: screen.queryAllByRole("alert").length,
 			}).toStrictEqual({checked: "true", alerts: 0});
 		});
+	});
+});
+
+describe("Claude Code settings ▸ Remote Control", () => {
+	it("renders section#remote-control before Sessions with one Connect new sessions switch row", async () => {
+		vi.stubGlobal("fetch", fakeEndpoint({mtimeMs: 1, values: {}}).fetchMock);
+		await renderTab();
+		await settled();
+
+		const section = document.querySelector<HTMLElement>("section#remote-control");
+		expect({
+			heading: section?.querySelector("h3")?.textContent,
+			nextSection: section?.nextElementSibling?.id,
+			rows: [...(section?.querySelectorAll<HTMLElement>("[data-settings-row]") ?? [])].map((r) => ({
+				slug: r.dataset["settingsRow"],
+				title: r.querySelector(".settings-row-title")?.textContent,
+				description: r.querySelector("[data-settings-desc]")?.textContent,
+				switches: within(r).getAllByRole("switch").length,
+			})),
+		}).toStrictEqual({
+			heading: "Remote Control",
+			nextSection: "local-sessions",
+			rows: [
+				{
+					slug: "connect-new-sessions-to-remote-control",
+					title: "Connect new sessions to Remote Control",
+					description:
+						"Sessions you start on this computer connect to Remote Control automatically, so you can continue them from the terminal or claude.ai/code.",
+					switches: 1,
+				},
+			],
+		});
+	});
+
+	it("is on only when remoteControlAtStartup is true", async () => {
+		for (const [values, expected] of [
+			[{remoteControlAtStartup: true}, "true"],
+			[{remoteControlAtStartup: false}, "false"],
+			[{}, "false"],
+		] as const) {
+			vi.stubGlobal("fetch", fakeEndpoint({mtimeMs: 1, values}).fetchMock);
+			await renderTab();
+			await waitFor(() => {
+				expect({
+					checked: switchIn("connect-new-sessions-to-remote-control").checked,
+					disabled: switchIn("connect-new-sessions-to-remote-control").disabled,
+				}).toStrictEqual({checked: expected, disabled: null});
+			});
+			cleanup();
+		}
+	});
+
+	it("disables the switch and reads Loading… while settings load", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Promise<Response>(() => {})),
+		);
+		await renderTab();
+
+		expect({
+			disabled: switchIn("connect-new-sessions-to-remote-control").disabled,
+			description: row("connect-new-sessions-to-remote-control").querySelector("[data-settings-desc]")
+				?.textContent,
+		}).toStrictEqual({disabled: "true", description: "Loading…"});
+	});
+
+	it("writes remoteControlAtStartup true on and false (not a delete) off", async () => {
+		const endpoint = fakeEndpoint({mtimeMs: 1, values: {}});
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await waitFor(() => {
+			expect(switchIn("connect-new-sessions-to-remote-control").disabled).toBeNull();
+		});
+
+		fireEvent.click(switchIn("connect-new-sessions-to-remote-control").element);
+		expect(switchIn("connect-new-sessions-to-remote-control").checked).toBe("true");
+		await endpoint.reply(0, "ok");
+		await waitFor(() => {
+			expect(switchIn("connect-new-sessions-to-remote-control").checked).toBe("true");
+		});
+		fireEvent.click(switchIn("connect-new-sessions-to-remote-control").element);
+		await waitFor(() => {
+			expect(endpoint.posts).toHaveLength(2);
+		});
+		await endpoint.reply(1, "ok");
+		await waitFor(() => {
+			expect(switchIn("connect-new-sessions-to-remote-control").checked).toBe("false");
+		});
+
+		expect(endpoint.posts).toStrictEqual([
+			{key: "remoteControlAtStartup", value: true, expectedMtimeMs: 1},
+			{key: "remoteControlAtStartup", value: false, expectedMtimeMs: 2},
+		]);
 	});
 });
 

@@ -37,6 +37,11 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{tab: "claude-code", rowSlug: "code-font", title: "Code font"},
 	{tab: "claude-code", rowSlug: "interface-font", title: "Interface font"},
 	{tab: "claude-code", rowSlug: "default-transcript-view", title: "Default transcript view"},
+	{
+		tab: "claude-code",
+		rowSlug: "connect-new-sessions-to-remote-control",
+		title: "Connect new sessions to Remote Control",
+	},
 	{tab: "claude-code", rowSlug: "allow-bypass-permissions-mode", title: "Allow bypass permissions mode"},
 	{tab: "claude-code", rowSlug: "dynamic-workflows", title: "Dynamic workflows"},
 	{tab: "claude-code", rowSlug: "archive-inactive-sessions", title: "Archive inactive sessions"},

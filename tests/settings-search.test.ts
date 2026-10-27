@@ -51,7 +51,13 @@ describe("rankSettingsSections grouping", () => {
 			"sessions",
 			[
 				{tab: "sessions", rows: [["sessions-page-grouping", "Sessions page grouping"]]},
-				{tab: "claude-code", rows: [["archive-inactive-sessions", "Archive inactive sessions"]]},
+				{
+					tab: "claude-code",
+					rows: [
+						["connect-new-sessions-to-remote-control", "Connect new sessions to Remote Control"],
+						["archive-inactive-sessions", "Archive inactive sessions"],
+					],
+				},
 			],
 		],
 		// Case-insensitive, and title-only: section headings ("Code appearance") are not indexed.
@@ -292,8 +298,8 @@ describe("buildSettingsResultRows", () => {
 				{
 					kind: "hit",
 					tab: "claude-code",
-					via: "Archive inactive sessions",
-					rowSlug: "archive-inactive-sessions",
+					via: "Connect new sessions to Remote Control",
+					rowSlug: "connect-new-sessions-to-remote-control",
 				},
 				{
 					kind: "hit",
