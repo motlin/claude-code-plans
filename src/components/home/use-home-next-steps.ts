@@ -17,7 +17,7 @@ import {
 } from "../../lib/home-next-steps";
 import {selectHomePrs} from "../../lib/home-prs";
 import {toGroupRow} from "../sidebar/sidebar-session-row";
-import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
+import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import type {NextStepsListProps} from "./start-card";
 
 /**
@@ -57,6 +57,7 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const folder = selected?.projectPath;
 	const {data: git} = useQuery(homeFolderStatusQueryOptions(folder));
 	const worktree = useHomeWorktree(git?.isGitRepo);
+	const {used} = useHomeDraftUsed();
 	const latched = useRef<NextStepsListProps | undefined>(undefined);
 
 	const dismiss = useMutation({
@@ -86,17 +87,17 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 			})),
 	);
 
-	// Only the Worktree row for now: the continue-branch prefill and resume-session error rows aren't wired yet.
+	// No resume-session rows yet: there is no session error signal.
 	const folderCandidates = folderNextStepCandidates({
 		folder,
 		git,
 		runningHere: sessionRunningIn(sessions, selected?.id),
 		worktreeOn: worktree.enabled,
 		worktreeTaken: folder !== undefined && worktree.isTaken(folder),
-		used: new Set(),
+		used,
 		failed: null,
 		launching,
-	}).filter((candidate) => candidate.id === "worktree-apart");
+	});
 
 	latched.current = {
 		rows: selectNextSteps({

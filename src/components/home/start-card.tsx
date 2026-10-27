@@ -2,13 +2,19 @@ import {Check, ChevronDown, Folder, X} from "lucide-react";
 import {useId, useLayoutEffect, useRef, useState, type RefObject} from "react";
 
 import {useShortcut} from "../../hooks/use-shortcut";
-import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
-import {selectNextSteps, type NextStepCandidate, type NextStepId, type NextStepRow} from "../../lib/home-next-steps";
+import {requestHomeComposerFocus, requestHomeComposerPrefill} from "../../lib/home-composer-focus";
+import {
+	nextStepKey,
+	selectNextSteps,
+	type NextStepCandidate,
+	type NextStepId,
+	type NextStepRow,
+} from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {Popover, PopoverContent} from "../ui/popover";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
-import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
+import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
 import {START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
 import {useNextStepsHold} from "./use-next-steps-hold";
@@ -156,6 +162,8 @@ export interface NextStepsListProps {
 	onEmptyFocus?: (() => void) | undefined;
 	/** Turns on Worktree for a pressed "Turn on Worktree" row, which then comes back `taken`. */
 	onTurnOnWorktree?: ((candidate: NextStepCandidate) => void) | undefined;
+	/** Marks a pressed prefill row used for this draft, after its text went to the composer. */
+	onPrefill?: ((candidate: NextStepCandidate) => void) | undefined;
 }
 
 // Upstream's row reveal: on hover, keyboard focus inside the row, or while its popup is open. Spelled out in full
@@ -238,6 +246,7 @@ export function NextStepsList({
 	onDismiss,
 	onEmptyFocus = requestHomeComposerFocus,
 	onTurnOnWorktree,
+	onPrefill,
 }: Readonly<NextStepsListProps>) {
 	const [openRest, setOpenRest] = useState<string | null>(null);
 	const candidates = incoming.flatMap(rowCandidates);
@@ -345,6 +354,7 @@ export function NextStepsList({
 									candidate={row.candidate}
 									onOpen={onOpen}
 									onTurnOnWorktree={onTurnOnWorktree}
+									onPrefill={onPrefill}
 								/>
 							) : (
 								<RestRow
@@ -406,11 +416,13 @@ function StepRowButton({
 	candidate,
 	onOpen,
 	onTurnOnWorktree,
+	onPrefill,
 	listed = false,
 }: Readonly<{
 	candidate: NextStepCandidate;
 	onOpen: (subject: string) => void;
 	onTurnOnWorktree?: ((candidate: NextStepCandidate) => void) | undefined;
+	onPrefill?: ((candidate: NextStepCandidate) => void) | undefined;
 	listed?: boolean;
 }>) {
 	const titleId = useId();
@@ -436,6 +448,9 @@ function StepRowButton({
 						if (candidate.kind === "worktree") {
 							onTurnOnWorktree?.(candidate);
 							requestHomeComposerFocus();
+						} else if (candidate.kind === "prefill" && candidate.prefill !== undefined) {
+							requestHomeComposerPrefill(candidate.prefill);
+							onPrefill?.(candidate);
 						} else {
 							onOpen(candidate.subject);
 						}
@@ -515,6 +530,7 @@ function RestRow({
 export function HomeStartCard({nextSteps}: Readonly<{nextSteps?: NextStepsListProps | undefined}>) {
 	const {projects, selected, select} = useHomeLaunchFolder();
 	const {takeFromRow} = useHomeWorktree();
+	const {markUsed} = useHomeDraftUsed();
 	return (
 		<StartCard
 			projects={projects}
@@ -527,6 +543,9 @@ export function HomeStartCard({nextSteps}: Readonly<{nextSteps?: NextStepsListPr
 							...nextSteps,
 							onTurnOnWorktree: (candidate) => {
 								takeFromRow(candidate.subject);
+							},
+							onPrefill: (candidate) => {
+								markUsed(nextStepKey(candidate));
 							},
 						}
 			}

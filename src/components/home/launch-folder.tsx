@@ -29,7 +29,10 @@ interface WorktreeState {
 	draft: boolean | null;
 	/** Folders whose Next steps "Turn on Worktree" row was pressed in this draft. */
 	taken: ReadonlySet<string>;
+	/** Keys of the Next steps rows whose press prefilled this draft (upstream's per-opening `used`). */
+	used: ReadonlySet<string>;
 	set: (enabled: boolean) => void;
+	markUsed: (key: string) => void;
 	setForDraft: (enabled: boolean | null) => void;
 	takeFromRow: (folder: string) => void;
 	endDraft: () => void;
@@ -46,6 +49,7 @@ function useWorktreeState(): WorktreeState {
 	const [pref, setPref] = useState(false);
 	const [draft, setDraft] = useState<boolean | null>(null);
 	const [taken, setTaken] = useState<ReadonlySet<string>>(() => new Set());
+	const [used, setUsed] = useState<ReadonlySet<string>>(() => new Set());
 	useEffect(() => {
 		setPref(readHomeWorktreePref());
 	}, []);
@@ -62,7 +66,11 @@ function useWorktreeState(): WorktreeState {
 			pref,
 			draft,
 			taken,
+			used,
 			set,
+			markUsed: (key: string) => {
+				setUsed((previous) => new Set(previous).add(key));
+			},
 			setForDraft: setDraft,
 			// Upstream's worktree-apart press: `set(true)` (it writes the pref) and records the row taken.
 			takeFromRow: (folder: string) => {
@@ -72,9 +80,10 @@ function useWorktreeState(): WorktreeState {
 			endDraft: () => {
 				setDraft(null);
 				setTaken(new Set());
+				setUsed(new Set());
 			},
 		};
-	}, [pref, draft, taken]);
+	}, [pref, draft, taken, used]);
 }
 
 const LaunchFolderContext = createContext<SharedLaunchFolder | null>(null);
@@ -153,7 +162,7 @@ export interface HomeWorktree {
 	takeFromRow: (folder: string) => void;
 	/** The folder's row was pressed in this draft and Worktree is still on, so it reads "Worktree is on". */
 	isTaken: (folder: string) => boolean;
-	/** The launch ends the draft: its override and taken rows go back to the preference. */
+	/** The launch ends the draft: its override and taken rows go back to the preference, and used rows return. */
 	endDraft: () => void;
 }
 
@@ -178,4 +187,18 @@ export function useHomeWorktree(isGitRepo?: boolean): HomeWorktree {
 		isTaken: (folder) => enabled && taken.has(folder),
 		endDraft,
 	};
+}
+
+export interface HomeDraftUsed {
+	/** Keys of the Next steps rows whose press prefilled this draft; they stay hidden until it ends. */
+	used: ReadonlySet<string>;
+	markUsed: (key: string) => void;
+}
+
+/** The home draft's used Next steps rows, shared under `HomeLaunchFolderProvider` (local outside one). */
+export function useHomeDraftUsed(): HomeDraftUsed {
+	const shared = useContext(LaunchFolderContext);
+	const local = useWorktreeState();
+	const {used, markUsed} = shared?.worktree ?? local;
+	return {used, markUsed};
 }

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
@@ -14,7 +15,7 @@ import {
 } from "@tanstack/react-router";
 
 import {HomeLanding} from "../src/components/home/home-landing";
-import {HOME_RECENT_LIMIT} from "../src/components/home/launch-folder";
+import {HOME_RECENT_LIMIT, useHomeWorktree} from "../src/components/home/launch-folder";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
 import {homeFolderStatusQueryOptions} from "../src/lib/api/home-folder-status";
@@ -25,6 +26,7 @@ import {
 	recentSessionsQueryOptions,
 	type SessionListItem,
 } from "../src/lib/api/sessions";
+import {onHomeComposerPrefillRequest} from "../src/lib/home-composer-focus";
 
 const MINUTE = 60 * 1000;
 
@@ -52,7 +54,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-async function renderLanding(queryClient: QueryClient): Promise<void> {
+async function renderLanding(queryClient: QueryClient, dock?: ReactNode): Promise<void> {
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -63,7 +65,7 @@ async function renderLanding(queryClient: QueryClient): Promise<void> {
 	const homeRoute = createRoute({
 		getParentRoute: () => rootRoute,
 		path: "/",
-		component: () => <HomeLanding />,
+		component: () => <HomeLanding dock={dock} />,
 	});
 	const router = createRouter({
 		routeTree: rootRoute.addChildren([homeRoute]),
@@ -192,5 +194,91 @@ describe("HomeLanding", () => {
 
 		const taken = await screen.findByTestId("start-card-worktree-apart");
 		expect({tag: taken.tagName, text: taken.textContent}).toStrictEqual({tag: "DIV", text: "Worktree is on"});
+	});
+
+	it("prefills the composer from a pressed Continue uncommitted work row, which stays hidden until the draft ends", async () => {
+		// An earlier Turn on Worktree press persisted Worktree on, which hides the row.
+		localStorage.clear();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+		);
+		const queryClient = new QueryClient({
+			defaultOptions: {queries: {retry: false, staleTime: Infinity}},
+		});
+		queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+			pages: [{sessions: [listItem("ended", {bucket: "done", state: "ended"})], nextCursor: null}],
+			pageParams: [null],
+		});
+		queryClient.setQueryData(approvalsQueryOptions().queryKey, {
+			approvals: [],
+		});
+		queryClient.setQueryData(homeDismissalsQueryOptions.queryKey, {
+			dismissals: {},
+		});
+		queryClient.setQueryData(projectsQueryOptions().queryKey, [
+			{
+				id: "-projects-alpha",
+				name: "alpha",
+				projectPath: "/projects/alpha",
+				sessionCount: 1,
+				memoryCount: 0,
+				planCount: 0,
+				taskCount: 0,
+				activeCount: 0,
+				lastActivity: new Date().toISOString(),
+			},
+		]);
+		queryClient.setQueryData(recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey, {
+			sessions: [],
+			nextCursor: null,
+		});
+		queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+			isGitRepo: true,
+			headBranch: "feat/x",
+			defaultBranch: "main",
+			uncommittedFiles: 3,
+		});
+		const prefills: string[] = [];
+		const unsubscribe = onHomeComposerPrefillRequest((text) => prefills.push(text));
+		function EndDraft() {
+			const {endDraft} = useHomeWorktree();
+			return (
+				<button type="button" onClick={endDraft}>
+					End draft
+				</button>
+			);
+		}
+		try {
+			await renderLanding(queryClient, <EndDraft />);
+
+			fireEvent.click(
+				await screen.findByRole("button", {
+					name: /Continue uncommitted work/,
+				}),
+			);
+
+			expect({
+				prefills,
+				row: screen.queryByRole("button", {
+					name: /Continue uncommitted work/,
+				}),
+			}).toStrictEqual({
+				prefills: [
+					"Continue the work in progress on feat/x: look at the uncommitted changes, tell me what state they\u2019re in, and finish what\u2019s started.",
+				],
+				row: null,
+			});
+
+			fireEvent.click(screen.getByRole("button", {name: "End draft"}));
+
+			expect(
+				await screen.findByRole("button", {
+					name: /Continue uncommitted work/,
+				}),
+			).toBeTruthy();
+		} finally {
+			unsubscribe();
+		}
 	});
 });
