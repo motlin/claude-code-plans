@@ -11,9 +11,7 @@ import {
 	type RefObject,
 } from "react";
 
-import {setSessionRailShown} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
-import {useOptionalPaneHost} from "../panes/pane-host-context";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "../titlebar-classes";
 import {MenuItem} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
@@ -21,17 +19,18 @@ import {
 	SessionRailFitContext,
 	useSessionRailRaise,
 	useSessionRailVisible,
+	useSetSessionRailShown,
 	type SessionRailFit,
 } from "./use-session-rail-docked";
 
 /**
- * Shows or hides the rail; showing it closes the panes it would share the side with.
+ * Shows or hides the rail; showing it closes the panes it doesn't fit beside.
  * While the rail doesn't fit the chat tile it raises (or lowers) the overlay instead.
  */
 function useSessionRailToggle() {
 	const visible = useSessionRailVisible();
 	const raise = useSessionRailRaise();
-	const host = useOptionalPaneHost();
+	const setShown = useSetSessionRailShown();
 	const pressed = raise === null ? visible : raise.raised;
 	return {
 		raise,
@@ -39,8 +38,7 @@ function useSessionRailToggle() {
 		label: pressed ? "Hide session rail" : "Show session rail",
 		toggle: () => {
 			if (raise === null) {
-				if (!visible) for (const kind of host?.openKinds ?? []) host?.closePane(kind);
-				setSessionRailShown(!visible);
+				setShown(!visible);
 			} else {
 				raise.setRaised(!raise.raised);
 			}

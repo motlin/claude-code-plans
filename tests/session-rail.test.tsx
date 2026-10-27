@@ -508,6 +508,78 @@ describe("session rail fit by chat-panel width", () => {
 			narrow: {column: null, overlay: null, docked: "false"},
 		});
 	});
+
+	it("docks beside an open pane once the tile is 771px, as upstream", async () => {
+		registerKinds("changes");
+		setSessionRailShown(true);
+		tileWidth = 800;
+		renderFitSession();
+		await settle();
+		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		await settle();
+		const shown = {
+			column: document.querySelector("[data-epitaxy-rail-column]") !== null,
+			docked: screen.getByTestId("docked").textContent,
+			pane: screen.queryByRole("region", {name: "changes"}) !== null,
+			toggle: toggleState(),
+		};
+		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		await settle();
+		const hidden = {
+			column: document.querySelector("[data-epitaxy-rail-column]"),
+			pane: screen.queryByRole("region", {name: "changes"}) !== null,
+			stored: readSessionRailShown(),
+		};
+		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		await settle();
+
+		expect({
+			shown,
+			hidden,
+			reshown: {
+				column: document.querySelector("[data-epitaxy-rail-column]") !== null,
+				pane: screen.queryByRole("region", {name: "changes"}) !== null,
+				stored: readSessionRailShown(),
+			},
+		}).toStrictEqual({
+			shown: {
+				column: true,
+				docked: "true",
+				pane: true,
+				toggle: {label: "Hide session rail", pressed: "true", expanded: null, controls: null},
+			},
+			hidden: {column: null, pane: true, stored: false},
+			reshown: {column: true, pane: true, stored: true},
+		});
+	});
+
+	it("raises the overlay beside a pane below 771px, leaving the pane open", async () => {
+		registerKinds("changes");
+		setSessionRailShown(true);
+		tileWidth = 700;
+		renderFitSession();
+		await settle();
+		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		await settle();
+		const before = {
+			column: document.querySelector("[data-epitaxy-rail-column]"),
+			docked: screen.getByTestId("docked").textContent,
+		};
+		fireEvent.click(screen.getByRole("button", {name: /session rail/}));
+		await settle();
+
+		expect({
+			before,
+			overlay: within(screen.getByRole("group", {name: "Session details"})).getByText("rail body").tagName,
+			pane: screen.queryByRole("region", {name: "changes"}) !== null,
+			stored: readSessionRailShown(),
+		}).toStrictEqual({
+			before: {column: null, docked: "false"},
+			overlay: "P",
+			pane: true,
+			stored: true,
+		});
+	});
 });
 
 const CARDS: RailCard[] = [

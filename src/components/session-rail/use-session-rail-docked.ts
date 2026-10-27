@@ -1,6 +1,6 @@
 import {createContext, useCallback, useContext, useId, useMemo, useRef, useState, type RefObject} from "react";
 
-import {useSessionRailShown} from "../../lib/session-rail-store";
+import {setSessionRailShown, useSessionRailShown} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {useOptionalPaneHost} from "../panes/pane-host-context";
 import {railFit, railFits, type RailFit} from "./rail-fit";
@@ -59,14 +59,31 @@ export function useSessionRailRaise(): SessionRailFit | null {
 }
 
 /**
- * Whether the rail shows: toggled on and with no side pane open. A pane and the
- * rail share the right side, so opening one swaps the rail out and closing it
- * brings the rail back.
+ * Whether the rail fits beside the open panes (upstream: the chat tile ≥771px). Unmeasured
+ * or on a phone, a pane and the rail share the right side, so the pane swaps the rail out.
  */
+function useSessionRailBesidePanes(): boolean {
+	const fit = useContext(SessionRailFitContext);
+	const host = useOptionalPaneHost();
+	const phone = usePhoneSheet();
+	return (host?.openKinds.length ?? 0) === 0 || (fit?.band === "beside-pane" && !phone);
+}
+
+/** Whether the rail shows: toggled on and not swapped out by an open pane it doesn't fit beside. */
 export function useSessionRailVisible(): boolean {
 	const shown = useSessionRailShown();
+	const besidePanes = useSessionRailBesidePanes();
+	return shown && besidePanes;
+}
+
+/** Shows or hides the persisted rail, closing the panes it would otherwise be swapped out by. */
+export function useSetSessionRailShown(): (shown: boolean) => void {
+	const besidePanes = useSessionRailBesidePanes();
 	const host = useOptionalPaneHost();
-	return shown && (host?.openKinds.length ?? 0) === 0;
+	return (shown) => {
+		if (shown && !besidePanes) for (const kind of host?.openKinds ?? []) host?.closePane(kind);
+		setSessionRailShown(shown);
+	};
 }
 
 /** Whether the rail docks beside the chat: visible, fitting the tile, and not on a phone (where it floats instead). */
