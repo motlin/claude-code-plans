@@ -197,6 +197,20 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		section: "Advanced",
 	},
 	{
+		key: "enableWorkflows",
+		label: "Dynamic workflows",
+		description: "Let Claude run multiple agents in parallel for complex tasks",
+		type: "boolean",
+		section: "Advanced",
+	},
+	{
+		key: "disableWorkflows",
+		label: "Disable workflows",
+		description: "Turn off dynamic workflows (usually set by managed policy)",
+		type: "boolean",
+		section: "Advanced",
+	},
+	{
 		key: "switchModelsOnFlag",
 		label: "Switch models on flag",
 		description: "Switch to another model when a safety classifier flags a request",

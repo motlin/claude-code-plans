@@ -2508,6 +2508,8 @@ export const ClaudeSettingsSchema = z
 		enabledMcpjsonServers: z.array(z.string()).optional(),
 		skipDangerousModePermissionPrompt: z.boolean().optional(),
 		skipWorkflowUsageWarning: z.boolean().optional(),
+		enableWorkflows: z.boolean().optional(),
+		disableWorkflows: z.boolean().optional(),
 		teammateMode: z.string().optional(),
 		askUserQuestionTimeout: AskUserQuestionTimeoutSchema.optional(),
 		preferredNotifChannel: z.string().optional(),
