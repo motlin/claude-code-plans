@@ -1,4 +1,5 @@
 import {z} from "zod";
+import {assertNever} from "./assert-never";
 
 /**
  * Settings ▸ Usage: the plan's rate-limit windows as the newest Claude Code
@@ -28,7 +29,6 @@ export const UsageSummaryResponse: z.ZodType<UsageSummary> = z.strictObject({
 
 export const EMPTY_USAGE: UsageSummary = {fiveHour: null, sevenDay: null, updatedAt: null};
 
-const FIVE_HOUR_MS = 5 * 3_600_000;
 const SEVEN_DAY_MS = 7 * 86_400_000;
 
 /** Whole-number percent clamped to the meter's 0–100 range. */
@@ -71,31 +71,6 @@ function calendarDay(ms: number, timeZone: string | undefined): number {
 	}).formatToParts(ms);
 	const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
 	return Date.UTC(part("year"), part("month") - 1, part("day")) / 86_400_000;
-}
-
-/** "today", "tomorrow" or the weekday name of the reset. */
-function resetDay(resetsAt: number, nowMs: number, timeZone: string | undefined): string {
-	const days = calendarDay(resetsAt * 1000, timeZone) - calendarDay(nowMs, timeZone);
-	if (days <= 0) return "today";
-	if (days === 1) return "tomorrow";
-	return new Intl.DateTimeFormat("en-US", {
-		weekday: "long",
-		...(timeZone === undefined ? {} : {timeZone}),
-	}).format(resetsAt * 1000);
-}
-
-interface PacedWindow {
-	window: UsageWindow;
-	lengthMs: number;
-}
-
-function elapsedFraction({window, lengthMs}: PacedWindow, nowMs: number): number {
-	const remaining = window.resetsAt * 1000 - nowMs;
-	return Math.min(1, Math.max(0, 1 - remaining / lengthMs));
-}
-
-function isAheadOfPace(paced: PacedWindow, nowMs: number): boolean {
-	return paced.window.usedPct / 100 > elapsedFraction(paced, nowMs);
 }
 
 export type PaceState = "zero" | "fresh" | "early" | "on_track" | "heads_up" | "limit_hit";
@@ -263,27 +238,146 @@ export function formatPaceBannerReset(resetsAt: number, nowMs: number, timeZone?
 	return `Resets ${when}`;
 }
 
+const HOUR_MS = 3_600_000;
+/** Upstream's `s`: run-outs before 5 AM count as the night before. */
+const NIGHT_END_HOUR = 5;
+/** Upstream's `c`: a reset this far away is named by its date. */
+const DATE_KIND_MS = 6 * 24 * HOUR_MS;
+
+function hourOf(ms: number, timeZone: string | undefined): number {
+	const hour = new Intl.DateTimeFormat("en-US", {
+		hour: "numeric",
+		hourCycle: "h23",
+		...(timeZone === undefined ? {} : {timeZone}),
+	})
+		.formatToParts(ms)
+		.find((part) => part.type === "hour");
+	return Number(hour?.value) % 24;
+}
+
+function format(ms: number, timeZone: string | undefined, options: Intl.DateTimeFormatOptions): string {
+	return new Intl.DateTimeFormat("en-US", {...options, ...(timeZone === undefined ? {} : {timeZone})}).format(ms);
+}
+
+/** Upstream's `h`: a run-out before 5 AM belongs to the previous day, unless that day is already over. */
+function runOutDayMs(runsOutAtMs: number, nowMs: number, timeZone: string | undefined): number {
+	if (hourOf(runsOutAtMs, timeZone) >= NIGHT_END_HOUR) return runsOutAtMs;
+	const shifted = runsOutAtMs - NIGHT_END_HOUR * HOUR_MS;
+	return calendarDay(shifted, timeZone) < calendarDay(nowMs, timeZone) ? runsOutAtMs : shifted;
+}
+
+function relativeDay(ms: number, nowMs: number, timeZone: string | undefined): "today" | "tomorrow" | "other" {
+	const days = calendarDay(ms, timeZone) - calendarDay(nowMs, timeZone);
+	return days === 0 ? "today" : days === 1 ? "tomorrow" : "other";
+}
+
+/** How upstream's pace copy names the weekly reset (c9d0efac2 `g`). */
+type ResetKind =
+	| {kind: "time"; time: string}
+	| {kind: "date"; date: string}
+	| {kind: "today"}
+	| {kind: "tomorrow"}
+	| {kind: "weekday"; weekday: string};
+
+function resetKind(resetsAtMs: number, nowMs: number, timeZone?: string, runsOutAtMs?: number): ResetKind {
+	if (
+		runsOutAtMs !== undefined &&
+		calendarDay(runOutDayMs(runsOutAtMs, nowMs, timeZone), timeZone) === calendarDay(resetsAtMs, timeZone)
+	) {
+		return {kind: "time", time: format(resetsAtMs, timeZone, {hour: "numeric", minute: "2-digit"})};
+	}
+	if (resetsAtMs - nowMs >= DATE_KIND_MS) {
+		return {kind: "date", date: format(resetsAtMs, timeZone, {month: "short", day: "numeric"})};
+	}
+	const day = relativeDay(resetsAtMs, nowMs, timeZone);
+	return day === "other" ? {kind: "weekday", weekday: format(resetsAtMs, timeZone, {weekday: "long"})} : {kind: day};
+}
+
+/** Upstream's run-out phrase (c9d0efac2 `_`): "this evening", "tomorrow night", "Friday morning". */
+function runOutPhrase(runsOutAtMs: number, nowMs: number, timeZone?: string): string {
+	const hour = hourOf(runsOutAtMs, timeZone);
+	const part =
+		hour < NIGHT_END_HOUR
+			? "night"
+			: hour < 12
+				? "morning"
+				: hour < 17
+					? "afternoon"
+					: hour < 21
+						? "evening"
+						: "night";
+	const dayMs = runOutDayMs(runsOutAtMs, nowMs, timeZone);
+	const day = relativeDay(dayMs, nowMs, timeZone);
+	switch (day) {
+		case "today":
+			return part === "night" ? "tonight" : `this ${part}`;
+		case "tomorrow":
+			return `tomorrow ${part}`;
+		case "other":
+			return `${format(dayMs, timeZone, {weekday: "long"})} ${part}`;
+		default:
+			return assertNever(day);
+	}
+}
+
+/** Upstream's limit-hit reset (c9d0efac2 `v`): "Tuesday 4:00 AM EDT", or "Oct 27, 4:00 AM EDT" six or more days out. */
+function limitHitReset(resetsAtMs: number, nowMs: number, timeZone: string | undefined): string {
+	const time: Intl.DateTimeFormatOptions = {hour: "numeric", minute: "2-digit", timeZoneName: "short"};
+	return resetsAtMs - nowMs >= DATE_KIND_MS
+		? format(resetsAtMs, timeZone, {month: "short", day: "numeric", ...time})
+		: format(resetsAtMs, timeZone, {weekday: "long", ...time}).replace(",", "");
+}
+
+function resetPhrase(reset: ResetKind): string {
+	switch (reset.kind) {
+		case "time":
+			return `the ${reset.time}`;
+		case "date":
+			return `the ${reset.date}`;
+		case "today":
+			return "today’s";
+		case "tomorrow":
+			return "tomorrow’s";
+		case "weekday":
+			return `${reset.weekday}’s`;
+		default:
+			return assertNever(reset);
+	}
+}
+
 /**
- * The pace line above the meters: used% against the elapsed fraction of each
- * window. The weekly window leads, since it is the one that outlasts a session.
+ * Upstream's pace headline above the meters (`mi`), driven only by the weekly window. The
+ * statusline carries no usage-credit state, so limit_hit uses the credits-off copy.
  */
 export function paceHeadline(usage: UsageSummary, nowMs: number, timeZone?: string): string | null {
-	const windows: PacedWindow[] = [];
-	if (usage.sevenDay) windows.push({window: usage.sevenDay, lengthMs: SEVEN_DAY_MS});
-	if (usage.fiveHour) windows.push({window: usage.fiveHour, lengthMs: FIVE_HOUR_MS});
-	const [primary] = windows;
-	if (primary === undefined) return null;
-
-	const exhausted = windows.find(({window}) => window.usedPct >= 100);
-	if (exhausted) {
-		const {resetsAt} = exhausted.window;
-		const time = formatParts(resetsAt, timeZone);
-		return `You’ve hit the limit. It resets ${resetDay(resetsAt, nowMs, timeZone)} at ${time}.`;
+	if (usage.sevenDay === null) return null;
+	const pace = paceState(usage.sevenDay, nowMs);
+	const reset =
+		pace.resetsAtMs === null
+			? null
+			: resetKind(pace.resetsAtMs, nowMs, timeZone, pace.state === "heads_up" ? pace.runsOutAtMs : undefined);
+	switch (pace.state) {
+		case "zero":
+			return "No usage yet. 100% of your weekly limit is available.";
+		case "fresh":
+			return `Fresh week. ${pace.percent}% of your weekly limit used.`;
+		case "early":
+			return `${pace.percent}% of your weekly limit used.`;
+		case "on_track":
+			return reset === null
+				? "On track. You have room to spare this week."
+				: `On track. You should reach ${resetPhrase(reset)} reset with room to spare.`;
+		case "heads_up": {
+			const runOut = runOutPhrase(pace.runsOutAtMs ?? nowMs, nowMs, timeZone);
+			return reset === null
+				? `Heads up. At this pace you’ll run out ${runOut}.`
+				: `Heads up. At this pace you’ll run out ${runOut}, before ${resetPhrase(reset)} reset.`;
+		}
+		case "limit_hit":
+			return pace.resetsAtMs === null
+				? "Limit hit."
+				: `Limit hit. You can send new messages when your week resets ${limitHitReset(pace.resetsAtMs, nowMs, timeZone)}.`;
+		default:
+			return assertNever(pace.state);
 	}
-
-	const ahead = windows.find((paced) => isAheadOfPace(paced, nowMs));
-	if (ahead) {
-		return `You may hit the limit before ${resetDay(ahead.window.resetsAt, nowMs, timeZone)}’s reset.`;
-	}
-	return `On track. You should reach ${resetDay(primary.window.resetsAt, nowMs, timeZone)}’s reset with room to spare.`;
 }

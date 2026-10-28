@@ -112,66 +112,96 @@ describe("GET /api/usage", () => {
 	});
 });
 
-const HOUR = 3_600;
-const DAY = 86_400;
-// Monday 2026-09-28 12:00 UTC.
-const NOW_SECONDS = Date.UTC(2026, 8, 28, 12, 0) / 1000;
-const NOW_MS = NOW_SECONDS * 1000;
+// Upstream's pace headline, in New York time against a Tue Oct 27 2026 4:00 AM EDT weekly reset.
+const ZONE = "America/New_York";
+/** Epoch ms for an October 2026 wall-clock time in EDT (UTC−4). */
+function edt(day: number, hour: number, minute = 0): number {
+	return Date.UTC(2026, 9, day, hour + 4, minute);
+}
+const WEEK_RESET_MS = edt(27, 4);
 
-function summary(fiveHour: [number, number] | null, sevenDay: [number, number] | null) {
-	const toWindow = (window: [number, number] | null) =>
-		window === null ? null : {usedPct: window[0], resetsAt: NOW_SECONDS + window[1]};
-	return {
-		fiveHour: toWindow(fiveHour),
-		sevenDay: toWindow(sevenDay),
-		updatedAt: new Date(NOW_MS).toISOString(),
-	} satisfies UsageSummary;
+function weekly(usedPct: number, fiveHour: UsageSummary["fiveHour"] = null): UsageSummary {
+	return {fiveHour, sevenDay: {usedPct, resetsAt: WEEK_RESET_MS / 1000}, updatedAt: null};
 }
 
 describe("paceHeadline", () => {
 	it.each([
 		{
-			name: "weekly behind pace, resets tomorrow",
-			usage: summary([16, 3 * HOUR], [66, 21 * HOUR]),
-			expected: "On track. You should reach tomorrow’s reset with room to spare.",
+			name: "zero",
+			usage: weekly(0),
+			nowMs: edt(22, 4),
+			expected: "No usage yet. 100% of your weekly limit is available.",
+		},
+		{name: "fresh", usage: weekly(5), nowMs: edt(22, 4), expected: "Fresh week. 5% of your weekly limit used."},
+		{
+			name: "early, four hours after the reset",
+			usage: weekly(10),
+			nowMs: edt(20, 8),
+			expected: "10% of your weekly limit used.",
 		},
 		{
-			name: "weekly behind pace, resets later today",
-			usage: summary(null, [50, 6 * HOUR]),
-			expected: "On track. You should reach today’s reset with room to spare.",
+			name: "on track, reset in four days",
+			usage: weekly(20),
+			nowMs: edt(23, 4),
+			expected: "On track. You should reach Tuesday’s reset with room to spare.",
 		},
 		{
-			name: "weekly behind pace, resets in several days",
-			usage: summary(null, [10, 4 * DAY]),
-			expected: "On track. You should reach Friday’s reset with room to spare.",
+			name: "heads up, reset six or more days away",
+			usage: weekly(15),
+			nowMs: edt(20, 17),
+			expected: "Heads up. At this pace you’ll run out Friday evening, before the Oct 27 reset.",
 		},
 		{
-			name: "weekly ahead of pace",
-			usage: summary([10, 4 * HOUR], [80, 3 * DAY]),
-			expected: "You may hit the limit before Thursday’s reset.",
+			name: "heads up, reset on a weekday",
+			usage: weekly(37),
+			nowMs: edt(21, 12),
+			expected: "Heads up. At this pace you’ll run out Friday evening, before Tuesday’s reset.",
 		},
 		{
-			name: "session ahead of pace",
-			usage: summary([70, 4 * HOUR], [20, 3 * DAY]),
-			expected: "You may hit the limit before today’s reset.",
+			name: "heads up, run-out tomorrow",
+			usage: weekly(90),
+			nowMs: edt(25, 20),
+			expected: "Heads up. At this pace you’ll run out tomorrow morning, before Tuesday’s reset.",
 		},
 		{
-			name: "session only, on track",
-			usage: summary([10, 4 * HOUR], null),
-			expected: "On track. You should reach today’s reset with room to spare.",
+			name: "heads up, run-out on the reset's own day",
+			usage: weekly(98),
+			nowMs: edt(27, 0, 30),
+			expected: "Heads up. At this pace you’ll run out tonight, before the 4:00 AM reset.",
 		},
 		{
-			name: "weekly limit reached",
-			usage: summary([100, 4 * HOUR], [100, 21 * HOUR]),
-			expected: "You’ve hit the limit. It resets tomorrow at 9:00 AM.",
+			name: "limit hit",
+			usage: weekly(100),
+			nowMs: edt(23, 4),
+			expected: "Limit hit. You can send new messages when your week resets Tuesday 4:00 AM EDT.",
+		},
+		{
+			name: "limit hit, reset six or more days away",
+			usage: weekly(100),
+			nowMs: edt(20, 12),
+			expected: "Limit hit. You can send new messages when your week resets Oct 27, 4:00 AM EDT.",
+		},
+		{name: "limit hit, reset already past", usage: weekly(100), nowMs: edt(27, 5), expected: "Limit hit."},
+		{
+			name: "session window ahead of pace, weekly on track",
+			usage: weekly(20, {usedPct: 90, resetsAt: edt(23, 6) / 1000}),
+			nowMs: edt(23, 4),
+			expected: "On track. You should reach Tuesday’s reset with room to spare.",
+		},
+		{
+			name: "session window only",
+			usage: {fiveHour: {usedPct: 10, resetsAt: edt(23, 6) / 1000}, sevenDay: null, updatedAt: null},
+			nowMs: edt(23, 4),
+			expected: null,
 		},
 		{
 			name: "no rate limits",
-			usage: summary(null, null),
+			usage: {fiveHour: null, sevenDay: null, updatedAt: null},
+			nowMs: edt(23, 4),
 			expected: null,
 		},
-	])("$name", ({usage, expected}) => {
-		expect(paceHeadline(usage, NOW_MS, "UTC")).toBe(expected);
+	])("$name", ({usage, nowMs, expected}) => {
+		expect(paceHeadline(usage, nowMs, ZONE)).toBe(expected);
 	});
 });
 
