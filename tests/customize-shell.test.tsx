@@ -517,19 +517,52 @@ describe("customize shell", () => {
 		]);
 	});
 
-	it("shows the onboarding card when there are no personal skills", async () => {
-		await renderCustomize("/customize/skills", EXTRA_SKILLS);
-		const card = screen.getByTestId("customize-skills-onboarding");
+	it("shows upstream's first-run card when there are no personal skills", async () => {
+		const router = await renderCustomize("/customize/skills", EXTRA_SKILLS);
+		const card = screen.getByTestId("tabbed-list-first-run");
+		const row = card.firstElementChild;
+		const column = row?.firstElementChild;
+		const text = column?.firstElementChild;
+		const pictogram = row?.lastElementChild;
 
-		expect([...card.querySelectorAll("h3, p")].map((node) => node.textContent)).toStrictEqual([
-			"Add your first skills",
-			"Personal skills live in ~/.claude/skills.",
-		]);
+		expect({
+			card: card.className,
+			row: row?.className,
+			column: column?.className,
+			text: text?.className,
+			heading: card.querySelector("h3")?.className,
+			copy: [...card.querySelectorAll("h3, p")].map((node) => node.textContent),
+			button: within(card).getByRole("button").textContent,
+			pictogram: {
+				className: pictogram?.getAttribute("class"),
+				hidden: pictogram?.getAttribute("aria-hidden"),
+				size: [
+					pictogram?.querySelector("svg")?.getAttribute("width"),
+					pictogram?.querySelector("svg")?.getAttribute("height"),
+				],
+			},
+		}).toStrictEqual({
+			card: "flex shrink-0 flex-col rounded-card bg-fill-ghost-hover p-4",
+			row: "flex items-center gap-7",
+			column: "flex min-w-0 flex-1 flex-col items-start gap-4",
+			text: "flex flex-col gap-2",
+			heading: "m-0 text-[15px]/[20px] font-[580] text-primary",
+			copy: [
+				"Add your first skills",
+				"Skills teach Claude how you work. Add them from Discover, or create your own.",
+			],
+			button: "Discover skills",
+			pictogram: {className: "hidden shrink-0 pe-6 text-primary sm:block", hidden: "true", size: ["64", "64"]},
+		});
+
+		fireEvent.click(within(card).getByRole("button", {name: "Discover skills"}));
+		await flush();
+		expect({...router.state.location.search}).toStrictEqual({view: "discover"});
 	});
 
-	it("hides the onboarding card while personal skills exist", async () => {
+	it("hides the first-run card while personal skills exist", async () => {
 		await renderCustomize("/customize/skills");
-		expect(screen.queryByTestId("customize-skills-onboarding")).toBeNull();
+		expect(screen.queryByTestId("tabbed-list-first-run")).toBeNull();
 	});
 
 	it("restores the persisted sort from localStorage", async () => {
@@ -1999,5 +2032,34 @@ describe("customize header search width gate", () => {
 				?.className.split(" ")
 				.filter((name) => name.startsWith("w-")),
 		).toStrictEqual(["w-48"]);
+	});
+});
+
+describe("customize first-run card in the dialog", () => {
+	it("opens Skills Discover from the Discover skills button", async () => {
+		const hashes = await renderDialogPanel("customize/skills/yours", {skills: EXTRA_SKILLS});
+		fireEvent.click(screen.getByRole("button", {name: "Discover skills"}));
+		await flush();
+		expect(hashes).toStrictEqual(["customize/skills/yours", "customize/skills/discover"]);
+	});
+
+	it("shows the plugins first-run card when there are no plugins", async () => {
+		const hashes = await renderDialogPanel("customize/plugins/yours");
+		const card = screen.getByTestId("tabbed-list-first-run");
+
+		expect({
+			copy: [...card.querySelectorAll("h3, p")].map((node) => node.textContent),
+			button: within(card).getByRole("button").textContent,
+		}).toStrictEqual({
+			copy: [
+				"Add your first plugins",
+				"Give Claude role-level expertise with plugins. Add them from Discover, or create your own.",
+			],
+			button: "Discover plugins",
+		});
+
+		fireEvent.click(within(card).getByRole("button", {name: "Discover plugins"}));
+		await flush();
+		expect(hashes).toStrictEqual(["customize/plugins/yours", "customize/plugins/discover"]);
 	});
 });

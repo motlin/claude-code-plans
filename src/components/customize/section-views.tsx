@@ -12,7 +12,7 @@ import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {PluginVersion} from "../plugin-version";
 import {ConnectorsTable, ScopeBadge} from "./connectors-table";
 import {CustomizeDiscover} from "./customize-discover";
-import {CustomizeNotice} from "./customize-empty";
+import {CustomizeFirstRunCard, CustomizeNotice} from "./customize-empty";
 import {CustomizeList, ShortDate} from "./customize-list";
 import {CustomizeSectionSkeleton} from "./customize-panel-skeleton";
 import {useCustomizeGo} from "./customize-navigation";
@@ -60,9 +60,14 @@ export function SkillsSection({search}: SectionProps) {
 	return (
 		<div className="flex flex-col gap-7">
 			{showOnboarding && (
-				<div data-testid="customize-skills-onboarding">
-					<CustomizeNotice title="Add your first skills" body="Personal skills live in ~/.claude/skills." />
-				</div>
+				<CustomizeFirstRunCard
+					title="Add your first skills"
+					body="Skills teach Claude how you work. Add them from Discover, or create your own."
+					action="Discover skills"
+					onAction={() => {
+						go({kind: "list", section: "skills", search: {view: "discover"}});
+					}}
+				/>
 			)}
 			<CustomizeList
 				icon={Scroll}
@@ -187,6 +192,19 @@ export function PluginsSection({search}: SectionProps) {
 					},
 				]
 			: marketplaceGroups;
+
+	if (plugins.length === 0) {
+		return (
+			<CustomizeFirstRunCard
+				title="Add your first plugins"
+				body="Give Claude role-level expertise with plugins. Add them from Discover, or create your own."
+				action="Discover plugins"
+				onAction={() => {
+					go({kind: "list", section: "plugins", search: {view: "discover"}});
+				}}
+			/>
+		);
+	}
 
 	return (
 		<CustomizeList
