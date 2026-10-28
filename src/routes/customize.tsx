@@ -1,5 +1,7 @@
 import {createFileRoute, Outlet, useLocation, useNavigate} from "@tanstack/react-router";
 import {CustomizeHeader} from "../components/customize/customize-header";
+import {routeOptions} from "../components/customize/customize-navigation";
+import {CustomizeUnifiedSearch} from "../components/customize/customize-unified-search";
 import {
 	type CustomizeSearch,
 	customizeSearchSchema,
@@ -17,7 +19,8 @@ export const Route = createFileRoute("/customize")({
 /**
  * Shell for every `/customize/<section>` page: the shared header (tabs,
  * Yours | Discover, search, Filter, Sort), pinned while the list scrolls, above the section body. It renders
- * `<Outlet />` for the section routes nested under it.
+ * `<Outlet />` for the section routes nested under it, except while `?q=` holds a
+ * query: then every section and view shows upstream's unified results instead.
  */
 function CustomizeLayout() {
 	const pathname = useLocation({select: (location) => location.pathname});
@@ -45,7 +48,22 @@ function CustomizeLayout() {
 				aria-labelledby={`customize-tab-${section.id}`}
 				className="mx-auto w-full max-w-5xl px-4 md:px-8"
 			>
-				<Outlet />
+				{search.q === undefined || search.q === "" ? (
+					<Outlet />
+				) : (
+					<CustomizeUnifiedSearch
+						q={search.q}
+						surface="page"
+						onOpen={(hit) => {
+							if (hit.open === null) return;
+							if (hit.open.kind === "external") {
+								window.open(hit.open.href, "_blank", "noopener,noreferrer");
+								return;
+							}
+							void navigate(routeOptions(hit.open));
+						}}
+					/>
+				)}
 			</div>
 		</div>
 	);

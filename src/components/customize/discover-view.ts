@@ -118,23 +118,6 @@ export function sortDiscover(plugins: readonly DiscoverPlugin[], sort: string | 
 	});
 }
 
-/**
- * Upstream search results: "Yours N" (what you already have that matches) and
- * "More you can add N" (matching catalog plugins not yet installed, most
- * installed first).
- */
-export function groupDiscoverSearch<T>(
-	yours: readonly T[],
-	yoursFields: (item: T) => readonly string[],
-	catalog: readonly DiscoverPlugin[],
-	q: string,
-): {yours: T[]; more: DiscoverPlugin[]} {
-	return {
-		yours: yours.filter((item) => matchesQuery(q, ...yoursFields(item))),
-		more: addableMatches(catalog, q),
-	};
-}
-
 /** Catalog plugins not yet installed whose text matches `q`, most installed first. */
 export function addableMatches(catalog: readonly DiscoverPlugin[], q: string): DiscoverPlugin[] {
 	return catalog

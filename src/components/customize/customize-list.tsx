@@ -1,6 +1,5 @@
 import type {LucideIcon} from "lucide-react";
 import type {ReactNode} from "react";
-import {NoSearchMatches} from "./customize-empty";
 import {ListRow} from "./list-row";
 import {SectionHeader} from "./section-header";
 
@@ -23,15 +22,13 @@ interface CustomizeListGroup {
 interface CustomizeListProps {
 	groups: readonly CustomizeListGroup[];
 	icon: LucideIcon;
-	noun: string;
-	searching: boolean;
 	empty: ReactNode;
 }
 
 /** One `<section>` per group, each a SectionHeader + Counter over its ListRows. */
-export function CustomizeList({groups, icon, noun, searching, empty}: CustomizeListProps): ReactNode {
+export function CustomizeList({groups, icon, empty}: CustomizeListProps): ReactNode {
 	const visible = groups.filter((group) => group.items.length > 0);
-	if (visible.length === 0) return searching ? <NoSearchMatches noun={noun} /> : empty;
+	if (visible.length === 0) return empty;
 
 	return (
 		<div className="flex flex-col gap-6">

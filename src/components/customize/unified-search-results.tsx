@@ -31,7 +31,7 @@ const KIND_ICON: Record<UnifiedHitKind, LucideIcon> = {
 const numberFormat = new Intl.NumberFormat("en-US");
 
 /** Where the results render: the standalone Customize page or the Settings dialog. */
-type UnifiedSearchSurface = "page" | "dialog";
+export type UnifiedSearchSurface = "page" | "dialog";
 
 /** Upstream `DY()`: sections are `gap-md` (16px) on the standalone page, `gap-sm` (12px) elsewhere. */
 const SECTION_GAP: Record<UnifiedSearchSurface, string> = {page: "gap-4", dialog: "gap-3"};

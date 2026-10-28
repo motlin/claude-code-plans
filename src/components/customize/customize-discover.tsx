@@ -3,7 +3,6 @@ import {Check, Plus, Puzzle, Scroll} from "lucide-react";
 import {customizeDiscoverQueryOptions, type DiscoverPlugin} from "../../lib/api/customize";
 import {Tooltip} from "../ui/tooltip";
 import {CustomizeNotice} from "./customize-empty";
-import {CustomizeList} from "./customize-list";
 import {
 	ALL_CATEGORIES,
 	categoryLabel,
@@ -12,7 +11,6 @@ import {
 	filterDiscover,
 	formatExactInstalls,
 	formatInstallCount,
-	groupDiscoverSearch,
 	isCatalogStale,
 	mostInstalled,
 	recentlyUpdated,
@@ -25,23 +23,12 @@ import {useCopyInstallCommand} from "./plugin-row-actions";
 
 const CARD_LIMIT = 8;
 
-/** A row under "Yours" in search results. */
-interface DiscoverYoursItem {
-	key: string;
-	title: string;
-	source: string;
-	subtitle: string;
-	onView?: () => void;
-}
-
 interface CustomizeDiscoverProps {
 	section: "skills" | "plugins";
-	q: string | undefined;
 	/** `?category=`: the Filter menu's choice; absent or "all" means every category. */
 	category: string | undefined;
 	/** `?order=`: the Sort menu's choice; absent means Most installed. */
 	order: string | undefined;
-	yours: readonly DiscoverYoursItem[];
 }
 
 /** "+" copies the install command; plugins already installed show "Installed ✓" instead. */
@@ -165,10 +152,9 @@ function StaleBanner({fetchedAt}: {fetchedAt: string}) {
  * plugin-catalog-cache.json plus every marketplace.json. Nothing installs from
  * here: "+" copies `claude plugin install <name>@<marketplace>`.
  */
-export function CustomizeDiscover({section, q, category, order, yours}: CustomizeDiscoverProps) {
+export function CustomizeDiscover({section, category, order}: CustomizeDiscoverProps) {
 	const {data, isPending, isError} = useQuery(customizeDiscoverQueryOptions);
 	const icon = section === "skills" ? Scroll : Puzzle;
-	const noun = section === "skills" ? "skills" : "plugins";
 
 	if (isError) {
 		return <CustomizeNotice title="Discover" body="The plugin catalog could not be read." />;
@@ -176,35 +162,6 @@ export function CustomizeDiscover({section, q, category, order, yours}: Customiz
 	if (isPending) return <p className="text-body text-t6">Loading catalog…</p>;
 
 	const plugins = discoverForSection(data.plugins, section);
-	const term = q?.trim() ?? "";
-
-	if (term !== "") {
-		const results = groupDiscoverSearch(yours, (item) => [item.title, item.subtitle], plugins, term);
-		return (
-			<CustomizeList
-				icon={icon}
-				noun={noun}
-				searching
-				groups={[
-					{key: "yours", title: "Yours", items: results.yours},
-					{
-						key: "more",
-						title: "More you can add",
-						items: results.more.map((plugin) => ({
-							key: plugin.id,
-							title: plugin.title,
-							source: categoryLabel(plugin.category ?? plugin.marketplace),
-							subtitle: plugin.description,
-							...(plugin.installs === null ? {} : {meta: <Installs count={plugin.installs} />}),
-							actions: <AddButton plugin={plugin} />,
-						})),
-					},
-				]}
-				empty={null}
-			/>
-		);
-	}
-
 	if (plugins.length === 0) {
 		return (
 			<CustomizeNotice

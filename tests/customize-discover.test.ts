@@ -3,13 +3,13 @@ import {homedir, tmpdir} from "node:os";
 import {dirname, join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
+	addableMatches,
 	categoryCounts,
 	discoverCategoryOptions,
 	discoverForSection,
 	filterDiscover,
 	formatExactInstalls,
 	formatInstallCount,
-	groupDiscoverSearch,
 	isCatalogStale,
 	mostInstalled,
 	recentlyUpdated,
@@ -360,12 +360,8 @@ describe("discover view", () => {
 		});
 	});
 
-	it("groups search results into Yours and More you can add", () => {
-		const yours = [{name: "deploy-checklist"}, {name: "lint"}];
-		expect(groupDiscoverSearch(yours, (item) => [item.name], all, "DEPLOY")).toStrictEqual({
-			yours: [{name: "deploy-checklist"}],
-			more: [fresh],
-		});
+	it("matches catalog plugins you could add for More you can add", () => {
+		expect(addableMatches(all, "DEPLOY")).toStrictEqual([fresh]);
 	});
 
 	it("flags a catalog fetched more than 14 days ago as stale", () => {

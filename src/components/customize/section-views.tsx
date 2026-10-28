@@ -12,13 +12,13 @@ import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {PluginVersion} from "../plugin-version";
 import {ConnectorsTable, ScopeBadge} from "./connectors-table";
 import {CustomizeDiscover} from "./customize-discover";
-import {CustomizeNotice, NoSearchMatches} from "./customize-empty";
+import {CustomizeNotice} from "./customize-empty";
 import {CustomizeList, ShortDate} from "./customize-list";
 import {CustomizeSectionSkeleton} from "./customize-panel-skeleton";
 import {useCustomizeGo} from "./customize-navigation";
 import {useSectionSort} from "./persisted-sort";
 import {PluginRowActions} from "./plugin-row-actions";
-import {CUSTOMIZE_SECTIONS, type CustomizeSearch, matchesQuery, resolveOption} from "./sections";
+import {CUSTOMIZE_SECTIONS, type CustomizeSearch, resolveOption} from "./sections";
 import {SkillRowActions} from "./skill-row-actions";
 import {commandRows, filterSkills, groupSkills, sortSkills} from "./skills-view";
 
@@ -36,34 +36,17 @@ export function SkillsSection({search}: SectionProps) {
 	const {data: commands} = useQuery(userCommandsQueryOptions);
 
 	if (search.view === "discover") {
-		return (
-			<CustomizeDiscover
-				section="skills"
-				q={search.q}
-				category={search.category}
-				order={search.order}
-				yours={(skills ?? []).map((skill) => ({
-					key: skill.id,
-					title: skill.name,
-					source: `from ${skill.sourceLabel}`,
-					subtitle: skill.description,
-					onView: () => {
-						go({kind: "skill", id: skill.id, tab: "overview"});
-					},
-				}))}
-			/>
-		);
+		return <CustomizeDiscover section="skills" category={search.category} order={search.order} />;
 	}
 	if (isPending || skills === undefined) return <CustomizeSectionSkeleton />;
 
-	const searching = (search.q ?? "") !== "";
-	const source = searching ? "all" : resolveOption(SKILLS_SECTION.filter.options, search.filter).value;
+	const source = resolveOption(SKILLS_SECTION.filter.options, search.filter).value;
 	const sort = resolveOption(SKILLS_SECTION.sort ?? [], sortValue).value;
-	const groups = groupSkills(sortSkills(filterSkills(skills, source, search.q), sort));
+	const groups = groupSkills(sortSkills(filterSkills(skills, source, undefined), sort));
 	const commandGroup = {
 		key: "commands",
 		title: "Custom commands",
-		items: commandRows(commands ?? [], source, search.q).map((row) => ({
+		items: commandRows(commands ?? [], source, undefined).map((row) => ({
 			key: row.key,
 			title: row.invocation,
 			source: `from ${row.sourceName}`,
@@ -72,9 +55,7 @@ export function SkillsSection({search}: SectionProps) {
 		})),
 	};
 	const showOnboarding =
-		!searching &&
-		(source === "all" || source === "personal") &&
-		!skills.some((skill) => skill.source === "personal");
+		(source === "all" || source === "personal") && !skills.some((skill) => skill.source === "personal");
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -85,8 +66,6 @@ export function SkillsSection({search}: SectionProps) {
 			)}
 			<CustomizeList
 				icon={Scroll}
-				noun={SKILLS_SECTION.noun}
-				searching={searching}
 				groups={[
 					...groups.map((group) => ({
 						key: group.key,
@@ -130,19 +109,13 @@ export function ConnectorsSection({search}: SectionProps) {
 		return <CustomizeSectionSkeleton />;
 	}
 
-	const searching = (search.q ?? "") !== "";
-	const show = searching ? "all" : resolveOption(CONNECTORS_SECTION.filter.options, search.filter).value;
-	const visibleServers = servers
-		.filter((server) => show === "all" || server.enabled === (show === "enabled"))
-		.filter((server) => matchesQuery(search.q, server.name, server.urlOrCommand));
+	const show = resolveOption(CONNECTORS_SECTION.filter.options, search.filter).value;
+	const visibleServers = servers.filter((server) => show === "all" || server.enabled === (show === "enabled"));
 	// claude.ai connectors have no local enabled state, so only "All" lists them.
-	const visibleClaudeAi =
-		show === "all" ? claudeAi.filter((connector) => matchesQuery(search.q, connector.name)) : [];
+	const visibleClaudeAi = show === "all" ? claudeAi : [];
 
 	if (visibleServers.length === 0 && visibleClaudeAi.length === 0) {
-		return searching ? (
-			<NoSearchMatches noun={CONNECTORS_SECTION.noun} />
-		) : (
+		return (
 			<CustomizeNotice
 				title="No connectors yet"
 				body="MCP servers from ~/.claude.json, project .mcp.json files and plugins appear here."
@@ -170,34 +143,17 @@ export function PluginsSection({search}: SectionProps) {
 	const {data: toggles} = useQuery(customizeSettingsTogglesQueryOptions);
 
 	if (search.view === "discover") {
-		return (
-			<CustomizeDiscover
-				section="plugins"
-				q={search.q}
-				category={search.category}
-				order={search.order}
-				yours={(plugins ?? []).map((plugin) => ({
-					key: plugin.id,
-					title: plugin.name,
-					source: `from ${plugin.marketplace}`,
-					subtitle: plugin.description,
-					onView: () => {
-						go({kind: "plugin", id: plugin.id, tab: "overview"});
-					},
-				}))}
-			/>
-		);
+		return <CustomizeDiscover section="plugins" category={search.category} order={search.order} />;
 	}
 	if (isPending || plugins === undefined) {
 		return <CustomizeSectionSkeleton />;
 	}
 
-	const searching = (search.q ?? "") !== "";
-	const show = searching ? "all" : resolveOption(PLUGINS_SECTION.filter.options, search.filter).value;
+	const show = resolveOption(PLUGINS_SECTION.filter.options, search.filter).value;
 	const sort = resolveOption(PLUGINS_SECTION.sort ?? [], search.sort).value;
-	const marketplaces = groupPluginsByMarketplace(
-		plugins.filter((plugin) => matchesQuery(search.q, plugin.name, plugin.description)),
-	).filter((group) => show === "all" || group.isOfficial === (show === "official"));
+	const marketplaces = groupPluginsByMarketplace(plugins).filter(
+		(group) => show === "all" || group.isOfficial === (show === "official"),
+	);
 	const byName = (a: {title: string}, b: {title: string}) => a.title.localeCompare(b.title);
 	const marketplaceGroups = marketplaces.map((group) => ({
 		key: group.marketplace.id,
@@ -235,8 +191,6 @@ export function PluginsSection({search}: SectionProps) {
 	return (
 		<CustomizeList
 			icon={Puzzle}
-			noun={PLUGINS_SECTION.noun}
-			searching={searching}
 			groups={groups}
 			empty={
 				<CustomizeNotice

@@ -405,22 +405,23 @@ describe("customize shell", () => {
 		});
 	});
 
-	it("shows the no-match state when the search finds no skills", async () => {
+	it("shows only the unified no-match line when the search finds nothing", async () => {
 		await renderCustomize("/customize/skills?q=zzz-nothing");
-		const empty = within(screen.getByRole("tabpanel")).getByRole("status");
+		const panel = screen.getByRole("tabpanel");
 
-		expect([...empty.querySelectorAll("h3, p")].map((node) => node.textContent)).toStrictEqual([
-			"No skills match your search",
-			"Try a different term.",
-		]);
+		expect({
+			lines: [...panel.querySelectorAll("p")].map((node) => node.textContent),
+			fallback: panel.querySelector("h3"),
+		}).toStrictEqual({
+			lines: ["No results match \u201czzz-nothing\u201d", "No results match \u201czzz-nothing\u201d"],
+			fallback: null,
+		});
 	});
 
-	it("lists skills whose description matches the search term", async () => {
+	it("lists skills whose description matches the search term as unified hits", async () => {
 		await renderCustomize("/customize/skills?q=release");
 
-		expect(screen.getAllByTestId("customize-list-row").map((row) => row.textContent)).toStrictEqual([
-			"deploy-checklistfrom Personal·Walk the release checklist before shipping.Sep 15",
-		]);
+		expect(unifiedHitKeys()).toStrictEqual(["Yours", "deploy-checklist"]);
 	});
 
 	it("labels each skill row View <name> with a More actions kebab", async () => {
@@ -637,21 +638,6 @@ describe("customize discover", () => {
 			calls: [["claude plugin install deploy@claude-plugins-official"]],
 			toast: "Command copied: claude plugin install deploy@claude-plugins-official",
 		});
-	});
-
-	it("groups search results into Yours and More you can add", async () => {
-		await renderCustomize("/customize/skills?view=discover&q=deploy");
-
-		const sections = screen.getAllByRole("region").map((region) => ({
-			heading: within(region).getByRole("heading", {level: 3}).textContent,
-			rows: within(region)
-				.getAllByTestId("customize-list-row")
-				.map((row) => row.querySelector(".font-medium")?.textContent),
-		}));
-		expect(sections).toStrictEqual([
-			{heading: "Yours", rows: ["deploy-checklist"]},
-			{heading: "More you can add", rows: ["Deploy"]},
-		]);
 	});
 });
 
@@ -1518,5 +1504,97 @@ describe("returning to the unified search from an opened hit", () => {
 			yourSkills: screen.getByRole("link", {name: "Your skills"}).getAttribute("href"),
 			search: screen.queryByRole("link", {name: "Search"}),
 		}).toStrictEqual({yourSkills: "#customize/skills/yours", search: null});
+	});
+});
+
+describe("unified search on the standalone Customize page", () => {
+	const DEPLOY_KEYS = ["Yours", "deploy-checklist", "More you can add", "Deploy"];
+
+	function pageResults() {
+		const results = screen.getByTestId("customize-unified-search-results");
+		return {
+			keys: unifiedHitKeys(),
+			sectionGaps: [...results.querySelectorAll("section")].map((section) =>
+				["gap-3", "gap-4"].filter((gap) => section.classList.contains(gap)),
+			),
+			normalRows:
+				document.querySelectorAll("[data-testid=customize-discover-card], table").length +
+				screen.queryAllByTestId("customize-list-row").length -
+				within(results).queryAllByTestId("customize-list-row").length,
+			value: screen.getByRole<HTMLInputElement>("searchbox").value,
+		};
+	}
+
+	it("renders the page's unified results on first render of a deep link, in both views", async () => {
+		const results: Record<string, ReturnType<typeof pageResults>> = {};
+		for (const entry of ["/customize/skills?q=deploy", "/customize/skills?view=discover&q=deploy"]) {
+			await renderCustomize(entry);
+			results[entry] = pageResults();
+			cleanup();
+		}
+
+		const expected = {keys: DEPLOY_KEYS, sectionGaps: [["gap-4"], ["gap-4"]], normalRows: 0, value: "deploy"};
+		expect(results).toStrictEqual({
+			"/customize/skills?q=deploy": expected,
+			"/customize/skills?view=discover&q=deploy": expected,
+		});
+	});
+
+	it("shows the same hits in the same order in every section", async () => {
+		const keys: Record<string, string[]> = {};
+		for (const entry of [
+			"/customize/skills?q=deploy",
+			"/customize/connectors?q=deploy",
+			"/customize/plugins?q=deploy",
+		]) {
+			await renderCustomize(entry);
+			keys[entry] = unifiedHitKeys();
+			cleanup();
+		}
+
+		expect(keys).toStrictEqual({
+			"/customize/skills?q=deploy": DEPLOY_KEYS,
+			"/customize/connectors?q=deploy": DEPLOY_KEYS,
+			"/customize/plugins?q=deploy": DEPLOY_KEYS,
+		});
+	});
+
+	it("drops q from the URL and restores the section's normal list when the field is cleared", async () => {
+		const router = await renderCustomize("/customize/skills?q=deploy");
+		await actAndSettle(() => {
+			fireEvent.change(screen.getByRole("searchbox"), {target: {value: ""}});
+		});
+
+		expect({
+			search: router.state.location.searchStr,
+			unified: screen.queryByTestId("customize-unified-search-results"),
+			rows: screen.getAllByTestId("customize-list-row").map((row) => rowName(row)),
+		}).toStrictEqual({search: "", unified: null, rows: ["deploy-checklist"]});
+	});
+
+	it("writes each keystroke to ?q= by replacing the history entry", async () => {
+		const router = await renderCustomize("/customize/skills");
+		const length = router.history.length;
+		const input = openSearch();
+		for (const value of ["d", "de", "dep"]) {
+			await actAndSettle(() => {
+				fireEvent.change(input, {target: {value}});
+			});
+		}
+
+		expect({
+			search: router.state.location.searchStr,
+			added: router.history.length - length,
+			keys: unifiedHitKeys(),
+		}).toStrictEqual({search: "?q=dep", added: 0, keys: DEPLOY_KEYS});
+	});
+
+	it("opens a Yours hit's detail route", async () => {
+		const router = await renderCustomize("/customize/skills?q=deploy");
+		await actAndSettle(() => {
+			fireEvent.click(screen.getByRole("button", {name: "View deploy-checklist"}));
+		});
+
+		expect(router.state.location.pathname).toBe("/customize/skills/id/personal%3Adeploy-checklist");
 	});
 });

@@ -1,14 +1,5 @@
-import {useQuery} from "@tanstack/react-query";
 import {useCallback, useMemo, useState} from "react";
-import {
-	customizeClaudeAiConnectorsQueryOptions,
-	customizeDiscoverQueryOptions,
-	customizeMcpServersQueryOptions,
-	customizePluginFileQueryOptions,
-	customizeSkillFileQueryOptions,
-	customizeSkillsQueryOptions,
-} from "../../lib/api/customize";
-import {pluginsQueryOptions, userCommandsQueryOptions} from "../../lib/api/plugins";
+import {customizePluginFileQueryOptions, customizeSkillFileQueryOptions} from "../../lib/api/customize";
 import {type CustomizeLocation, type CustomizeSection, customizeHash} from "../../lib/settings-hash";
 import {ContentsViewer} from "./contents-viewer";
 import {CustomizeHeader} from "./customize-header";
@@ -18,8 +9,9 @@ import {PluginConnectors, PluginFiles, PluginHooks, PluginOverview, PluginSkills
 import {ConnectorsSection, PluginsSection, SkillsSection} from "./section-views";
 import {CUSTOMIZE_SECTIONS, type CustomizeSearch, dropEmpty} from "./sections";
 import {SkillOverview} from "./skill-detail";
-import {buildUnifiedSearch, type UnifiedHit} from "./unified-search";
-import {UnifiedSearchResults, type UnifiedSectionId} from "./unified-search-results";
+import {CustomizeUnifiedSearch} from "./customize-unified-search";
+import type {UnifiedHit} from "./unified-search";
+import type {UnifiedSectionId} from "./unified-search-results";
 import {assertNever} from "../../lib/assert-never";
 
 /** The hash (without `#`) a Customize target opens inside the Settings dialog. */
@@ -187,8 +179,9 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 					{query === "" ? (
 						<SectionBody location={location} search={search} />
 					) : (
-						<DialogUnifiedSearch
+						<CustomizeUnifiedSearch
 							q={query}
+							surface="dialog"
 							onOpen={openHit}
 							expanded={expandedSections}
 							onExpandedChange={(sections) => {
@@ -201,42 +194,6 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 				<DetailBody location={location} id={location.id} />
 			)}
 		</CustomizeNavContext.Provider>
-	);
-}
-
-/** Upstream's unified results, fed from every Customize source plus the plugin catalog. */
-interface DialogUnifiedSearchProps {
-	q: string;
-	onOpen: (hit: UnifiedHit) => void;
-	expanded: readonly UnifiedSectionId[];
-	onExpandedChange: (sections: UnifiedSectionId[]) => void;
-}
-
-function DialogUnifiedSearch({q, onOpen, expanded, onExpandedChange}: DialogUnifiedSearchProps) {
-	const {data: skills = []} = useQuery(customizeSkillsQueryOptions);
-	const {data: commands = []} = useQuery(userCommandsQueryOptions);
-	const {data: servers = []} = useQuery(customizeMcpServersQueryOptions);
-	const {data: claudeAi = []} = useQuery(customizeClaudeAiConnectorsQueryOptions);
-	const {data: plugins = []} = useQuery(pluginsQueryOptions);
-	const catalog = useQuery(customizeDiscoverQueryOptions);
-	const search = useMemo(
-		() =>
-			buildUnifiedSearch({skills, commands, servers, claudeAi, plugins, catalog: catalog.data?.plugins ?? []}, q),
-		[skills, commands, servers, claudeAi, plugins, catalog.data, q],
-	);
-	return (
-		<UnifiedSearchResults
-			q={q}
-			surface="dialog"
-			search={search}
-			catalogPending={catalog.isPending}
-			catalogError={catalog.isError}
-			retrying={catalog.isError && catalog.isFetching}
-			onRetry={() => void catalog.refetch()}
-			onOpen={onOpen}
-			expanded={expanded}
-			onExpandedChange={onExpandedChange}
-		/>
 	);
 }
 
