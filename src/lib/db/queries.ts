@@ -1093,7 +1093,8 @@ export function isSessionArchived(db: IndexDb, sessionId: string): boolean {
 
 /**
  * Set the app-side archive flag. Idempotent: re-archiving keeps the original
- * `archived_at`. Returns the resulting archived state.
+ * `archived_at`. Unarchiving an archived session records `unarchived_at`, which
+ * the auto-archive sweeper counts as activity. Returns the resulting archived state.
  */
 export function setSessionArchived(
 	db: IndexDb,
@@ -1104,7 +1105,16 @@ export function setSessionArchived(
 	if (archived) {
 		db.insert(schema.archivedSessions).values({sessionId, archivedAt: now}).onConflictDoNothing().run();
 	} else {
-		db.delete(schema.archivedSessions).where(eq(schema.archivedSessions.sessionId, sessionId)).run();
+		const {changes} = db
+			.delete(schema.archivedSessions)
+			.where(eq(schema.archivedSessions.sessionId, sessionId))
+			.run();
+		if (changes > 0) {
+			db.insert(schema.unarchivedSessions)
+				.values({sessionId, unarchivedAt: now})
+				.onConflictDoUpdate({target: schema.unarchivedSessions.sessionId, set: {unarchivedAt: now}})
+				.run();
+		}
 	}
 	return archived;
 }

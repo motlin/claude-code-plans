@@ -1,4 +1,4 @@
-import {and, eq, lt, notInArray} from "drizzle-orm";
+import {and, eq, isNull, lt, notInArray, or} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {z} from "zod";
 import * as schema from "./db/schema";
@@ -9,7 +9,7 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface SweepOptions {
 	now: number;
-	/** Days without JSONL activity before a session is archived; 0 (Never) archives nothing. */
+	/** Days without JSONL activity or an unarchive before a session is archived; 0 (Never) archives nothing. */
 	days: number;
 	/** Sessions that must stay unarchived: running, waiting for input, pinned, open or in a live pane. */
 	keepIds: ReadonlySet<string>;
@@ -19,8 +19,9 @@ export interface SweepOptions {
 }
 
 /**
- * Archive every main-thread session whose newest JSONL write is older than `days` days, skipping
- * kept and already archived sessions. Returns the archived ids, oldest activity first.
+ * Archive every main-thread session whose last activity (newest JSONL write or unarchive) is older
+ * than `days` days, skipping kept and already archived sessions. Returns the archived ids, oldest
+ * JSONL activity first.
  */
 export function sweepInactiveSessions(db: IndexDb, {now, days, keepIds, fileMtimeMs, archive}: SweepOptions): string[] {
 	if (days <= 0) return [];
@@ -29,9 +30,11 @@ export function sweepInactiveSessions(db: IndexDb, {now, days, keepIds, fileMtim
 	const candidates = db
 		.select({id: schema.sessions.id, filePath: schema.sessions.filePath})
 		.from(schema.sessions)
+		.leftJoin(schema.unarchivedSessions, eq(schema.unarchivedSessions.sessionId, schema.sessions.id))
 		.where(
 			and(
 				lt(schema.sessions.mtimeMs, cutoff),
+				or(isNull(schema.unarchivedSessions.unarchivedAt), lt(schema.unarchivedSessions.unarchivedAt, cutoff)),
 				eq(schema.sessions.isSidechain, 0),
 				notInArray(schema.sessions.id, archivedIds),
 			),

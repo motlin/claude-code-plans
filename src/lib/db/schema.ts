@@ -308,6 +308,12 @@ export const archivedSessions = sqliteTable("archived_sessions", {
 	archivedAt: integer("archived_at").notNull(),
 });
 
+/** When each session was last unarchived; the auto-archive sweeper counts it as activity. */
+export const unarchivedSessions = sqliteTable("unarchived_sessions", {
+	sessionId: text("session_id").primaryKey(),
+	unarchivedAt: integer("unarchived_at").notNull(),
+});
+
 /** Home "Sessions" dismissals: a row stays hidden until the session has newer activity. */
 export const homeDismissals = sqliteTable("home_dismissals", {
 	sessionId: text("session_id").primaryKey(),

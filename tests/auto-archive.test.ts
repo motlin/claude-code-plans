@@ -207,6 +207,60 @@ describe("sweepInactiveSessions", () => {
 
 		expect(archived).toStrictEqual(["gone"]);
 	});
+
+	it("counts unarchiving as activity, so an unarchived old session stays out for the full window again", () => {
+		seed({recentlyUnarchived: 30, longAgoUnarchived: 30, neverArchived: 30});
+		setSessionArchived(db.index, "recentlyUnarchived", true, NOW - 20 * DAY_MS);
+		setSessionArchived(db.index, "recentlyUnarchived", false, NOW - 6 * DAY_MS);
+		setSessionArchived(db.index, "longAgoUnarchived", true, NOW - 20 * DAY_MS);
+		setSessionArchived(db.index, "longAgoUnarchived", false, NOW - 8 * DAY_MS);
+		const {archived, archive} = archiver();
+
+		const result = sweepInactiveSessions(db.index, {
+			now: NOW,
+			days: 7,
+			keepIds: new Set(),
+			fileMtimeMs: noFileChange,
+			archive,
+		});
+
+		expect({result, archived}).toStrictEqual({
+			result: ["longAgoUnarchived", "neverArchived"],
+			archived: ["longAgoUnarchived", "neverArchived"],
+		});
+	});
+
+	it("archives an unarchived session again once the window has passed since the unarchive", () => {
+		seed({old: 30});
+		setSessionArchived(db.index, "old", true, NOW - 20 * DAY_MS);
+		setSessionArchived(db.index, "old", false, NOW - 2 * DAY_MS);
+		const sweep = (now: number) =>
+			sweepInactiveSessions(db.index, {now, days: 7, keepIds: new Set(), fileMtimeMs: noFileChange, archive});
+		const {archived, archive} = archiver();
+
+		expect({
+			hourLater: sweep(NOW + 60 * 60 * 1000),
+			beforeWindow: sweep(NOW + 5 * DAY_MS - 1),
+			afterWindow: sweep(NOW + 5 * DAY_MS + 1),
+			archived,
+		}).toStrictEqual({hourLater: [], beforeWindow: [], afterWindow: ["old"], archived: ["old"]});
+	});
+
+	it("records an unarchive only when the session was archived", () => {
+		seed({never: 30});
+		setSessionArchived(db.index, "never", false, NOW - DAY_MS);
+		const {archived, archive} = archiver();
+
+		const result = sweepInactiveSessions(db.index, {
+			now: NOW,
+			days: 7,
+			keepIds: new Set(),
+			fileMtimeMs: noFileChange,
+			archive,
+		});
+
+		expect({result, archived}).toStrictEqual({result: ["never"], archived: ["never"]});
+	});
 });
 
 describe("createAutoArchiveRunner", () => {

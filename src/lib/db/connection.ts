@@ -258,6 +258,11 @@ CREATE TABLE IF NOT EXISTS archived_sessions (
   archived_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS unarchived_sessions (
+  session_id TEXT PRIMARY KEY,
+  unarchived_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS home_dismissals (
   session_id TEXT PRIMARY KEY,
   dismissed_at INTEGER NOT NULL
