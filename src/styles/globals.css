@@ -789,6 +789,11 @@ html[data-interface-font="dyslexic"] {
 	cursor: pointer;
 }
 
+/* Upstream `page-fade-t`: the sticky page header's scroll fade, page bg to transparent downward. */
+@utility page-fade-t {
+	background-image: linear-gradient(var(--color-page), transparent);
+}
+
 /* Upstream `.cds-btn-squish`: pressed buttons shrink to .975 in 60ms and spring
    back over .45s. `transition` replaces `transition-colors`, so the hover fade
    rides along at upstream's 60ms paint-span timing. */

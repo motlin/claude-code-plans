@@ -322,14 +322,23 @@ describe("artifacts route", () => {
 	it("sizes the content as upstream's `mx-auto w-full px-md md:px-8 max-w-5xl` box inside a gutter-less route, so the grid is 960px at desktop", async () => {
 		await renderArtifactsPage("/artifacts", true);
 		const page = document.body.firstElementChild?.firstElementChild;
+		const band = page?.querySelector(":scope > .sticky");
 
 		expect({
 			gutter: ArtifactsRoute.options.staticData?.pageGutter,
 			page: page?.className,
+			parts: [...(page?.children ?? [])].map((child) => child.className),
+			headerBox: band?.firstElementChild?.className,
 		}).toStrictEqual({
 			gutter: "none",
+			page: "flex w-full flex-col",
 			// px-md is 8px (README pad-md); local spacing has no md token, so px-2.
-			page: "mx-auto flex w-full max-w-5xl flex-col px-2 md:px-8",
+			parts: [
+				"h-0 -mt-9 max-sm:-mt-12",
+				"sticky top-0 bg-page",
+				"mx-auto w-full max-w-5xl px-2 md:px-8 flex flex-col pb-12 pt-1",
+			],
+			headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",
 		});
 	});
 

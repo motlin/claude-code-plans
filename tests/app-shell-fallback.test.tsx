@@ -346,6 +346,11 @@ describe("AppShellFallback", () => {
 				?.querySelector("[data-artifacts-skeleton-grid]")
 				?.className.split(" ")
 				.includes("md:grid-cols-3"),
+			// The sticky header's pb-6 plus the content box's pt-1.
+			gridOffset: skeleton
+				?.querySelector("[data-artifacts-skeleton-grid]")
+				?.className.split(" ")
+				.filter((name) => name.startsWith("pt-")),
 			gutter: skeleton?.children[1]?.className,
 			box: skeleton?.children[1]?.firstElementChild?.className,
 			composer: host.querySelector("[data-fallback-composer]"),
@@ -354,6 +359,7 @@ describe("AppShellFallback", () => {
 			skeleton: true,
 			cards: 6,
 			grid: true,
+			gridOffset: ["pt-7"],
 			gutter: "",
 			box: "mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col px-2 md:px-8",
 			composer: null,

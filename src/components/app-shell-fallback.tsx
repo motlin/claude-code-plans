@@ -150,7 +150,7 @@ function ArtifactsSkeleton() {
 					</div>
 					<div
 						data-artifacts-skeleton-grid=""
-						className="grid grid-cols-1 gap-6 pt-5 sm:grid-cols-2 md:grid-cols-3"
+						className="grid grid-cols-1 gap-6 pt-7 sm:grid-cols-2 md:grid-cols-3"
 					>
 						{[0, 1, 2, 3, 4, 5].map((index) => (
 							<div

@@ -78,6 +78,9 @@ const VIEW_TABS: ReadonlyArray<{view: ArtifactView; label: string}> = [
 	{view: "shared", label: "Shared with you"},
 ];
 
+/** Upstream's cds Page content box (`mx-auto w-full px-md md:px-8 max-w-5xl`), shared by the sticky header and the list. */
+const ARTIFACTS_BOX_CLASS = "mx-auto w-full max-w-5xl px-2 md:px-8";
+
 const VIEW_TAB_CLASS =
 	"inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[13px] font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-primary aria-selected:bg-fill-ghost-hover aria-selected:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
@@ -126,9 +129,10 @@ function ArtifactsPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-5xl flex-col px-2 md:px-8">
+		<div className="flex w-full flex-col">
 			<CodePageHeader
 				title="Artifacts"
+				sticky={{box: ARTIFACTS_BOX_CLASS}}
 				tabs={
 					<div role="tablist" aria-label="Artifacts" className="flex items-center gap-1">
 						{VIEW_TABS.map((tab) => (
@@ -176,7 +180,7 @@ function ArtifactsPage() {
 				</p>
 			</CodePageHeader>
 
-			<div className="flex flex-col pb-12 pt-1">
+			<div className={`${ARTIFACTS_BOX_CLASS} flex flex-col pb-12 pt-1`}>
 				{artifacts.length === 0 ? (
 					<div className="flex flex-col items-start gap-3 pb-12 text-body">
 						<h3 className="max-w-xs font-medium text-secondary">No artifacts yet</h3>
