@@ -77,7 +77,7 @@ export function CustomizeHeader({
 				}
 			>
 				{embedded && (
-					<h2 className="min-w-0 truncate text-[20px]/[25px] font-[580] text-primary">{section.label}</h2>
+					<h2 className="min-w-0 truncate text-[22px]/[28px] font-[580] text-primary">{section.label}</h2>
 				)}
 				{!embedded && (
 					<nav aria-label="Customize" className="flex shrink-0 items-center">
@@ -123,7 +123,7 @@ export function CustomizeHeader({
 				data-customize-controls=""
 				className={
 					embedded
-						? "ms-auto flex min-w-0 items-center justify-end gap-1.5"
+						? "ms-auto flex min-w-0 items-center justify-end gap-2"
 						: "flex min-w-min flex-1 basis-0 flex-nowrap items-center justify-end gap-2"
 				}
 			>
