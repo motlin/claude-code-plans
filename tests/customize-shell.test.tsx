@@ -1354,16 +1354,47 @@ describe("unified search hit rows", () => {
 		);
 	});
 
-	it("keeps the resting list row at its 12px gaps", async () => {
+	it("lays resting rows out at the dialog's comfortable density: 28px list gaps, 16px row gaps, 12px padding", async () => {
 		await renderDialogPanel("#customize/skills");
 		const row = screen.getAllByTestId("customize-list-row")[0]!;
-		const leading = row.querySelector<HTMLElement>("[data-testid=customize-icon-tile]")?.parentElement;
+		const tile = row.querySelector<HTMLElement>("[data-testid=customize-icon-tile]")!;
+		const section = row.closest("section")!;
+		const list = section.parentElement!;
+		const trailing = row.lastElementChild as HTMLElement;
+		const has = (el: Element | null | undefined, classes: string[]) =>
+			classes.filter((cls) => el?.classList.contains(cls) === true);
+		const ROW = [
+			"-mx-3",
+			"gap-4",
+			"p-3",
+			"rounded-card",
+			"after:inset-x-3",
+			"hover:after:hidden",
+			"[&:has(+_:hover)]:after:hidden",
+			"hover:bg-fill-ghost-hover",
+			"[&:has(>div_button:hover)]:bg-transparent",
+		];
+		const TILE = ["size-9", "rounded-r6", "border-border", "bg-surface-0", "text-muted-as-secondary"];
 
 		expect({
-			row: ["gap-3", "gap-4"].filter((cls) => row.classList.contains(cls)),
-			leading: ["gap-3", "gap-4"].filter((cls) => leading?.classList.contains(cls)),
-			main: row.querySelector("[data-testid=tabbed-list-item-row-main]"),
-		}).toStrictEqual({row: ["gap-3"], leading: ["gap-3"], main: null});
+			wrapper: has(list.parentElement, ["gap-6", "gap-7"]),
+			list: has(list, ["gap-6", "gap-7"]),
+			row: has(row, [...ROW, "gap-3"]),
+			leading: has(tile.parentElement, ["gap-3", "gap-4"]),
+			tile: has(tile, [...TILE, "text-secondary"]),
+			h3: section.querySelector("h3")?.className,
+			trailing: has(trailing, ["gap-4", "gap-7"]),
+			meta: has(trailing.firstElementChild, ["text-footnote", "text-t6", "text-muted-as-secondary"]),
+		}).toStrictEqual({
+			wrapper: ["gap-7"],
+			list: ["gap-7"],
+			row: ROW,
+			leading: ["gap-4"],
+			tile: TILE,
+			h3: "m-0 truncate text-[15px]/[20px] font-[580] text-primary",
+			trailing: ["gap-7"],
+			meta: ["text-footnote", "text-muted-as-secondary"],
+		});
 	});
 });
 

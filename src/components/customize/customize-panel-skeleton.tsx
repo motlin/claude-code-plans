@@ -10,7 +10,7 @@ const ROW_WIDTHS = [
 	["w-28", "w-1/2"],
 ] as const;
 
-/** Upstream's list-rows skeleton: a section-heading bar over six default-density rows. */
+/** Upstream's list-rows skeleton: a section-heading bar over six comfortable-density rows (the Settings dialog is comfortable). */
 export function CustomizeListRowsSkeleton() {
 	return (
 		<div aria-hidden="true" className="flex flex-col">
@@ -25,7 +25,7 @@ export function CustomizeListRowsSkeleton() {
 					key={index}
 					aria-hidden="true"
 					data-testid="list-rows-skeleton-row"
-					className="flex items-center gap-3 -mx-2 self-stretch px-2 py-2"
+					className="flex items-center gap-4 -mx-3 self-stretch px-3 py-3"
 				>
 					<Skeleton className="size-9 shrink-0 rounded-card" />
 					<div aria-hidden="true" className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -36,7 +36,7 @@ export function CustomizeListRowsSkeleton() {
 							<Skeleton className={`h-[1em] rounded ${subtitle}`} />
 						</div>
 					</div>
-					<div aria-hidden="true" className="flex shrink-0 items-center gap-5">
+					<div aria-hidden="true" className="flex shrink-0 items-center gap-7">
 						<div className="flex h-lh max-w-full items-center text-footnote">
 							<Skeleton className="h-[1em] rounded w-10" />
 						</div>

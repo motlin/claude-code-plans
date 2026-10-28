@@ -25,7 +25,8 @@ function bar(width: string): string {
 	return `${SKELETON_CLASS} h-[1em] rounded ${width}`;
 }
 
-const ROW_CLASS = "flex items-center gap-3 -mx-2 self-stretch px-2 py-2";
+/** Comfortable density (the Settings dialog): gap-md 16, pad-md 12. */
+const ROW_CLASS = "flex items-center gap-4 -mx-3 self-stretch px-3 py-3";
 
 /** Each skeleton row as its classes, then every skeleton bar inside it. */
 function rowOutline(container: HTMLElement): string[][] {
@@ -96,7 +97,7 @@ describe("Customize panel skeleton", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("renders upstream's heading bar and six default-density rows", () => {
+	it("renders upstream's heading bar and six comfortable-density rows", () => {
 		const {container} = render(<CustomizeListRowsSkeleton />);
 
 		const heading = container.querySelector<HTMLElement>('[data-testid="list-rows-skeleton-heading"]');

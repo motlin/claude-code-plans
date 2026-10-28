@@ -31,7 +31,7 @@ export function CustomizeList({groups, icon, empty}: CustomizeListProps): ReactN
 	if (visible.length === 0) return empty;
 
 	return (
-		<div className="flex flex-col gap-6">
+		<div className="flex flex-col gap-7">
 			{visible.map((group, index) => (
 				<section key={group.key} aria-labelledby={`customize-group-${index}`} className="flex flex-col">
 					<SectionHeader id={`customize-group-${index}`} title={group.title} count={group.items.length} />

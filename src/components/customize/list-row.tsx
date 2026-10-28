@@ -123,17 +123,20 @@ function HitText({
 }
 
 /**
- * Upstream tabbed list row: 36px icon tile, 14px medium title over a 13px
+ * Upstream tabbed list row at the Settings dialog's comfortable density
+ * (`gap-md` 16, `px-md py-md` 12, `-mx-pad-md` −12): 36px icon tile, 14px medium title over a 13px
  * secondary subtitle, trailing meta and actions. A 1px `::after` divider sits
- * under every row except the last and disappears on hover.
+ * under every row except the last; it disappears on the hovered row and the
+ * row above it, and the fill clears while a trailing control is hovered.
  */
 export function ListRow(props: ListRowProps) {
 	const {icon, title, source, subtitle, meta, actions, onView, testId = "customize-list-row"} = props;
-	const gap = props.variant === "hit" ? "gap-4" : "gap-3";
+	// The hit row keeps its 16px trailing gap; the resting row's trailing cluster is `gap-lg` (28 comfortable).
+	const trailingGap = props.variant === "hit" ? "gap-4" : "gap-7";
 	return (
 		<div
 			data-testid={testId}
-			className={`relative -mx-3 flex items-center ${gap} self-stretch rounded-card p-3 after:pointer-events-none after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-border last:after:hidden hover:bg-fill-ghost-hover hover:after:hidden`}
+			className="relative -mx-3 flex items-center gap-4 self-stretch rounded-card p-3 after:pointer-events-none after:absolute after:inset-x-3 after:bottom-0 after:h-px after:bg-border last:after:hidden hover:after:hidden [&:has(+_:hover)]:after:hidden hover:bg-fill-ghost-hover [&:has(>div_button:hover)]:bg-transparent"
 		>
 			{onView && (
 				<button
@@ -143,9 +146,7 @@ export function ListRow(props: ListRowProps) {
 					className="absolute inset-0 rounded-card hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				/>
 			)}
-			<div
-				className={`pointer-events-none relative flex min-w-0 flex-1 items-center ${gap} [&_button]:pointer-events-auto`}
-			>
+			<div className="pointer-events-none relative flex min-w-0 flex-1 items-center gap-4 [&_button]:pointer-events-auto">
 				<IconTile icon={icon} />
 				{props.variant === "hit" ? (
 					<HitText
@@ -173,8 +174,12 @@ export function ListRow(props: ListRowProps) {
 				)}
 			</div>
 			{(meta !== undefined || actions !== undefined) && (
-				<div className="pointer-events-none relative flex shrink-0 items-center gap-4 [&_button]:pointer-events-auto">
-					{meta !== undefined && <span className="truncate text-footnote text-t6">{meta}</span>}
+				<div
+					className={`pointer-events-none relative flex shrink-0 items-center ${trailingGap} [&_button]:pointer-events-auto`}
+				>
+					{meta !== undefined && (
+						<span className="truncate text-footnote text-muted-as-secondary">{meta}</span>
+					)}
 					{actions}
 				</div>
 			)}

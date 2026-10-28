@@ -58,7 +58,7 @@ export function SkillsSection({search}: SectionProps) {
 		(source === "all" || source === "personal") && !skills.some((skill) => skill.source === "personal");
 
 	return (
-		<div className="flex flex-col gap-6">
+		<div className="flex flex-col gap-7">
 			{showOnboarding && (
 				<div data-testid="customize-skills-onboarding">
 					<CustomizeNotice title="Add your first skills" body="Personal skills live in ~/.claude/skills." />

@@ -26,7 +26,7 @@ export function IconTile({icon: Icon, size = "md"}: IconTileProps) {
 		<div
 			aria-hidden="true"
 			data-testid="customize-icon-tile"
-			className={`flex shrink-0 items-center justify-center border border-border bg-surface-0 text-secondary ${SIZE_CLASS[size]}`}
+			className={`flex shrink-0 items-center justify-center border border-border bg-surface-0 text-muted-as-secondary ${SIZE_CLASS[size]}`}
 		>
 			<Icon className={GLYPH_CLASS[size]} />
 		</div>
