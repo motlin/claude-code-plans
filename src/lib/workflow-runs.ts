@@ -73,13 +73,20 @@ export const WorkflowJournalEventSchema = z.discriminatedUnion("type", [
 		label: z.string().optional(),
 		phase: z.string().optional(),
 	}),
-	z.strictObject({type: z.literal("result"), key: z.string(), agentId: z.string(), result: JsonValueSchema}),
+	z.strictObject({
+		type: z.literal("result"),
+		key: z.string(),
+		agentId: z.string(),
+		result: JsonValueSchema,
+		toolsUsed: z.array(z.string()).optional(),
+	}),
 	z.strictObject({type: z.literal("failed"), key: z.string(), agentId: z.string()}),
 ]);
 
 /** `subagents/workflows/<runId>/agent-<agentId>.meta.json`. */
 export const WorkflowAgentMetaSchema = z.strictObject({
 	agentType: z.string(),
+	isBuiltIn: z.boolean().optional(),
 	description: z.string().optional(),
 	workflowPhase: z.string().optional(),
 	spawnDepth: z.number(),

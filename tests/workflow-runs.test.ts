@@ -407,6 +407,33 @@ describe("workflowSessionIdForPath", () => {
 	});
 });
 
+describe("workflow schemas", () => {
+	it("accepts a result journal event with toolsUsed", () => {
+		const event = {
+			type: "result",
+			key: "v2:f1ec",
+			agentId: "a9fc1c85cc36d863d",
+			result: {none: false, head: "7b529a88", clean: true},
+			toolsUsed: ["Bash", "StructuredOutput"],
+		};
+		expect(WorkflowJournalEventSchema.parse(event)).toStrictEqual(event);
+	});
+
+	it("accepts an agent meta file with isBuiltIn", () => {
+		const meta = {
+			agentType: "workflow-subagent",
+			isBuiltIn: true,
+			description: "task-1",
+			workflowPhase: "Tasks",
+			spawnDepth: 1,
+			requestShape: "foreground",
+			requestNonInteractive: false,
+			model: "sonnet",
+		};
+		expect(WorkflowAgentMetaSchema.parse(meta)).toStrictEqual(meta);
+	});
+});
+
 /** The paths `pick` selects for every ~/.claude/projects/<project>/<session> entry. */
 function diskFiles(pick: (sessionDir: string) => string[]): string[] {
 	const root = join(homedir(), ".claude", "projects");
