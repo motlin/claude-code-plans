@@ -35,7 +35,7 @@ import {
 	TranscriptSettings,
 } from "./settings-sections";
 import {CustomizePanelSkeleton} from "../customize/customize-panel-skeleton";
-import {loadedCustomizeDialogPanel, preloadCustomizeDialogPanel} from "./customize-dialog-panel-loader";
+import {preloadCustomizeDialogPanel} from "./customize-dialog-panel-loader";
 import {SettingsFlashContext, type SettingsFlash, SettingsTabContext} from "./settings-row-context";
 import {SettingsSearch} from "./settings-search";
 import {CUSTOMIZE_SECTION_ICONS, SETTINGS_TAB_ICONS} from "./settings-tab-icons";
@@ -66,10 +66,11 @@ function warmCustomizeDialogPanel(): void {
 /**
  * Suspends only while the module is still loading. Unlike React.lazy, which suspends on its first render even
  * when the module is already in hand and then holds the reveal for React's 300ms Suspense throttle, a preloaded
- * panel renders in the same pass.
+ * panel renders in the same pass. use() runs on every render: the download tags itself fulfilled, so a loaded module
+ * returns synchronously rather than skipping use(), which React flags as conditional use() after a suspension.
  */
-function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
-	const Panel = loadedCustomizeDialogPanel() ?? use(preloadCustomizeDialogPanel()).default;
+export function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
+	const Panel = use(preloadCustomizeDialogPanel()).default;
 	return <Panel {...props} />;
 }
 

@@ -15,7 +15,6 @@ import {installLocalStorage} from "./fake-storage";
 // The Customize panel module never finishes loading, so the dialog stays on its Suspense fallback.
 vi.mock("../src/components/settings/customize-dialog-panel-loader", () => ({
 	preloadCustomizeDialogPanel: async () => new Promise(() => {}),
-	loadedCustomizeDialogPanel: () => undefined,
 }));
 
 const SKELETON_CLASS =
