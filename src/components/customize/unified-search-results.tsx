@@ -188,8 +188,8 @@ interface UnifiedSearchResultsProps {
 	q: string;
 	surface: UnifiedSearchSurface;
 	search: UnifiedSearch;
-	/** The plugin catalog ("More you can add") is still loading. */
-	catalogPending: boolean;
+	/** Some source (the catalog or any of yours) is still loading. */
+	pending: boolean;
 	/** The plugin catalog failed to load. */
 	catalogError: boolean;
 	onRetry: () => void;
@@ -212,7 +212,7 @@ export function UnifiedSearchResults({
 	q,
 	surface,
 	search,
-	catalogPending,
+	pending,
 	catalogError,
 	onRetry,
 	retrying = false,
@@ -241,8 +241,8 @@ export function UnifiedSearchResults({
 
 	const total = search.yours.length + search.more.length;
 	const quoted = `“${term}”`;
-	const noMatch = total === 0 && !catalogPending && !catalogError;
-	const status = catalogPending
+	const noMatch = total === 0 && !pending && !catalogError;
+	const status = pending
 		? ""
 		: noMatch
 			? `No results match ${quoted}`
@@ -254,9 +254,9 @@ export function UnifiedSearchResults({
 				{status}
 			</p>
 			<div
-				aria-busy={catalogPending || retrying}
+				aria-busy={pending || retrying}
 				data-testid="customize-unified-search-results"
-				className={`flex flex-col gap-7${catalogPending || retrying ? " opacity-70 pointer-events-none" : ""}`}
+				className={`flex flex-col gap-7${pending || retrying ? " opacity-70 pointer-events-none" : ""}`}
 			>
 				{catalogError && (
 					<div className={`pb-2 ${REVEAL}`}>
@@ -308,7 +308,7 @@ export function UnifiedSearchResults({
 						{...sectionProps("more")}
 					/>
 				)}
-				{catalogPending && search.more.length === 0 && (
+				{pending && search.more.length === 0 && (
 					<div className="animate-[cds-fade-in_150ms_ease-out_500ms_backwards]">
 						<CustomizeListRowsSkeleton />
 					</div>

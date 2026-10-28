@@ -51,6 +51,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+	vi.unstubAllGlobals();
 });
 
 async function flush() {
@@ -148,12 +149,19 @@ const DISCOVER: DiscoverCatalog = {
 	],
 };
 
-async function renderCustomize(initialEntry: string, skills: SkillSummary[] = SKILLS) {
+async function renderCustomize(
+	initialEntry: string,
+	skills: SkillSummary[] = SKILLS,
+	seed: (queryClient: QueryClient) => void = () => undefined,
+) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, skills);
 	queryClient.setQueryData(customizeDiscoverQueryOptions.queryKey, DISCOVER);
 	queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, MCP_SERVERS);
 	queryClient.setQueryData(pluginsQueryOptions.queryKey, []);
+	queryClient.setQueryData(userCommandsQueryOptions.queryKey, []);
+	queryClient.setQueryData(customizeClaudeAiConnectorsQueryOptions.queryKey, []);
+	seed(queryClient);
 
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -415,6 +423,48 @@ describe("customize shell", () => {
 		}).toStrictEqual({
 			lines: ["No results match \u201czzz-nothing\u201d", "No results match \u201czzz-nothing\u201d"],
 			fallback: null,
+		});
+	});
+
+	it("stays busy with no count on a cold deep link until every unified-search source has loaded", async () => {
+		let resolveSkills: (skills: SkillSummary[]) => void = () => undefined;
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(
+				async () =>
+					new Promise<Response>((resolve) => {
+						resolveSkills = (skills) => {
+							resolve(Response.json(skills));
+						};
+					}),
+			),
+		);
+		await renderCustomize("/customize/plugins?q=deploy", SKILLS, (queryClient) => {
+			queryClient.removeQueries({queryKey: customizeSkillsQueryOptions.queryKey});
+		});
+		const probe = () => {
+			const root = screen.getByTestId("customize-unified-search-results");
+			return {
+				busy: root.getAttribute("aria-busy"),
+				status: root.previousElementSibling?.textContent,
+				hits: unifiedHitKeys(),
+			};
+		};
+		await flush();
+		const loading = probe();
+
+		await actAndSettle(() => {
+			resolveSkills(SKILLS);
+		});
+		await flush();
+
+		expect({loading, loaded: probe()}).toStrictEqual({
+			loading: {busy: "true", status: "", hits: ["More you can add", "Deploy"]},
+			loaded: {
+				busy: "false",
+				status: "2 results matching \u201cdeploy\u201d",
+				hits: ["Yours", "deploy-checklist", "More you can add", "Deploy"],
+			},
 		});
 	});
 
@@ -764,7 +814,7 @@ function renderResults(props: Partial<Parameters<typeof UnifiedSearchResults>[0]
 			q="mcp"
 			surface="dialog"
 			search={{yours: [YOURS_HIT], more: MORE_HITS}}
-			catalogPending={false}
+			pending={false}
 			catalogError={false}
 			onRetry={onRetry}
 			{...props}
@@ -1019,7 +1069,7 @@ describe("UnifiedSearchResults", () => {
 	});
 
 	it("dims the results and shows six skeleton rows for More while the catalog loads", () => {
-		renderResults({search: {yours: [YOURS_HIT], more: []}, catalogPending: true});
+		renderResults({search: {yours: [YOURS_HIT], more: []}, pending: true});
 		const root = screen.getByTestId("customize-unified-search-results");
 		const status = root.previousElementSibling as HTMLElement;
 		const skeleton = within(root)
@@ -1092,7 +1142,7 @@ function renderHitRows(search: {yours: UnifiedHit[]; more: UnifiedHit[]}) {
 					q="mcp"
 					surface="dialog"
 					search={search}
-					catalogPending={false}
+					pending={false}
 					catalogError={false}
 					onRetry={() => {}}
 				/>

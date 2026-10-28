@@ -27,3 +27,13 @@ export function prefetchCustomizeSection(queryClient: QueryClient, section: Cust
 			return;
 	}
 }
+
+/** Start fetching every source unified search reads, so a `?q=` deep link never counts a partial result set. */
+export function prefetchUnifiedSearch(queryClient: QueryClient): void {
+	void queryClient.query(customizeSkillsQueryOptions).catch(noop);
+	void queryClient.query(userCommandsQueryOptions).catch(noop);
+	void queryClient.query(customizeMcpServersQueryOptions).catch(noop);
+	void queryClient.query(customizeClaudeAiConnectorsQueryOptions).catch(noop);
+	void queryClient.query(pluginsQueryOptions).catch(noop);
+	void queryClient.query(customizeDiscoverQueryOptions).catch(noop);
+}

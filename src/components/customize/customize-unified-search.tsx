@@ -21,12 +21,21 @@ interface CustomizeUnifiedSearchProps {
 
 /** Upstream's unified results, fed from every Customize source plus the plugin catalog. */
 export function CustomizeUnifiedSearch({q, surface, onOpen, expanded, onExpandedChange}: CustomizeUnifiedSearchProps) {
-	const {data: skills = []} = useQuery(customizeSkillsQueryOptions);
-	const {data: commands = []} = useQuery(userCommandsQueryOptions);
-	const {data: servers = []} = useQuery(customizeMcpServersQueryOptions);
-	const {data: claudeAi = []} = useQuery(customizeClaudeAiConnectorsQueryOptions);
-	const {data: plugins = []} = useQuery(pluginsQueryOptions);
+	const skillsQuery = useQuery(customizeSkillsQueryOptions);
+	const commandsQuery = useQuery(userCommandsQueryOptions);
+	const serversQuery = useQuery(customizeMcpServersQueryOptions);
+	const claudeAiQuery = useQuery(customizeClaudeAiConnectorsQueryOptions);
+	const pluginsQuery = useQuery(pluginsQueryOptions);
 	const catalog = useQuery(customizeDiscoverQueryOptions);
+	const {data: skills = []} = skillsQuery;
+	const {data: commands = []} = commandsQuery;
+	const {data: servers = []} = serversQuery;
+	const {data: claudeAi = []} = claudeAiQuery;
+	const {data: plugins = []} = pluginsQuery;
+	// An unloaded source would read as empty, so hold the count until every source settles.
+	const pending = [skillsQuery, commandsQuery, serversQuery, claudeAiQuery, pluginsQuery, catalog].some(
+		(query) => query.isPending,
+	);
 	const search = useMemo(
 		() =>
 			buildUnifiedSearch({skills, commands, servers, claudeAi, plugins, catalog: catalog.data?.plugins ?? []}, q),
@@ -37,7 +46,7 @@ export function CustomizeUnifiedSearch({q, surface, onOpen, expanded, onExpanded
 			q={q}
 			surface={surface}
 			search={search}
-			catalogPending={catalog.isPending}
+			pending={pending}
 			catalogError={catalog.isError}
 			retrying={catalog.isError && catalog.isFetching}
 			onRetry={() => void catalog.refetch()}

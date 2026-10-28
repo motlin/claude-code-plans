@@ -2,6 +2,7 @@ import {createFileRoute, Outlet, useLocation, useNavigate} from "@tanstack/react
 import {CustomizeHeader} from "../components/customize/customize-header";
 import {routeOptions} from "../components/customize/customize-navigation";
 import {CustomizeUnifiedSearch} from "../components/customize/customize-unified-search";
+import {prefetchUnifiedSearch} from "../components/customize/section-prefetch";
 import {
 	type CustomizeSearch,
 	customizeSearchSchema,
@@ -12,6 +13,10 @@ import {
 export const Route = createFileRoute("/customize")({
 	component: CustomizeLayout,
 	validateSearch: customizeSearchSchema,
+	loaderDeps: ({search}) => ({searching: search.q !== undefined && search.q !== ""}),
+	loader: ({context: {queryClient}, deps: {searching}}) => {
+		if (searching) prefetchUnifiedSearch(queryClient);
+	},
 	head: () => ({meta: [{title: "Customize"}]}),
 	staticData: {pageGutter: "tight"},
 });
