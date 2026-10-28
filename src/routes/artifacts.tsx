@@ -1,5 +1,6 @@
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
+import {Tabs} from "@base-ui/react/tabs";
 import {
 	CodeXml,
 	EllipsisVertical,
@@ -49,12 +50,12 @@ import {Tooltip} from "../components/ui/tooltip";
 export const Route = createFileRoute("/artifacts")({
 	component: ArtifactsPage,
 	staticData: {pageGutter: "none"},
-	validateSearch: (search: Record<string, unknown>): {search?: string; view?: Exclude<ArtifactView, "all">} => {
+	validateSearch: (search: Record<string, unknown>): {search?: string; tab?: ArtifactTabParam} => {
 		const query = search["search"];
-		const view = search["view"];
+		const tab = tabParamFromSearch(search);
 		return {
 			...(typeof query === "string" && query !== "" ? {search: query} : {}),
-			...(view === "yours" || view === "shared" ? {view} : {}),
+			...(tab === undefined ? {} : {tab}),
 		};
 	},
 	loader: async ({context: {queryClient}}) => queryClient.query({...artifactsQueryOptions, staleTime: "static"}),
@@ -62,6 +63,35 @@ export const Route = createFileRoute("/artifacts")({
 		meta: [{title: "Artifacts"}],
 	}),
 });
+
+/** Upstream's `?tab=` values; All omits the param. */
+type ArtifactTabParam = "mine" | "shared";
+
+/** Reads `?tab=mine|shared`, falling back to the legacy `?view=yours|shared` so old links keep working. */
+function tabParamFromSearch(search: Record<string, unknown>): ArtifactTabParam | undefined {
+	const tab = search["tab"];
+	if (tab === "mine" || tab === "shared") return tab;
+	const view = search["view"];
+	if (view === "yours") return "mine";
+	if (view === "shared") return "shared";
+	return undefined;
+}
+
+function viewFromTabParam(tab: ArtifactTabParam | undefined): ArtifactView {
+	if (tab === "mine") return "yours";
+	if (tab === "shared") return "shared";
+	return "all";
+}
+
+function tabParamFromView(view: ArtifactView): ArtifactTabParam | undefined {
+	if (view === "yours") return "mine";
+	if (view === "shared") return "shared";
+	return undefined;
+}
+
+function isArtifactView(value: unknown): value is ArtifactView {
+	return VIEW_TABS.some((tab) => tab.view === value);
+}
 
 /** Upstream's type vocabulary: anything that is not a Doc (or a Slides/Design type we never see) is "Other". */
 const TYPE_FILTER_LABELS: Record<ArtifactTypeFilter, string> = {
@@ -90,7 +120,8 @@ function isTypeFilter(value: unknown): value is ArtifactTypeFilter {
 
 function ArtifactsPage() {
 	const {data: artifacts} = useSuspenseQuery(artifactsQueryOptions);
-	const {search = "", view = "all"} = Route.useSearch();
+	const {search = "", tab: tabParam} = Route.useSearch();
+	const view = viewFromTabParam(tabParam);
 	const navigate = useNavigate();
 	const [layout, setLayout] = useState<ArtifactsLayout>("grid");
 	const [type, setType] = useState<ArtifactTypeFilter>("all");
@@ -118,11 +149,12 @@ function ArtifactsPage() {
 	}
 
 	function updateSearch(next: {search: string; view: ArtifactView}) {
+		const tab = tabParamFromView(next.view);
 		void navigate({
 			to: "/artifacts",
 			search: {
 				...(next.search === "" ? {} : {search: next.search}),
-				...(next.view === "all" ? {} : {view: next.view}),
+				...(tab === undefined ? {} : {tab}),
 			},
 			replace: true,
 		});
@@ -134,22 +166,20 @@ function ArtifactsPage() {
 				title="Artifacts"
 				sticky={{box: ARTIFACTS_BOX_CLASS}}
 				tabs={
-					<div role="tablist" aria-label="Artifacts" className="flex items-center gap-1">
-						{VIEW_TABS.map((tab) => (
-							<button
-								key={tab.view}
-								type="button"
-								role="tab"
-								aria-selected={tab.view === view}
-								className={VIEW_TAB_CLASS}
-								onClick={() => {
-									updateSearch({search, view: tab.view});
-								}}
-							>
-								{tab.label}
-							</button>
-						))}
-					</div>
+					<Tabs.Root
+						value={view}
+						onValueChange={(next: unknown) => {
+							if (isArtifactView(next)) updateSearch({search, view: next});
+						}}
+					>
+						<Tabs.List activateOnFocus={false} aria-label="Artifacts" className="flex items-center gap-1">
+							{VIEW_TABS.map((tab) => (
+								<Tabs.Tab key={tab.view} value={tab.view} className={VIEW_TAB_CLASS}>
+									{tab.label}
+								</Tabs.Tab>
+							))}
+						</Tabs.List>
+					</Tabs.Root>
 				}
 				toolbar={
 					<>

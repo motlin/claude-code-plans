@@ -9,7 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {artifactsQueryOptions, ArtifactListResponse} from "../src/lib/api/artifacts";
@@ -606,7 +606,7 @@ describe("artifacts route", () => {
 		});
 	});
 
-	it("shows upstream's All / Yours / Shared with you tabs and keeps the choice in ?view=", async () => {
+	it("shows upstream's All / Yours / Shared with you tabs and keeps the choice in ?tab=", async () => {
 		const router = await renderArtifactsPage("/artifacts", seedMixedGallery);
 
 		function titles() {
@@ -623,13 +623,13 @@ describe("artifacts route", () => {
 
 		fireEvent.click(screen.getByRole("tab", {name: "Shared with you"}));
 		await waitFor(() => {
-			expect({...router.state.location.search}).toStrictEqual({view: "shared"});
+			expect({...router.state.location.search}).toStrictEqual({tab: "shared"});
 		});
 		const shared = titles();
 
 		fireEvent.click(screen.getByRole("tab", {name: "Yours"}));
 		await waitFor(() => {
-			expect({...router.state.location.search}).toStrictEqual({view: "yours"});
+			expect({...router.state.location.search}).toStrictEqual({tab: "mine"});
 		});
 
 		expect({initial, shared, yours: titles()}).toStrictEqual({
@@ -646,13 +646,55 @@ describe("artifacts route", () => {
 		});
 	});
 
-	it("opens on the tab named by ?view=", async () => {
-		await renderArtifactsPage("/artifacts?view=shared", seedMixedGallery);
+	it("opens on the tab named by ?tab=", async () => {
+		await renderArtifactsPage("/artifacts?tab=shared", seedMixedGallery);
 
 		expect({
 			selected: screen.getByRole("tab", {selected: true}).textContent,
 			rows: screen.getAllByRole("listitem").length,
 		}).toStrictEqual({selected: "Shared with you", rows: 8});
+	});
+
+	it("still opens the tab named by the legacy ?view= param", async () => {
+		await renderArtifactsPage("/artifacts?view=yours", seedMixedGallery);
+
+		expect({
+			selected: screen.getByRole("tab", {selected: true}).textContent,
+			rows: screen.getAllByRole("listitem").length,
+		}).toStrictEqual({selected: "Yours", rows: 8});
+	});
+
+	it("drops ?tab= when going back to All", async () => {
+		const router = await renderArtifactsPage("/artifacts?tab=mine", seedMixedGallery);
+
+		fireEvent.click(screen.getByRole("tab", {name: "All"}));
+
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({});
+		});
+	});
+
+	it("roves focus across the tabs with manual activation, like upstream's activateOnFocus:false", async () => {
+		await renderArtifactsPage("/artifacts?tab=mine", seedMixedGallery);
+
+		const tabs = within(screen.getByRole("tablist", {name: "Artifacts"})).getAllByRole("tab");
+		const tabIndexes = tabs.map((tab) => tab.getAttribute("tabindex"));
+
+		act(() => {
+			screen.getByRole("tab", {name: "Yours"}).focus();
+		});
+		fireEvent.keyDown(screen.getByRole("tab", {name: "Yours"}), {key: "ArrowRight"});
+
+		await waitFor(() => {
+			expect(document.activeElement?.textContent).toBe("Shared with you");
+		});
+		expect({
+			tabIndexes,
+			selected: tabs.map((tab) => tab.getAttribute("aria-selected")),
+		}).toStrictEqual({
+			tabIndexes: ["-1", "0", "-1"],
+			selected: ["false", "true", "false"],
+		});
 	});
 
 	it("names the type filter options with upstream's vocabulary, icons and counts", async () => {
