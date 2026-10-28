@@ -41,8 +41,9 @@ declare module "@tanstack/react-router" {
 		tileShell?: "home" | "session";
 		/**
 		 * "tight": Customize's upstream 8px page gutter, inside which its own column adds 32px.
-		 * "phone-tight": Artifacts' upstream 8px gutter on phones only (px-md), 32px from sm up.
+		 * "none": no root gutter; the page pads its own max-width box (Artifacts' upstream
+		 * `mx-auto w-full px-md md:px-8 max-w-5xl`).
 		 */
-		pageGutter?: "tight" | "phone-tight";
+		pageGutter?: "tight" | "none";
 	}
 }

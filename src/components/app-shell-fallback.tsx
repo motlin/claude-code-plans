@@ -127,15 +127,16 @@ function FallbackChinControls({chin}: {chin: ShellChinLabels | null}) {
 }
 
 /**
- * The artifacts page while it loads, in its own layout: the root's top row and gutter, the compact
- * header's title and tab row, then a card grid like the loaded page's.
+ * The artifacts page while it loads, in its own layout: the root's top row and gutter-less slot, the
+ * page's own padded max-width box with the compact header's title and tab row, then a card grid like the
+ * loaded page's.
  */
 function ArtifactsSkeleton() {
 	return (
 		<div data-testid="artifacts-skeleton" className="min-h-0 flex-1 overflow-hidden">
 			<div className="min-h-9 max-sm:h-12" />
-			<div className="px-2 sm:px-8">
-				<div className="mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col">
+			<div>
+				<div className="mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col px-2 md:px-8">
 					<span className={`h-8 w-36 ${BAR_CLASS}`} />
 					<div className="mt-5 flex h-8 items-center gap-2">
 						<span className={`h-6 w-10 ${BAR_CLASS}`} />

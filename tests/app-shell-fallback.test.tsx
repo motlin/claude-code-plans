@@ -334,7 +334,7 @@ describe("AppShellFallback", () => {
 		});
 	});
 
-	it("paints the artifacts page's own skeleton on /artifacts: a compact header, tab row and card grid in the page's 8px phone gutter, with no session skeleton or composer", () => {
+	it("paints the artifacts page's own skeleton on /artifacts: a compact header, tab row and card grid in the gutter-less route with the page's own 8px/32px box, with no session skeleton or composer", () => {
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/artifacts" />);
 		const skeleton = host.querySelector('[data-testid="artifacts-skeleton"]');
@@ -347,13 +347,15 @@ describe("AppShellFallback", () => {
 				?.className.split(" ")
 				.includes("md:grid-cols-3"),
 			gutter: skeleton?.children[1]?.className,
+			box: skeleton?.children[1]?.firstElementChild?.className,
 			composer: host.querySelector("[data-fallback-composer]"),
 			sessionSkeleton: host.querySelector('[data-testid="session-skeleton"]'),
 		}).toStrictEqual({
 			skeleton: true,
 			cards: 6,
 			grid: true,
-			gutter: "px-2 sm:px-8",
+			gutter: "",
+			box: "mx-auto flex sm:-mt-1 w-full max-w-5xl flex-col px-2 md:px-8",
 			composer: null,
 			sessionSkeleton: null,
 		});

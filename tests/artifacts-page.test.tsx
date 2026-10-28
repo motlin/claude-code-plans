@@ -319,6 +319,20 @@ describe("artifacts route", () => {
 		}).toStrictEqual({toggle: "BUTTON", cards: 3});
 	});
 
+	it("sizes the content as upstream's `mx-auto w-full px-md md:px-8 max-w-5xl` box inside a gutter-less route, so the grid is 960px at desktop", async () => {
+		await renderArtifactsPage("/artifacts", true);
+		const page = document.body.firstElementChild?.firstElementChild;
+
+		expect({
+			gutter: ArtifactsRoute.options.staticData?.pageGutter,
+			page: page?.className,
+		}).toStrictEqual({
+			gutter: "none",
+			// px-md is 8px (README pad-md); local spacing has no md token, so px-2.
+			page: "mx-auto flex w-full max-w-5xl flex-col px-2 md:px-8",
+		});
+	});
+
 	it("draws grid cards as upstream: r10, a 160px preview, a 28px type tile straddling the divider, 14px body, 13/20 title, 11/17 meta, no pills", async () => {
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);

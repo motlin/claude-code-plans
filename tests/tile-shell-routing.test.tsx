@@ -155,7 +155,7 @@ it("actual root selects home/chat shells while source, subagents, and ordinary r
 	]);
 });
 
-it("gives Customize upstream's 8px page gutter, so its 32px-padded column starts 40px from the sidebar, Artifacts 8px on phones only, while other pages keep 32px", async () => {
+it("gives Customize upstream's 8px page gutter, so its 32px-padded column starts 40px from the sidebar, Artifacts none (its own max-width box pads itself), while other pages keep 32px", async () => {
 	vi.stubGlobal("scrollTo", () => {});
 	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	clients.push(client);
@@ -188,7 +188,7 @@ it("gives Customize upstream's 8px page gutter, so its 32px-padded column starts
 	await act(async () => router.navigate({to: "/plans"}));
 	expect({customize: customizeGutter, artifacts: artifactsGutter, plans: gutter("Fabricated plans")}).toStrictEqual({
 		customize: ["px-2"],
-		artifacts: ["px-2", "sm:px-8"],
+		artifacts: [],
 		plans: ["px-4", "sm:px-8"],
 	});
 });

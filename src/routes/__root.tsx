@@ -139,7 +139,7 @@ function RootApplication({children}: Readonly<{children: ReactNode}>) {
 const PAGE_GUTTER_CLASS = {
 	default: "px-4 sm:px-8",
 	tight: "px-2",
-	"phone-tight": "px-2 sm:px-8",
+	none: "",
 } as const satisfies Record<NonNullable<StaticDataRouteOption["pageGutter"]> | "default", string>;
 
 function RootLayout({children}: Readonly<{children: ReactNode}>) {
@@ -189,7 +189,7 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 						{fullBleed ? (
 							<div className="min-h-0 flex-1">{children}</div>
 						) : (
-							<div className={`${PAGE_GUTTER_CLASS[pageGutter ?? "default"]} pb-24 sm:pb-8`}>
+							<div className={`${PAGE_GUTTER_CLASS[pageGutter ?? "default"]} pb-24 sm:pb-8`.trim()}>
 								{children}
 							</div>
 						)}

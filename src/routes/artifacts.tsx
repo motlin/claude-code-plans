@@ -48,7 +48,7 @@ import {Tooltip} from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/artifacts")({
 	component: ArtifactsPage,
-	staticData: {pageGutter: "phone-tight"},
+	staticData: {pageGutter: "none"},
 	validateSearch: (search: Record<string, unknown>): {search?: string; view?: Exclude<ArtifactView, "all">} => {
 		const query = search["search"];
 		const view = search["view"];
@@ -126,7 +126,7 @@ function ArtifactsPage() {
 	}
 
 	return (
-		<div className="mx-auto flex w-full max-w-5xl flex-col">
+		<div className="mx-auto flex w-full max-w-5xl flex-col px-2 md:px-8">
 			<CodePageHeader
 				title="Artifacts"
 				tabs={
