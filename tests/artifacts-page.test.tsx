@@ -746,7 +746,7 @@ describe("artifacts route", () => {
 		});
 	});
 
-	it("names the type filter options with upstream's vocabulary, icons and counts", async () => {
+	it("names the type filter options with upstream's vocabulary, chips and counts", async () => {
 		await renderArtifactsPage("/artifacts", seedMixedGallery);
 
 		fireEvent.click(screen.getByRole("button", {name: "Filter by type: All types"}));
@@ -754,16 +754,66 @@ describe("artifacts route", () => {
 
 		expect({
 			names: items.map((item) => item.textContent),
-			icons: items.map((item) => item.querySelector("[data-type-tile]")?.getAttribute("data-type-tile") ?? null),
+			chips: items.map((item) => item.querySelector("[data-type-chip]")?.getAttribute("style") ?? null),
+			plainIcons: items.map(
+				(item) => item.querySelector("[data-type-icon]")?.getAttribute("data-type-icon") ?? null,
+			),
+			counts: items.map((item) => item.querySelector("[data-type-count]")?.className ?? null),
 		}).toStrictEqual({
-			names: ["All types", "Docs 2", "Other 14"],
-			icons: ["all", "docs", "html"],
+			names: ["All types", "Slides0", "Design0", "Design System0", "Dashboard0", "Docs2", "Other14"],
+			chips: [
+				null,
+				"background-color: color-mix(in srgb, rgb(183, 121, 31) 16%, transparent); color: rgb(183, 121, 31);",
+				"background-color: color-mix(in srgb, rgb(118, 99, 184) 16%, transparent); color: rgb(118, 99, 184);",
+				"background-color: color-mix(in srgb, rgb(84, 104, 207) 16%, transparent); color: rgb(84, 104, 207);",
+				"background-color: color-mix(in srgb, var(--color-violet-500) 16%, transparent); color: var(--color-violet-500);",
+				"background-color: color-mix(in srgb, var(--color-blue-500) 16%, transparent); color: var(--color-blue-500);",
+				null,
+			],
+			plainIcons: ["all", null, null, null, null, null, "other"],
+			counts: [
+				null,
+				...Array.from(
+					{length: 6},
+					() => "ms-auto max-w-[160px] shrink-0 truncate ps-4 text-footnote tabular-nums text-ink-muted",
+				),
+			],
 		});
+	});
 
-		fireEvent.click(screen.getByRole("menuitemradio", {name: "Other 14"}));
+	it("keeps the picked type in ?type= and labels the pressed trigger", async () => {
+		const router = await renderArtifactsPage("/artifacts", seedMixedGallery);
+
+		fireEvent.click(screen.getByRole("button", {name: "Filter by type: All types"}));
+		fireEvent.click(await screen.findByRole("menuitemradio", {name: "Docs2"}));
 
 		await waitFor(() => {
-			expect(screen.getByRole("button", {name: "Filter by type: Other"}).tagName).toBe("BUTTON");
+			expect({...router.state.location.search}).toStrictEqual({type: "docs"});
+		});
+
+		fireEvent.click(screen.getByRole("menuitemradio", {name: "Other14"}));
+
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({type: "other"});
+		});
+	});
+
+	it("shows upstream's empty text for a type with no artifacts and paints the pressed trigger", async () => {
+		await renderArtifactsPage("/artifacts?type=slides", seedMixedGallery);
+
+		const trigger = screen.getByRole("button", {name: "Filter by type: Slides"});
+		expect({
+			pressed: trigger.getAttribute("aria-pressed"),
+			paint: ["aria-pressed:bg-upstream-accent-pressed", "aria-pressed:text-upstream-accent"].filter(
+				(name) => !trigger.classList.contains(name),
+			),
+			icon: trigger.querySelector("svg")?.classList.contains("lucide-sliders-vertical"),
+			statuses: pageStatuses(),
+		}).toStrictEqual({
+			pressed: "true",
+			paint: [],
+			icon: true,
+			statuses: ["", "No artifacts of this type here yet"],
 		});
 	});
 

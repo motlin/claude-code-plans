@@ -47,11 +47,11 @@
 		"tolerance": 0
 	},
 	"bundle.home.gzip": {
-		"ceiling": 408611,
+		"ceiling": 412708,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home Next steps folder rows (2026-10-27): the Worktree row (folderNextStepCandidates, sessionRunningIn, the folder git-status query) and then the continue-branch press (the composer prefill request and the draft's used set) crept gzip from the 404545 trim to 408611, 94 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-27"
+		"reason": "Artifacts type filter vocabulary (2026-10-28): the four upstream type rows (Slides/Design/Design System/Dashboard) with their hue chips, the SlidersVertical and File glyphs and ?type= persistence, on top of the 2026-10-27 Next steps growth, crept gzip from 408611 to 412708, 11 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-28"
 	},
 	"bundle.home.raw": {
 		"ceiling": 1233094,

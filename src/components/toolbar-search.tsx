@@ -4,9 +4,9 @@ import {useEffect, useRef, useState} from "react";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {Tooltip} from "./ui/tooltip";
 
-/** Upstream's 24x24 r6 page-toolbar icon button with an ink icon (the Artifacts and Routines toolbars). */
+/** Upstream's 24x24 r6 page-toolbar icon button with an ink icon (the Artifacts and Routines toolbars); pressed paints accent ink on the accent tint. */
 export const TOOLBAR_ICON_BUTTON =
-	"flex size-6 shrink-0 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aria-pressed:text-accent-100 [&_svg]:size-4";
+	"flex size-6 shrink-0 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent [&_svg]:size-4";
 
 /** Upstream's cds TextInput shell (24px `h-control`, r6, `bg-fill-field`, field ring, accent focus shadow; 8px / 3px insets). */
 export const TOOLBAR_SEARCH_FIELD_CLASS =

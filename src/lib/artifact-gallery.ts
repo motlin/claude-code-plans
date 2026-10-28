@@ -3,7 +3,8 @@ export const ARTIFACTS_LAYOUT_STORAGE_KEY = "artifacts-gallery-layout";
 
 export type ArtifactsLayout = "list" | "grid";
 export type ArtifactKind = "html" | "docs";
-export type ArtifactTypeFilter = "all" | ArtifactKind;
+/** Upstream's type filter rows; the Slides/Design/Design System/Dashboard types never index locally, so they count 0. */
+export type ArtifactTypeFilter = "all" | "slides" | "design" | "design-system" | "dashboard" | ArtifactKind;
 /** Upstream's ownership tabs: All, Yours (you own it), Shared with you (any other audience). */
 export type ArtifactView = "all" | "yours" | "shared";
 

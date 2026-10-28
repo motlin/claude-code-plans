@@ -4,15 +4,16 @@ import {Tabs} from "@base-ui/react/tabs";
 import {
 	CodeXml,
 	EllipsisVertical,
+	File,
 	FileText,
 	LayoutGrid,
 	Link as LinkIcon,
 	List,
-	ListFilter,
 	Lock,
 	Pin,
 	PinOff,
 	Shapes,
+	SlidersVertical,
 } from "lucide-react";
 import {type ReactNode, useEffect, useId, useMemo, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
@@ -50,12 +51,16 @@ import {Tooltip} from "../components/ui/tooltip";
 export const Route = createFileRoute("/artifacts")({
 	component: ArtifactsPage,
 	staticData: {pageGutter: "none"},
-	validateSearch: (search: Record<string, unknown>): {search?: string; tab?: ArtifactTabParam} => {
+	validateSearch: (
+		search: Record<string, unknown>,
+	): {search?: string; tab?: ArtifactTabParam; type?: ArtifactTypeParam} => {
 		const query = search["search"];
 		const tab = tabParamFromSearch(search);
+		const type = search["type"];
 		return {
 			...(typeof query === "string" && query !== "" ? {search: query} : {}),
 			...(tab === undefined ? {} : {tab}),
+			...(isTypeParam(type) ? {type} : {}),
 		};
 	},
 	loader: async ({context: {queryClient}}) => queryClient.query({...artifactsQueryOptions, staleTime: "static"}),
@@ -96,11 +101,49 @@ function isArtifactView(value: unknown): value is ArtifactView {
 /** Upstream's type vocabulary: anything that is not a Doc (or a Slides/Design type we never see) is "Other". */
 const TYPE_FILTER_LABELS: Record<ArtifactTypeFilter, string> = {
 	all: "All types",
+	slides: "Slides",
+	design: "Design",
+	"design-system": "Design System",
+	dashboard: "Dashboard",
 	docs: "Docs",
 	html: "Other",
 };
 
-const TYPE_FILTERS: readonly ArtifactTypeFilter[] = ["all", "docs", "html"];
+const TYPE_FILTERS: readonly ArtifactTypeFilter[] = [
+	"all",
+	"slides",
+	"design",
+	"design-system",
+	"dashboard",
+	"docs",
+	"html",
+];
+
+/** Upstream's type chip hues (`--cds-violet-500` / `--cds-blue-500` for Dashboard / Docs); All and Other draw a plain glyph instead. */
+const TYPE_CHIP_HUES: Partial<Record<ArtifactTypeFilter, string>> = {
+	slides: "#b7791f",
+	design: "#7663b8",
+	"design-system": "#5468cf",
+	dashboard: "var(--color-violet-500)",
+	docs: "var(--color-blue-500)",
+};
+
+/** The `?type=` value: upstream keys it by type uuid; locally it is the type's name, with HTML pages as `other`. */
+type ArtifactTypeParam = Exclude<ArtifactTypeFilter, "all" | "html"> | "other";
+
+function isTypeParam(value: unknown): value is ArtifactTypeParam {
+	return value === "other" || (value !== "html" && isTypeFilter(value) && value !== "all");
+}
+
+function typeFromParam(param: ArtifactTypeParam | undefined): ArtifactTypeFilter {
+	if (param === undefined) return "all";
+	return param === "other" ? "html" : param;
+}
+
+function typeParamFromFilter(type: ArtifactTypeFilter): ArtifactTypeParam | undefined {
+	if (type === "all") return undefined;
+	return type === "html" ? "other" : type;
+}
 
 const VIEW_TABS: ReadonlyArray<{view: ArtifactView; label: string}> = [
 	{view: "all", label: "All"},
@@ -120,12 +163,12 @@ function isTypeFilter(value: unknown): value is ArtifactTypeFilter {
 
 function ArtifactsPage() {
 	const {data: artifacts} = useSuspenseQuery(artifactsQueryOptions);
-	const {search = "", tab: tabParam} = Route.useSearch();
+	const {search = "", tab: tabParam, type: typeParam} = Route.useSearch();
 	const view = viewFromTabParam(tabParam);
+	const type = typeFromParam(typeParam);
 	const navigate = useNavigate();
 	const [layout, setLayout] = useState<ArtifactsLayout>("grid");
 	const [searchOpen, setSearchOpen] = useState(false);
-	const [type, setType] = useState<ArtifactTypeFilter>("all");
 	const now = useMemo(() => new Date(), []);
 
 	useEffect(() => {
@@ -149,13 +192,15 @@ function ArtifactsPage() {
 		writeArtifactsLayout(next);
 	}
 
-	function updateSearch(next: {search: string; view: ArtifactView}) {
+	function updateSearch(next: {search: string; view: ArtifactView; type: ArtifactTypeFilter}) {
 		const tab = tabParamFromView(next.view);
+		const typeValue = typeParamFromFilter(next.type);
 		void navigate({
 			to: "/artifacts",
 			search: {
 				...(next.search === "" ? {} : {search: next.search}),
 				...(tab === undefined ? {} : {tab}),
+				...(typeValue === undefined ? {} : {type: typeValue}),
 			},
 			replace: true,
 		});
@@ -171,7 +216,7 @@ function ArtifactsPage() {
 					<Tabs.Root
 						value={view}
 						onValueChange={(next: unknown) => {
-							if (isArtifactView(next)) updateSearch({search, view: next});
+							if (isArtifactView(next)) updateSearch({search, view: next, type});
 						}}
 					>
 						<Tabs.List activateOnFocus={false} aria-label="Artifacts" className="flex items-center gap-1">
@@ -191,7 +236,7 @@ function ArtifactsPage() {
 							search={search}
 							onOpenChange={setSearchOpen}
 							onSearch={(next) => {
-								updateSearch({search: next, view});
+								updateSearch({search: next, view, type});
 							}}
 						/>
 						<Tooltip content={layoutLabel}>
@@ -204,7 +249,13 @@ function ArtifactsPage() {
 								{layout === "grid" ? <List aria-hidden="true" /> : <LayoutGrid aria-hidden="true" />}
 							</button>
 						</Tooltip>
-						<TypeFilterMenu artifacts={inView} type={type} onChange={setType} />
+						<TypeFilterMenu
+							artifacts={inView}
+							type={type}
+							onChange={(next) => {
+								updateSearch({search, view, type: next});
+							}}
+						/>
 					</>
 				}
 			>
@@ -233,7 +284,7 @@ function ArtifactsPage() {
 								? view === "yours"
 									? "No artifacts of yours"
 									: "No artifacts shared with you"
-								: "No artifacts of this type"}
+								: "No artifacts of this type here yet"}
 					</div>
 				) : layout === "grid" ? (
 					<ArtifactGrid artifacts={[...pinned, ...unpinned]} now={now} isPinned={isPinned} />
@@ -254,17 +305,14 @@ function TypeFilterMenu({
 	type: ArtifactTypeFilter;
 	onChange: (next: ArtifactTypeFilter) => void;
 }) {
-	const counts: Record<ArtifactTypeFilter, number> = {
-		all: artifacts.length,
-		html: artifacts.filter((artifact) => artifact.kind === "html").length,
-		docs: artifacts.filter((artifact) => artifact.kind === "docs").length,
-	};
+	const countOf = (option: ArtifactTypeFilter) =>
+		option === "all" ? artifacts.length : artifacts.filter((artifact) => artifact.kind === option).length;
 	const label = `Filter by type: ${TYPE_FILTER_LABELS[type]}`;
 	return (
 		<Menu>
 			<Tooltip content={label}>
 				<MenuTrigger className={TOOLBAR_ICON_BUTTON} aria-label={label} aria-pressed={type !== "all"}>
-					<ListFilter aria-hidden="true" />
+					<SlidersVertical aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent align="end">
@@ -277,15 +325,15 @@ function TypeFilterMenu({
 					{TYPE_FILTERS.map((option) => (
 						<MenuRadioItem key={option} value={option}>
 							<span className="flex w-full items-center gap-2">
-								<TypeTile kind={option} size="menu" />
-								<span>{TYPE_FILTER_LABELS[option]}</span>
+								<TypeFilterIcon option={option} />
+								<span className="min-w-0 flex-1 truncate">{TYPE_FILTER_LABELS[option]}</span>
 								{option !== "all" && (
-									<>
-										{" "}
-										<span className="ms-auto ps-4 text-footnote tabular-nums text-ink-muted">
-											{counts[option]}
-										</span>
-									</>
+									<span
+										data-type-count=""
+										className="ms-auto max-w-[160px] shrink-0 truncate ps-4 text-footnote tabular-nums text-ink-muted"
+									>
+										{countOf(option)}
+									</span>
 								)}
 							</span>
 						</MenuRadioItem>
@@ -296,26 +344,53 @@ function TypeFilterMenu({
 	);
 }
 
+/** Upstream's filter-row lead: a plain 16px glyph for All types / Other, else a 16x16 r4 hue chip with a 12px glyph. */
+function TypeFilterIcon({option}: {option: ArtifactTypeFilter}) {
+	const hue = TYPE_CHIP_HUES[option];
+	if (hue === undefined) {
+		const Icon = option === "all" ? Shapes : File;
+		return (
+			<span
+				aria-hidden="true"
+				data-type-icon={option === "all" ? "all" : "other"}
+				className="flex size-4 shrink-0 items-center justify-center"
+			>
+				<Icon className="size-4" />
+			</span>
+		);
+	}
+	const Icon = option === "docs" ? FileText : Shapes;
+	return (
+		<span
+			aria-hidden="true"
+			data-type-chip={option}
+			className="inline-flex size-4 shrink-0 items-center justify-center rounded"
+			style={{backgroundColor: `color-mix(in srgb, ${hue} 16%, transparent)`, color: hue}}
+		>
+			<Icon className="size-3" />
+		</span>
+	);
+}
+
 const TILE_BOX = {
-	menu: "size-5 rounded",
 	row: "size-9 rounded-lg",
 	card: "h-full w-full",
 	badge: "size-6 rounded-r5",
 } as const;
-const TILE_ICON = {menu: "size-3.5", row: "size-5", card: "size-10", badge: "size-4"} as const;
+const TILE_ICON = {row: "size-5", card: "size-10", badge: "size-4"} as const;
 
 /**
- * Upstream's type tile: a neutral `</>` tile for HTML pages ("Other"), a blue document tile for Docs, and
- * a shapes tile for the "All types" filter option. 36px in list rows, 20px in the filter menu.
+ * Upstream's type tile: a neutral `</>` tile for HTML pages ("Other") and a blue document tile for Docs.
+ * 36px in list rows.
  */
-function TypeTile({kind, size = "row"}: {kind: ArtifactKind | "all"; size?: keyof typeof TILE_BOX}) {
-	const Icon = kind === "docs" ? FileText : kind === "all" ? Shapes : CodeXml;
+function TypeTile({kind, size = "row"}: {kind: ArtifactKind; size?: keyof typeof TILE_BOX}) {
+	const Icon = kind === "docs" ? FileText : CodeXml;
 	// Upstream's straddling card tile is neutral for every type.
 	const tone =
 		kind === "docs" && size !== "badge"
 			? "bg-blue-500/10 text-blue-600 dark:text-blue-300"
 			: "bg-alpha-1 text-secondary";
-	const labelled = kind === "docs" && size !== "menu" && size !== "badge";
+	const labelled = kind === "docs" && size !== "badge";
 	return (
 		<div
 			{...(labelled ? {role: "img", "aria-label": "Docs"} : {"aria-hidden": true})}
