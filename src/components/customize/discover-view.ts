@@ -131,19 +131,17 @@ export function groupDiscoverSearch<T>(
 ): {yours: T[]; more: DiscoverPlugin[]} {
 	return {
 		yours: yours.filter((item) => matchesQuery(q, ...yoursFields(item))),
-		more: catalog
-			.filter(
-				(plugin) =>
-					!plugin.installed &&
-					matchesQuery(
-						q,
-						plugin.name,
-						plugin.title,
-						plugin.description,
-						plugin.category ?? "",
-						...plugin.skills,
-					),
-			)
-			.toSorted((a, b) => (b.installs ?? -1) - (a.installs ?? -1) || a.name.localeCompare(b.name)),
+		more: addableMatches(catalog, q),
 	};
+}
+
+/** Catalog plugins not yet installed whose text matches `q`, most installed first. */
+export function addableMatches(catalog: readonly DiscoverPlugin[], q: string): DiscoverPlugin[] {
+	return catalog
+		.filter(
+			(plugin) =>
+				!plugin.installed &&
+				matchesQuery(q, plugin.name, plugin.title, plugin.description, plugin.category ?? "", ...plugin.skills),
+		)
+		.toSorted((a, b) => (b.installs ?? -1) - (a.installs ?? -1) || a.name.localeCompare(b.name));
 }

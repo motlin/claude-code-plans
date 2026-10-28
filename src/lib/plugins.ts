@@ -157,17 +157,6 @@ export function extractMarketplace(pluginId: string): string {
 	return pluginId.slice(atIdx + 1);
 }
 
-export function formatMarketplaceName(id: string): string {
-	return id
-		.split("-")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-}
-
-export function isOfficialMarketplace(marketplaceId: string): boolean {
-	return marketplaceId === "claude-plugins-official" || marketplaceId === "anthropic-agent-skills";
-}
-
 export function getPluginVersionKind(version: string): PluginInfo["versionKind"] {
 	return /^[0-9a-f]{7,40}$/i.test(version) ? "commit" : "release";
 }

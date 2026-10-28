@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {queryOptions} from "@tanstack/react-query";
+import {formatMarketplaceName, isOfficialMarketplace} from "../marketplace-labels";
 import {apiFetch} from "./client";
 
 export const PluginFileSchema = z.object({
@@ -79,17 +80,6 @@ export type PluginMarketplaceGroup = {
 	plugins: PluginInfoData[];
 	isOfficial: boolean;
 };
-
-function isOfficialMarketplace(marketplaceId: string): boolean {
-	return marketplaceId === "claude-plugins-official" || marketplaceId === "anthropic-agent-skills";
-}
-
-function formatMarketplaceName(id: string): string {
-	return id
-		.split("-")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-}
 
 /**
  * Group a flat plugin list by marketplace id and decorate with `isOfficial`.

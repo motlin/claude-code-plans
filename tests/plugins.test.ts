@@ -7,10 +7,9 @@ import {
 	readUserCommandContent,
 	listUserCommands,
 	extractMarketplace,
-	formatMarketplaceName,
-	isOfficialMarketplace,
 	scanPluginTree,
 } from "../src/lib/plugins.js";
+import {formatMarketplaceName, isOfficialMarketplace} from "../src/lib/marketplace-labels";
 
 const testDir = join(tmpdir(), "claude-plugins-test-" + process.pid);
 

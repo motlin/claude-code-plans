@@ -1,5 +1,8 @@
 import type {McpScope} from "../../lib/api/customize";
 
+/** claude.ai connectors are managed in the cloud; their rows link here. */
+export const CLAUDE_AI_CONNECTORS_URL = "https://claude.ai/customize/connectors/yours";
+
 /** The host of an http/sse server URL, used for its favicon. */
 export function connectorDomain(transport: string, urlOrCommand: string): string | null {
 	if (transport === "stdio") return null;

@@ -2,9 +2,7 @@ import {Check, ExternalLink} from "lucide-react";
 import type {KeyboardEvent, ReactNode} from "react";
 import type {ClaudeAiConnectorSummary, McpServerSummary} from "../../lib/api/customize";
 import {ConnectorTile} from "./connector-tile";
-import {SCOPE_LABEL, connectorDomain, transportLabel} from "./connector-labels";
-
-const CLAUDE_AI_CONNECTORS_URL = "https://claude.ai/customize/connectors/yours";
+import {CLAUDE_AI_CONNECTORS_URL, SCOPE_LABEL, connectorDomain, transportLabel} from "./connector-labels";
 
 const TH_CLASS = "h-8 truncate px-3 text-left text-footnote font-medium text-secondary";
 const TD_CLASS =
