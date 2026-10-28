@@ -45,7 +45,11 @@ describe("parseCustomizeHash", () => {
 			"#customize/skills/yours/id/personal%3Afoo/contents",
 			{section: "skills", view: "yours", id: "personal:foo", tab: "contents", file: null},
 		],
-		["#customize/skills", {section: "skills", view: "yours", id: null, tab: null, file: null}],
+		["#customize/skills", {section: "skills", view: "discover", id: null, tab: null, file: null}],
+		["#customize/plugins", {section: "plugins", view: "discover", id: null, tab: null, file: null}],
+		// Local divergence: Connectors has no Discover catalog, so a bare hash opens Yours.
+		["#customize/connectors", {section: "connectors", view: "yours", id: null, tab: null, file: null}],
+		["#customize/skills/yours", {section: "skills", view: "yours", id: null, tab: null, file: null}],
 		["customize/skills/discover", {section: "skills", view: "discover", id: null, tab: null, file: null}],
 		["#customize/connectors/yours", {section: "connectors", view: "yours", id: null, tab: null, file: null}],
 		["#customize/plugins/discover", {section: "plugins", view: "discover", id: null, tab: null, file: null}],
@@ -87,7 +91,9 @@ describe("parseCustomizeHash", () => {
 describe("customizeHash", () => {
 	it.each<[Parameters<typeof customizeHash>[0], string]>([
 		[{section: "skills"}, "customize/skills/yours"],
-		[{section: "plugins", view: "discover"}, "customize/plugins/discover"],
+		[{section: "plugins", view: "discover"}, "customize/plugins"],
+		[{section: "skills", view: "discover"}, "customize/skills"],
+		[{section: "skills", view: "discover", id: "personal:foo"}, "customize/skills/discover/id/personal%3Afoo"],
 		[{section: "skills", id: "personal:foo", tab: "contents"}, "customize/skills/yours/id/personal%3Afoo/contents"],
 		[
 			{section: "plugins", id: "kit@market", tab: "contents", file: "agents/reviewer.md"},
@@ -95,6 +101,16 @@ describe("customizeHash", () => {
 		],
 	])("builds %j", (location, expected) => {
 		expect(customizeHash(location)).toBe(expected);
+	});
+
+	it("round-trips Discover through its suffixless hash", () => {
+		expect(parseCustomizeHash(customizeHash({section: "plugins", view: "discover"}))).toEqual({
+			section: "plugins",
+			view: "discover",
+			id: null,
+			tab: null,
+			file: null,
+		});
 	});
 
 	it("round-trips through the parser", () => {

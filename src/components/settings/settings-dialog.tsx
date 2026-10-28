@@ -292,7 +292,8 @@ export function SettingsDialog() {
 		item.kind === "settings" ? customize === null && item.tab === tab : item.section === customize?.section;
 	const selectItem = (item: NavItem) => {
 		if (item.kind === "settings") selectTab(item.tab);
-		else navigateHash(customizeHash({section: item.section}), true);
+		// Upstream replaces the entry coming from a Settings tab but pushes one between customize sections.
+		else navigateHash(customizeHash({section: item.section}), customize === null);
 	};
 
 	const closeButton = (

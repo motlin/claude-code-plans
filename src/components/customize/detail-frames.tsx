@@ -9,6 +9,7 @@ import {
 } from "../../lib/api/customize";
 import {ConnectorDetailHeader, ToolPermissions} from "./connector-detail";
 import {CustomizeNotice} from "./customize-empty";
+import {CustomizeBackLink} from "./customize-nav";
 import {PluginDetailHeader} from "./plugin-detail";
 import {SkillDetailHeader} from "./skill-detail";
 
@@ -63,13 +64,26 @@ interface FrameState {
 	isPending: boolean;
 	loading: string;
 	notFound: ReactNode;
+	/** The section's back link, shown above the not-found message like a real detail header's. */
+	back: ReactNode;
 }
 
 /** The loading (while pending) or not-found body, in the layout's frame. */
-function pendingOrMissing({layout, isPending, loading, notFound}: FrameState): ReactElement {
+function pendingOrMissing({layout, isPending, loading, notFound, back}: FrameState): ReactElement {
+	if (isPending) {
+		return (
+			<DetailShell layout={layout} header={null} pageClassName="">
+				<p className="text-body text-t6">{loading}</p>
+			</DetailShell>
+		);
+	}
 	return (
-		<DetailShell layout={layout} header={null} pageClassName="">
-			{isPending ? <p className="text-body text-t6">{loading}</p> : notFound}
+		<DetailShell
+			layout={layout}
+			header={<header className="flex flex-col gap-4">{back}</header>}
+			pageClassName="flex flex-col gap-6"
+		>
+			{notFound}
 		</DetailShell>
 	);
 }
@@ -90,6 +104,7 @@ export function SkillDetailFrame({
 			layout,
 			isPending,
 			loading: "Loading skill…",
+			back: <CustomizeBackLink section="skills">Your skills</CustomizeBackLink>,
 			notFound: (
 				<CustomizeNotice
 					title="Skill not found"
@@ -121,6 +136,7 @@ export function PluginDetailFrame({
 			layout,
 			isPending,
 			loading: "Loading plugin…",
+			back: <CustomizeBackLink section="plugins">Plugins</CustomizeBackLink>,
 			notFound: (
 				<CustomizeNotice
 					title="Plugin not found"
@@ -151,6 +167,7 @@ export function ConnectorDetailFrame({
 			layout,
 			isPending,
 			loading: "Loading connector…",
+			back: <CustomizeBackLink section="connectors">Your connectors</CustomizeBackLink>,
 			notFound: (
 				<CustomizeNotice
 					title="Connector not found"

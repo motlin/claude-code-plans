@@ -1395,7 +1395,7 @@ describe("unified search hit rows", () => {
 	});
 
 	it("lays resting rows out at the dialog's comfortable density: 28px list gaps, 16px row gaps, 12px padding", async () => {
-		await renderDialogPanel("#customize/skills");
+		await renderDialogPanel("#customize/skills/yours");
 		const row = screen.getAllByTestId("customize-list-row")[0]!;
 		const tile = row.querySelector<HTMLElement>("[data-testid=customize-icon-tile]")!;
 		const section = row.closest("section")!;
@@ -1456,7 +1456,7 @@ describe("row focus rings and kebab size", () => {
 	];
 
 	it("rings the View overlay and gives the skill and plugin kebabs upstream's 32px text-primary control", async () => {
-		await renderDialogPanel("#customize/skills");
+		await renderDialogPanel("#customize/skills/yours");
 		const view = screen.getByRole("button", {name: "View deploy-checklist"});
 		const skillKebab = screen.getByRole("button", {name: "More actions for deploy-checklist"});
 		cleanup();
@@ -2059,7 +2059,7 @@ describe("customize first-run card in the dialog", () => {
 		const hashes = await renderDialogPanel("customize/skills/yours", {skills: EXTRA_SKILLS});
 		fireEvent.click(screen.getByRole("button", {name: "Discover skills"}));
 		await flush();
-		expect(hashes).toStrictEqual(["customize/skills/yours", "customize/skills/discover"]);
+		expect(hashes).toStrictEqual(["customize/skills/yours", "customize/skills"]);
 	});
 
 	it("shows the plugins first-run card when there are no plugins", async () => {
@@ -2079,6 +2079,6 @@ describe("customize first-run card in the dialog", () => {
 
 		fireEvent.click(within(card).getByRole("button", {name: "Discover plugins"}));
 		await flush();
-		expect(hashes).toStrictEqual(["customize/plugins/yours", "customize/plugins/discover"]);
+		expect(hashes).toStrictEqual(["customize/plugins/yours", "customize/plugins"]);
 	});
 });

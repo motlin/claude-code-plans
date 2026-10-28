@@ -1,5 +1,5 @@
-import {CatchBoundary, useLocation} from "@tanstack/react-router";
-import {Suspense, use} from "react";
+import {CatchBoundary, useLocation, useNavigate} from "@tanstack/react-router";
+import {Suspense, use, useEffect} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
 import {parseCustomizeHash, parseSettingsHash} from "../../lib/settings-hash";
 import {useOpenSettings} from "./open-settings";
@@ -26,6 +26,20 @@ export function DeferredSettingsDialog() {
 		openSettings("general");
 	});
 	const open = parseSettingsHash(hash) !== null || parseCustomizeHash(hash) !== null;
+	// Upstream drops an unparseable `#customize…` hash (an unknown section or view) rather than leave it in the URL.
+	const navigate = useNavigate();
+	const badCustomize = !open && /^customize(?:\/|$)/.test(hash);
+	useEffect(() => {
+		if (!badCustomize) return;
+		void navigate({
+			to: ".",
+			search: true,
+			params: true,
+			replace: true,
+			resetScroll: false,
+			hashScrollIntoView: false,
+		});
+	}, [badCustomize, navigate]);
 	if (loadedSettingsDialog() === undefined && !open) return null;
 	return (
 		<CatchBoundary getResetKey={() => String(open)} errorComponent={() => null}>

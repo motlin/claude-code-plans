@@ -715,9 +715,75 @@ describe("SettingsDialog local tabs", () => {
 		fireEvent.click(within(views).getByRole("radio", {name: "Discover"}));
 
 		await waitFor(() => {
-			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/plugins/discover"});
+			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/plugins"});
 		});
 		expect(currentTabs()).toStrictEqual(["Plugins"]);
+	});
+
+	it("opens Discover for a bare #customize/<section> hash, as upstream does", async () => {
+		await renderAt("/#customize/skills");
+		const views = await screen.findByRole("radiogroup", {name: "Skills"});
+
+		expect(
+			[...views.querySelectorAll('[role="radio"]')].map((radio) => [
+				radio.textContent,
+				radio.getAttribute("aria-checked"),
+			]),
+		).toStrictEqual([
+			["Yours", "false"],
+			["Discover", "true"],
+		]);
+	});
+
+	it("replaces the entry going from a Settings tab to a customize section, then pushes between sections", async () => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const visited: string[] = [];
+		for (const name of ["Skills", "Connectors", "Plugins"]) {
+			fireEvent.click(screen.getByRole("button", {name}));
+			await screen.findByRole("heading", {level: 2, name});
+			visited.push(`${router.history.length}:${router.state.location.hash}`);
+		}
+		router.history.back();
+		await waitFor(() => {
+			expect(router.state.location.hash).toBe("customize/connectors/yours");
+		});
+
+		expect(visited).toStrictEqual([
+			"1:customize/skills/yours",
+			"2:customize/connectors/yours",
+			"3:customize/plugins/yours",
+		]);
+	});
+
+	it.each(["/#customize/bogus", "/#customize/skills/mine", "/#customize"])(
+		"clears the unparseable customize hash %s, as upstream does",
+		async (entry) => {
+			const router = await renderAt(entry);
+
+			await waitFor(() => {
+				expect({location: location(router), length: router.history.length}).toStrictEqual({
+					location: {pathname: "/", hash: ""},
+					length: 1,
+				});
+			});
+			expect(screen.queryByRole("dialog")).toBeNull();
+		},
+	);
+
+	it("shows the Your skills back link above an unknown skill's not-found message", async () => {
+		vi.stubGlobal("fetch", async () => Promise.resolve(Response.json({error: "not found"}, {status: 404})));
+		await renderAt("/#customize/skills/yours/id/nope-skill");
+		await screen.findByText("Skill not found");
+		const back = screen.getByRole("link", {name: "Your skills"});
+
+		expect({
+			href: back.getAttribute("href"),
+			beforeMessage:
+				(back.compareDocumentPosition(screen.getByText("Skill not found")) &
+					Node.DOCUMENT_POSITION_FOLLOWING) !==
+				0,
+		}).toStrictEqual({href: "#customize/skills/yours", beforeMessage: true});
 	});
 
 	it("opens Connectors without a Yours/Discover control", async () => {

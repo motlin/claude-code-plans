@@ -75,7 +75,8 @@ export function parseCustomizeHash(hash: string): CustomizeLocation | null {
 	const [, rawSection, rawView, rawId, rawTab, rawFile] = match;
 	const section = CustomizeSectionSchema.safeParse(rawSection);
 	if (!section.success) return null;
-	const view = CustomizeViewSchema.safeParse(rawView ?? "yours");
+	// Upstream opens a bare `#customize/<section>` on Discover; Connectors has no local catalog, so it opens Yours.
+	const view = CustomizeViewSchema.safeParse(rawView ?? (section.data === "connectors" ? "yours" : "discover"));
 	if (!view.success) return null;
 	if (view.data === "discover" && section.data === "connectors") return null;
 	const id = rawId === undefined ? null : decodeSegment(rawId);
@@ -94,7 +95,10 @@ function detailTabAllowed(section: CustomizeSection, tab: CustomizeDetailTab): b
 	return section === "skills" && tab === "contents";
 }
 
-/** The hash (without `#`) for a Customize location; omitted fields default to the Yours list. */
+/**
+ * The hash (without `#`) for a Customize location; omitted fields default to the Yours list. Like upstream, the
+ * Discover list writes no view suffix (`customize/skills`); a detail keeps the view segment its id needs.
+ */
 export function customizeHash({
 	section,
 	view = "yours",
@@ -102,8 +106,8 @@ export function customizeHash({
 	tab = null,
 	file = null,
 }: {section: CustomizeSection} & Partial<Omit<CustomizeLocation, "section">>): string {
+	if (id === null) return view === "discover" ? `customize/${section}` : `customize/${section}/${view}`;
 	let hash = `customize/${section}/${view}`;
-	if (id === null) return hash;
 	hash += `/id/${encodeURIComponent(id)}`;
 	if (tab !== null) hash += `/${tab}`;
 	if (file !== null) hash += `/${encodeURIComponent(file)}`;
