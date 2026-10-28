@@ -35,7 +35,7 @@ describe("CodePageHeader", () => {
 	it("pulls the title up only from sm, so at phone width it starts at the 48px band below the sidebar trigger", () => {
 		render(<CodePageHeader title="Projects" />);
 		expect(screen.getByRole("heading", {level: 1, name: "Projects"}).parentElement?.className).toBe(
-			"flex flex-col pb-4 sm:-mt-1",
+			"@container flex flex-col pb-4 sm:-mt-1",
 		);
 	});
 });
@@ -91,7 +91,7 @@ describe("CodePageHeader sticky", () => {
 			afterScroll: scrolled(false),
 			backAtTop: scrolled(true),
 		}).toStrictEqual({
-			header: "flex flex-col sm:-mt-1",
+			header: "@container flex flex-col sm:-mt-1",
 			// The sentinel (so the band) rises over RootTopRow's 36px (48px phone) spacer and pads it back, so the pinned band keeps
 			// upstream's whitespace above the title (its 64px title row) instead of pinning the title flush at the top.
 			box: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",

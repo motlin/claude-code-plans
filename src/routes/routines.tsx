@@ -53,6 +53,7 @@ function RoutinesPage() {
 	// Relative times are measured from when this data arrived, so they stay stable across re-renders.
 	const {data: routines, dataUpdatedAt: now} = useSuspenseQuery(routinesQueryOptions);
 	const [view, setView] = useState<RoutineView>(DEFAULT_ROUTINE_VIEW);
+	const [searchOpen, setSearchOpen] = useState(false);
 
 	const {visible, hiddenCompleted} = useMemo(() => {
 		const filtered = filterRoutines(routines, view);
@@ -64,12 +65,14 @@ function RoutinesPage() {
 		<div className="mx-auto flex w-full max-w-5xl flex-col">
 			<CodePageHeader
 				title="Scheduled tasks"
+				searchOpen={searchOpen}
 				toolbar={
 					<>
 						<ToolbarSearch
 							label="Search scheduled tasks"
 							placeholder="Search scheduled tasks..."
 							search={view.search}
+							onOpenChange={setSearchOpen}
 							onSearch={(search) => {
 								setView((current) => ({...current, search}));
 							}}

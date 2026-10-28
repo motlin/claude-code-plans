@@ -25,6 +25,7 @@ import * as schema from "../src/lib/db/schema";
 import {Route as ArtifactsRoute} from "../src/routes/artifacts";
 import {artifactPreviewPath} from "../src/lib/artifact-source-paths";
 import {ToastProvider} from "../src/components/toast";
+import {TOOLBAR_SEARCH_CLEAR_CLASS, TOOLBAR_SEARCH_FIELD_CLASS} from "../src/components/toolbar-search";
 import {ARTIFACT_PIN_STORAGE_KEY} from "../src/lib/artifact-pins";
 import {installLocalStorage} from "./fake-storage";
 
@@ -593,6 +594,51 @@ describe("artifacts route", () => {
 		await waitFor(() => {
 			expect(document.activeElement).toBe(screen.getByRole("searchbox", {name: "Search your artifacts"}));
 		});
+	});
+
+	it("opens search as upstream's cds TextInput and marks the toolbar data-search-open", async () => {
+		await renderArtifactsPage("/artifacts", true);
+		const controls = document.querySelector("[data-cds-part=controls]");
+
+		const closedOpenAttr = controls?.hasAttribute("data-search-open");
+		fireEvent.click(screen.getByRole("button", {name: "Search your artifacts"}));
+		const search = screen.getByRole("search");
+		const field = search.querySelector("[data-cds=TextInput]");
+
+		expect({
+			closedOpenAttr,
+			openAttr: controls?.hasAttribute("data-search-open"),
+			search: search.className,
+			box: field?.parentElement?.className,
+			field: field?.className,
+			clear: within(search).getByRole("button", {name: "Clear search"}).className,
+		}).toStrictEqual({
+			closedOpenAttr: false,
+			openAttr: true,
+			search: "flex max-w-full min-w-40 grow items-center gap-3 @min-[640px]:justify-end basis-40",
+			box: "w-0 min-w-40 flex-1 @min-[640px]:max-w-sm",
+			field: TOOLBAR_SEARCH_FIELD_CLASS,
+			clear: TOOLBAR_SEARCH_CLEAR_CLASS,
+		});
+	});
+
+	it("collapses the search on blur only while the draft is empty", async () => {
+		await renderArtifactsPage("/artifacts", true);
+
+		fireEvent.click(screen.getByRole("button", {name: "Search your artifacts"}));
+		fireEvent.change(screen.getByRole("searchbox"), {target: {value: "x"}});
+		fireEvent.blur(screen.getByRole("searchbox"));
+		const keptWithDraft = screen.queryByRole("searchbox") !== null;
+
+		fireEvent.change(screen.getByRole("searchbox"), {target: {value: ""}});
+		fireEvent.blur(screen.getByRole("searchbox"));
+
+		expect({
+			keptWithDraft,
+			collapsed: screen.queryByRole("searchbox"),
+			button: screen.getByRole("button", {name: "Search your artifacts"}).tagName,
+			openAttr: document.querySelector("[data-cds-part=controls]")?.hasAttribute("data-search-open"),
+		}).toStrictEqual({keptWithDraft: true, collapsed: null, button: "BUTTON", openAttr: false});
 	});
 
 	it("expands the search on Ctrl+F off the Mac", async () => {

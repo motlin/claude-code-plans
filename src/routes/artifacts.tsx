@@ -124,6 +124,7 @@ function ArtifactsPage() {
 	const view = viewFromTabParam(tabParam);
 	const navigate = useNavigate();
 	const [layout, setLayout] = useState<ArtifactsLayout>("grid");
+	const [searchOpen, setSearchOpen] = useState(false);
 	const [type, setType] = useState<ArtifactTypeFilter>("all");
 	const now = useMemo(() => new Date(), []);
 
@@ -165,6 +166,7 @@ function ArtifactsPage() {
 			<CodePageHeader
 				title="Artifacts"
 				sticky={{box: ARTIFACTS_BOX_CLASS}}
+				searchOpen={searchOpen}
 				tabs={
 					<Tabs.Root
 						value={view}
@@ -187,6 +189,7 @@ function ArtifactsPage() {
 							label="Search your artifacts"
 							placeholder="Search artifacts..."
 							search={search}
+							onOpenChange={setSearchOpen}
 							onSearch={(next) => {
 								updateSearch({search: next, view});
 							}}

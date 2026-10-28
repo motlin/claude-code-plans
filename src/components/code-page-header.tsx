@@ -19,6 +19,7 @@ export function CodePageHeader({
 	tabs,
 	toolbar,
 	sticky,
+	searchOpen,
 	children,
 }: {
 	title: string;
@@ -28,18 +29,28 @@ export function CodePageHeader({
 	toolbar?: ReactNode;
 	/** Pin the header with a scroll fade; `box` is the content-width wrapper's classes. */
 	sticky?: {box: string};
+	/** Mark the toolbar `data-search-open` so an open ToolbarSearch takes the row (all of it below a 640px header). */
+	searchOpen?: boolean;
 	/** Extras under the header, such as a live status line. */
 	children?: ReactNode;
 }) {
 	const header = (
-		<header className={sticky === undefined ? "flex flex-col pb-4 sm:-mt-1" : "flex flex-col sm:-mt-1"}>
+		<header
+			className={
+				sticky === undefined ? "@container flex flex-col pb-4 sm:-mt-1" : "@container flex flex-col sm:-mt-1"
+			}
+		>
 			<h1 className="min-w-0 font-voice text-[24px]/[32px] font-medium text-primary">{title}</h1>
 			{subtitle !== undefined && <p className="mt-1 text-[13px] text-t6">{subtitle}</p>}
 			{(tabs !== undefined || toolbar !== undefined) && (
 				<div className="mt-5 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
 					{tabs}
 					{toolbar !== undefined && (
-						<div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2">
+						<div
+							data-cds-part="controls"
+							data-search-open={searchOpen === true ? "" : undefined}
+							className={CONTROLS_CLASS}
+						>
 							{toolbar}
 						</div>
 					)}
@@ -51,6 +62,10 @@ export function CodePageHeader({
 	if (sticky === undefined) return header;
 	return <StickyBand box={sticky.box}>{header}</StickyBand>;
 }
+
+/** Upstream's PageHeader controls: an open search grows the row (grow-[3] basis-0), or takes all of it below a 640px header. */
+const CONTROLS_CLASS =
+	"ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-2 [&[data-search-open]]:min-w-min [&[data-search-open]]:flex-nowrap @min-[640px]:[&[data-search-open]]:grow-[3] @min-[640px]:[&[data-search-open]]:basis-0 @max-[640px]:[&[data-search-open]]:basis-full @max-[640px]:[&[data-search-open]>:not([role=search])]:hidden";
 
 /** Upstream's `page-fade-t` strip; `transition-[opacity,visibility]` runs at the default 150ms (upstream's duration-fast). */
 const FADE_CLASS = "page-fade-t absolute inset-x-0 -bottom-8 h-8 transition-[opacity,visibility]";
