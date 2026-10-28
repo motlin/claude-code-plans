@@ -24,8 +24,6 @@ export interface CustomizeSectionConfig {
 	id: CustomizeSectionId;
 	label: string;
 	to: "/customize/skills" | "/customize/connectors" | "/customize/plugins";
-	/** Plural noun for the no-match copy, "No <noun> match your search". */
-	noun: string;
 	/** Its visible placeholder: upstream's plain "Search" on Skills and Plugins. */
 	searchPlaceholder: string;
 	/** Connectors has no local Discover, so it hides the Yours | Discover control. */
@@ -43,7 +41,6 @@ export const CUSTOMIZE_SECTIONS: readonly [CustomizeSectionConfig, CustomizeSect
 		id: "skills",
 		label: "Skills",
 		to: "/customize/skills",
-		noun: "skills",
 		searchPlaceholder: "Search",
 		hasDiscover: true,
 		filter: {
@@ -66,7 +63,6 @@ export const CUSTOMIZE_SECTIONS: readonly [CustomizeSectionConfig, CustomizeSect
 		id: "connectors",
 		label: "Connectors",
 		to: "/customize/connectors",
-		noun: "connectors",
 		searchPlaceholder: "Search connectors",
 		hasDiscover: false,
 		filter: {
@@ -83,7 +79,6 @@ export const CUSTOMIZE_SECTIONS: readonly [CustomizeSectionConfig, CustomizeSect
 		id: "plugins",
 		label: "Plugins",
 		to: "/customize/plugins",
-		noun: "plugins",
 		searchPlaceholder: "Search",
 		hasDiscover: true,
 		filter: {

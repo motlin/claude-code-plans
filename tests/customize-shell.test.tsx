@@ -1598,3 +1598,64 @@ describe("unified search on the standalone Customize page", () => {
 		expect(router.state.location.pathname).toBe("/customize/skills/id/personal%3Adeploy-checklist");
 	});
 });
+
+describe("retired NoSearchMatches fallback", () => {
+	const FALLBACK = /match your search|Try a different term/;
+
+	function noMatchState() {
+		const results = screen.getByTestId("customize-unified-search-results");
+		return {
+			fallback: FALLBACK.test(document.body.textContent),
+			lines: [...results.querySelectorAll("p")].map((node) => node.textContent),
+		};
+	}
+
+	it("renders only the unified no-match line for a no-hit query on every page section and view", async () => {
+		const results: Record<string, ReturnType<typeof noMatchState>> = {};
+		for (const entry of [
+			"/customize/skills?q=zzqxvw",
+			"/customize/skills?view=discover&q=zzqxvw",
+			"/customize/connectors?q=zzqxvw",
+			"/customize/plugins?q=zzqxvw",
+			"/customize/plugins?view=discover&q=zzqxvw",
+		]) {
+			await renderCustomize(entry);
+			results[entry] = noMatchState();
+			cleanup();
+		}
+
+		const expected = {fallback: false, lines: ["No results match \u201czzqxvw\u201d"]};
+		expect(results).toStrictEqual({
+			"/customize/skills?q=zzqxvw": expected,
+			"/customize/skills?view=discover&q=zzqxvw": expected,
+			"/customize/connectors?q=zzqxvw": expected,
+			"/customize/plugins?q=zzqxvw": expected,
+			"/customize/plugins?view=discover&q=zzqxvw": expected,
+		});
+	});
+
+	it("renders only the unified no-match line for a no-hit query in every dialog section and view", async () => {
+		const results: Record<string, ReturnType<typeof noMatchState>> = {};
+		for (const hash of [
+			"customize/skills/yours",
+			"customize/skills/discover",
+			"customize/connectors/yours",
+			"customize/plugins/yours",
+			"customize/plugins/discover",
+		]) {
+			await renderDialogPanel(hash);
+			fireEvent.change(openSearch(), {target: {value: "zzqxvw"}});
+			results[hash] = noMatchState();
+			cleanup();
+		}
+
+		const expected = {fallback: false, lines: ["No results match \u201czzqxvw\u201d"]};
+		expect(results).toStrictEqual({
+			"customize/skills/yours": expected,
+			"customize/skills/discover": expected,
+			"customize/connectors/yours": expected,
+			"customize/plugins/yours": expected,
+			"customize/plugins/discover": expected,
+		});
+	});
+});
