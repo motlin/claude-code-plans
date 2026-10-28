@@ -16,13 +16,11 @@ import {ScopeBadge} from "./connectors-table";
 import {transportLabel} from "./connector-labels";
 import {CustomizeBackLink, CustomizeLink} from "./customize-nav";
 import {useCustomizeGo} from "./customize-navigation";
+import {DETAIL_TAB_CLASS, DetailTabLabel, DetailTabs} from "./detail-tabs";
 import {IconTile} from "./icon-tile";
 import {ListRow} from "./list-row";
 import {PluginRowActions} from "./plugin-row-actions";
 import {pluginDetailTabs, pluginNamespace} from "./plugin-view";
-
-const TAB_CLASS =
-	"relative inline-flex h-10 items-center gap-1 border-b-2 border-transparent px-1 text-body font-medium text-t6 no-underline hover:text-secondary aria-[current=page]:border-primary aria-[current=page]:text-primary";
 
 function plural(count: number, noun: string): string {
 	return `${count} ${noun}${count === 1 ? "" : "s"}`;
@@ -40,17 +38,21 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 	return (
 		<header className="flex flex-col gap-4">
 			<CustomizeBackLink section="plugins">Plugins</CustomizeBackLink>
-			<div className="flex items-center gap-4">
-				<IconTile icon={Puzzle} size="lg" />
-				<div className="flex min-w-0 flex-1 flex-col">
-					<h2 className="m-0 truncate text-[15px]/[20px] font-[580] text-primary">{plugin.name}</h2>
-					<p className="m-0 flex flex-wrap items-center gap-x-1.5 text-[13px]/[17px] text-t6">
-						{plugin.author !== "" && <span>by {plugin.author} ·</span>}
-						<PluginVersion version={plugin.version} versionKind={plugin.versionKind} />
-						<span>· {plural(plugin.skills.length, "skill")}</span>
-					</p>
+			<div className="flex flex-wrap items-start justify-between gap-4">
+				<div className="flex max-w-max min-w-0 grow basis-40 items-start gap-4">
+					<IconTile icon={Puzzle} size="lg" />
+					<div className="flex min-w-0 flex-col gap-0.5">
+						<h2 className="m-0 min-w-0 truncate text-[15px]/[20px] font-[580] text-primary">
+							{plugin.name}
+						</h2>
+						<p className="m-0 flex flex-wrap items-center gap-x-1.5 break-words text-footnote text-muted-as-secondary">
+							{plugin.author !== "" && <span>by {plugin.author} ·</span>}
+							<PluginVersion version={plugin.version} versionKind={plugin.versionKind} />
+							<span>· {plural(plugin.skills.length, "skill")}</span>
+						</p>
+					</div>
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
+				<div className="flex flex-wrap items-center gap-3">
 					{disabled && <ScopeBadge>Disabled</ScopeBadge>}
 					<PluginRowActions
 						pluginId={plugin.id}
@@ -60,18 +62,17 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 					/>
 				</div>
 			</div>
-			<nav aria-label="Plugin sections" className="flex flex-wrap gap-x-4 border-b border-border">
+			<DetailTabs label="Plugin sections">
 				{pluginDetailTabs(detail).map((tab) => (
 					<CustomizeLink
 						key={tab.id}
 						target={{kind: "plugin", id: plugin.id, tab: tab.id}}
-						className={TAB_CLASS}
+						className={DETAIL_TAB_CLASS}
 					>
-						{tab.label}
-						{tab.count !== null && <span className="text-t6"> · {tab.count}</span>}
+						<DetailTabLabel label={tab.label} count={tab.count} />
 					</CustomizeLink>
 				))}
-			</nav>
+			</DetailTabs>
 		</header>
 	);
 }

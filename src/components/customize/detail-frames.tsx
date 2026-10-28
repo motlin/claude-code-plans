@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import type {ReactNode} from "react";
+import type {ReactElement, ReactNode} from "react";
 import {
 	customizeMcpServerDetailQueryOptions,
 	customizePluginDetailQueryOptions,
@@ -12,66 +12,156 @@ import {CustomizeNotice} from "./customize-empty";
 import {PluginDetailHeader} from "./plugin-detail";
 import {SkillDetailHeader} from "./skill-detail";
 
-/** Skill detail: loading and not-found states, else the header over `children(detail)`. */
-export function SkillDetailFrame({skillId, children}: {skillId: string; children: (detail: SkillDetail) => ReactNode}) {
-	const {data, isPending, isError} = useQuery(customizeSkillDetailQueryOptions(skillId));
-	if (isPending) return <p className="text-body text-t6">Loading skill…</p>;
-	if (isError) {
-		return (
-			<CustomizeNotice
-				title="Skill not found"
-				body="It may have been removed or renamed since the list was loaded."
-			/>
+/** Where a detail renders: a /customize page, or the Settings dialog's fixed-header pane. */
+export type DetailLayout = "page" | "dialog";
+
+interface DetailShellProps {
+	layout: DetailLayout;
+	/** The back link, title row and tabs; null for the loading and not-found states. */
+	header: ReactNode;
+	/** The page column's classes; the dialog lays the body out itself. */
+	pageClassName: string;
+	children: ReactNode;
+}
+
+/**
+ * On a page, the header over the body in one column. In the dialog, upstream's
+ * detail frame: the header and tabs stay put (`shrink-0`) and only the body
+ * scrolls, both in a `max-w-5xl` column inset by `px-xl` (comfortable 24px).
+ */
+function DetailShell({layout, header, pageClassName, children}: DetailShellProps): ReactElement {
+	if (layout === "page") {
+		return header === null ? (
+			<>{children}</>
+		) : (
+			<div className={pageClassName}>
+				{header}
+				{children}
+			</div>
 		);
 	}
 	return (
-		<div className="flex flex-col gap-6">
-			<SkillDetailHeader detail={data} />
-			{children(data)}
+		<div className="flex h-full min-h-0 flex-col">
+			{header !== null && (
+				<div className="shrink-0">
+					<div className="mx-auto w-full max-w-5xl md:px-2 flex flex-col pt-3">
+						<div className="px-6">{header}</div>
+					</div>
+				</div>
+			)}
+			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-6 pb-6">
+				<div className="mx-auto w-full max-w-5xl md:px-2 flex flex-1 flex-col">
+					<div className="px-6 flex flex-1 flex-col">{children}</div>
+				</div>
+			</div>
 		</div>
+	);
+}
+
+interface FrameState {
+	layout: DetailLayout;
+	isPending: boolean;
+	loading: string;
+	notFound: ReactNode;
+}
+
+/** The loading (while pending) or not-found body, in the layout's frame. */
+function pendingOrMissing({layout, isPending, loading, notFound}: FrameState): ReactElement {
+	return (
+		<DetailShell layout={layout} header={null} pageClassName="">
+			{isPending ? <p className="text-body text-t6">{loading}</p> : notFound}
+		</DetailShell>
+	);
+}
+
+/** Skill detail: loading and not-found states, else the header over `children(detail)`. */
+export function SkillDetailFrame({
+	skillId,
+	layout = "page",
+	children,
+}: {
+	skillId: string;
+	layout?: DetailLayout;
+	children: (detail: SkillDetail) => ReactNode;
+}): ReactElement {
+	const {data, isPending, isError} = useQuery(customizeSkillDetailQueryOptions(skillId));
+	if (isPending || isError) {
+		return pendingOrMissing({
+			layout,
+			isPending,
+			loading: "Loading skill…",
+			notFound: (
+				<CustomizeNotice
+					title="Skill not found"
+					body="It may have been removed or renamed since the list was loaded."
+				/>
+			),
+		});
+	}
+	return (
+		<DetailShell layout={layout} header={<SkillDetailHeader detail={data} />} pageClassName="flex flex-col gap-6">
+			{children(data)}
+		</DetailShell>
 	);
 }
 
 /** Plugin detail: loading and not-found states, else the header over `children(detail)`. */
 export function PluginDetailFrame({
 	pluginId,
+	layout = "page",
 	children,
 }: {
 	pluginId: string;
+	layout?: DetailLayout;
 	children: (detail: PluginDetail) => ReactNode;
-}) {
+}): ReactElement {
 	const {data, isPending, isError} = useQuery(customizePluginDetailQueryOptions(pluginId));
-	if (isPending) return <p className="text-body text-t6">Loading plugin…</p>;
-	if (isError) {
-		return (
-			<CustomizeNotice title="Plugin not found" body="It may have been uninstalled since the list was loaded." />
-		);
+	if (isPending || isError) {
+		return pendingOrMissing({
+			layout,
+			isPending,
+			loading: "Loading plugin…",
+			notFound: (
+				<CustomizeNotice
+					title="Plugin not found"
+					body="It may have been uninstalled since the list was loaded."
+				/>
+			),
+		});
 	}
 	return (
-		<div className="flex flex-col gap-6">
-			<PluginDetailHeader detail={data} />
+		<DetailShell layout={layout} header={<PluginDetailHeader detail={data} />} pageClassName="flex flex-col gap-6">
 			{children(data)}
-		</div>
+		</DetailShell>
 	);
 }
 
 /** Connector detail for a `toConnectorSlug` id: header, copyable URL or command, and tool permissions. */
-export function ConnectorDetailFrame({serverId}: {serverId: string}) {
+export function ConnectorDetailFrame({
+	serverId,
+	layout = "page",
+}: {
+	serverId: string;
+	layout?: DetailLayout;
+}): ReactElement {
 	const query = customizeMcpServerDetailQueryOptions(serverId);
 	const {data, isPending, isError} = useQuery(query);
-	if (isPending) return <p className="text-body text-t6">Loading connector…</p>;
-	if (isError) {
-		return (
-			<CustomizeNotice
-				title="Connector not found"
-				body="It may have been removed or renamed since the list was loaded."
-			/>
-		);
+	if (isPending || isError) {
+		return pendingOrMissing({
+			layout,
+			isPending,
+			loading: "Loading connector…",
+			notFound: (
+				<CustomizeNotice
+					title="Connector not found"
+					body="It may have been removed or renamed since the list was loaded."
+				/>
+			),
+		});
 	}
 	return (
-		<div className="flex flex-col">
-			<ConnectorDetailHeader detail={data} />
+		<DetailShell layout={layout} header={<ConnectorDetailHeader detail={data} />} pageClassName="flex flex-col">
 			<ToolPermissions detail={data} detailQueryKey={query.queryKey} />
-		</div>
+		</DetailShell>
 	);
 }

@@ -211,9 +211,7 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 					</div>
 				</div>
 			) : (
-				<div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-2 pb-4">
-					<DetailBody location={location} id={location.id} />
-				</div>
+				<DetailBody location={location} id={location.id} />
 			)}
 		</CustomizeNavContext.Provider>
 	);
@@ -236,7 +234,7 @@ function DetailBody({location, id}: {location: CustomizeLocation; id: string}) {
 	switch (location.section) {
 		case "skills":
 			return (
-				<SkillDetailFrame skillId={id}>
+				<SkillDetailFrame skillId={id} layout="dialog">
 					{(detail) =>
 						location.tab === "contents" ? (
 							<ContentsViewer
@@ -251,10 +249,10 @@ function DetailBody({location, id}: {location: CustomizeLocation; id: string}) {
 				</SkillDetailFrame>
 			);
 		case "connectors":
-			return <ConnectorDetailFrame serverId={id} />;
+			return <ConnectorDetailFrame serverId={id} layout="dialog" />;
 		case "plugins":
 			return (
-				<PluginDetailFrame pluginId={id}>
+				<PluginDetailFrame pluginId={id} layout="dialog">
 					{(detail) => {
 						switch (location.tab) {
 							case null:

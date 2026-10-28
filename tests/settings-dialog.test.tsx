@@ -784,6 +784,87 @@ describe("SettingsDialog local tabs", () => {
 		});
 	});
 
+	const DETAIL_TAB =
+		"relative -mb-px inline-flex h-8 shrink-0 items-center justify-center border-b-2 border-transparent px-3 text-body font-medium text-ink-muted no-underline hover:text-primary aria-[current=page]:border-primary aria-[current=page]:text-primary";
+
+	it("fixes a skill detail's header and tabs above an inner body scroller at upstream's comfortable sizes", async () => {
+		const skill: SkillSummary = {
+			id: "personal:foo",
+			name: "foo",
+			description: "Does foo",
+			source: "personal",
+			sourceLabel: "Personal",
+			dir: "/home/u/.claude/skills/foo",
+			mtime: 0,
+			enabled: true,
+		};
+		const detail: SkillDetail = {
+			skill,
+			userInvocable: true,
+			modelInvocable: true,
+			allowedTools: [],
+			tree: [],
+		};
+		await renderAt("/#customize/skills/yours/id/personal%3Afoo", (queryClient) => {
+			queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, [skill]);
+			queryClient.setQueryData(customizeSkillDetailQueryOptions(skill.id).queryKey, detail);
+		});
+		const sections = await screen.findByRole("navigation", {name: "Skill sections"});
+		const dialog = screen.getByRole("dialog", {name: "Settings"});
+		const pane = dialog.querySelector<HTMLElement>("[data-customize-dialog-pane]");
+		const root = pane?.children[2]?.firstElementChild?.firstElementChild;
+		const [fixed, scroller] = [...(root?.children ?? [])];
+		const fixedColumn = fixed?.firstElementChild;
+		const inset = fixedColumn?.firstElementChild;
+		const header = inset?.firstElementChild ?? null;
+		const column = scroller?.firstElementChild;
+		const h2 = screen.getByRole("heading", {level: 2, name: "foo"});
+		const description = screen.getByRole("heading", {level: 3, name: "Description"});
+		const [overview, contents] = within(sections).getAllByRole("link");
+
+		expect({
+			root: [root?.className, root?.children.length],
+			fixed: fixed?.className,
+			fixedColumn: fixedColumn?.className,
+			inset: inset?.className,
+			header: [header?.tagName, header?.className],
+			scroller: scroller?.className,
+			column: column?.className,
+			inset2: column?.firstElementChild?.className,
+			headerInScroller: scroller?.contains(header),
+			tabsFixed: fixed?.contains(sections),
+			descriptionInScroller: scroller?.contains(description),
+			h2: h2.className,
+			meta: h2.nextElementSibling?.className,
+			tile: header?.querySelector("[data-testid=customize-icon-tile]")?.className,
+			tabsScroller: sections.parentElement?.className,
+			nav: sections.className,
+			overview: [overview?.className, overview?.getAttribute("aria-current")],
+			contents: [contents?.className, contents?.querySelector("span span")?.className],
+			description: description.className,
+		}).toStrictEqual({
+			root: ["flex h-full min-h-0 flex-col", 2],
+			fixed: "shrink-0",
+			fixedColumn: "mx-auto w-full max-w-5xl md:px-2 flex flex-col pt-3",
+			inset: "px-6",
+			header: ["HEADER", "flex flex-col gap-4"],
+			scroller: "flex min-h-0 flex-1 flex-col overflow-y-auto pt-6 pb-6",
+			column: "mx-auto w-full max-w-5xl md:px-2 flex flex-1 flex-col",
+			inset2: "px-6 flex flex-1 flex-col",
+			headerInScroller: false,
+			tabsFixed: true,
+			descriptionInScroller: true,
+			h2: "m-0 min-w-0 truncate text-[15px]/[20px] font-[580] text-primary",
+			meta: "m-0 break-words text-footnote text-muted-as-secondary",
+			tile: "flex shrink-0 items-center justify-center border border-border bg-surface-0 text-muted-as-secondary size-11 rounded-card",
+			tabsScroller: "-m-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+			nav: "flex w-max min-w-full items-end gap-[2px] border-b border-border",
+			overview: [DETAIL_TAB, "page"],
+			contents: [DETAIL_TAB, "text-muted-as-secondary"],
+			description: "m-0 text-caption text-secondary",
+		});
+	});
+
 	it("gives the Customize panel upstream's own chrome: absolute Close, crumb bar, fixed title header and an inner list scroller", async () => {
 		const skill: SkillSummary = {
 			id: "personal:foo",

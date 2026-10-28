@@ -4,13 +4,11 @@ import type {SkillDetail} from "../../lib/api/customize";
 import {countContentsFiles} from "./contents-order";
 import {CustomizeBackLink, CustomizeLink} from "./customize-nav";
 import {ShortDate} from "./customize-list";
+import {DETAIL_TAB_CLASS, DetailTabLabel, DetailTabs} from "./detail-tabs";
 import {IconTile} from "./icon-tile";
 import {SkillEnableSwitch} from "./skill-enable-switch";
 import {SkillRowActions} from "./skill-row-actions";
 import {skillInvocation} from "./skills-view";
-
-const TAB_CLASS =
-	"relative inline-flex h-10 items-center gap-1 border-b-2 border-transparent px-1 text-body font-medium text-t6 no-underline hover:text-secondary aria-[current=page]:border-primary aria-[current=page]:text-primary";
 
 /**
  * Upstream skill detail header: back link, 44px tile, H2 + "from <source> ·
@@ -22,27 +20,31 @@ export function SkillDetailHeader({detail}: {detail: SkillDetail}) {
 	return (
 		<header className="flex flex-col gap-4">
 			<CustomizeBackLink section="skills">Your skills</CustomizeBackLink>
-			<div className="flex items-center gap-3">
-				<IconTile icon={Scroll} size="lg" />
-				<div className="flex min-w-0 flex-1 flex-col">
-					<h2 className="m-0 truncate text-[20px]/[28px] font-medium text-primary">{skill.name}</h2>
-					<p className="m-0 text-[13px]/[17px] text-t6">
-						from {skill.sourceLabel} · updated <ShortDate ms={skill.mtime} />
-					</p>
+			<div className="flex flex-wrap items-start justify-between gap-4">
+				<div className="flex max-w-max min-w-0 grow basis-40 items-start gap-4">
+					<IconTile icon={Scroll} size="lg" />
+					<div className="flex min-w-0 flex-col gap-0.5">
+						<h2 className="m-0 min-w-0 truncate text-[15px]/[20px] font-[580] text-primary">
+							{skill.name}
+						</h2>
+						<p className="m-0 break-words text-footnote text-muted-as-secondary">
+							from {skill.sourceLabel} · updated <ShortDate ms={skill.mtime} />
+						</p>
+					</div>
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
+				<div className="flex flex-wrap items-center gap-3">
 					<SkillEnableSwitch skill={skill} />
 					<SkillRowActions skill={skill} triggerLabel={`More options for ${skill.name}`} />
 				</div>
 			</div>
-			<nav aria-label="Skill sections" className="flex gap-4 border-b border-border">
-				<CustomizeLink target={{kind: "skill", id: skill.id, tab: "overview"}} className={TAB_CLASS}>
-					Overview
+			<DetailTabs label="Skill sections">
+				<CustomizeLink target={{kind: "skill", id: skill.id, tab: "overview"}} className={DETAIL_TAB_CLASS}>
+					<DetailTabLabel label="Overview" />
 				</CustomizeLink>
-				<CustomizeLink target={{kind: "skill", id: skill.id, tab: "contents"}} className={TAB_CLASS}>
-					Contents <span className="text-t6">· {countContentsFiles(detail.tree)}</span>
+				<CustomizeLink target={{kind: "skill", id: skill.id, tab: "contents"}} className={DETAIL_TAB_CLASS}>
+					<DetailTabLabel label="Contents" count={countContentsFiles(detail.tree)} />
 				</CustomizeLink>
-			</nav>
+			</DetailTabs>
 		</header>
 	);
 }
@@ -50,7 +52,7 @@ export function SkillDetailHeader({detail}: {detail: SkillDetail}) {
 function AsideCard({title, children}: {title: string; children: ReactNode}) {
 	return (
 		<section className="flex flex-col gap-2 rounded-card border border-border bg-surface-0 p-4">
-			<h3 className="m-0 text-caption font-medium text-t6">{title}</h3>
+			<h3 className="m-0 text-caption text-secondary">{title}</h3>
 			{children}
 		</section>
 	);
@@ -70,9 +72,9 @@ export function SkillOverview({detail}: {detail: SkillDetail}) {
 	const {skill} = detail;
 	const invocation = skillInvocation(skill);
 	return (
-		<div className="flex flex-col gap-6 md:flex-row md:items-start">
-			<section className="flex min-w-0 flex-1 flex-col gap-2">
-				<h3 className="m-0 text-caption font-medium text-t6">Description</h3>
+		<div className="flex flex-col gap-7 md:flex-row md:items-start">
+			<section className="flex min-w-0 flex-1 flex-col gap-3">
+				<h3 className="m-0 text-caption text-secondary">Description</h3>
 				<p data-testid="skill-description" className="m-0 whitespace-pre-wrap text-body text-primary">
 					{skill.description === "" ? "No description." : skill.description}
 				</p>
