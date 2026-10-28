@@ -1,14 +1,88 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {UsagePanel} from "../src/components/settings/usage-settings";
+import {UsagePanel, UsageSettings} from "../src/components/settings/usage-settings";
+import {apiFetch} from "../src/lib/api/client";
+import {usageQueryOptions} from "../src/lib/api/usage";
 import {formatUsageUpdated} from "../src/lib/usage";
 
 const NOW_MS = Date.UTC(2026, 8, 28, 12, 0);
 const NOW_SECONDS = NOW_MS / 1000;
 
-afterEach(cleanup);
+vi.mock("../src/lib/api/client", () => ({
+	apiFetch: vi.fn<(path: string) => Promise<unknown>>(),
+}));
+
+afterEach(() => {
+	cleanup();
+	vi.mocked(apiFetch).mockReset();
+});
+
+function renderUsageSettings() {
+	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	return render(
+		<QueryClientProvider client={client}>
+			<UsageSettings />
+		</QueryClientProvider>,
+	);
+}
+
+describe("UsageSettings", () => {
+	it("shows upstream's usage-page skeleton while the first fetch is pending", () => {
+		vi.mocked(apiFetch).mockImplementation(async () => new Promise(() => {}));
+		renderUsageSettings();
+
+		const skeleton = screen.getByTestId("usage-page-skeleton");
+		expect({
+			busy: skeleton.getAttribute("aria-busy"),
+			inner: skeleton.firstElementChild?.className,
+			blocks: [...skeleton.querySelectorAll("[data-cds=Skeleton]")].map((node) =>
+				node.className.split(" ").slice(-3).join(" "),
+			),
+		}).toStrictEqual({
+			busy: "true",
+			inner: "space-y-6 py-3",
+			blocks: [
+				"mb-2 h-6 w-[180px]",
+				"rounded h-5 w-[300px]",
+				"rounded h-3 w-full",
+				"rounded h-3 w-full",
+				"rounded h-3 w-full",
+			],
+		});
+	});
+
+	it("shows upstream's error copy with a Try again button that refetches", async () => {
+		vi.mocked(apiFetch).mockImplementation(async (path: string) =>
+			path === "/api/usage"
+				? Promise.reject(new Error("boom"))
+				: Promise.resolve({name: "", firstName: "", initial: ""}),
+		);
+		renderUsageSettings();
+
+		const message = await screen.findByText("Unable to load usage limits. Please try again later.");
+		expect(message.parentElement?.className).toBe("flex flex-col items-start gap-2 text-footnote text-secondary");
+		const usageCalls = () => vi.mocked(apiFetch).mock.calls.filter(([path]) => path === "/api/usage").length;
+		expect(usageCalls()).toBe(1);
+
+		fireEvent.click(screen.getByRole("button", {name: "Try again"}));
+		await waitFor(() => {
+			expect(usageCalls()).toBe(2);
+		});
+	});
+});
+
+describe("usageQueryOptions", () => {
+	it("refetches every five minutes, on mount and on window focus like upstream", () => {
+		expect({
+			refetchInterval: usageQueryOptions.refetchInterval,
+			refetchOnMount: usageQueryOptions.refetchOnMount,
+			refetchOnWindowFocus: usageQueryOptions.refetchOnWindowFocus,
+		}).toStrictEqual({refetchInterval: 300_000, refetchOnMount: "always", refetchOnWindowFocus: "always"});
+	});
+});
 
 describe("UsagePanel", () => {
 	it("renders the header, pace headline, meters and last-updated line", () => {

@@ -13,6 +13,7 @@ import {
 	type UsageVariant,
 	type UsageWindow,
 } from "../../lib/usage";
+import {Skeleton} from "../ui/skeleton";
 import {Tooltip} from "../ui/tooltip";
 import {SettingsSection} from "./settings-row";
 
@@ -214,12 +215,54 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 	);
 }
 
+/** Upstream's `IO`: the usage page's first-load skeleton. */
+function UsageSkeleton() {
+	return (
+		<div data-testid="usage-page-skeleton" aria-busy="true">
+			<div className="space-y-6 py-3">
+				<Skeleton className="rounded mb-2 h-6 w-[180px]" />
+				<div className="space-y-6">
+					<Skeleton className="rounded h-5 w-[300px]" />
+					<Skeleton className="rounded h-3 w-full" />
+					<Skeleton className="rounded h-3 w-full" />
+					<Skeleton className="rounded h-3 w-full" />
+				</div>
+			</div>
+		</div>
+	);
+}
+
+/** Upstream's cds Button `variant="secondary" size="xs"`. */
+const TRY_AGAIN_CLASS =
+	"inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-footnote text-primary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
+function UsageError({retrying, onRetry}: {retrying: boolean; onRetry: () => void}) {
+	return (
+		<div className="flex flex-col items-start gap-2 text-footnote text-secondary">
+			<p>Unable to load usage limits. Please try again later.</p>
+			<button
+				type="button"
+				aria-busy={retrying || undefined}
+				disabled={retrying}
+				onClick={onRetry}
+				className={TRY_AGAIN_CLASS}
+			>
+				Try again
+			</button>
+		</div>
+	);
+}
+
 export function UsageSettings() {
 	const usageQuery = useQuery(usageQueryOptions);
 	const {data: account} = useQuery(localAccountQueryOptions);
 
 	if (usageQuery.data === undefined) {
-		return usageQuery.isError ? <p className="text-body text-secondary">Usage could not be loaded.</p> : null;
+		return usageQuery.isError ? (
+			<UsageError retrying={usageQuery.isFetching} onRetry={() => void usageQuery.refetch()} />
+		) : (
+			<UsageSkeleton />
+		);
 	}
 
 	return (
