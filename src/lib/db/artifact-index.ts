@@ -115,6 +115,12 @@ export class ArtifactEventCollector {
 			sourcePath: parsed?.path ?? nonEmptyString(input["file_path"]),
 			version: parsed?.version ?? null,
 			audience: nonEmptyString(resultRecord?.["audience"]),
+			icon: nonEmptyString(resultRecord?.["icon"]),
+			artifactUuid: nonEmptyString(resultRecord?.["artifact_id"]),
+			typeUrl:
+				resultRecord?.["created_from_type"] === true
+					? nonEmptyString(asRecord(resultRecord["type"])?.["url"])
+					: null,
 		});
 	}
 }
@@ -156,6 +162,9 @@ function recomputeArtifact(transaction: IndexDb, url: string): void {
 		sourcePath: lastNonNull(events.map((event) => event.sourcePath)),
 		version: lastNonNull(events.map((event) => event.version)),
 		audience: lastNonNull(events.map((event) => event.audience)),
+		icon: lastNonNull(events.map((event) => event.icon)),
+		artifactUuid: lastNonNull(events.map((event) => event.artifactUuid)),
+		typeUrl: firstNonNull(events.map((event) => event.typeUrl)),
 		firstSeenAt: events[0]?.ts ?? latest.ts,
 		lastPublishedAt: publishes.at(-1)?.ts ?? null,
 		publishCount: publishes.length,

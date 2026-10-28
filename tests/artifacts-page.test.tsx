@@ -73,6 +73,7 @@ describe("artifactDateGroupLabel", () => {
 const LADDER_URL = "https://claude.ai/code/artifact/546d3910-4e9a-4730-9e91-62742a47c7c6";
 const CHART_URL = "https://claude.ai/code/artifact/17b8a2c1-4c41-46bf-b064-a272240be709";
 const DOCS_URL = "https://claude.ai/artifact/7Hq2vXbN4pLmKcR9sTwYzA";
+const DOCS_TYPE_URL = "https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W";
 const LADDER_SOURCE = "/Users/alice/projects/ladder/.llm/mockups/ladder.html";
 const LADDER_MTIME = 1_790_000_000_000;
 
@@ -121,6 +122,7 @@ function seedArtifacts(db: AppDb): void {
 				url: DOCS_URL,
 				id: "7Hq2vXbN4pLmKcR9sTwYzA",
 				urlKind: "slug",
+				typeUrl: DOCS_TYPE_URL,
 				title: "Quarterly plan",
 				sourcePath: null,
 				audience: "owner",
@@ -145,6 +147,7 @@ function seedMixedGallery(db: AppDb): void {
 					url: docs ? `https://claude.ai/artifact/${id}` : `https://claude.ai/code/artifact/${id}`,
 					id,
 					urlKind: docs ? ("slug" as const) : ("uuid" as const),
+					typeUrl: docs ? DOCS_TYPE_URL : null,
 					title: `${index % 2 === 0 ? "Mine" : "Shared"} ${id}`,
 					favicon: null,
 					description: null,

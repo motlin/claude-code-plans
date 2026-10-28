@@ -7,6 +7,8 @@ const ArtifactSummarySchema = z.strictObject({
 	url: z.string(),
 	id: z.string(),
 	kind: z.enum(["html", "docs"]),
+	/** The publish's icon word (chart, doc, code, …), when it set one. */
+	icon: z.string().nullable(),
 	title: z.string(),
 	description: z.string().nullable(),
 	sourcePath: z.string().nullable(),

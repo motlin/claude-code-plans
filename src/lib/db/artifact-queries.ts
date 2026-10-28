@@ -9,6 +9,18 @@ import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
+type ArtifactKind = ArtifactSummary["kind"];
+
+/** The gallery kind of each known Artifact type, keyed by the type's URL. */
+const ARTIFACT_TYPE_KINDS: Readonly<Record<string, ArtifactKind>> = {
+	"https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W": "docs",
+};
+
+/** Upstream's classification: a type-created artifact takes its type's kind; plain publishes (and unknown types) are HTML. */
+function artifactKind(typeUrl: string | null): ArtifactKind {
+	return (typeUrl === null ? undefined : ARTIFACT_TYPE_KINDS[typeUrl]) ?? "html";
+}
+
 /** The source file's mtime in ms when it is still a regular file, else null. */
 function statSourceMtime(path: string): number | null {
 	try {
@@ -45,7 +57,8 @@ export function getArtifacts(
 			return {
 				url: row.url,
 				id: row.id,
-				kind: row.urlKind === "slug" ? "docs" : "html",
+				kind: artifactKind(row.typeUrl),
+				icon: row.icon,
 				title: row.title ?? (row.sourcePath ? basename(row.sourcePath) : row.id),
 				description: row.description,
 				sourcePath: row.sourcePath,
@@ -104,7 +117,7 @@ export function getSessionArtifacts(db: IndexDb, sessionId: string): SessionArti
 		return {
 			url: event.url,
 			id: artifact.id,
-			kind: artifact.urlKind === "slug" ? "docs" : "html",
+			kind: artifactKind(artifact.typeUrl),
 			title,
 			previewable: sourcePath !== null && isPreviewableSourcePath(sourcePath),
 			lastEventAt: event.ts,

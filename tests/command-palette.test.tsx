@@ -2014,6 +2014,7 @@ function artifact(id: string, title: string, publishedAgoMs: number): ArtifactSu
 		url: `https://claude.ai/code/artifact/${id}`,
 		id,
 		kind: "html",
+		icon: null,
 		title,
 		description: null,
 		sourcePath: null,

@@ -12,6 +12,7 @@ const ARTIFACT: ArtifactSummary = {
 	url: "https://claude.ai/code/artifact/546d3910-4e9a-4730-9e91-62742a47c7c6",
 	id: "546d3910-4e9a-4730-9e91-62742a47c7c6",
 	kind: "html",
+	icon: null,
 	title: "Asap Ladder Queue",
 	description: null,
 	sourcePath: "/Users/alice/projects/ladder/.llm/mockups/ladder.html",

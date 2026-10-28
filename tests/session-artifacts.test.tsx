@@ -18,6 +18,7 @@ import {installLocalStorage} from "./fake-storage";
 const LADDER_URL = "https://claude.ai/code/artifact/546d3910-4e9a-4730-9e91-62742a47c7c6";
 const CHART_URL = "https://claude.ai/code/artifact/17b8a2c1-4c41-46bf-b064-a272240be709";
 const DOCS_URL = "https://claude.ai/artifact/7Hq2vXbN4pLmKcR9sTwYzA";
+const DOCS_TYPE_URL = "https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W";
 const OTHER_URL = "https://claude.ai/code/artifact/0f9e8d7c-6b5a-4c3d-8e2f-1a2b3c4d5e6f";
 const LADDER_SOURCE = "/Users/alice/projects/ladder/.llm/mockups/ladder.html";
 const PROJECT = "-Users-alice-projects-ladder";
@@ -81,6 +82,7 @@ function seed(db: AppDb): void {
 				url: DOCS_URL,
 				id: "7Hq2vXbN4pLmKcR9sTwYzA",
 				urlKind: "slug",
+				typeUrl: DOCS_TYPE_URL,
 				title: "Quarterly plan",
 				favicon: null,
 				description: null,

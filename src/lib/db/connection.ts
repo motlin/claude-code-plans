@@ -95,7 +95,10 @@ CREATE TABLE IF NOT EXISTS artifact_events (
   description TEXT,
   source_path TEXT,
   version TEXT,
-  audience TEXT
+  audience TEXT,
+  icon TEXT,
+  artifact_uuid TEXT,
+  type_url TEXT
 );
 CREATE INDEX IF NOT EXISTS artifact_events_session_idx ON artifact_events(session_id);
 CREATE INDEX IF NOT EXISTS artifact_events_file_path_idx ON artifact_events(file_path);
@@ -111,6 +114,9 @@ CREATE TABLE IF NOT EXISTS artifacts (
   source_path TEXT,
   version TEXT,
   audience TEXT,
+  icon TEXT,
+  artifact_uuid TEXT,
+  type_url TEXT,
   first_seen_at INTEGER NOT NULL,
   last_published_at INTEGER,
   publish_count INTEGER NOT NULL DEFAULT 0,

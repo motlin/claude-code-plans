@@ -5,6 +5,7 @@ import {asc} from "drizzle-orm";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
+import {getArtifacts} from "../src/lib/db/artifact-queries";
 import {indexJsonlFile, indexSubagentFile} from "../src/lib/db/indexer";
 import * as schema from "../src/lib/db/schema";
 
@@ -135,6 +136,48 @@ const subagentPin: ArtifactCall = {
 	toolUseResult: "Pinned.",
 };
 
+const SLUG_HTML_URL = "https://claude.ai/artifact/Tq3wDkV8mRf2YzLpNc7HsX";
+const SLUG_HTML_SOURCE = "/private/tmp/scratchpad/research-line.html";
+
+const slugHtmlPublish: ArtifactCall = {
+	toolUseId: "toolu_slug_html",
+	timestamp: "2000-01-03T00:00:00.000Z",
+	input: {file_path: SLUG_HTML_SOURCE, icon: "chart"},
+	resultText: `Published ${SLUG_HTML_SOURCE} at ${SLUG_HTML_URL}\n\nLive subscription: connected.`,
+	toolUseResult: {
+		url: SLUG_HTML_URL,
+		path: SLUG_HTML_SOURCE,
+		artifact_id: "0f3c2a91-6b7d-4e58-9a1c-2d4e6f8a0b13",
+		title: "Space Age Research Line",
+		updated: false,
+		icon: "chart",
+		version: "1790200000-a1b2",
+		liveSubscription: "connected",
+	},
+};
+
+const DOCS_TYPE_URL = "https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W";
+const DOCS_TYPE_ARTIFACT_URL = "https://claude.ai/artifact/88kDDG41ePqvfVZNsq4HCF";
+
+const docsTypeCreate: ArtifactCall = {
+	toolUseId: "toolu_docs_type",
+	timestamp: "2000-01-04T00:00:00.000Z",
+	input: {type_url: DOCS_TYPE_URL, title: "tmux support plan"},
+	resultText: `Created a new Artifact at ${DOCS_TYPE_ARTIFACT_URL} (version 1790103359-22eb) from the Artifact type ${DOCS_TYPE_URL} (release 1790098900-58f7).`,
+	toolUseResult: {
+		created_from_type: true,
+		url: DOCS_TYPE_ARTIFACT_URL,
+		version: "1790103359-22eb",
+		title: "tmux support plan",
+		type: {url: DOCS_TYPE_URL, release: "1790098900-58f7"},
+		own_files: [],
+		type_files: ["SKILL.md"],
+		liveSubscription: "connected",
+		instructions: "Fill the doc through the Claude Docs connector.",
+		instructions_chars: 47,
+	},
+};
+
 let db: AppDb;
 
 function writeTranscript(path: string, sessionId: string, calls: ArtifactCall[]): string {
@@ -189,6 +232,9 @@ const expectedArtifactAfterBothSessions = {
 	sourcePath: SOURCE_B,
 	version: "v2",
 	audience: "owner",
+	icon: null,
+	artifactUuid: null,
+	typeUrl: null,
 	firstSeenAt: Date.parse("2000-01-01T00:00:00.000Z"),
 	lastPublishedAt: Date.parse("2000-01-02T00:00:00.000Z"),
 	publishCount: 2,
@@ -212,6 +258,9 @@ const expectedEventsAfterBothSessions = [
 		sourcePath: SOURCE_A,
 		version: "v1",
 		audience: "owner",
+		icon: null,
+		artifactUuid: null,
+		typeUrl: null,
 	},
 	{
 		toolUseId: "toolu_a_read_db",
@@ -228,6 +277,9 @@ const expectedEventsAfterBothSessions = [
 		sourcePath: null,
 		version: null,
 		audience: null,
+		icon: null,
+		artifactUuid: null,
+		typeUrl: null,
 	},
 	{
 		toolUseId: "toolu_b_publish",
@@ -244,6 +296,9 @@ const expectedEventsAfterBothSessions = [
 		sourcePath: SOURCE_B,
 		version: "v2",
 		audience: "owner",
+		icon: null,
+		artifactUuid: null,
+		typeUrl: null,
 	},
 ];
 
@@ -305,6 +360,9 @@ describe("artifact indexing", () => {
 				sourcePath: SOURCE_A,
 				version: "v1",
 				audience: "owner",
+				icon: null,
+				artifactUuid: null,
+				typeUrl: null,
 				firstSeenAt: Date.parse("2000-01-01T00:00:00.000Z"),
 				lastPublishedAt: Date.parse("2000-01-01T00:00:00.000Z"),
 				publishCount: 1,
@@ -358,12 +416,65 @@ describe("artifact indexing", () => {
 				sourcePath: SOURCE_B,
 				version: "v2",
 				audience: "owner",
+				icon: null,
+				artifactUuid: null,
+				typeUrl: null,
 				firstSeenAt: Date.parse("2000-01-02T00:00:00.000Z"),
 				lastPublishedAt: Date.parse("2000-01-02T00:00:00.000Z"),
 				publishCount: 1,
 				lastSessionId: sessionB,
 				projectId,
 			},
+		]);
+	});
+
+	it("classifies a slug-URL HTML publish as html and keeps its icon", async () => {
+		writeTranscript(sessionPath(sessionA), sessionA, [slugHtmlPublish]);
+		await indexJsonlFile(db.index, sessionPath(sessionA), projectId);
+
+		expect(readArtifacts()).toStrictEqual([
+			{
+				url: SLUG_HTML_URL,
+				id: "Tq3wDkV8mRf2YzLpNc7HsX",
+				urlKind: "slug",
+				title: "Space Age Research Line",
+				favicon: null,
+				description: null,
+				sourcePath: SLUG_HTML_SOURCE,
+				version: "1790200000-a1b2",
+				audience: null,
+				icon: "chart",
+				artifactUuid: "0f3c2a91-6b7d-4e58-9a1c-2d4e6f8a0b13",
+				typeUrl: null,
+				firstSeenAt: Date.parse("2000-01-03T00:00:00.000Z"),
+				lastPublishedAt: Date.parse("2000-01-03T00:00:00.000Z"),
+				publishCount: 1,
+				lastSessionId: sessionA,
+				projectId,
+			},
+		]);
+		expect(getArtifacts(db.index, {}, () => null).map(({url, kind, icon}) => ({url, kind, icon}))).toStrictEqual([
+			{url: SLUG_HTML_URL, kind: "html", icon: "chart"},
+		]);
+	});
+
+	it("classifies an artifact created from the Docs type as docs", async () => {
+		writeTranscript(sessionPath(sessionA), sessionA, [docsTypeCreate]);
+		await indexJsonlFile(db.index, sessionPath(sessionA), projectId);
+
+		expect(
+			readArtifacts().map(({url, urlKind, icon, artifactUuid, typeUrl}) => ({
+				url,
+				urlKind,
+				icon,
+				artifactUuid,
+				typeUrl,
+			})),
+		).toStrictEqual([
+			{url: DOCS_TYPE_ARTIFACT_URL, urlKind: "slug", icon: null, artifactUuid: null, typeUrl: DOCS_TYPE_URL},
+		]);
+		expect(getArtifacts(db.index, {}, () => null).map(({url, kind, icon}) => ({url, kind, icon}))).toStrictEqual([
+			{url: DOCS_TYPE_ARTIFACT_URL, kind: "docs", icon: null},
 		]);
 	});
 });
