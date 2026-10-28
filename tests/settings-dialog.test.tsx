@@ -757,6 +757,110 @@ describe("SettingsDialog local tabs", () => {
 		});
 	});
 
+	it("gives the Customize panel upstream's own chrome: absolute Close, crumb bar, fixed title header and an inner list scroller", async () => {
+		const skill: SkillSummary = {
+			id: "personal:foo",
+			name: "foo",
+			description: "Does foo",
+			source: "personal",
+			sourceLabel: "Personal",
+			dir: "/home/u/.claude/skills/foo",
+			mtime: 0,
+			enabled: true,
+		};
+		await renderAt("/#customize/skills/yours", (queryClient) => {
+			queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, [skill]);
+		});
+		const row = await screen.findByRole("button", {name: "View foo"});
+		const dialog = screen.getByRole("dialog", {name: "Settings"});
+		const pane = dialog.querySelector<HTMLElement>("[data-customize-dialog-pane]");
+		const [chrome, crumbBar, body] = [...(pane?.children ?? [])];
+		const closeWrap = chrome?.firstElementChild;
+		const frame = body?.firstElementChild?.firstElementChild;
+		const [header, spacer, scroller] = [...(frame?.children ?? [])];
+		const [titleGroup, controls] = [...(header?.children ?? [])];
+
+		expect({
+			pane: pane?.className,
+			paneChildren: pane?.children.length,
+			chrome: [chrome?.getAttribute("data-customize-dialog-chrome"), chrome?.className],
+			closeWrap: closeWrap?.className,
+			close: closeWrap?.querySelector("button")?.getAttribute("aria-label"),
+			crumbBar: [crumbBar?.getAttribute("data-testid"), crumbBar?.className, crumbBar?.innerHTML],
+			body: body?.className,
+			clip: body?.firstElementChild?.className,
+			frame: frame?.className,
+			header: [header?.tagName, header?.className],
+			titleGroup: titleGroup?.className,
+			title: titleGroup?.firstElementChild?.outerHTML,
+			controls: controls?.className,
+			spacer: [spacer?.getAttribute("aria-hidden"), spacer?.className],
+			scroller: scroller?.className,
+			column: scroller?.firstElementChild?.className,
+			rowInScroller: scroller?.contains(row),
+			headerInScroller: scroller?.contains(header ?? null),
+			sharedHeaderRow: dialog.querySelector(".justify-between.px-3.pt-3.pb-2"),
+			sharedScroller: dialog.querySelector(".space-y-6.overflow-y-auto"),
+		}).toStrictEqual({
+			pane: "relative flex min-h-0 flex-1 flex-col",
+			paneChildren: 3,
+			chrome: ["", "contents"],
+			closeWrap: "absolute top-0 end-0 z-[2] flex h-14 items-center pe-2",
+			close: "Close",
+			crumbBar: [
+				"customize-dialog-crumb-bar",
+				"flex shrink-0 items-center pt-2 pb-2 ps-5 pe-12",
+				'<div class="min-h-8 relative flex min-w-0 flex-1 items-center gap-6"></div>',
+			],
+			body: "relative flex min-h-0 flex-1 flex-col",
+			clip: "relative min-h-0 flex-1 overflow-x-hidden overflow-y-hidden",
+			frame: "flex h-full min-h-0 flex-1 flex-col pt-1",
+			header: [
+				"HEADER",
+				"mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-3 gap-y-2 max-md:pt-3",
+			],
+			titleGroup: "flex min-w-0 items-center gap-3",
+			title: '<h2 class="min-w-0 truncate text-[20px]/[25px] font-[580] text-primary">Skills</h2>',
+			controls: "ms-auto flex min-w-0 items-center justify-end gap-1.5",
+			spacer: ["true", "shrink-0 h-4"],
+			scroller: "relative -mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto pb-3 pt-1",
+			column: "mx-auto w-full max-w-4xl px-5 flex flex-1 flex-col",
+			rowInScroller: true,
+			headerInScroller: false,
+			sharedHeaderRow: null,
+			sharedScroller: null,
+		});
+	});
+
+	it("titles each Customize section's panel header after the section", async () => {
+		await renderAt("/#customize/connectors/yours");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		await waitFor(() => {
+			expect(dialog.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Connectors");
+		});
+		fireEvent.click(screen.getByRole("button", {name: "Plugins"}));
+		await waitFor(() => {
+			expect(dialog.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Plugins");
+		});
+	});
+
+	it("closes the dialog from the Customize panel's absolute Close button", async () => {
+		const router = await renderAt("/#customize/skills/yours");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const close = await waitFor(() => {
+			const button = dialog.querySelector<HTMLButtonElement>(
+				"[data-customize-dialog-chrome] button[aria-label=Close]",
+			);
+			if (button === null) throw new Error("Customize Close button not rendered yet");
+			return button;
+		});
+		fireEvent.click(close);
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		expect(location(router)).toStrictEqual({pathname: "/", hash: ""});
+	});
+
 	it("links the Claude Config tab to the settings editor", async () => {
 		await renderAt("/#settings/claude-config");
 		await screen.findByRole("dialog", {name: "Settings"});

@@ -157,7 +157,8 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 	return (
 		<CustomizeNavContext.Provider value={navigator}>
 			{location.id === null ? (
-				<div className="flex flex-col gap-6">
+				// Upstream's pane frame: the header stays put and only the list below it scrolls.
+				<div className="flex h-full min-h-0 flex-1 flex-col pt-1">
 					<CustomizeHeader
 						embedded
 						section={section}
@@ -176,22 +177,29 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 							}
 						}}
 					/>
-					{query === "" ? (
-						<SectionBody location={location} search={search} />
-					) : (
-						<CustomizeUnifiedSearch
-							q={query}
-							surface="dialog"
-							onOpen={openHit}
-							expanded={expandedSections}
-							onExpandedChange={(sections) => {
-								setExpanded({query, sections});
-							}}
-						/>
-					)}
+					<div aria-hidden="true" className="shrink-0 h-4" />
+					<div className="relative -mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto pb-3 pt-1">
+						<div className="mx-auto w-full max-w-4xl px-5 flex flex-1 flex-col">
+							{query === "" ? (
+								<SectionBody location={location} search={search} />
+							) : (
+								<CustomizeUnifiedSearch
+									q={query}
+									surface="dialog"
+									onOpen={openHit}
+									expanded={expandedSections}
+									onExpandedChange={(sections) => {
+										setExpanded({query, sections});
+									}}
+								/>
+							)}
+						</div>
+					</div>
 				</div>
 			) : (
-				<DetailBody location={location} id={location.id} />
+				<div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-2 pb-4">
+					<DetailBody location={location} id={location.id} />
+				</div>
 			)}
 		</CustomizeNavContext.Provider>
 	);

@@ -422,23 +422,53 @@ export function SettingsDialog() {
 										))}
 									</div>
 								</nav>
-								<div className="flex min-w-0 flex-1 flex-col">
-									<div className="flex shrink-0 items-center justify-between gap-3 px-3 pt-3 pb-2">
-										<div className="flex min-w-0 flex-1 items-center" />
-										{closeButton}
-									</div>
-									<div
-										aria-busy={switching || undefined}
-										className={`flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]${pendingClass}`}
-									>
-										{/* Upstream's scroll-top fade; mb-0! cancels space-y so it adds no height. */}
+								{shownCustomize === null ? (
+									<div className="flex min-w-0 flex-1 flex-col">
+										<div className="flex shrink-0 items-center justify-between gap-3 px-3 pt-3 pb-2">
+											<div className="flex min-w-0 flex-1 items-center" />
+											{closeButton}
+										</div>
 										<div
-											aria-hidden="true"
-											className="pointer-events-none sticky -top-2 z-[1] -mx-6 -mt-2 mb-0! h-2 bg-gradient-to-b from-[var(--menu-bg)] to-transparent dark:from-surface-2"
-										/>
-										{content}
+											aria-busy={switching || undefined}
+											className={`flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]${pendingClass}`}
+										>
+											{/* Upstream's scroll-top fade; mb-0! cancels space-y so it adds no height. */}
+											<div
+												aria-hidden="true"
+												className="pointer-events-none sticky -top-2 z-[1] -mx-6 -mt-2 mb-0! h-2 bg-gradient-to-b from-[var(--menu-bg)] to-transparent dark:from-surface-2"
+											/>
+											{content}
+										</div>
 									</div>
-								</div>
+								) : (
+									<div className="flex min-w-0 flex-1 flex-col">
+										{/* Upstream's Customize pane owns its chrome: an absolute Close, the crumb bar, then the panel. */}
+										<div
+											data-customize-dialog-pane=""
+											className="relative flex min-h-0 flex-1 flex-col"
+										>
+											<div data-customize-dialog-chrome="" className="contents">
+												<div className="absolute top-0 end-0 z-[2] flex h-14 items-center pe-2">
+													{closeButton}
+												</div>
+											</div>
+											<div
+												data-testid="customize-dialog-crumb-bar"
+												className="flex shrink-0 items-center pt-2 pb-2 ps-5 pe-12"
+											>
+												<div className="min-h-8 relative flex min-w-0 flex-1 items-center gap-6" />
+											</div>
+											<div className="relative flex min-h-0 flex-1 flex-col">
+												<div
+													aria-busy={switching || undefined}
+													className={`relative min-h-0 flex-1 overflow-x-hidden overflow-y-hidden${pendingClass}`}
+												>
+													{content}
+												</div>
+											</div>
+										</div>
+									</div>
+								)}
 							</>
 						)}
 					</Dialog.Popup>

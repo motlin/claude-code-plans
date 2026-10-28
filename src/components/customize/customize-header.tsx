@@ -34,7 +34,7 @@ interface CustomizeHeaderProps {
 	search: CustomizeSearch;
 	/** Applies a change to the search state; an `undefined` value clears that key. */
 	onSearchChange: (patch: Partial<CustomizeSearch>) => void;
-	/** Inside the Settings dialog the nav names the section, so the H1 and section tabs are dropped. */
+	/** Inside the Settings dialog: upstream's pane header, an h2 naming the section in place of the H1 and section tabs. */
 	embedded?: boolean;
 }
 
@@ -59,13 +59,26 @@ export function CustomizeHeader({
 	const wide = useMediaQuery(SETTINGS_WIDE_QUERY);
 
 	return (
-		<header className="flex flex-wrap justify-between gap-x-3 gap-y-4">
+		<header
+			className={
+				embedded
+					? "mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-3 gap-y-2 max-md:pt-3"
+					: "flex flex-wrap justify-between gap-x-3 gap-y-4"
+			}
+		>
 			{!embedded && (
 				<div className="flex min-h-12 basis-full items-center">
 					<h1 className="min-w-0 font-voice text-[24px]/[32px] font-medium text-primary">Customize</h1>
 				</div>
 			)}
-			<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+			<div
+				className={
+					embedded ? "flex min-w-0 items-center gap-3" : "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
+				}
+			>
+				{embedded && (
+					<h2 className="min-w-0 truncate text-[20px]/[25px] font-[580] text-primary">{section.label}</h2>
+				)}
 				{!embedded && (
 					<nav aria-label="Customize" className="flex shrink-0 items-center">
 						<div role="tablist" aria-label="Customize sections" className="flex items-center">
@@ -89,7 +102,11 @@ export function CustomizeHeader({
 				)}
 				{section.hasDiscover && (
 					<div
-						className={`flex shrink-0 items-center gap-3 ${embedded ? "" : "before:h-5 before:w-px before:shrink-0 before:bg-border"}`}
+						className={
+							embedded
+								? "shrink-0"
+								: "flex shrink-0 items-center gap-3 before:h-5 before:w-px before:shrink-0 before:bg-border"
+						}
 					>
 						<SegmentedControl<"yours" | "discover">
 							aria-label={section.label}
@@ -104,7 +121,11 @@ export function CustomizeHeader({
 			</div>
 			<div
 				data-customize-controls=""
-				className="flex min-w-min flex-1 basis-0 flex-nowrap items-center justify-end gap-2"
+				className={
+					embedded
+						? "ms-auto flex min-w-0 items-center justify-end gap-1.5"
+						: "flex min-w-min flex-1 basis-0 flex-nowrap items-center justify-end gap-2"
+				}
 			>
 				{embedded && wide ? (
 					<FixedSearchField
