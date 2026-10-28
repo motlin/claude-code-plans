@@ -22,6 +22,7 @@ import {
 	customizeClaudeAiConnectorsQueryOptions,
 	customizeDiscoverQueryOptions,
 	customizeMcpServersQueryOptions,
+	customizeSkillDetailQueryOptions,
 	customizeSkillsQueryOptions,
 	type DiscoverCatalog,
 	type McpServerSummary,
@@ -1228,13 +1229,23 @@ describe("unified search hit rows", () => {
 });
 
 /** The Customize panel inside the Settings dialog, with its hash held in local state. */
-async function renderDialogPanel(initialHash: string) {
+async function renderDialogPanel(
+	initialHash: string,
+	{
+		skills = [...SKILLS, ...EXTRA_SKILLS],
+		catalog = DISCOVER,
+	}: {skills?: SkillSummary[]; catalog?: DiscoverCatalog} = {},
+) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
-	queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, [...SKILLS, ...EXTRA_SKILLS]);
+	queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, skills);
+	for (const skill of skills) {
+		const detail: SkillDetail = {skill, userInvocable: true, modelInvocable: true, allowedTools: [], tree: []};
+		queryClient.setQueryData(customizeSkillDetailQueryOptions(skill.id).queryKey, detail);
+	}
 	queryClient.setQueryData(userCommandsQueryOptions.queryKey, []);
 	queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, MCP_SERVERS);
 	queryClient.setQueryData(customizeClaudeAiConnectorsQueryOptions.queryKey, []);
-	queryClient.setQueryData(customizeDiscoverQueryOptions.queryKey, DISCOVER);
+	queryClient.setQueryData(customizeDiscoverQueryOptions.queryKey, catalog);
 	queryClient.setQueryData(pluginsQueryOptions.queryKey, []);
 	const hashes: string[] = [initialHash];
 
@@ -1347,5 +1358,108 @@ describe("unified search in the Settings dialog", () => {
 			unified: null,
 			rows: ["deploy-checklist", "lint", "pdf"],
 		});
+	});
+});
+
+const MCP_SKILL: SkillSummary = {
+	id: "personal:mcp-builder",
+	name: "mcp-builder",
+	description: "Build MCP servers.",
+	source: "personal",
+	sourceLabel: "Personal",
+	dir: "/Users/test/.claude/skills/mcp-builder",
+	mtime: Date.parse("2026-09-15T12:00:00Z"),
+	enabled: true,
+};
+
+/** 13 addable catalog plugins matching "mcp", one more than More you can add shows collapsed. */
+const MCP_CATALOG: DiscoverCatalog = {
+	fetchedAt: "2026-08-31T12:09:45.226Z",
+	plugins: Array.from({length: 13}, (_, index) => ({
+		id: `mcp-tool-${index}@community`,
+		name: `mcp-tool-${index}`,
+		title: `mcp-tool-${index}`,
+		marketplace: "community",
+		description: "An MCP tool.",
+		author: null,
+		category: null,
+		installs: 100 - index,
+		lastUpdated: null,
+		skills: [],
+		installed: false,
+	})),
+};
+
+const BACK_LINK_CLASS =
+	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary";
+
+describe("returning to the unified search from an opened hit", () => {
+	it("turns the back link into Search, then restores the query, the expanded section and focus", async () => {
+		const hashes = await renderDialogPanel("customize/skills/yours", {skills: [MCP_SKILL], catalog: MCP_CATALOG});
+		fireEvent.change(openSearch(), {target: {value: "mcp"}});
+		fireEvent.click(screen.getByRole("button", {name: "Show all 13: More you can add"}));
+		fireEvent.click(screen.getByRole("button", {name: "View mcp-builder"}));
+		await screen.findByRole("heading", {level: 2, name: "mcp-builder"});
+
+		const back = screen.getByRole("link", {name: "Search"});
+		expect({
+			text: back.textContent,
+			href: back.getAttribute("href"),
+			className: back.className,
+			arrow: back.querySelector("svg")?.getAttribute("class"),
+			yourSkills: screen.queryByRole("link", {name: "Your skills"}),
+			hashes,
+		}).toStrictEqual({
+			text: "Search",
+			href: "#customize/skills/yours",
+			className: BACK_LINK_CLASS,
+			arrow: "lucide lucide-arrow-left size-4 rtl:-scale-x-100",
+			yourSkills: null,
+			hashes: ["customize/skills/yours", "customize/skills/yours/id/personal%3Amcp-builder"],
+		});
+
+		fireEvent.click(back);
+		const field = await screen.findByTestId("customize-header-search");
+		expect({
+			hashes: hashes.slice(2),
+			value: (field as HTMLInputElement).value,
+			toggle: screen.getByRole("button", {name: "Show fewer: More you can add"}).getAttribute("aria-expanded"),
+			moreRows: within(screen.getByTestId("customize-unified-search-more")).getAllByTestId(
+				"customize-unified-search-addable-hit-row",
+			).length,
+			focused: document.activeElement === field,
+		}).toStrictEqual({
+			hashes: ["customize/skills/yours"],
+			value: "mcp",
+			toggle: "true",
+			moreRows: 13,
+			focused: true,
+		});
+	});
+
+	it("keeps the Your skills back link when the detail was not opened from a search", async () => {
+		await renderDialogPanel("customize/skills/yours", {skills: [MCP_SKILL]});
+		fireEvent.click(screen.getByRole("button", {name: "View mcp-builder"}));
+		await screen.findByRole("heading", {level: 2, name: "mcp-builder"});
+
+		expect({
+			yourSkills: screen.getByRole("link", {name: "Your skills"}).getAttribute("href"),
+			search: screen.queryByRole("link", {name: "Search"}),
+		}).toStrictEqual({yourSkills: "#customize/skills/yours", search: null});
+	});
+
+	it("forgets the search return once the hit is opened again from the normal list", async () => {
+		await renderDialogPanel("customize/skills/yours", {skills: [MCP_SKILL], catalog: MCP_CATALOG});
+		fireEvent.change(openSearch(), {target: {value: "mcp"}});
+		fireEvent.click(screen.getByRole("button", {name: "View mcp-builder"}));
+		fireEvent.click(await screen.findByRole("link", {name: "Search"}));
+		fireEvent.click(await screen.findByRole("button", {name: "Clear search"}));
+		fireEvent.click(screen.getByRole("button", {name: "View mcp-builder"}));
+		await screen.findByRole("heading", {level: 2, name: "mcp-builder"});
+
+		expect({
+			yourSkills: screen.getByRole("link", {name: "Your skills"}).getAttribute("href"),
+			search: screen.queryByRole("link", {name: "Search"}),
+		}).toStrictEqual({yourSkills: "#customize/skills/yours", search: null});
 	});
 });

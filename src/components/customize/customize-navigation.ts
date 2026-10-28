@@ -19,6 +19,14 @@ export interface CustomizeNavigator {
 	href: (target: CustomizeTarget) => string;
 	isCurrent: (target: CustomizeTarget) => boolean;
 	go: (target: CustomizeTarget) => void;
+	/** Set while the open detail was reached from a unified search hit: its back link reads "Search". */
+	searchReturn?: CustomizeSearchReturn | null;
+}
+
+/** Upstream's `setCustomizeSearchReturn`: where the detail's "Search" back link leads. */
+export interface CustomizeSearchReturn {
+	href: string;
+	go: () => void;
 }
 
 export const CustomizeNavContext = createContext<CustomizeNavigator | null>(null);

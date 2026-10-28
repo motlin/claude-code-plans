@@ -1,5 +1,5 @@
 import {useQuery, useQueryClient} from "@tanstack/react-query";
-import {ArrowLeft, Ban, Check, ChevronDown, CircleCheck, Copy, Ellipsis, Hand, type LucideIcon} from "lucide-react";
+import {Ban, Check, ChevronDown, CircleCheck, Copy, Ellipsis, Hand, type LucideIcon} from "lucide-react";
 import {useState} from "react";
 import type {McpServerDetail, McpToolPermission} from "../../lib/api/customize";
 import {settingsQueryOptions, useSaveSettingsFile} from "../../lib/api/settings";
@@ -18,7 +18,7 @@ import {Menu, MenuContent, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../
 import {ConnectorTile} from "./connector-tile";
 import {ScopeBadge} from "./connectors-table";
 import {SCOPE_LABEL, connectorDomain, transportLabel} from "./connector-labels";
-import {CustomizeLink} from "./customize-nav";
+import {CustomizeBackLink} from "./customize-nav";
 
 const CHOICES: readonly {value: ToolPermissionChoice; label: string; icon: LucideIcon}[] = [
 	{value: "allow", label: "Always allow", icon: CircleCheck},
@@ -66,13 +66,7 @@ export function ConnectorDetailHeader({detail}: {detail: McpServerDetail}) {
 	const secretKeys = [...server.envKeys, ...server.headerKeys];
 	return (
 		<header className="flex flex-col gap-3">
-			<CustomizeLink
-				target={{kind: "list", section: "connectors"}}
-				className="-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
-			>
-				<ArrowLeft aria-hidden="true" className="size-4" />
-				Your connectors
-			</CustomizeLink>
+			<CustomizeBackLink section="connectors">Your connectors</CustomizeBackLink>
 			<div className="flex min-h-14 items-center gap-3 py-1">
 				<ConnectorTile name={server.name} domain={connectorDomain(server.transport, server.urlOrCommand)} />
 				<h2 className="m-0 truncate text-[18px]/[24px] font-semibold text-primary">{server.name}</h2>

@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {ArrowLeft, Bot, Link, Plug, Puzzle, Scroll, SquareSlash} from "lucide-react";
+import {Bot, Link, Plug, Puzzle, Scroll, SquareSlash} from "lucide-react";
 import type {ReactNode} from "react";
 import {
 	customizeSettingsTogglesQueryOptions,
@@ -14,7 +14,7 @@ import {PluginVersion} from "../plugin-version";
 import {useToast} from "../toast-context";
 import {ScopeBadge} from "./connectors-table";
 import {transportLabel} from "./connector-labels";
-import {CustomizeLink} from "./customize-nav";
+import {CustomizeBackLink, CustomizeLink} from "./customize-nav";
 import {useCustomizeGo} from "./customize-navigation";
 import {IconTile} from "./icon-tile";
 import {ListRow} from "./list-row";
@@ -39,13 +39,7 @@ export function PluginDetailHeader({detail}: {detail: PluginDetail}) {
 	const disabled = toggles !== undefined && !isPluginEnabled(toggles, plugin.id);
 	return (
 		<header className="flex flex-col gap-4">
-			<CustomizeLink
-				target={{kind: "list", section: "plugins"}}
-				className="-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary"
-			>
-				<ArrowLeft aria-hidden="true" className="size-4" />
-				Plugins
-			</CustomizeLink>
+			<CustomizeBackLink section="plugins">Plugins</CustomizeBackLink>
 			<div className="flex items-center gap-4">
 				<IconTile icon={Puzzle} size="lg" />
 				<div className="flex min-w-0 flex-1 flex-col">

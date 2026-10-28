@@ -88,17 +88,29 @@ interface HitSectionProps {
 	counterInset: boolean;
 	rowTestId: string;
 	onOpen: ((hit: UnifiedHit) => void) | undefined;
+	expanded: boolean;
+	onExpandedChange: (expanded: boolean) => void;
 }
 
-function HitSection({id, testId, title, hits, limit, counterInset, rowTestId, onOpen}: HitSectionProps) {
-	const [expanded, setExpanded] = useState(false);
+function HitSection({
+	id,
+	testId,
+	title,
+	hits,
+	limit,
+	counterInset,
+	rowTestId,
+	onOpen,
+	expanded,
+	onExpandedChange,
+}: HitSectionProps) {
 	const sectionRef = useRef<HTMLElement>(null);
 	const collapsible = hits.length > limit;
 	const shown = collapsible && !expanded ? hits.slice(0, limit) : hits;
 
 	const toggle = () => {
 		if (expanded) sectionRef.current?.firstElementChild?.scrollIntoView({block: "nearest"});
-		setExpanded(!expanded);
+		onExpandedChange(!expanded);
 	};
 
 	const Caret = expanded ? ChevronUp : ChevronDown;
@@ -170,7 +182,13 @@ interface UnifiedSearchResultsProps {
 	/** Retry is in flight. */
 	retrying?: boolean;
 	onOpen?: (hit: UnifiedHit) => void;
+	/** Controlled expanded sections; without it each section keeps its own Show all state. */
+	expanded?: readonly UnifiedSectionId[];
+	onExpandedChange?: (expanded: UnifiedSectionId[]) => void;
 }
+
+/** The unified result sections that collapse behind Show all. */
+export type UnifiedSectionId = "yours" | "more";
 
 /**
  * Upstream's unified Customize search results (`Bd`): everything you have that
@@ -184,7 +202,19 @@ export function UnifiedSearchResults({
 	onRetry,
 	retrying = false,
 	onOpen,
+	expanded: controlledExpanded,
+	onExpandedChange,
 }: UnifiedSearchResultsProps) {
+	const [ownExpanded, setOwnExpanded] = useState<UnifiedSectionId[]>([]);
+	const expanded = controlledExpanded ?? ownExpanded;
+	const sectionProps = (sectionId: UnifiedSectionId) => ({
+		expanded: expanded.includes(sectionId),
+		onExpandedChange: (next: boolean) => {
+			const sections = next ? [...expanded, sectionId] : expanded.filter((other) => other !== sectionId);
+			setOwnExpanded(sections);
+			onExpandedChange?.(sections);
+		},
+	});
 	const term = q.trim();
 	if (!searchTermReady(term)) {
 		return (
@@ -245,6 +275,7 @@ export function UnifiedSearchResults({
 						counterInset={false}
 						rowTestId="customize-list-row"
 						onOpen={onOpen}
+						{...sectionProps("yours")}
 					/>
 				)}
 				{search.more.length > 0 && (
@@ -257,6 +288,7 @@ export function UnifiedSearchResults({
 						counterInset
 						rowTestId="customize-unified-search-addable-hit-row"
 						onOpen={onOpen}
+						{...sectionProps("more")}
 					/>
 				)}
 				{catalogPending && search.more.length === 0 && (

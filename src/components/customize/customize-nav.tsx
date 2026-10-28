@@ -1,6 +1,8 @@
 import {Link} from "@tanstack/react-router";
+import {ArrowLeft} from "lucide-react";
 import {type MouseEvent, type ReactNode, useContext} from "react";
 import {CustomizeNavContext, type CustomizeTarget, routeOptions} from "./customize-navigation";
+import type {CustomizeSectionId} from "./sections";
 
 interface CustomizeLinkProps {
 	target: CustomizeTarget;
@@ -19,7 +21,7 @@ export function CustomizeLink({target, className, children}: CustomizeLinkProps)
 		);
 	}
 	const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
-		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+		if (!plainClick(event)) return;
 		event.preventDefault();
 		navigator.go(target);
 	};
@@ -31,6 +33,44 @@ export function CustomizeLink({target, className, children}: CustomizeLinkProps)
 			className={className}
 		>
 			{children}
+		</a>
+	);
+}
+
+const BACK_LINK_CLASS =
+	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary";
+
+function plainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
+	return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0);
+}
+
+/**
+ * A detail header's back link to its section list ("Your skills"), or upstream's
+ * "Search" when the detail was opened from a unified search hit.
+ */
+export function CustomizeBackLink({section, children}: {section: CustomizeSectionId; children: ReactNode}) {
+	const searchReturn = useContext(CustomizeNavContext)?.searchReturn ?? null;
+	const arrow = <ArrowLeft aria-hidden="true" className="size-4 rtl:-scale-x-100" />;
+	if (searchReturn === null) {
+		return (
+			<CustomizeLink target={{kind: "list", section}} className={BACK_LINK_CLASS}>
+				{arrow}
+				{children}
+			</CustomizeLink>
+		);
+	}
+	return (
+		<a
+			href={searchReturn.href}
+			onClick={(event) => {
+				if (!plainClick(event)) return;
+				event.preventDefault();
+				searchReturn.go();
+			}}
+			className={BACK_LINK_CLASS}
+		>
+			{arrow}
+			Search
 		</a>
 	);
 }
