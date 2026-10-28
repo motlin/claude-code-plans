@@ -153,6 +153,7 @@ describe("buildUnifiedSearch", () => {
 						id: "plugin:mcp-builder@claude-plugins-official:mcp-builder",
 						tab: "overview",
 					},
+					actions: {kind: "skill", skill: sources.skills[1]},
 				},
 				{
 					key: "skill:plugin:mcp-tools@community:mcp-lint",
@@ -163,6 +164,7 @@ describe("buildUnifiedSearch", () => {
 					verified: false,
 					match: [0, 3],
 					open: {kind: "skill", id: "plugin:mcp-tools@community:mcp-lint", tab: "overview"},
+					actions: {kind: "skill", skill: sources.skills[2]},
 				},
 				{
 					key: "skill:personal:writer",
@@ -173,6 +175,7 @@ describe("buildUnifiedSearch", () => {
 					verified: false,
 					match: null,
 					open: {kind: "skill", id: "personal:writer", tab: "overview"},
+					actions: {kind: "skill", skill: sources.skills[0]},
 				},
 				{
 					key: "command:personal:mcp-check.md",
@@ -183,6 +186,7 @@ describe("buildUnifiedSearch", () => {
 					verified: false,
 					match: [1, 4],
 					open: null,
+					actions: null,
 				},
 				{
 					key: "server:user:mcp-proxy",
@@ -193,6 +197,7 @@ describe("buildUnifiedSearch", () => {
 					verified: false,
 					match: [0, 3],
 					open: {kind: "connector", slug: "dXNlcjptY3AtcHJveHk"},
+					actions: null,
 				},
 				{
 					key: "claude-ai:claude.ai Linear",
@@ -203,6 +208,7 @@ describe("buildUnifiedSearch", () => {
 					verified: false,
 					match: [7, 10],
 					open: {kind: "external", href: "https://claude.ai/customize/connectors/yours"},
+					actions: null,
 				},
 				{
 					key: "plugin:mcp-builder@claude-plugins-official",
@@ -213,6 +219,12 @@ describe("buildUnifiedSearch", () => {
 					verified: true,
 					match: [0, 3],
 					open: {kind: "plugin", id: "mcp-builder@claude-plugins-official", tab: "overview"},
+					actions: {
+						kind: "plugin",
+						pluginId: "mcp-builder@claude-plugins-official",
+						name: "mcp-builder",
+						installPath: "/plugins/mcp-builder",
+					},
 				},
 				{
 					key: "plugin:mcp-tools@community",
@@ -223,6 +235,12 @@ describe("buildUnifiedSearch", () => {
 					verified: false,
 					match: [0, 3],
 					open: {kind: "plugin", id: "mcp-tools@community", tab: "overview"},
+					actions: {
+						kind: "plugin",
+						pluginId: "mcp-tools@community",
+						name: "mcp-tools",
+						installPath: "/plugins/mcp-tools",
+					},
 				},
 			],
 			more: [
@@ -235,6 +253,7 @@ describe("buildUnifiedSearch", () => {
 					verified: true,
 					match: [5, 8],
 					open: null,
+					actions: {kind: "add", pluginId: "high@claude-plugins-official"},
 				},
 				{
 					key: "catalog:skills-only@claude-plugins-official",
@@ -245,6 +264,7 @@ describe("buildUnifiedSearch", () => {
 					verified: true,
 					match: null,
 					open: null,
+					actions: {kind: "add", pluginId: "skills-only@claude-plugins-official"},
 				},
 				{
 					key: "catalog:low@claude-plugins-official",
@@ -255,6 +275,7 @@ describe("buildUnifiedSearch", () => {
 					verified: true,
 					match: null,
 					open: null,
+					actions: {kind: "add", pluginId: "low@claude-plugins-official"},
 				},
 				{
 					key: "catalog:none@community",
@@ -265,6 +286,7 @@ describe("buildUnifiedSearch", () => {
 					verified: false,
 					match: [0, 3],
 					open: null,
+					actions: {kind: "add", pluginId: "none@community"},
 				},
 			],
 		});

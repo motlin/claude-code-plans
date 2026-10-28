@@ -7,6 +7,18 @@ import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {pluginInstallCommand} from "./plugin-view";
 import {useToggleWithToast} from "./use-toggle-with-toast";
 
+/** Copies `claude plugin install <id>` and toasts "Command copied: <command>". */
+export function useCopyInstallCommand() {
+	const toast = useToast();
+	return async (pluginId: string) => {
+		const command = pluginInstallCommand(pluginId);
+		const copied = await writeClipboardText(command);
+		toast(
+			copied ? {kind: "success", message: `Command copied: ${command}`} : {kind: "error", message: "Copy failed"},
+		);
+	};
+}
+
 /** Enable/Disable for one installed plugin, written to `enabledPlugins[id]`. */
 export function PluginEnableMenuItem({pluginId, name}: {pluginId: string; name: string}) {
 	const {data: state} = useQuery(customizeSettingsTogglesQueryOptions);

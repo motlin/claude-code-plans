@@ -22,6 +22,13 @@ export type UnifiedHitKind = "Skill" | "Custom command" | "Connector" | "Plugin"
 /** Where a hit leads: a Customize detail, claude.ai, or nowhere (commands and addable plugins). */
 export type UnifiedHitOpen = CustomizeTarget | {kind: "external"; href: string} | null;
 
+/** The row's trailing controls: the Yours kebabs, or "Add" for catalog plugins. */
+export type UnifiedHitActions =
+	| {kind: "skill"; skill: SkillSummary}
+	| {kind: "plugin"; pluginId: string; name: string; installPath: string}
+	| {kind: "add"; pluginId: string}
+	| null;
+
 export interface UnifiedHit {
 	key: string;
 	kind: UnifiedHitKind;
@@ -32,6 +39,7 @@ export interface UnifiedHit {
 	/** The first case-insensitive range of the term in `name`; null when another field matched. */
 	match: readonly [number, number] | null;
 	open: UnifiedHitOpen;
+	actions: UnifiedHitActions;
 }
 
 export interface UnifiedSearchSources {
@@ -87,6 +95,7 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 				verified: marketplace !== null && isOfficialMarketplace(marketplace),
 				match: matchRange(skill.name, term),
 				open: {kind: "skill", id: skill.id, tab: "overview"},
+				actions: {kind: "skill", skill},
 			};
 		});
 
@@ -99,6 +108,7 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 		verified: false,
 		match: matchRange(row.invocation, term),
 		open: null,
+		actions: null,
 	}));
 
 	const servers = sources.servers
@@ -113,6 +123,7 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 			verified: false,
 			match: matchRange(server.name, term),
 			open: {kind: "connector", slug: toConnectorSlug(server.id)},
+			actions: null,
 		}));
 
 	const claudeAi = sources.claudeAi
@@ -127,6 +138,7 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 			verified: false,
 			match: matchRange(connector.name, term),
 			open: {kind: "external", href: CLAUDE_AI_CONNECTORS_URL},
+			actions: null,
 		}));
 
 	const plugins = sources.plugins
@@ -141,6 +153,7 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 			verified: isOfficialMarketplace(plugin.marketplace),
 			match: matchRange(plugin.name, term),
 			open: {kind: "plugin", id: plugin.id, tab: "overview"},
+			actions: {kind: "plugin", pluginId: plugin.id, name: plugin.name, installPath: plugin.installPath},
 		}));
 
 	const more = addableMatches(sources.catalog, term).map((plugin): UnifiedHit => ({
@@ -152,6 +165,7 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 		verified: isOfficialMarketplace(plugin.marketplace),
 		match: matchRange(plugin.title, term),
 		open: null,
+		actions: {kind: "add", pluginId: plugin.id},
 	}));
 
 	return {yours: [...skills, ...commands, ...servers, ...claudeAi, ...plugins], more};

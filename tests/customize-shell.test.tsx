@@ -759,6 +759,7 @@ function hit(key: string, name: string, kind: UnifiedHit["kind"] = "Plugin"): Un
 		verified: false,
 		match: null,
 		open: null,
+		actions: null,
 	};
 }
 
@@ -795,7 +796,9 @@ function sectionSummary(testId: string) {
 		counterPadding: [...within(header).getByTestId("customize-counter").classList].filter((c) =>
 			c.startsWith("px-"),
 		),
-		rows: within(section).queryAllByTestId("customize-list-row").length,
+		rows: section.querySelectorAll(
+			"[data-testid=customize-list-row], [data-testid=customize-unified-search-addable-hit-row]",
+		).length,
 	};
 }
 
@@ -1018,6 +1021,204 @@ describe("UnifiedSearchResults", () => {
 			},
 			yours: 1,
 			retries: 1,
+		});
+	});
+});
+
+const MCP_BUILDER_SKILL: SkillSummary = {
+	id: "plugin:mcp-builder@claude-plugins-official:mcp-builder",
+	name: "mcp-builder",
+	description: "Build MCP servers",
+	source: "plugin",
+	sourceLabel: "mcp-builder",
+	dir: "/Users/test/.claude/plugins/mcp-builder/skills/mcp-builder",
+	mtime: Date.parse("2026-09-15T12:00:00Z"),
+	enabled: true,
+};
+
+function renderHitRows(search: {yours: UnifiedHit[]; more: UnifiedHit[]}) {
+	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	render(
+		<QueryClientProvider client={queryClient}>
+			<ToastProvider>
+				<UnifiedSearchResults
+					q="mcp"
+					search={search}
+					catalogPending={false}
+					catalogError={false}
+					onRetry={() => {}}
+				/>
+			</ToastProvider>
+		</QueryClientProvider>,
+	);
+}
+
+const SKILL_HIT: UnifiedHit = {
+	key: `skill:${MCP_BUILDER_SKILL.id}`,
+	kind: "Skill",
+	name: "mcp-builder",
+	byline: "from Anthropic",
+	description: "Build MCP servers",
+	verified: true,
+	match: [0, 3],
+	open: {kind: "skill", id: MCP_BUILDER_SKILL.id, tab: "overview"},
+	actions: {kind: "skill", skill: MCP_BUILDER_SKILL},
+};
+
+const PLUGIN_HIT: UnifiedHit = {
+	key: "plugin:mcp-tools@community",
+	kind: "Plugin",
+	name: "mcp-tools",
+	byline: "from Community",
+	description: "",
+	verified: false,
+	match: [0, 3],
+	open: {kind: "plugin", id: "mcp-tools@community", tab: "overview"},
+	actions: {kind: "plugin", pluginId: "mcp-tools@community", name: "mcp-tools", installPath: "/plugins/mcp-tools"},
+};
+
+const ADDABLE_HIT: UnifiedHit = {
+	key: "catalog:mcp-server-dev@claude-plugins-official",
+	kind: "Plugin",
+	name: "mcp-server-dev",
+	byline: "anthropics/claude-plugins-official",
+	description: "Build MCP servers",
+	verified: true,
+	match: [0, 3],
+	open: null,
+	actions: {kind: "add", pluginId: "mcp-server-dev@claude-plugins-official"},
+};
+
+function nameLine(row: HTMLElement) {
+	const line = within(row).getByTestId("tabbed-list-item-row-name-line");
+	const name = line.querySelector(".truncate")!;
+	return {
+		classes: [...line.classList],
+		name: [...name.children].map((part) => ({classes: [...part.classList], text: part.textContent})),
+		verified: (() => {
+			const badge = line.querySelector("[role=img]");
+			return badge === null
+				? null
+				: {
+						label: badge.getAttribute("aria-label"),
+						classes: [...badge.classList],
+						icon: [...(badge.querySelector("svg")?.classList ?? [])],
+					};
+		})(),
+	};
+}
+
+function secondLine(row: HTMLElement) {
+	const line = within(row).getByTestId("tabbed-list-item-row-second-line");
+	return [...line.querySelectorAll("span")].map((part) => ({
+		text: part.textContent,
+		hidden: part.getAttribute("aria-hidden"),
+		classes: [...part.classList],
+	}));
+}
+
+const MUTED_FOOTNOTE = ["text-footnote", "leading-4", "text-muted-as-secondary"];
+
+describe("unified search hit rows", () => {
+	it("highlights the match, adds Verified and leads the second line with the kind word", () => {
+		renderHitRows({yours: [SKILL_HIT], more: []});
+		const row = within(screen.getByTestId("customize-unified-search-yours")).getByTestId("customize-list-row");
+
+		expect({name: nameLine(row), second: secondLine(row), time: row.querySelector("time")}).toStrictEqual({
+			name: {
+				classes: ["flex", "min-w-0", "items-center", "gap-2", "text-body", "font-medium", "text-primary"],
+				name: [
+					{classes: ["font-[580]", "text-primary"], text: "mcp"},
+					{classes: [], text: "-builder"},
+				],
+				verified: {
+					label: "Verified",
+					classes: ["relative", "inline-flex", "text-muted-as-secondary"],
+					icon: expect.arrayContaining(["lucide-badge-check", "size-4"]),
+				},
+			},
+			second: [
+				{text: "Skill", hidden: null, classes: ["shrink-0", ...MUTED_FOOTNOTE]},
+				{text: "·", hidden: "true", classes: ["shrink-0", ...MUTED_FOOTNOTE]},
+				{text: "from Anthropic", hidden: null, classes: ["shrink-0", ...MUTED_FOOTNOTE]},
+				{text: "·", hidden: "true", classes: ["shrink-0", ...MUTED_FOOTNOTE]},
+				{text: "Build MCP servers", hidden: null, classes: ["min-w-0", "truncate", ...MUTED_FOOTNOTE]},
+			],
+			time: null,
+		});
+	});
+
+	it("leaves the name whole when another field matched and skips an empty description", () => {
+		renderHitRows({yours: [{...PLUGIN_HIT, match: null}], more: []});
+		const row = screen.getByTestId("customize-list-row");
+
+		expect({
+			name: nameLine(row).name,
+			verified: nameLine(row).verified,
+			second: secondLine(row).map((part) => part.text),
+		}).toStrictEqual({
+			name: [{classes: [], text: "mcp-tools"}],
+			verified: null,
+			second: ["Plugin", "·", "from Community"],
+		});
+	});
+
+	it("keeps the Yours row kebabs", () => {
+		renderHitRows({yours: [SKILL_HIT, PLUGIN_HIT], more: []});
+
+		expect(
+			within(screen.getByTestId("customize-unified-search-yours"))
+				.getAllByRole("button", {name: /^More actions for/})
+				.map((button) => button.getAttribute("aria-label")),
+		).toStrictEqual(["More actions for mcp-builder", "More actions for mcp-tools"]);
+	});
+
+	it("renders addable rows with a secondary Add button that copies the install command, then a menu spacer", async () => {
+		const writeText = vi.fn<Clipboard["writeText"]>(async () => Promise.resolve());
+		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+		renderHitRows({yours: [], more: [ADDABLE_HIT]});
+		const row = within(screen.getByTestId("customize-unified-search-more")).getByTestId(
+			"customize-unified-search-addable-hit-row",
+		);
+		const action = within(row).getByTestId("tabbed-list-item-row-action");
+		const add = within(action).getByRole("button", {name: "Add mcp-server-dev"});
+		const spacer = action.nextElementSibling as HTMLElement;
+
+		await actAndSettle(() => {
+			fireEvent.click(add);
+		});
+		await flush();
+
+		expect({
+			add: {text: add.textContent, classes: add.className.split(" ")},
+			actionChildren: action.children.length,
+			spacer: {
+				testId: spacer.getAttribute("data-testid"),
+				hidden: spacer.getAttribute("aria-hidden"),
+				classes: [...spacer.classList],
+			},
+			calls: writeText.mock.calls,
+			toast: screen.getByText("Command copied: claude plugin install mcp-server-dev@claude-plugins-official")
+				.textContent,
+		}).toStrictEqual({
+			add: {
+				text: "Add",
+				classes: expect.arrayContaining([
+					"h-8",
+					"px-3",
+					"rounded-r6",
+					"bg-fill-secondary",
+					"shadow-field-drop",
+				]),
+			},
+			actionChildren: 1,
+			spacer: {
+				testId: "tabbed-list-row-menu-spacer",
+				hidden: "true",
+				classes: ["aspect-square", "h-8", "shrink-0"],
+			},
+			calls: [["claude plugin install mcp-server-dev@claude-plugins-official"]],
+			toast: "Command copied: claude plugin install mcp-server-dev@claude-plugins-official",
 		});
 	});
 });

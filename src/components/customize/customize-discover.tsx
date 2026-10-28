@@ -1,8 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Check, Plus, Puzzle, Scroll} from "lucide-react";
 import {customizeDiscoverQueryOptions, type DiscoverPlugin} from "../../lib/api/customize";
-import {writeClipboardText} from "../../lib/clipboard";
-import {useToast} from "../toast-context";
 import {Tooltip} from "../ui/tooltip";
 import {CustomizeNotice} from "./customize-empty";
 import {CustomizeList} from "./customize-list";
@@ -23,7 +21,7 @@ import {
 import {IconTile} from "./icon-tile";
 import {SectionHeader} from "./section-header";
 import {resolveOption} from "./sections";
-import {pluginInstallCommand} from "./plugin-view";
+import {useCopyInstallCommand} from "./plugin-row-actions";
 
 const CARD_LIMIT = 8;
 
@@ -46,20 +44,9 @@ interface CustomizeDiscoverProps {
 	yours: readonly DiscoverYoursItem[];
 }
 
-function useCopyInstall() {
-	const toast = useToast();
-	return async (plugin: DiscoverPlugin) => {
-		const command = pluginInstallCommand(plugin.id);
-		const copied = await writeClipboardText(command);
-		toast(
-			copied ? {kind: "success", message: `Command copied: ${command}`} : {kind: "error", message: "Copy failed"},
-		);
-	};
-}
-
 /** "+" copies the install command; plugins already installed show "Installed ✓" instead. */
 function AddButton({plugin}: {plugin: DiscoverPlugin}) {
-	const copyInstall = useCopyInstall();
+	const copyInstall = useCopyInstallCommand();
 	if (plugin.installed) {
 		return (
 			<span className="inline-flex shrink-0 items-center gap-1 text-footnote text-t6">
@@ -73,7 +60,7 @@ function AddButton({plugin}: {plugin: DiscoverPlugin}) {
 			<button
 				type="button"
 				aria-label={`Copy install command for ${plugin.title}`}
-				onClick={() => void copyInstall(plugin)}
+				onClick={() => void copyInstall(plugin.id)}
 				className="inline-flex size-7 shrink-0 items-center justify-center rounded-r6 border border-border bg-surface-0 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary"
 			>
 				<Plus aria-hidden="true" className="size-4" />
