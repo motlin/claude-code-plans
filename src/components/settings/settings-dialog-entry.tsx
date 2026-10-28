@@ -5,10 +5,14 @@ import {parseCustomizeHash, parseSettingsHash} from "../../lib/settings-hash";
 import {useOpenSettings} from "./open-settings";
 import {loadSettingsDialog, loadedSettingsDialog} from "./settings-dialog-loader";
 
-/** Suspends only while the module downloads, so once loaded it renders in the same pass, like a static import. */
-function SettingsDialogLoader() {
-	const Dialog = loadedSettingsDialog() ?? use(loadSettingsDialog()).SettingsDialog;
-	return <Dialog />;
+/**
+ * Suspends only while the module downloads, so once loaded it renders in the same pass, like a static import. use()
+ * runs on every render: the download tags itself fulfilled, so a loaded module returns synchronously rather than
+ * skipping use(), which React flags as conditional use() on the retry after the first open's suspension.
+ */
+export function SettingsDialogLoader() {
+	const {SettingsDialog} = use(loadSettingsDialog());
+	return <SettingsDialog />;
 }
 
 /**
