@@ -984,36 +984,52 @@ describe("UnifiedSearchResults", () => {
 		});
 	});
 
-	it("shows only the keep-typing hint below two letters or digits", () => {
-		renderResults({q: "e"});
-		const hint = screen.getByRole("status");
+	it("shows only the keep-typing hint below two letters or digits, with no horizontal padding on either surface", () => {
+		const probe = (surface: "page" | "dialog") => {
+			renderResults({q: "e", surface});
+			const hint = screen.getByRole("status");
+			const result = {
+				tag: hint.tagName,
+				classes: [...hint.classList],
+				text: hint.textContent,
+				root: screen.queryByTestId("customize-unified-search-results"),
+				rows: screen.queryAllByTestId("customize-list-row").length,
+			};
+			cleanup();
+			return result;
+		};
 
-		expect({
-			classes: [...hint.classList],
-			text: hint.textContent,
-			root: screen.queryByTestId("customize-unified-search-results"),
-			rows: screen.queryAllByTestId("customize-list-row").length,
-		}).toStrictEqual({
+		const expected = {
+			tag: "P",
 			classes: ["py-2", "text-footnote", "text-muted-as-secondary"],
 			text: "Keep typing to search everything you can add.",
 			root: null,
 			rows: 0,
-		});
+		};
+		expect({page: probe("page"), dialog: probe("dialog")}).toStrictEqual({page: expected, dialog: expected});
 	});
 
-	it("renders the no-match line with an sr-only status", () => {
-		renderResults({q: "mcpzqxjv", search: {yours: [], more: []}});
-		const root = screen.getByTestId("customize-unified-search-results");
-		const status = root.previousElementSibling as HTMLElement;
-		const line = within(root).getByText("No results match \u201cmcpzqxjv\u201d");
+	it("renders the no-match line with an sr-only status and no horizontal padding on either surface", () => {
+		const probe = (surface: "page" | "dialog") => {
+			renderResults({q: "zzqxvw", surface, search: {yours: [], more: []}});
+			const root = screen.getByTestId("customize-unified-search-results");
+			const status = root.previousElementSibling as HTMLElement;
+			const line = within(root).getByText("No results match \u201czzqxvw\u201d");
+			const result = {
+				status: {classes: [...status.classList], text: status.textContent},
+				line: {tag: line.tagName, classes: [...line.classList]},
+				children: root.children.length,
+			};
+			cleanup();
+			return result;
+		};
 
-		expect({
-			status: {classes: [...status.classList], text: status.textContent},
-			line: {tag: line.tagName, classes: [...line.classList]},
-		}).toStrictEqual({
-			status: {classes: ["sr-only"], text: "No results match \u201cmcpzqxjv\u201d"},
+		const expected = {
+			status: {classes: ["sr-only"], text: "No results match \u201czzqxvw\u201d"},
 			line: {tag: "P", classes: ["py-2", "text-body", "text-secondary", ...REVEAL_CLASSES]},
-		});
+			children: 1,
+		};
+		expect({page: probe("page"), dialog: probe("dialog")}).toStrictEqual({page: expected, dialog: expected});
 	});
 
 	it("dims the results and shows six skeleton rows for More while the catalog loads", () => {
