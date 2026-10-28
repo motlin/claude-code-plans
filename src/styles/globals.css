@@ -1132,6 +1132,18 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
+/* Upstream cds-reveal-in: Customize unified-search sections rise 4px as they fade in. */
+@keyframes reveal-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
 /* Toast entrance, applied via `motion-safe:` so reduced-motion users get none. */
 @keyframes toast-in {
 	from {

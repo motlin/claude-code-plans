@@ -13,6 +13,8 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {actAndSettle} from "./act-and-settle";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SkillDetailHeader} from "../src/components/customize/skill-detail";
+import type {UnifiedHit} from "../src/components/customize/unified-search";
+import {UnifiedSearchResults} from "../src/components/customize/unified-search-results";
 import {ToastProvider} from "../src/components/toast";
 import {
 	customizeDiscoverQueryOptions,
@@ -743,6 +745,279 @@ describe("customize add menu", () => {
 			items: ["Add custom connector"],
 			calls: [["claude mcp add "]],
 			toast: "Command copied: claude mcp add",
+		});
+	});
+});
+
+function hit(key: string, name: string, kind: UnifiedHit["kind"] = "Plugin"): UnifiedHit {
+	return {
+		key,
+		kind,
+		name,
+		byline: "from Anthropic",
+		description: `${name} description`,
+		verified: false,
+		match: null,
+		open: null,
+	};
+}
+
+const YOURS_HIT = hit("skill:mcp-builder", "mcp-builder", "Skill");
+const MORE_HITS = Array.from({length: 20}, (_, index) => hit(`catalog:mcp-${index}`, `mcp-plugin-${index}`));
+
+function renderResults(props: Partial<Parameters<typeof UnifiedSearchResults>[0]> = {}) {
+	const onRetry = vi.fn<() => void>();
+	render(
+		<UnifiedSearchResults
+			q="mcp"
+			search={{yours: [YOURS_HIT], more: MORE_HITS}}
+			catalogPending={false}
+			catalogError={false}
+			onRetry={onRetry}
+			{...props}
+		/>,
+	);
+	return {onRetry};
+}
+
+const REVEAL_CLASSES = ["animate-[reveal-in_120ms_cubic-bezier(.165,.84,.44,1)]", "motion-reduce:animate-none"];
+
+function sectionSummary(testId: string) {
+	const section = screen.queryByTestId(testId);
+	if (section === null) return null;
+	const header = section.firstElementChild as HTMLElement;
+	return {
+		tag: section.tagName,
+		classes: [...section.classList],
+		headerClasses: [...header.classList],
+		heading: header.querySelector("h3")?.textContent,
+		counter: within(header).getByTestId("customize-counter").textContent,
+		counterPadding: [...within(header).getByTestId("customize-counter").classList].filter((c) =>
+			c.startsWith("px-"),
+		),
+		rows: within(section).queryAllByTestId("customize-list-row").length,
+	};
+}
+
+describe("UnifiedSearchResults", () => {
+	it("renders the sr-only count, the busy-free root and the Yours and More sections", () => {
+		renderResults();
+		const root = screen.getByTestId("customize-unified-search-results");
+		const status = root.previousElementSibling as HTMLElement;
+
+		expect({
+			status: {
+				tag: status.tagName,
+				role: status.getAttribute("role"),
+				classes: [...status.classList],
+				text: status.textContent,
+			},
+			root: {busy: root.getAttribute("aria-busy"), classes: [...root.classList]},
+			yours: sectionSummary("customize-unified-search-yours"),
+			more: sectionSummary("customize-unified-search-more"),
+		}).toStrictEqual({
+			status: {tag: "P", role: "status", classes: ["sr-only"], text: "21 results matching \u201cmcp\u201d"},
+			root: {busy: "false", classes: ["flex", "flex-col", "gap-7"]},
+			yours: {
+				tag: "SECTION",
+				classes: ["flex", "flex-col", "gap-3", ...REVEAL_CLASSES],
+				headerClasses: ["flex", "min-h-7", "items-center", "gap-2"],
+				heading: "Yours",
+				counter: "1",
+				counterPadding: ["px-0"],
+				rows: 1,
+			},
+			more: {
+				tag: "SECTION",
+				classes: ["flex", "flex-col", "gap-3", ...REVEAL_CLASSES],
+				headerClasses: ["flex", "min-h-7", "items-center", "gap-2"],
+				heading: "More you can add",
+				counter: "20",
+				counterPadding: ["px-[5.4px]"],
+				rows: 12,
+			},
+		});
+	});
+
+	it("reads the singular count and formats thousands", () => {
+		renderResults({q: "xy", search: {yours: [YOURS_HIT], more: []}});
+		const single = screen.getByTestId("customize-unified-search-results").previousElementSibling?.textContent;
+		cleanup();
+		const many = Array.from({length: 1243}, (_, index) => hit(`catalog:${index}`, `p${index}`));
+		renderResults({search: {yours: [], more: many}});
+		const plural = screen.getByTestId("customize-unified-search-results").previousElementSibling?.textContent;
+
+		expect({
+			single,
+			plural,
+			showAll: screen.getByRole("button", {name: "Show all 1,243: More you can add"}).textContent,
+		}).toStrictEqual({
+			single: "1 result matching \u201cxy\u201d",
+			plural: "1,243 results matching \u201cmcp\u201d",
+			showAll: "Show all 1,243",
+		});
+	});
+
+	it("omits a section with no hits", () => {
+		renderResults({search: {yours: [], more: MORE_HITS}});
+
+		expect({
+			yours: screen.queryByTestId("customize-unified-search-yours"),
+			more: screen.getByTestId("customize-unified-search-more").getAttribute("data-testid"),
+		}).toStrictEqual({yours: null, more: "customize-unified-search-more"});
+	});
+
+	it("collapses Yours to 10 rows and offers Show all only above the limit", () => {
+		const yours = Array.from({length: 11}, (_, index) => hit(`skill:${index}`, `mcp-skill-${index}`, "Skill"));
+		renderResults({search: {yours, more: MORE_HITS.slice(0, 12)}});
+
+		expect({
+			yours: sectionSummary("customize-unified-search-yours")?.rows,
+			more: sectionSummary("customize-unified-search-more")?.rows,
+			buttons: screen
+				.getAllByRole("button", {name: /^Show all/})
+				.map((button) => button.getAttribute("aria-label")),
+		}).toStrictEqual({yours: 10, more: 12, buttons: ["Show all 11: Yours"]});
+	});
+
+	it("expands with Show all and collapses with Show fewer, scrolling the header into view", () => {
+		const scrollIntoView = vi.fn<Element["scrollIntoView"]>();
+		Element.prototype.scrollIntoView = scrollIntoView;
+		renderResults();
+		const showAll = screen.getByRole("button", {name: "Show all 20: More you can add"});
+		const collapsed = {
+			classes: [...showAll.classList],
+			expanded: showAll.getAttribute("aria-expanded"),
+			text: showAll.textContent,
+			icon: [...(showAll.querySelector("svg")?.classList ?? [])],
+		};
+
+		act(() => {
+			fireEvent.click(showAll);
+		});
+		const showFewer = screen.getByRole("button", {name: "Show fewer: More you can add"});
+		const expanded = {
+			expanded: showFewer.getAttribute("aria-expanded"),
+			text: showFewer.textContent,
+			icon: [...(showFewer.querySelector("svg")?.classList ?? [])],
+			rows: sectionSummary("customize-unified-search-more")?.rows,
+			scrolled: scrollIntoView.mock.calls.length,
+		};
+
+		act(() => {
+			fireEvent.click(showFewer);
+		});
+
+		expect({
+			collapsed,
+			expanded,
+			after: {
+				rows: sectionSummary("customize-unified-search-more")?.rows,
+				scrolled: scrollIntoView.mock.calls,
+				target:
+					scrollIntoView.mock.contexts[0] ===
+					screen.getByTestId("customize-unified-search-more").firstElementChild,
+			},
+		}).toStrictEqual({
+			collapsed: {
+				classes: expect.arrayContaining(["h-7", "ps-2.5", "pe-1.5", "text-body"]),
+				expanded: "false",
+				text: "Show all 20",
+				icon: expect.arrayContaining(["lucide-chevron-down", "size-5", "-me-1"]),
+			},
+			expanded: {
+				expanded: "true",
+				text: "Show fewer",
+				icon: expect.arrayContaining(["lucide-chevron-up", "size-5", "-me-1"]),
+				rows: 20,
+				scrolled: 0,
+			},
+			after: {rows: 12, scrolled: [[{block: "nearest"}]], target: true},
+		});
+	});
+
+	it("shows only the keep-typing hint below two letters or digits", () => {
+		renderResults({q: "e"});
+		const hint = screen.getByRole("status");
+
+		expect({
+			classes: [...hint.classList],
+			text: hint.textContent,
+			root: screen.queryByTestId("customize-unified-search-results"),
+			rows: screen.queryAllByTestId("customize-list-row").length,
+		}).toStrictEqual({
+			classes: ["py-2", "text-footnote", "text-muted-as-secondary"],
+			text: "Keep typing to search everything you can add.",
+			root: null,
+			rows: 0,
+		});
+	});
+
+	it("renders the no-match line with an sr-only status", () => {
+		renderResults({q: "mcpzqxjv", search: {yours: [], more: []}});
+		const root = screen.getByTestId("customize-unified-search-results");
+		const status = root.previousElementSibling as HTMLElement;
+		const line = within(root).getByText("No results match \u201cmcpzqxjv\u201d");
+
+		expect({
+			status: {classes: [...status.classList], text: status.textContent},
+			line: {tag: line.tagName, classes: [...line.classList]},
+		}).toStrictEqual({
+			status: {classes: ["sr-only"], text: "No results match \u201cmcpzqxjv\u201d"},
+			line: {tag: "P", classes: ["py-2", "text-body", "text-secondary", ...REVEAL_CLASSES]},
+		});
+	});
+
+	it("dims the results and shows six skeleton rows for More while the catalog loads", () => {
+		renderResults({search: {yours: [YOURS_HIT], more: []}, catalogPending: true});
+		const root = screen.getByTestId("customize-unified-search-results");
+		const status = root.previousElementSibling as HTMLElement;
+		const skeleton = within(root)
+			.getAllByTestId("list-rows-skeleton-row")[0]
+			?.closest(".animate-\\[cds-fade-in_150ms_ease-out_500ms_backwards\\]");
+
+		expect({
+			busy: root.getAttribute("aria-busy"),
+			classes: [...root.classList],
+			status: status.textContent,
+			yours: sectionSummary("customize-unified-search-yours")?.rows,
+			skeletonRows: within(root).getAllByTestId("list-rows-skeleton-row").length,
+			wrapped: skeleton?.parentElement === root,
+			noMatch: within(root).queryByText(/No results match/),
+		}).toStrictEqual({
+			busy: "true",
+			classes: ["flex", "flex-col", "gap-7", "opacity-70", "pointer-events-none"],
+			status: "",
+			yours: 1,
+			skeletonRows: 6,
+			wrapped: true,
+			noMatch: null,
+		});
+	});
+
+	it("shows the Couldn\u2019t finish searching banner with Retry above the Yours section", () => {
+		const {onRetry} = renderResults({search: {yours: [YOURS_HIT], more: []}, catalogError: true});
+		const root = screen.getByTestId("customize-unified-search-results");
+		const alert = within(root).getByRole("alert");
+		const wrapper = alert.parentElement;
+
+		act(() => {
+			fireEvent.click(within(alert).getByRole("button", {name: "Retry"}));
+		});
+
+		expect({
+			wrapper: {classes: [...(wrapper?.classList ?? [])], first: root.firstElementChild === wrapper},
+			alert: {classes: [...alert.classList], text: alert.textContent},
+			yours: sectionSummary("customize-unified-search-yours")?.rows,
+			retries: onRetry.mock.calls.length,
+		}).toStrictEqual({
+			wrapper: {classes: ["pb-2", ...REVEAL_CLASSES], first: true},
+			alert: {
+				classes: expect.arrayContaining(["flex", "items-start", "gap-2", "rounded-card", "px-3", "py-3"]),
+				text: "Couldn\u2019t finish searching.Retry",
+			},
+			yours: 1,
+			retries: 1,
 		});
 	});
 });
