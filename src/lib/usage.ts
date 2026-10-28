@@ -47,9 +47,11 @@ function formatParts(resetsAt: number, timeZone: string | undefined, weekday?: "
 		.replace(",", "");
 }
 
-/** "Resets at 5:40 PM". */
-export function formatSessionReset(resetsAt: number, timeZone?: string): string {
-	return `Resets at ${formatParts(resetsAt, timeZone)}`;
+/** Upstream's `wV` meter variant: ≥90% danger, ≥75% warning, else accent. */
+export type UsageVariant = "accent" | "warning" | "danger";
+
+export function usageVariant(percent: number): UsageVariant {
+	return percent >= 90 ? "danger" : percent >= 75 ? "warning" : "accent";
 }
 
 /** "Resets Fri 9:00 AM". */
@@ -57,9 +59,36 @@ export function formatWeeklyReset(resetsAt: number, timeZone?: string): string {
 	return `Resets ${formatParts(resetsAt, timeZone, "short")}`;
 }
 
-/** Settings ▸ Usage's "Resets Tuesday 4:00 AM", with upstream's full weekday. */
-export function formatWeeklyResetLong(resetsAt: number, timeZone?: string): string {
-	return `Resets ${formatParts(resetsAt, timeZone, "long")}`;
+/** Upstream's `LV`: a reset this many minutes away is named by its date. */
+const DATE_CAPTION_MINUTES = 10_080;
+
+/**
+ * Settings ▸ Usage's row caption (`dN`/`LV`): "Resets at 5:40 PM" on the reset's own day,
+ * "Resets Oct 27, 4:00 AM" a week or more out, else "Resets Wed 1:00 AM" with the given weekday
+ * width, and "Starts with your first message" once the reset has passed.
+ */
+export function formatLimitCaption(
+	resetsAt: number,
+	nowMs: number,
+	weekday: "short" | "long",
+	timeZone?: string,
+): string {
+	const resetMs = resetsAt * 1000;
+	if (!Number.isFinite(resetMs) || resetMs <= nowMs) return "Starts with your first message";
+	if (calendarDay(resetMs, timeZone) === calendarDay(nowMs, timeZone)) {
+		return `Resets at ${formatParts(resetsAt, timeZone)}`;
+	}
+	if (Math.floor((resetMs - nowMs) / 60_000) >= DATE_CAPTION_MINUTES) {
+		const when = new Intl.DateTimeFormat("en-US", {
+			month: "short",
+			day: "numeric",
+			hour: "numeric",
+			minute: "2-digit",
+			...(timeZone === undefined ? {} : {timeZone}),
+		}).format(resetMs);
+		return `Resets ${when}`;
+	}
+	return `Resets ${formatParts(resetsAt, timeZone, weekday)}`;
 }
 
 function calendarDay(ms: number, timeZone: string | undefined): number {

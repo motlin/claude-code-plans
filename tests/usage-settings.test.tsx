@@ -95,6 +95,80 @@ describe("UsagePanel", () => {
 		expect(fill?.style.transform).toContain("max(37%, 4px)");
 	});
 
+	it("colours the meters by severity", () => {
+		render(
+			<UsagePanel
+				usage={{
+					fiveHour: {usedPct: 80, resetsAt: NOW_SECONDS + 3_600},
+					sevenDay: {usedPct: 95, resetsAt: NOW_SECONDS + 21 * 3_600},
+					updatedAt: new Date(NOW_MS).toISOString(),
+				}}
+				nowMs={NOW_MS}
+				timeZone="UTC"
+				refreshing={false}
+				onRefresh={() => {}}
+			/>,
+		);
+
+		const [sessionMeter, weekMeter] = screen.getAllByRole("meter");
+		expect(sessionMeter?.className).toContain("bg-usage-track-warning");
+		expect(sessionMeter?.querySelector("[data-usage-bar-fill]")?.className).toContain("bg-usage-warning");
+		expect(weekMeter?.className).toContain("bg-usage-track-danger");
+		expect(weekMeter?.querySelector("[data-usage-bar-fill]")?.className).toContain("bg-usage-danger");
+		expect(
+			screen.getAllByText(/% used$/).map((node) => ({text: node.textContent, className: node.className})),
+		).toStrictEqual([
+			{text: "80% used", className: "min-w-20 whitespace-nowrap text-end text-footnote text-secondary"},
+			{text: "95% used", className: "min-w-20 whitespace-nowrap text-end text-footnote text-danger"},
+		]);
+	});
+
+	it("captions a session reset on another day with its short weekday and a passed reset as not started", () => {
+		render(
+			<UsagePanel
+				usage={{
+					fiveHour: {usedPct: 10, resetsAt: Date.UTC(2026, 8, 29, 1, 0) / 1000},
+					sevenDay: {usedPct: 20, resetsAt: NOW_SECONDS - 60},
+					updatedAt: new Date(NOW_MS).toISOString(),
+				}}
+				nowMs={NOW_MS}
+				timeZone="UTC"
+				refreshing={false}
+				onRefresh={() => {}}
+			/>,
+		);
+
+		expect(screen.getByText("Resets Tue 1:00 AM").textContent).toBe("Resets Tue 1:00 AM");
+		expect(screen.getByText("Starts with your first message").textContent).toBe("Starts with your first message");
+	});
+
+	it("pauses the session row while the week is hit", () => {
+		render(
+			<UsagePanel
+				usage={{
+					fiveHour: {usedPct: 95, resetsAt: NOW_SECONDS + 3_600},
+					sevenDay: {usedPct: 100, resetsAt: NOW_SECONDS + 21 * 3_600},
+					updatedAt: new Date(NOW_MS).toISOString(),
+				}}
+				nowMs={NOW_MS}
+				timeZone="UTC"
+				refreshing={false}
+				onRefresh={() => {}}
+			/>,
+		);
+
+		expect(screen.getByText("Paused until your week resets").textContent).toBe("Paused until your week resets");
+		expect(screen.getByText("Current session").className).toBe("text-body text-secondary");
+		expect(screen.getByText("This week").className).toBe("text-body text-primary");
+		const [sessionMeter, weekMeter] = screen.getAllByRole("meter");
+		expect(sessionMeter?.parentElement?.className).toBe("flex-1 opacity-50");
+		expect(weekMeter?.parentElement?.className).toBe("flex-1");
+		expect(screen.getAllByText(/% used$/).map((node) => node.className)).toStrictEqual([
+			"min-w-20 whitespace-nowrap text-end text-footnote text-secondary",
+			"min-w-20 whitespace-nowrap text-end text-footnote text-danger",
+		]);
+	});
+
 	it("clamps the meter to 0-100", () => {
 		render(
 			<UsagePanel

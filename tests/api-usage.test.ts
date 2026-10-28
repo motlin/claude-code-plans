@@ -3,8 +3,9 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
-	formatSessionReset,
+	formatLimitCaption,
 	formatWeeklyReset,
+	usageVariant,
 	paceHeadline,
 	UsageSummaryResponse,
 	type UsageSummary,
@@ -206,11 +207,60 @@ describe("paceHeadline", () => {
 });
 
 describe("reset labels", () => {
-	it("formats the session reset as a time of day", () => {
-		expect(formatSessionReset(Date.UTC(2026, 8, 28, 17, 40) / 1000, "UTC")).toBe("Resets at 5:40 PM");
+	const NY = "America/New_York";
+	/** Tue Oct 20 2026 at the given EDT (UTC-4) wall time. */
+	const tue = (hour: number, minute = 0) => Date.UTC(2026, 9, 20, hour + 4, minute);
+	const seconds = (ms: number) => ms / 1000;
+
+	it.each([
+		{
+			name: "same calendar day",
+			resetsAt: seconds(tue(17, 40)),
+			weekday: "short" as const,
+			expected: "Resets at 5:40 PM",
+		},
+		{
+			name: "session reset tomorrow",
+			resetsAt: seconds(tue(25)),
+			weekday: "short" as const,
+			expected: "Resets Wed 1:00 AM",
+		},
+		{
+			name: "weekly reset later this week",
+			resetsAt: seconds(tue(25)),
+			weekday: "long" as const,
+			expected: "Resets Wednesday 1:00 AM",
+		},
+		{
+			name: "exactly seven days away",
+			resetsAt: seconds(tue(4) + 7 * 86_400_000),
+			weekday: "long" as const,
+			expected: "Resets Oct 27, 4:00 AM",
+		},
+		{
+			name: "past reset",
+			resetsAt: seconds(tue(3)),
+			weekday: "long" as const,
+			expected: "Starts with your first message",
+		},
+	])("$name", ({resetsAt, weekday, expected}) => {
+		expect(formatLimitCaption(resetsAt, tue(4), weekday, NY)).toBe(expected);
 	});
 
-	it("formats the weekly reset with its weekday", () => {
+	it("formats the composer weekly reset with its weekday", () => {
 		expect(formatWeeklyReset(Date.UTC(2026, 9, 2, 9, 0) / 1000, "UTC")).toBe("Resets Fri 9:00 AM");
+	});
+});
+
+describe("usageVariant", () => {
+	it.each([
+		{percent: 0, expected: "accent"},
+		{percent: 74, expected: "accent"},
+		{percent: 75, expected: "warning"},
+		{percent: 89, expected: "warning"},
+		{percent: 90, expected: "danger"},
+		{percent: 100, expected: "danger"},
+	])("$percent% → $expected", ({percent, expected}) => {
+		expect(usageVariant(percent)).toBe(expected);
 	});
 });

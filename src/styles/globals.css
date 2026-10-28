@@ -61,6 +61,9 @@ html[data-interface-font="dyslexic"] {
 	--color-alpha-4: var(--upstream-alpha-4);
 	--color-usage-warning: var(--upstream-fill-warning);
 	--color-usage-danger: var(--upstream-fill-danger);
+	/* Upstream --cds-bg-warning / --cds-bg-danger (Settings ▸ Usage meter tracks at ≥75% / ≥90%). */
+	--color-usage-track-warning: var(--upstream-bg-warning);
+	--color-usage-track-danger: var(--upstream-bg-danger);
 	--color-backdrop: var(--upstream-backdrop);
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
@@ -255,6 +258,9 @@ html[data-interface-font="dyslexic"] {
 	--upstream-fill-warning: #fbb315;
 	--upstream-fill-danger: #d03b3b;
 	--upstream-fill-danger-hover: #e34948;
+	/* Upstream --cds-role-warning-100 (--cds-yellow-100) / --cds-role-danger-100 (--cds-red-100). */
+	--upstream-bg-warning: #f9dca4;
+	--upstream-bg-danger: #fad6d6;
 	/* Upstream --brand-100 (hsl 15 54.2% 51.2%) / --oncolor-100, [data-theme=claude][data-mode=light]. */
 	--upstream-brand-100: rgb(198 97 63);
 	--upstream-oncolor-100: rgb(255 255 255);
@@ -575,6 +581,9 @@ html[data-interface-font="dyslexic"] {
 	--upstream-tint-blue: rgb(0 36 81 / 0.75);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
+	/* Upstream dark --cds-role-warning-800 (--cds-yellow-800) / --cds-role-danger-800 (--cds-red-800). */
+	--upstream-bg-warning: #311a00;
+	--upstream-bg-danger: #3c0e0e;
 
 	/* User message bubble — matches claude.ai/code: --cds-bg-user-message, the 5% alpha wash + body ink */
 	--user-msg-bg: var(--upstream-alpha-1);
