@@ -47,7 +47,8 @@ export function CustomizeHeader({
 	onSearchChange: updateSearch,
 	embedded = false,
 }: CustomizeHeaderProps) {
-	const searching = (search.q ?? "") !== "";
+	// Upstream's dialog keeps Filter and Sort live over its unified results; the page still disables them.
+	const menusLocked = !embedded && (search.q ?? "") !== "";
 	// Discover swaps the Yours Filter and Sort for category and catalog-order menus.
 	const discover = section.hasDiscover && search.view === "discover";
 	const {data: catalog} = useQuery({...customizeDiscoverQueryOptions, enabled: discover});
@@ -122,7 +123,7 @@ export function CustomizeHeader({
 								),
 							)}
 							value={search.category}
-							disabled={searching}
+							disabled={menusLocked}
 							onChange={(category) => {
 								updateSearch({category});
 							}}
@@ -133,7 +134,7 @@ export function CustomizeHeader({
 							icon={<ArrowDownUp aria-hidden="true" className="size-5" />}
 							options={DISCOVER_SORT_OPTIONS}
 							value={search.order}
-							disabled={searching}
+							disabled={menusLocked}
 							onChange={(order) => {
 								updateSearch({order});
 							}}
@@ -147,7 +148,7 @@ export function CustomizeHeader({
 						icon={<SlidersHorizontal aria-hidden="true" className="size-5" />}
 						options={section.filter.options}
 						value={search.filter}
-						disabled={searching}
+						disabled={menusLocked}
 						onChange={(filter) => {
 							updateSearch({filter});
 						}}
@@ -160,7 +161,7 @@ export function CustomizeHeader({
 						icon={<ArrowDownUp aria-hidden="true" className="size-5" />}
 						options={sortOptions}
 						value={sort}
-						disabled={searching}
+						disabled={menusLocked}
 						onChange={(next) => {
 							const {sortStorageKey} = section;
 							if (sortStorageKey !== undefined) {

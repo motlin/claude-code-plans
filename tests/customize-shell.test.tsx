@@ -9,14 +9,17 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
+import {useState} from "react";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {actAndSettle} from "./act-and-settle";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import CustomizeDialogPanel from "../src/components/customize/customize-dialog-panel";
 import {SkillDetailHeader} from "../src/components/customize/skill-detail";
 import type {UnifiedHit} from "../src/components/customize/unified-search";
 import {UnifiedSearchResults} from "../src/components/customize/unified-search-results";
 import {ToastProvider} from "../src/components/toast";
 import {
+	customizeClaudeAiConnectorsQueryOptions,
 	customizeDiscoverQueryOptions,
 	customizeMcpServersQueryOptions,
 	customizeSkillsQueryOptions,
@@ -25,7 +28,8 @@ import {
 	type SkillDetail,
 	type SkillSummary,
 } from "../src/lib/api/customize";
-import {pluginsQueryOptions} from "../src/lib/api/plugins";
+import {pluginsQueryOptions, userCommandsQueryOptions} from "../src/lib/api/plugins";
+import {parseCustomizeHash} from "../src/lib/settings-hash";
 import {Route as CustomizeLayoutRoute} from "../src/routes/customize";
 import {Route as CustomizeConnectorsRoute} from "../src/routes/customize.connectors";
 import {Route as CustomizePluginsRoute} from "../src/routes/customize.plugins";
@@ -1219,6 +1223,129 @@ describe("unified search hit rows", () => {
 			},
 			calls: [["claude plugin install mcp-server-dev@claude-plugins-official"]],
 			toast: "Command copied: claude plugin install mcp-server-dev@claude-plugins-official",
+		});
+	});
+});
+
+/** The Customize panel inside the Settings dialog, with its hash held in local state. */
+async function renderDialogPanel(initialHash: string) {
+	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, [...SKILLS, ...EXTRA_SKILLS]);
+	queryClient.setQueryData(userCommandsQueryOptions.queryKey, []);
+	queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, MCP_SERVERS);
+	queryClient.setQueryData(customizeClaudeAiConnectorsQueryOptions.queryKey, []);
+	queryClient.setQueryData(customizeDiscoverQueryOptions.queryKey, DISCOVER);
+	queryClient.setQueryData(pluginsQueryOptions.queryKey, []);
+	const hashes: string[] = [initialHash];
+
+	function Harness() {
+		const [hash, setHash] = useState(initialHash);
+		const location = parseCustomizeHash(hash);
+		if (location === null) throw new Error(`Not a customize hash: ${hash}`);
+		return (
+			<CustomizeDialogPanel
+				location={location}
+				onNavigate={(next) => {
+					hashes.push(next);
+					setHash(next);
+				}}
+			/>
+		);
+	}
+
+	const rootRoute = createRootRoute({
+		component: () => (
+			<QueryClientProvider client={queryClient}>
+				<ToastProvider>
+					<Harness />
+				</ToastProvider>
+			</QueryClientProvider>
+		),
+	});
+	const router = createRouter({
+		routeTree: rootRoute,
+		history: createMemoryHistory({initialEntries: ["/"]}),
+	});
+	await router.load();
+	render(<RouterProvider router={router} />);
+	await screen.findByRole("button", {name: "Search"});
+	return hashes;
+}
+
+function rowName(row: HTMLElement): string {
+	return (
+		(row.querySelector("[data-testid=tabbed-list-item-row-name-line]") ?? row.querySelector(".font-medium"))
+			?.textContent ?? ""
+	);
+}
+
+function unifiedHitKeys(): string[] {
+	const results = screen.getByTestId("customize-unified-search-results");
+	return [...results.querySelectorAll<HTMLElement>("section")].flatMap((section) => [
+		within(section).getByRole("heading", {level: 3}).textContent,
+		...[
+			...section.querySelectorAll<HTMLElement>(
+				"[data-testid=customize-list-row], [data-testid=customize-unified-search-addable-hit-row]",
+			),
+		].map((row) => rowName(row)),
+	]);
+}
+
+describe("unified search in the Settings dialog", () => {
+	it("renders the same unified results in every section and both views, replacing the normal list", async () => {
+		const results: Record<string, {keys: string[]; normalRows: number; hashes: string[]}> = {};
+		for (const hash of [
+			"customize/skills/yours",
+			"customize/connectors/yours",
+			"customize/plugins/yours",
+			"customize/skills/discover",
+		]) {
+			const hashes = await renderDialogPanel(hash);
+			fireEvent.change(openSearch(), {target: {value: "deploy"}});
+			const normalRows =
+				document.querySelectorAll("[data-testid=customize-discover-card], table").length +
+				screen.queryAllByTestId("customize-list-row").length -
+				within(screen.getByTestId("customize-unified-search-results")).queryAllByTestId("customize-list-row")
+					.length;
+			results[hash] = {keys: unifiedHitKeys(), normalRows, hashes};
+			cleanup();
+		}
+
+		const expected = (hash: string) => ({
+			keys: ["Yours", "deploy-checklist", "More you can add", "Deploy"],
+			normalRows: 0,
+			hashes: [hash],
+		});
+		expect(results).toStrictEqual({
+			"customize/skills/yours": expected("customize/skills/yours"),
+			"customize/connectors/yours": expected("customize/connectors/yours"),
+			"customize/plugins/yours": expected("customize/plugins/yours"),
+			"customize/skills/discover": expected("customize/skills/discover"),
+		});
+	});
+
+	it("keeps Filter and Sort enabled while searching", async () => {
+		await renderDialogPanel("customize/skills/yours");
+		fireEvent.change(openSearch(), {target: {value: "deploy"}});
+
+		expect([
+			screen.getByRole("button", {name: "Filter"}).hasAttribute("disabled"),
+			screen.getByRole("button", {name: "Sort by Last edited"}).hasAttribute("disabled"),
+		]).toStrictEqual([false, false]);
+	});
+
+	it("restores the section's normal list when the query is emptied", async () => {
+		await renderDialogPanel("customize/skills/yours");
+		const input = openSearch();
+		fireEvent.change(input, {target: {value: "deploy"}});
+		fireEvent.change(input, {target: {value: ""}});
+
+		expect({
+			unified: screen.queryByTestId("customize-unified-search-results"),
+			rows: screen.getAllByTestId("customize-list-row").map((row) => rowName(row)),
+		}).toStrictEqual({
+			unified: null,
+			rows: ["deploy-checklist", "lint", "pdf"],
 		});
 	});
 });
