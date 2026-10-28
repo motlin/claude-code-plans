@@ -10,14 +10,23 @@ export function costStateFromRecord(record: unknown): SessionCostState | null {
 	if (!parsed.success) return null;
 	const cost = parsed.data;
 	const models = Object.entries(cost.modelUsage ?? {})
-		.map(([model, usage]) => ({
-			model,
-			costUSD: usage.costUSD ?? 0,
-			inputTokens: usage.inputTokens ?? 0,
-			outputTokens: usage.outputTokens ?? 0,
-			cacheReadInputTokens: usage.cacheReadInputTokens ?? 0,
-			cacheCreationInputTokens: usage.cacheCreationInputTokens ?? 0,
-		}))
+		.map(([model, usage]) => {
+			const entry: SessionCostState["models"][number] = {
+				model,
+				costUSD: usage.costUSD ?? 0,
+				inputTokens: usage.inputTokens ?? 0,
+				outputTokens: usage.outputTokens ?? 0,
+				cacheReadInputTokens: usage.cacheReadInputTokens ?? 0,
+				cacheCreationInputTokens: usage.cacheCreationInputTokens ?? 0,
+			};
+			if (usage.cacheCreationEphemeral5mInputTokens !== undefined) {
+				entry.cacheCreation5mInputTokens = usage.cacheCreationEphemeral5mInputTokens;
+			}
+			if (usage.cacheCreationEphemeral1hInputTokens !== undefined) {
+				entry.cacheCreation1hInputTokens = usage.cacheCreationEphemeral1hInputTokens;
+			}
+			return entry;
+		})
 		.toSorted((a, b) => b.costUSD - a.costUSD);
 	const state: SessionCostState = {
 		totalCostUSD: cost.totalCostUSD ?? 0,

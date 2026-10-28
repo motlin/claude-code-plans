@@ -723,6 +723,8 @@ describe("SessionTitlebar cost pill", () => {
 					outputTokens: 2_000,
 					cacheReadInputTokens: 30_000,
 					cacheCreationInputTokens: 4_000,
+					cacheCreation5mInputTokens: 3_000,
+					cacheCreation1hInputTokens: 1_000,
 				},
 				{
 					model: "claude-haiku-4-5-20251001",
@@ -762,7 +764,7 @@ describe("SessionTitlebar cost pill", () => {
 				["lines", ["Lines changed", "+120 −30"]],
 				["api", ["API time", "1m 30s"]],
 				["tools", ["Tool time", "12.0s"]],
-				["model", ["Opus 5.5", "$3.00", "1K in · 2K out · 30K cache read · 4K cache write"]],
+				["model", ["Opus 5.5", "$3.00", "1K in · 2K out · 30K cache read · 4K cache write (3K 5m, 1K 1h)"]],
 				["model", ["Haiku 4.5", "$0.50", "10 in · 5 out"]],
 			],
 			note: "Some models have no known price, so the total is a floor.",

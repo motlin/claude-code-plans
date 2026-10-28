@@ -9,6 +9,10 @@ const SessionModelCostSchema = z
 		outputTokens: z.number(),
 		cacheReadInputTokens: z.number(),
 		cacheCreationInputTokens: z.number(),
+		/** The part of `cacheCreationInputTokens` written with a 5-minute TTL; older records lack the split. */
+		cacheCreation5mInputTokens: z.number().optional(),
+		/** The part of `cacheCreationInputTokens` written with a 1-hour TTL; older records lack the split. */
+		cacheCreation1hInputTokens: z.number().optional(),
 	})
 	.strict();
 

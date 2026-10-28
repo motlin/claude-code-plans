@@ -11,13 +11,20 @@ const POPUP_CLASS =
 
 const ROW_CLASS = "flex items-baseline justify-between gap-2";
 
+/** ` (3K 5m, 1K 1h)` when the record splits cache writes by TTL, else empty. */
+function cacheWriteSplit(model: SessionCostState["models"][number]): string {
+	const {cacheCreation5mInputTokens: fiveMinute, cacheCreation1hInputTokens: oneHour} = model;
+	if (fiveMinute === undefined && oneHour === undefined) return "";
+	return ` (${formatTokenCount(fiveMinute ?? 0)} 5m, ${formatTokenCount(oneHour ?? 0)} 1h)`;
+}
+
 function modelTokenSummary(model: SessionCostState["models"][number]): string {
 	const parts = [`${formatTokenCount(model.inputTokens)} in`, `${formatTokenCount(model.outputTokens)} out`];
 	if (model.cacheReadInputTokens > 0) {
 		parts.push(`${formatTokenCount(model.cacheReadInputTokens)} cache read`);
 	}
 	if (model.cacheCreationInputTokens > 0) {
-		parts.push(`${formatTokenCount(model.cacheCreationInputTokens)} cache write`);
+		parts.push(`${formatTokenCount(model.cacheCreationInputTokens)} cache write${cacheWriteSplit(model)}`);
 	}
 	return parts.join(" · ");
 }

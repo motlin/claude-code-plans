@@ -25,6 +25,8 @@ describe("costStateFromRecord", () => {
 						outputTokens: 2_000,
 						cacheReadInputTokens: 30_000,
 						cacheCreationInputTokens: 4_000,
+						cacheCreationEphemeral5mInputTokens: 3_000,
+						cacheCreationEphemeral1hInputTokens: 1_000,
 						costUSD: 3,
 					},
 				},
@@ -44,6 +46,8 @@ describe("costStateFromRecord", () => {
 					outputTokens: 2_000,
 					cacheReadInputTokens: 30_000,
 					cacheCreationInputTokens: 4_000,
+					cacheCreation5mInputTokens: 3_000,
+					cacheCreation1hInputTokens: 1_000,
 				},
 				{
 					model: "claude-haiku-4-5-20251001",
