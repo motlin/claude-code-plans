@@ -654,6 +654,33 @@ describe("SettingsDialog local tabs", () => {
 		expect(afterFirst).toStrictEqual({dialog: true, value: "", field: true});
 	});
 
+	it("clears the Customize search when the nav switches section, as upstream does", async () => {
+		stubBrowser([SETTINGS_WIDE_QUERY]);
+		const router = await renderAt("/#customize/skills/yours");
+		fireEvent.change(await screen.findByTestId<HTMLInputElement>("customize-header-search"), {
+			target: {value: "gh"},
+		});
+
+		fireEvent.click(screen.getByRole("button", {name: "Connectors"}));
+		await waitFor(() => {
+			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/connectors/yours"});
+			expect(document.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Connectors");
+		});
+		const inConnectors = screen.getByTestId<HTMLInputElement>("customize-header-search").value;
+
+		fireEvent.click(screen.getByRole("button", {name: "Skills"}));
+		await waitFor(() => {
+			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/skills/yours"});
+			expect(document.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Skills");
+		});
+
+		expect({
+			inConnectors,
+			backInSkills: screen.getByTestId<HTMLInputElement>("customize-header-search").value,
+			unified: screen.queryByTestId("customize-unified-search-results"),
+		}).toStrictEqual({inConnectors: "", backInSkills: "", unified: null});
+	});
+
 	it("opens the narrow Customize search on ⌘F inside the dialog with a fine pointer, as upstream does", async () => {
 		await renderAt("/#customize/skills/yours");
 		const button = await screen.findByRole("button", {name: "Search"});

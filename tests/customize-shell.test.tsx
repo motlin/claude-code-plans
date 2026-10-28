@@ -1686,6 +1686,25 @@ describe("returning to the unified search from an opened hit", () => {
 		});
 	});
 
+	it("restores the query in the section it was typed in after opening a hit from another section", async () => {
+		const hashes = await renderDialogPanel("customize/connectors/yours");
+		fireEvent.change(openSearch(), {target: {value: "deploy"}});
+		fireEvent.click(screen.getByRole("button", {name: "View deploy-checklist"}));
+		await screen.findByRole("heading", {level: 2, name: "deploy-checklist"});
+
+		fireEvent.click(screen.getByRole("link", {name: "Search"}));
+		const field = await screen.findByRole("searchbox", {name: "Search"});
+		expect({hashes, value: (field as HTMLInputElement).value, keys: unifiedHitKeys()}).toStrictEqual({
+			hashes: [
+				"customize/connectors/yours",
+				"customize/skills/yours/id/personal%3Adeploy-checklist",
+				"customize/connectors/yours",
+			],
+			value: "deploy",
+			keys: ["Yours", "deploy-checklist", "More you can add", "Deploy"],
+		});
+	});
+
 	it("keeps the Your skills back link when the detail was not opened from a search", async () => {
 		await renderDialogPanel("customize/skills/yours", {skills: [MCP_SKILL]});
 		fireEvent.click(screen.getByRole("button", {name: "View mcp-builder"}));

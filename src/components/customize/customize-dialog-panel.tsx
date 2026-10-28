@@ -49,6 +49,7 @@ interface SearchReturn {
 	section: CustomizeSection;
 	id: string;
 	listHash: string;
+	listSection: CustomizeSection;
 	query: string;
 	expanded: UnifiedSectionId[];
 }
@@ -80,11 +81,23 @@ interface CustomizeDialogPanelProps {
  * `#customize/<section>/yours`. The view and open detail live in the hash;
  * Filter and Sort are kept per section for as long as the panel is open. The
  * query is shared: any non-empty one swaps the section body for upstream's
- * unified results, which are the same in every section and view.
+ * unified results, which are the same in every section and view. Like
+ * upstream, moving to another section clears it; the query belongs to the
+ * section it was typed in, so a "Search" back link restores it there.
  */
 export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDialogPanelProps) {
 	const [searches, setSearches] = useState<Partial<Record<CustomizeSection, CustomizeSearch>>>({});
-	const [query, setQuery] = useState("");
+	const [typed, setTyped] = useState<{section: CustomizeSection; query: string}>({
+		section: location.section,
+		query: "",
+	});
+	// The section last rendered: arriving in another one drops a query typed elsewhere.
+	const [seenSection, setSeenSection] = useState(location.section);
+	if (location.section !== seenSection) {
+		setSeenSection(location.section);
+		if (typed.section !== location.section) setTyped({section: location.section, query: ""});
+	}
+	const query = typed.section === location.section ? typed.query : "";
 	// Show all state belongs to the query it was expanded for, so it survives opening a hit and coming back.
 	const [expanded, setExpanded] = useState<{query: string; sections: UnifiedSectionId[]}>({query: "", sections: []});
 	const [searchReturn, setSearchReturn] = useState<SearchReturn | null>(null);
@@ -93,7 +106,7 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 
 	const patchSearch = useCallback((id: CustomizeSection, patch: CustomizeSearch) => {
 		const {q, ...rest} = patch;
-		if ("q" in patch) setQuery(q ?? "");
+		if ("q" in patch) setTyped({section: id, query: q ?? ""});
 		setSearches((previous) => ({...previous, [id]: dropEmpty({...previous[id], ...rest, view: undefined})}));
 	}, []);
 
@@ -118,7 +131,7 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 					? {
 							href: `#${searchReturn.listHash}`,
 							go: () => {
-								setQuery(searchReturn.query);
+								setTyped({section: searchReturn.listSection, query: searchReturn.query});
 								setExpanded({query: searchReturn.query, sections: searchReturn.expanded});
 								setSearchReturn(null);
 								onNavigate(searchReturn.listHash, false);
@@ -146,6 +159,7 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 				setSearchReturn({
 					...opened,
 					listHash: customizeHash({section: section.id, view: location.view}),
+					listSection: section.id,
 					query,
 					expanded: expandedSections,
 				});
