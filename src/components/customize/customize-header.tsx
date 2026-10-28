@@ -62,7 +62,7 @@ export function CustomizeHeader({
 		<header
 			className={
 				embedded
-					? "mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-3 gap-y-2 max-md:pt-3"
+					? "mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-3 max-md:pt-3"
 					: "flex flex-wrap justify-between gap-x-3 gap-y-4"
 			}
 		>
@@ -73,7 +73,7 @@ export function CustomizeHeader({
 			)}
 			<div
 				className={
-					embedded ? "flex min-w-0 items-center gap-3" : "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
+					embedded ? "flex min-w-0 items-center gap-4" : "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
 				}
 			>
 				{embedded && (

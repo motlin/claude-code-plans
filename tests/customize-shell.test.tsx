@@ -15,10 +15,12 @@ import {actAndSettle} from "./act-and-settle";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import CustomizeDialogPanel from "../src/components/customize/customize-dialog-panel";
 import {PluginRowActions} from "../src/components/customize/plugin-row-actions";
+import {SectionHeader} from "../src/components/customize/section-header";
 import {SkillDetailHeader} from "../src/components/customize/skill-detail";
 import type {UnifiedHit} from "../src/components/customize/unified-search";
 import {UnifiedSearchResults} from "../src/components/customize/unified-search-results";
 import {ToastProvider} from "../src/components/toast";
+import {DensityProvider} from "../src/components/ui/density";
 import {
 	customizeClaudeAiConnectorsQueryOptions,
 	customizeDiscoverQueryOptions,
@@ -1343,6 +1345,9 @@ describe("unified search hit rows", () => {
 					second: [
 						...(row.querySelector("[data-testid=tabbed-list-item-row-second-line]")?.classList ?? []),
 					].filter((cls) => cls === "mt-px"),
+					trailing: ["gap-2", "gap-4", "gap-7"].filter((cls) =>
+						(row.lastElementChild as HTMLElement).classList.contains(cls),
+					),
 				};
 			}),
 		).toStrictEqual(
@@ -1351,6 +1356,7 @@ describe("unified search hit rows", () => {
 				leading: ["gap-4"],
 				main: ["flex", "min-w-0", "flex-1", "flex-col"],
 				second: ["mt-px"],
+				trailing: ["gap-2"],
 			})),
 		);
 	});
@@ -1383,6 +1389,7 @@ describe("unified search hit rows", () => {
 			row: has(row, [...ROW, "gap-3"]),
 			leading: has(tile.parentElement, ["gap-3", "gap-4"]),
 			tile: has(tile, [...TILE, "text-secondary"]),
+			header: (section.firstElementChild as HTMLElement).className,
 			h3: section.querySelector("h3")?.className,
 			trailing: has(trailing, ["gap-4", "gap-7"]),
 			meta: has(trailing.firstElementChild, ["text-footnote", "text-t6", "text-muted-as-secondary"]),
@@ -1392,6 +1399,7 @@ describe("unified search hit rows", () => {
 			row: ROW,
 			leading: ["gap-4"],
 			tile: TILE,
+			header: "flex min-h-7 items-center gap-2",
 			h3: "m-0 truncate text-[15px]/[20px] font-[580] text-primary",
 			trailing: ["gap-7"],
 			meta: ["text-footnote", "text-muted-as-secondary"],
@@ -1669,6 +1677,36 @@ describe("returning to the unified search from an opened hit", () => {
 			yourSkills: screen.getByRole("link", {name: "Your skills"}).getAttribute("href"),
 			search: screen.queryByRole("link", {name: "Search"}),
 		}).toStrictEqual({yourSkills: "#customize/skills/yours", search: null});
+	});
+});
+
+describe("SectionHeader density", () => {
+	afterEach(cleanup);
+
+	it("follows its density scope: gap-xs is 8px comfortable (the dialog) and stays 4px in the compact page column", () => {
+		const header = () => screen.getByRole("heading", {name: "Yours"}).parentElement?.className;
+		render(<SectionHeader id="h" title="Yours" count={1} />);
+		const comfortable = header();
+		cleanup();
+		render(
+			<DensityProvider density="compact">
+				<SectionHeader id="h" title="Yours" count={1} />
+			</DensityProvider>,
+		);
+		const compact = header();
+		cleanup();
+		render(
+			<DensityProvider density="compact">
+				<SectionHeader id="h" title="Yours" count={1} comfortable />
+			</DensityProvider>,
+		);
+		const forced = header();
+
+		expect({comfortable, compact, forced}).toStrictEqual({
+			comfortable: "flex min-h-7 items-center gap-2",
+			compact: "flex min-h-7 items-center gap-1",
+			forced: "flex min-h-7 items-center gap-2",
+		});
 	});
 });
 

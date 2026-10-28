@@ -72,8 +72,8 @@ export function CustomizePanelSkeleton({title}: {title: string}) {
 					<span role="status" className="sr-only">
 						Loading
 					</span>
-					<header className="mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-3 gap-y-2">
-						<div className="flex min-w-0 items-center gap-3">
+					<header className="mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-3">
+						<div className="flex min-w-0 items-center gap-4">
 							<h2 className="min-w-0 truncate text-[20px]/[25px] font-[580] text-primary">{title}</h2>
 						</div>
 					</header>

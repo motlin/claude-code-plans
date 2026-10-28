@@ -135,12 +135,16 @@ describe("Customize panel skeleton", () => {
 			busy: [busy.getAttribute("aria-busy"), busy.dataset["testid"], busy.className],
 			panel: panel.className,
 			status: [...panel.children].find((child) => child.tagName === "SPAN")?.outerHTML,
+			header: panel.querySelector("header")?.className,
+			titleGroup: panel.querySelector("header > div")?.className,
 			title: panel.querySelector("header h2")?.outerHTML,
 			rows: rowOutline(container).length,
 		}).toStrictEqual({
 			busy: ["true", "settings-content-skeleton", "relative flex min-h-0 flex-1 flex-col"],
 			panel: "flex h-full min-h-0 flex-1 flex-col pt-1",
 			status: '<span role="status" class="sr-only">Loading</span>',
+			header: "mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-3",
+			titleGroup: "flex min-w-0 items-center gap-4",
 			title: '<h2 class="min-w-0 truncate text-[20px]/[25px] font-[580] text-primary">Skills</h2>',
 			rows: 6,
 		});

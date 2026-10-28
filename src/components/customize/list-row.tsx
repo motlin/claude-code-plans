@@ -131,8 +131,8 @@ function HitText({
  */
 export function ListRow(props: ListRowProps) {
 	const {icon, title, source, subtitle, meta, actions, onView, testId = "customize-list-row"} = props;
-	// The hit row keeps its 16px trailing gap; the resting row's trailing cluster is `gap-lg` (28 comfortable).
-	const trailingGap = props.variant === "hit" ? "gap-4" : "gap-7";
+	// Comfortable trailing clusters: the hit row's is `gap-xs` (8), the resting row's `gap-lg` (28).
+	const trailingGap = props.variant === "hit" ? "gap-2" : "gap-7";
 	return (
 		<div
 			data-testid={testId}

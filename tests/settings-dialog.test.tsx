@@ -817,9 +817,9 @@ describe("SettingsDialog local tabs", () => {
 			frame: "flex h-full min-h-0 flex-1 flex-col pt-1",
 			header: [
 				"HEADER",
-				"mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-3 gap-y-2 max-md:pt-3",
+				"mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-3 max-md:pt-3",
 			],
-			titleGroup: "flex min-w-0 items-center gap-3",
+			titleGroup: "flex min-w-0 items-center gap-4",
 			title: '<h2 class="min-w-0 truncate text-[20px]/[25px] font-[580] text-primary">Skills</h2>',
 			controls: "ms-auto flex min-w-0 items-center justify-end gap-1.5",
 			spacer: ["true", "shrink-0 h-4"],

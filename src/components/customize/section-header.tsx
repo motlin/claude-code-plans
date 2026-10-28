@@ -1,5 +1,7 @@
 import type {ReactNode} from "react";
 
+import {useDensity} from "../ui/density";
+
 /** Upstream cds `Counter` (xs): 18px pill, 11px medium, neutral fill. */
 function Counter({count, inset}: {count: number; inset: boolean}) {
 	return (
@@ -16,7 +18,7 @@ interface SectionHeaderProps {
 	id: string;
 	title: string;
 	count: number;
-	/** Comfortable density (the Settings dialog's unified search): `gap-xs` is 8px. */
+	/** Forces comfortable `gap-xs` (8px); otherwise the density scope decides (compact keeps 4px). */
 	comfortable?: boolean;
 	/** Upstream's Yours counter in unified search drops the horizontal padding. */
 	counterInset?: boolean;
@@ -25,16 +27,11 @@ interface SectionHeaderProps {
 }
 
 /** Upstream `yours-section-*-header`: 15/20 semibold H3 followed by a Counter. */
-export function SectionHeader({
-	id,
-	title,
-	count,
-	comfortable = false,
-	counterInset = true,
-	trailing,
-}: SectionHeaderProps) {
+export function SectionHeader({id, title, count, comfortable, counterInset = true, trailing}: SectionHeaderProps) {
+	const density = useDensity();
+	const gap = (comfortable ?? density === "comfortable") ? "gap-2" : "gap-1";
 	return (
-		<div id={id} className={`flex min-h-7 items-center ${comfortable ? "gap-2" : "gap-1"}`}>
+		<div id={id} className={`flex min-h-7 items-center ${gap}`}>
 			<h3 className="m-0 truncate text-[15px]/[20px] font-[580] text-primary">{title}</h3>
 			<Counter count={count} inset={counterInset} />
 			{trailing !== undefined && <div className="ms-auto flex min-w-0 shrink items-center">{trailing}</div>}
