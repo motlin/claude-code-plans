@@ -12,41 +12,58 @@ import {
 	type UsageSummary,
 	type UsageWindow,
 } from "../../lib/usage";
+import {SettingsSection} from "./settings-row";
 
 /*
  * Settings ▸ Usage, copied from claude.ai/code's usage page: "Your usage" and
- * the plan, a pace headline, then one row per rate-limit window with a 4px
- * accent meter. The windows come from the newest local statusline snapshot.
+ * the plan, then one settings section holding the pace headline item and the
+ * meters item (split by the section's hairline, no dividers between rows),
+ * one row per rate-limit window with a 4px accent meter. The windows come from the newest local statusline snapshot.
  */
+
+function UsageMeter({percent, used, labelId}: {percent: number; used: string; labelId: string}) {
+	return (
+		<div
+			role="meter"
+			aria-valuemin={0}
+			aria-valuemax={100}
+			aria-valuenow={percent}
+			aria-valuetext={used}
+			aria-labelledby={labelId}
+			className={`relative h-1 w-full overflow-hidden rounded-full shadow-[inset_0_0_0_1px_var(--color-alpha-1)] ${percent === 0 ? "bg-alpha-1" : "bg-accent-900"}`}
+		>
+			{percent === 0 ? null : (
+				<div
+					data-usage-bar-fill=""
+					className="h-full w-full rounded-full bg-accent-100 transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]"
+					style={{
+						transform: `translateX(calc(var(--_meter-dir, -1) * (100% - min(100%, max(${percent}%, 4px)))))`,
+					}}
+				/>
+			)}
+		</div>
+	);
+}
 
 function UsageMeterRow({label, resets, window}: {label: string; resets: string; window: UsageWindow}) {
 	const labelId = useId();
 	const percent = meterPercent(window.usedPct);
 	const used = `${percent}% used`;
 	return (
-		<div data-usage-row="" className="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-2 py-3">
-			<div className="flex w-52 shrink-0 flex-col gap-1">
-				<span id={labelId} className="text-body text-primary">
-					{label}
+		<div data-usage-row="" className="flex w-full flex-wrap items-center justify-between gap-x-5 gap-y-2">
+			<div className="flex w-52 shrink-0 flex-col gap-1.5">
+				<span className="inline-flex items-center gap-1.5">
+					<span id={labelId} className="text-body text-primary">
+						{label}
+					</span>
 				</span>
 				<span className="text-footnote text-secondary">{resets}</span>
 			</div>
 			<div className="flex min-w-48 flex-1 items-center gap-3">
-				<div
-					role="meter"
-					aria-valuemin={0}
-					aria-valuemax={100}
-					aria-valuenow={percent}
-					aria-valuetext={used}
-					aria-labelledby={labelId}
-					className={`h-1 flex-1 overflow-hidden rounded-full ${percent === 0 ? "bg-alpha-1" : "bg-accent-900"}`}
-				>
-					<div
-						className="h-full rounded-full bg-accent-100 transition-[width] duration-200 ease-out motion-reduce:transition-none"
-						style={{width: percent === 0 ? 0 : `max(${percent}%, 4px)`}}
-					/>
+				<div className="flex-1">
+					<UsageMeter percent={percent} used={used} labelId={labelId} />
 				</div>
-				<span className="min-w-20 whitespace-nowrap text-right text-footnote text-secondary">{used}</span>
+				<span className="min-w-20 whitespace-nowrap text-end text-footnote text-secondary">{used}</span>
 			</div>
 		</div>
 	);
@@ -69,36 +86,43 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 		<div className="flex flex-col">
 			<div data-testid="usage-page-pace" className="flex flex-col pb-6">
 				<div className="mb-3 flex items-baseline gap-2">
-					<h2 className="text-[22px] leading-[28px] font-[580] text-primary">Your usage</h2>
+					<h2 className="text-[15px] leading-[20px] font-[580] text-primary">Your usage</h2>
 					{planDetail === undefined ? null : (
 						<span className="whitespace-nowrap text-footnote text-secondary">{planDetail}</span>
 					)}
 				</div>
-				{headline === null ? null : <p className="text-lg font-semibold text-primary">{headline}</p>}
+				<SettingsSection>
+					{headline === null ? null : (
+						<div data-settings-item="" className="flex flex-col items-start gap-3 py-3">
+							<p className="text-[22px] leading-[28px] font-[580] text-primary">{headline}</p>
+						</div>
+					)}
+					{usage.fiveHour === null && usage.sevenDay === null ? (
+						<div data-settings-item="" className="py-3">
+							<p className="text-body text-secondary">
+								Usage appears after a Claude Code session reports its status line
+							</p>
+						</div>
+					) : (
+						<div data-settings-item="" className="flex flex-col gap-5 py-3">
+							{usage.fiveHour === null ? null : (
+								<UsageMeterRow
+									label="Current session"
+									resets={formatSessionReset(usage.fiveHour.resetsAt, timeZone)}
+									window={usage.fiveHour}
+								/>
+							)}
+							{usage.sevenDay === null ? null : (
+								<UsageMeterRow
+									label="This week"
+									resets={formatWeeklyResetLong(usage.sevenDay.resetsAt, timeZone)}
+									window={usage.sevenDay}
+								/>
+							)}
+						</div>
+					)}
+				</SettingsSection>
 			</div>
-
-			{usage.fiveHour === null && usage.sevenDay === null ? (
-				<p className="py-3 text-body text-secondary">
-					Usage appears after a Claude Code session reports its status line
-				</p>
-			) : (
-				<div className="divide-y divide-subtle">
-					{usage.fiveHour === null ? null : (
-						<UsageMeterRow
-							label="Current session"
-							resets={formatSessionReset(usage.fiveHour.resetsAt, timeZone)}
-							window={usage.fiveHour}
-						/>
-					)}
-					{usage.sevenDay === null ? null : (
-						<UsageMeterRow
-							label="This week"
-							resets={formatWeeklyResetLong(usage.sevenDay.resetsAt, timeZone)}
-							window={usage.sevenDay}
-						/>
-					)}
-				</div>
-			)}
 
 			<div className="mt-4 flex items-center gap-2 text-footnote text-secondary">
 				{usage.updatedAt === null ? null : (

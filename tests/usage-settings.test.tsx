@@ -57,6 +57,44 @@ describe("UsagePanel", () => {
 		expect(onRefresh).toHaveBeenCalledTimes(1);
 	});
 
+	it("copies upstream's header, headline and meter-section structure", () => {
+		render(
+			<UsagePanel
+				usage={{
+					fiveHour: {usedPct: 0, resetsAt: NOW_SECONDS + 3_600},
+					sevenDay: {usedPct: 37, resetsAt: NOW_SECONDS + 21 * 3_600},
+					updatedAt: new Date(NOW_MS).toISOString(),
+				}}
+				planDetail="Max (20x)"
+				nowMs={NOW_MS}
+				timeZone="UTC"
+				refreshing={false}
+				onRefresh={() => {}}
+			/>,
+		);
+
+		const heading = screen.getByRole("heading", {name: "Your usage"});
+		expect(heading.className).toBe("text-[15px] leading-[20px] font-[580] text-primary");
+		const pace = screen.getByTestId("usage-page-pace");
+		const headline = pace.querySelector("p");
+		expect(headline?.className).toBe("text-[22px] leading-[28px] font-[580] text-primary");
+		const section = pace.querySelector("section");
+		expect(section?.className).toBe("mb-10 last:mb-0");
+		const items = [...(section?.querySelectorAll("[data-settings-item]") ?? [])];
+		expect(items.map((item) => item.className)).toStrictEqual([
+			"flex flex-col items-start gap-3 py-3",
+			"flex flex-col gap-5 py-3",
+		]);
+		expect(document.querySelector(".divide-y")).toBeNull();
+
+		const [sessionMeter, weekMeter] = screen.getAllByRole("meter");
+		expect(sessionMeter?.className).toContain("bg-alpha-1");
+		expect(sessionMeter?.querySelector("[data-usage-bar-fill]")).toBeNull();
+		expect(weekMeter?.className).toContain("bg-accent-900");
+		const fill = weekMeter?.querySelector<HTMLElement>("[data-usage-bar-fill]");
+		expect(fill?.style.transform).toContain("max(37%, 4px)");
+	});
+
 	it("clamps the meter to 0-100", () => {
 		render(
 			<UsagePanel
