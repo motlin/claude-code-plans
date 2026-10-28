@@ -536,7 +536,7 @@ describe("artifacts route", () => {
 		await waitFor(() => {
 			expect({...router.state.location.search}).toStrictEqual({search: "zzqx"});
 		});
-		expect(pageStatuses()).toStrictEqual(["0 artifacts matching “zzqx”", "No artifacts matching “zzqx”"]);
+		expect(pageStatuses()).toStrictEqual(["No artifacts match “zzqx”", "No artifacts matching “zzqx”"]);
 	});
 
 	it("persists the grid/list toggle in localStorage", async () => {

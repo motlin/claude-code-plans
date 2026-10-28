@@ -209,7 +209,11 @@ function ArtifactsPage() {
 				}
 			>
 				<p role="status" className="sr-only">
-					{searching ? `${formatCount(visible.length, "artifact")} matching “${search}”` : ""}
+					{searching
+						? visible.length === 0
+							? `No artifacts match “${search}”`
+							: `${formatCount(visible.length, "artifact")} matching “${search}”`
+						: ""}
 				</p>
 			</CodePageHeader>
 
