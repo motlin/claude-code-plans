@@ -142,9 +142,20 @@ function AgentRow({
 					</span>
 				)}
 			</span>
-			<span className={`truncate ${SR_AGENT}`} title={agent.label}>
-				{agent.label}
-			</span>
+			{agent.toolsUsed !== undefined && agent.toolsUsed.length > 0 ? (
+				<span className={`flex min-w-0 gap-1 ${SR_AGENT}`}>
+					<span className="truncate" title={agent.label}>
+						{agent.label}
+					</span>
+					<span className="shrink-0 whitespace-nowrap text-ink-muted" title={agent.toolsUsed.join(", ")}>
+						{agent.toolsUsed.length === 1 ? "1 tool" : `${agent.toolsUsed.length} tools`}
+					</span>
+				</span>
+			) : (
+				<span className={`truncate ${SR_AGENT}`} title={agent.label}>
+					{agent.label}
+				</span>
+			)}
 			{agent.error ? (
 				<span className={`flex justify-end ${ERROR_SPAN}`}>
 					<Tooltip content={agent.error} multiline>

@@ -7,7 +7,7 @@ import {BackgroundTasksList} from "../src/components/panes/background-tasks-pane
 import {WorkflowTaskCard} from "../src/components/panes/workflow-task-card";
 import type {SessionWorkflowRun} from "../src/lib/api/session-workflow-runs";
 import type {BackgroundTask} from "../src/lib/background-tasks";
-import type {WorkflowProgressEntry} from "../src/lib/workflow-progress";
+import type {WorkflowAgentEntry, WorkflowProgressEntry} from "../src/lib/workflow-progress";
 
 const NOW = Date.parse("2026-10-19T12:00:07.000Z");
 const STARTED_AT = Date.parse("2026-10-19T12:00:00.000Z");
@@ -56,7 +56,7 @@ function run(overrides: Partial<SessionWorkflowRun> & Pick<SessionWorkflowRun, "
 	};
 }
 
-function done(index: number, label: string, phaseIndex: number, phaseTitle: string): WorkflowProgressEntry {
+function done(index: number, label: string, phaseIndex: number, phaseTitle: string): WorkflowAgentEntry {
 	return {
 		type: "workflow_agent",
 		index,
@@ -176,6 +176,28 @@ describe("WorkflowTaskCard", () => {
 			"contents text-ink-muted",
 		]);
 		expect(within(rows[0] ?? document.body).getByRole("img", {name: "Done"})).toBeTruthy();
+	});
+
+	it("shows an agent's tools used as a count beside its label, listing them in the title", () => {
+		const progress: WorkflowProgressEntry[] = [
+			{type: "workflow_phase", index: 0, title: "Draft"},
+			{...done(1, "poem-1", 0, "Draft"), toolsUsed: ["Bash", "StructuredOutput"]},
+			{...done(2, "poem-2", 0, "Draft"), toolsUsed: ["Read"]},
+			done(3, "poem-3", 0, "Draft"),
+		];
+		render(
+			<WorkflowTaskCard task={task({id: "waq2jn20y", status: "completed"})} run={{...COMPLETED_RUN, progress}} />,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Phase: Draft, Done, 3 of 3 agents done"}));
+		const rows = screen.getAllByRole("listitem").filter((row) => row.className.startsWith("contents"));
+		expect(rows.map(rowCells)).toStrictEqual([
+			["", "poem-12 tools", "Opus 5.5", "49.7k", "6s"],
+			["", "poem-21 tool", "Opus 5.5", "49.7k", "6s"],
+			["", "poem-3", "Opus 5.5", "49.7k", "6s"],
+		]);
+		const chip = screen.getByText("2 tools");
+		expect(chip.getAttribute("title")).toBe("Bash, StructuredOutput");
+		expect(chip.className).toBe("shrink-0 whitespace-nowrap text-ink-muted");
 	});
 
 	it("opens a running run's phases with its live agents table and timers", () => {

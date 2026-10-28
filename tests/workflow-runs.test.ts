@@ -277,6 +277,68 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
+	it("carries a journal result's toolsUsed onto a running run's agent entry", () => {
+		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
+		writeJournal([
+			{type: "launched"},
+			{type: "started", key: "v2:aa", agentId: "a1", label: "probe", phase: "Inventory"},
+			{type: "result", key: "v2:aa", agentId: "a1", result: null, toolsUsed: ["Bash", "StructuredOutput"]},
+		]);
+
+		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
+			{type: "workflow_phase", index: 1, title: "Inventory"},
+			{
+				type: "workflow_agent",
+				index: 1,
+				label: "probe",
+				agentId: "a1",
+				state: "done",
+				phaseIndex: 1,
+				phaseTitle: "Inventory",
+				toolsUsed: ["Bash", "StructuredOutput"],
+			},
+		]);
+	});
+
+	it("carries a journal result's toolsUsed onto a completed run's agent entry by agent id", () => {
+		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
+		writeRunFile({
+			runId: RUN,
+			timestamp: "2026-10-01T12:10:00.000Z",
+			taskId: "wxkmbdj52",
+			script: "",
+			scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
+			result: null,
+			agentCount: 2,
+			logs: [],
+			durationMs: 600_000,
+			summary: "Feature-by-feature parity investigation",
+			workflowName: "outline-upstream-sync",
+			status: "completed",
+			startTime: 1_790_971_610_323,
+			phases: [],
+			defaultModel: "claude-opus-5-5",
+			workflowProgress: [
+				{type: "workflow_agent", index: 1, label: "one", agentId: "a1", state: "done"},
+				{type: "workflow_agent", index: 2, label: "two", agentId: "a2", state: "done"},
+			],
+			totalTokens: 0,
+			totalToolCalls: 0,
+		});
+		writeJournal([
+			{type: "launched"},
+			{type: "started", key: "v2:aa", agentId: "a1"},
+			{type: "result", key: "v2:aa", agentId: "a1", result: null, toolsUsed: ["Read"]},
+			{type: "started", key: "v2:bb", agentId: "a2"},
+			{type: "result", key: "v2:bb", agentId: "a2", result: null},
+		]);
+
+		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
+			{type: "workflow_agent", index: 1, label: "one", agentId: "a1", state: "done", toolsUsed: ["Read"]},
+			{type: "workflow_agent", index: 2, label: "two", agentId: "a2", state: "done"},
+		]);
+	});
+
 	it("marks failed journal agents as errors", () => {
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
 		writeJournal([

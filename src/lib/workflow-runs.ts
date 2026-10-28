@@ -98,6 +98,7 @@ export const WorkflowAgentMetaSchema = z.strictObject({
 const RuntimeLaunchResultSchema = /* @__PURE__ */ toLenient(WorkflowLaunchResultSchema);
 const RuntimeRunFileSchema = /* @__PURE__ */ toLenient(WorkflowRunFileSchema);
 const RuntimeJournalEventSchema = /* @__PURE__ */ toLenient(WorkflowJournalEventSchema);
+type JournalEvent = z.infer<typeof RuntimeJournalEventSchema>;
 const RuntimeAgentMetaSchema = /* @__PURE__ */ toLenient(WorkflowAgentMetaSchema);
 
 export interface WorkflowRun {
@@ -229,6 +230,46 @@ function progressEntries(raw: readonly unknown[]): WorkflowProgressEntry[] {
 	});
 }
 
+function journalEvents(transcriptDir: string): JournalEvent[] {
+	let lines: string[];
+	try {
+		lines = readFileSync(join(transcriptDir, "journal.jsonl"), "utf8").split("\n");
+	} catch {
+		return [];
+	}
+	return lines.flatMap((line) => {
+		if (line === "") return [];
+		let raw: unknown;
+		try {
+			raw = JSON.parse(line);
+		} catch {
+			return [];
+		}
+		const parsed = RuntimeJournalEventSchema.safeParse(raw);
+		return parsed.success ? [parsed.data] : [];
+	});
+}
+
+/** Each agent's `toolsUsed` from its journal `result` event; the latest result wins. */
+function journalToolsUsed(events: readonly JournalEvent[]): Map<string, string[]> {
+	const toolsUsed = new Map<string, string[]>();
+	for (const event of events) {
+		if (event.type === "result" && event.toolsUsed !== undefined) toolsUsed.set(event.agentId, event.toolsUsed);
+	}
+	return toolsUsed;
+}
+
+/** A completed run's file entries, with each agent's `toolsUsed` from the journal. */
+function withJournalToolsUsed(entries: WorkflowProgressEntry[], transcriptDir: string): WorkflowProgressEntry[] {
+	const toolsUsed = journalToolsUsed(journalEvents(transcriptDir));
+	if (toolsUsed.size === 0) return entries;
+	return entries.map((entry) => {
+		if (entry.type !== "workflow_agent" || entry.toolsUsed !== undefined) return entry;
+		const tools = toolsUsed.get(entry.agentId);
+		return tools === undefined ? entry : {...entry, toolsUsed: tools};
+	});
+}
+
 /**
  * A running run's `workflowProgress`, synthesized from its journal: agents in
  * first-started order, phases numbered in first-seen order, `started` →
@@ -237,24 +278,10 @@ function progressEntries(raw: readonly unknown[]): WorkflowProgressEntry[] {
  * and its transcript's mtime the last progress.
  */
 function journalProgress(transcriptDir: string): WorkflowProgressEntry[] {
-	let lines: string[];
-	try {
-		lines = readFileSync(join(transcriptDir, "journal.jsonl"), "utf8").split("\n");
-	} catch {
-		return [];
-	}
+	const events = journalEvents(transcriptDir);
+	const toolsUsed = journalToolsUsed(events);
 	const agents = new Map<string, {label?: string; phase?: string; state: WorkflowAgentEntry["state"]}>();
-	for (const line of lines) {
-		if (line === "") continue;
-		let raw: unknown;
-		try {
-			raw = JSON.parse(line);
-		} catch {
-			continue;
-		}
-		const parsed = RuntimeJournalEventSchema.safeParse(raw);
-		if (!parsed.success) continue;
-		const event = parsed.data;
+	for (const event of events) {
 		if (event.type === "launched") continue;
 		const agent = agents.get(event.agentId) ?? {state: "progress"};
 		agents.set(event.agentId, agent);
@@ -287,6 +314,8 @@ function journalProgress(transcriptDir: string): WorkflowProgressEntry[] {
 			entry.phaseTitle = phaseTitle;
 		}
 		if (meta.success && meta.data.model !== undefined) entry.model = meta.data.model;
+		const tools = toolsUsed.get(agentId);
+		if (tools !== undefined) entry.toolsUsed = tools;
 		const startedAt = mtimeMs(metaPath);
 		if (startedAt !== undefined) entry.startedAt = startedAt;
 		const lastProgressAt = mtimeMs(join(transcriptDir, `agent-${agentId}.jsonl`));
@@ -370,7 +399,10 @@ export function readWorkflowRuns(transcriptPath: string): WorkflowRun[] {
 				progress:
 					file === null
 						? journalProgress(join(sessionDir, "subagents", "workflows", runId))
-						: progressEntries(file.workflowProgress),
+						: withJournalToolsUsed(
+								progressEntries(file.workflowProgress),
+								join(sessionDir, "subagents", "workflows", runId),
+							),
 			},
 		];
 	});

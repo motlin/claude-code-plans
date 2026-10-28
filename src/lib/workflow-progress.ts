@@ -39,6 +39,8 @@ const WorkflowAgentEntrySchema = z.strictObject({
 	toolCalls: z.number().optional(),
 	durationMs: z.number().optional(),
 	error: z.string().optional(),
+	/** Not in the CLI's run file: carried over from the journal's `result` event. */
+	toolsUsed: z.array(z.string()).optional(),
 });
 
 /** One `workflowProgress` entry; deep-strict for the disk-validation test. */
