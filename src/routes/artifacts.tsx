@@ -2,6 +2,8 @@ import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {Tabs} from "@base-ui/react/tabs";
 import {
+	Calendar,
+	ChartColumn,
 	CodeXml,
 	EllipsisVertical,
 	File,
@@ -10,6 +12,7 @@ import {
 	Link as LinkIcon,
 	List,
 	Lock,
+	Map as MapIcon,
 	Pin,
 	PinOff,
 	Shapes,
@@ -374,10 +377,44 @@ function TypeFilterIcon({option}: {option: ArtifactTypeFilter}) {
 
 const TILE_BOX = {
 	row: "size-9 rounded-lg",
-	card: "h-full w-full",
 	badge: "size-6 rounded-r5",
 } as const;
-const TILE_ICON = {row: "size-5", card: "size-10", badge: "size-4"} as const;
+const TILE_ICON = {row: "size-5", badge: "size-4"} as const;
+
+/** The publish's icon word → its glyph; any other word falls back to the artifact's kind. */
+const TYPE_MEDIA_ICONS = {
+	chart: ChartColumn,
+	doc: FileText,
+	code: CodeXml,
+	map: MapIcon,
+	calendar: Calendar,
+} as const;
+
+type TypeMediaIconWord = keyof typeof TYPE_MEDIA_ICONS;
+
+function isTypeMediaIconWord(word: string): word is TypeMediaIconWord {
+	return Object.hasOwn(TYPE_MEDIA_ICONS, word);
+}
+
+function typeMediaIconWord(artifact: ArtifactSummary): TypeMediaIconWord {
+	const {icon} = artifact;
+	if (icon !== null && isTypeMediaIconWord(icon)) return icon;
+	return artifact.kind === "docs" ? "doc" : "code";
+}
+
+/** Upstream's no-thumbnail card preview: a neutral fill showing the artifact's own icon at 24px. */
+function TypeMedia({artifact}: {artifact: ArtifactSummary}) {
+	const word = typeMediaIconWord(artifact);
+	const Icon = TYPE_MEDIA_ICONS[word];
+	return (
+		<div
+			data-gallery-type-media=""
+			className="flex h-full w-full items-center justify-center bg-alpha-1 text-secondary"
+		>
+			<Icon aria-hidden="true" data-icon={word} className="size-6" />
+		</div>
+	);
+}
 
 /**
  * Upstream's type tile: a neutral `</>` tile for HTML pages ("Other") and a blue document tile for Docs.
@@ -661,17 +698,17 @@ function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: 
 				<PrimaryLink artifact={artifact} className="rounded-r7" />
 				<div
 					data-card-frame=""
-					className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-r7 bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-border group-hover:bg-surface-1"
+					className="group/card pointer-events-none relative flex h-full flex-col overflow-hidden rounded-r7 bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-border group-hover:bg-surface-1"
 				>
 					<div data-card-preview="" className="relative h-[160px] shrink-0 select-none overflow-hidden">
-						<TypeTile kind={artifact.kind} size="card" />
+						<TypeMedia artifact={artifact} />
 					</div>
 					<div className="mx-px border-t border-alpha-1" />
 					<div data-card-body="" className="relative flex flex-1 flex-col gap-1.5 p-3.5">
-						{/* Upstream's 28px type tile straddles the divider, 12px in from the card's edge */}
+						{/* Upstream's 28px type tile straddles the divider, 12px in from the card's edge; sr-only beside type-media */}
 						<div
 							data-card-badge=""
-							className="absolute start-3 top-0 size-7 -translate-y-2/3 rounded-r6 bg-surface-2 p-0.5"
+							className="absolute start-3 top-0 size-7 -translate-y-2/3 rounded-r6 bg-surface-2 p-0.5 group-has-[[data-gallery-type-media]]/card:pointer-events-none group-has-[[data-gallery-type-media]]/card:sr-only"
 						>
 							<TypeTile kind={artifact.kind} size="badge" />
 						</div>

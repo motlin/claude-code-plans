@@ -110,6 +110,7 @@ function seedArtifacts(db: AppDb): void {
 				id: "17b8a2c1-4c41-46bf-b064-a272240be709",
 				urlKind: "uuid",
 				title: null,
+				icon: "chart",
 				sourcePath: "/private/tmp/scratchpad/household-cash.html",
 				audience: null,
 				firstSeenAt: localMs(2026, 5, 1),
@@ -421,6 +422,45 @@ describe("artifacts route", () => {
 			moreInMeta: false,
 			moreWrapper: [],
 			moreBg: true,
+		});
+	});
+
+	it("draws upstream's type-media preview with the artifact's own icon and hides the badge when there's no thumbnail", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const cardFor = (name: string) => {
+			const card = screen.getByRole("link", {name}).closest<HTMLElement>("[data-gallery-card]");
+			if (card === null) throw new Error(`no card for ${name}`);
+			return card;
+		};
+		const describeCard = (card: HTMLElement) => {
+			const media = card.querySelector<HTMLElement>("[data-card-preview] [data-gallery-type-media]");
+			const glyph = media?.querySelector("svg");
+			return {
+				media: media?.className,
+				icon: glyph?.getAttribute("data-icon"),
+				glyph: ["lucide", "size-6"].filter((name) => !glyph?.classList.contains(name)),
+				frameGroup: card.querySelector("[data-card-frame]")?.classList.contains("group/card"),
+				badge: [
+					"group-has-[[data-gallery-type-media]]/card:sr-only",
+					"group-has-[[data-gallery-type-media]]/card:pointer-events-none",
+				].filter((name) => !card.querySelector("[data-card-badge]")?.classList.contains(name)),
+			};
+		};
+		const media = "flex h-full w-full items-center justify-center bg-alpha-1 text-secondary";
+
+		expect({
+			chart: describeCard(cardFor("household-cash.html")),
+			html: describeCard(cardFor("Asap Ladder Queue")),
+			docs: describeCard(cardFor("Quarterly plan")),
+			chartGlyph: cardFor("household-cash.html")
+				.querySelector("[data-gallery-type-media] svg")
+				?.classList.contains("lucide-chart-column"),
+		}).toStrictEqual({
+			chart: {media, icon: "chart", glyph: [], frameGroup: true, badge: []},
+			html: {media, icon: "code", glyph: [], frameGroup: true, badge: []},
+			docs: {media, icon: "doc", glyph: [], frameGroup: true, badge: []},
+			chartGlyph: true,
 		});
 	});
 
