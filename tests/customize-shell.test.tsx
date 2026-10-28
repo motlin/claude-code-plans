@@ -14,6 +14,7 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {actAndSettle} from "./act-and-settle";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import CustomizeDialogPanel from "../src/components/customize/customize-dialog-panel";
+import {PluginRowActions} from "../src/components/customize/plugin-row-actions";
 import {SkillDetailHeader} from "../src/components/customize/skill-detail";
 import type {UnifiedHit} from "../src/components/customize/unified-search";
 import {UnifiedSearchResults} from "../src/components/customize/unified-search-results";
@@ -1395,6 +1396,43 @@ describe("unified search hit rows", () => {
 			trailing: ["gap-7"],
 			meta: ["text-footnote", "text-muted-as-secondary"],
 		});
+	});
+});
+
+describe("row focus rings and kebab size", () => {
+	const RING = ["hide-focus-ring", "focus-visible:outline-hidden", "focus-visible:shadow-focus"];
+	const KEBAB = [
+		"inline-flex",
+		"size-8",
+		"shrink-0",
+		"items-center",
+		"justify-center",
+		"rounded-r6",
+		"text-primary",
+		"transition-colors",
+		"hover:bg-fill-ghost-hover",
+		...RING,
+	];
+
+	it("rings the View overlay and gives the skill and plugin kebabs upstream's 32px text-primary control", async () => {
+		await renderDialogPanel("#customize/skills");
+		const view = screen.getByRole("button", {name: "View deploy-checklist"});
+		const skillKebab = screen.getByRole("button", {name: "More actions for deploy-checklist"});
+		cleanup();
+		render(
+			<QueryClientProvider client={new QueryClient()}>
+				<ToastProvider>
+					<PluginRowActions pluginId="tools@market" name="tools" installPath="/tmp/tools" />
+				</ToastProvider>
+			</QueryClientProvider>,
+		);
+		const pluginKebab = screen.getByRole("button", {name: "More actions for tools"});
+
+		expect({
+			view: RING.filter((cls) => view.classList.contains(cls)),
+			skillKebab: skillKebab.className.split(" "),
+			pluginKebab: pluginKebab.className.split(" "),
+		}).toStrictEqual({view: RING, skillKebab: KEBAB, pluginKebab: KEBAB});
 	});
 });
 

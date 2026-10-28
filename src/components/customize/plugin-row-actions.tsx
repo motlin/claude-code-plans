@@ -63,7 +63,7 @@ export function PluginRowActions({
 		<Menu>
 			<MenuTrigger
 				aria-label={triggerLabel}
-				className="inline-flex size-7 shrink-0 items-center justify-center rounded-r6 text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+				className="inline-flex size-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 			>
 				<Ellipsis aria-hidden="true" className="size-4" />
 			</MenuTrigger>

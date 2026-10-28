@@ -79,11 +79,11 @@ describe("hand-rolled focus rings", () => {
 			),
 			skillKebab: has(
 				"src/components/customize/skill-row-actions.tsx",
-				`aria-expanded:text-primary ${SHADOW_FOCUS}`,
+				`hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
 			),
 			pluginKebab: has(
 				"src/components/customize/plugin-row-actions.tsx",
-				`aria-expanded:text-primary ${SHADOW_FOCUS}`,
+				`hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
 			),
 			shortcutsScroller: has("src/components/keyboard-shortcuts-dialog.tsx", `px-6 pb-6 ${INSET_FOCUS}`),
 			terminalPane: has(
