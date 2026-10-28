@@ -24,7 +24,7 @@ import {
 	type SkillDetail,
 	type SkillSummary,
 } from "../src/lib/api/customize";
-import {PHONE_SHEET_QUERY, SETTINGS_PHONE_QUERY} from "../src/lib/use-phone-sheet";
+import {PHONE_SHEET_QUERY, SETTINGS_PHONE_QUERY, SETTINGS_WIDE_QUERY} from "../src/lib/use-phone-sheet";
 import {redirectToSettingsDialog} from "../src/routes/settings";
 import {installLocalStorage} from "./fake-storage";
 
@@ -607,7 +607,7 @@ describe("SettingsDialog local tabs", () => {
 	it("clears a non-empty Customize search on Escape without closing the dialog, and closes it on a second Escape, as upstream does", async () => {
 		const router = await renderAt("/#customize/skills/yours");
 		fireEvent.click(await screen.findByRole("button", {name: "Search"}));
-		const input = screen.getByTestId<HTMLInputElement>("customize-header-search");
+		const input = screen.getByRole<HTMLInputElement>("searchbox", {name: "Search"});
 		fireEvent.change(input, {target: {value: "gh"}});
 
 		fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
@@ -631,6 +631,53 @@ describe("SettingsDialog local tabs", () => {
 				location: {pathname: "/", hash: "customize/skills/yours"},
 			},
 			afterSecond: {pathname: "/", hash: ""},
+		});
+	});
+
+	it("keeps the always-visible ≥768px Customize field on Escape: the first clears it, the second closes the dialog", async () => {
+		stubBrowser([SETTINGS_WIDE_QUERY]);
+		await renderAt("/#customize/skills/yours");
+		const input = await screen.findByTestId<HTMLInputElement>("customize-header-search");
+		fireEvent.change(input, {target: {value: "gh"}});
+
+		fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
+		const afterFirst = {
+			dialog: screen.queryByRole("dialog") !== null,
+			value: input.value,
+			field: screen.queryByTestId("customize-header-search") === input,
+		};
+
+		fireEvent.keyDown(input, {key: "Escape", code: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		expect(afterFirst).toStrictEqual({dialog: true, value: "", field: true});
+	});
+
+	it("opens the narrow Customize search on ⌘F inside the dialog with a fine pointer, as upstream does", async () => {
+		await renderAt("/#customize/skills/yours");
+		const button = await screen.findByRole("button", {name: "Search"});
+		button.focus();
+		fireEvent.keyDown(button, {key: "f", metaKey: true});
+		const input = screen.getByRole("searchbox", {name: "Search"});
+
+		expect({
+			focused: document.activeElement === input,
+			dialog: screen.queryByRole("dialog") !== null,
+		}).toStrictEqual({focused: true, dialog: true});
+	});
+
+	it("leaves ⌘F to the browser on a coarse pointer", async () => {
+		stubBrowser(["(pointer: coarse)"]);
+		await renderAt("/#customize/skills/yours");
+		const button = await screen.findByRole("button", {name: "Search"});
+		button.focus();
+		const event = new KeyboardEvent("keydown", {key: "f", metaKey: true, bubbles: true, cancelable: true});
+		button.dispatchEvent(event);
+
+		expect({field: screen.queryByRole("searchbox"), prevented: event.defaultPrevented}).toStrictEqual({
+			field: null,
+			prevented: false,
 		});
 	});
 

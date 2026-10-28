@@ -1,8 +1,9 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
-import {type ReactNode, useEffect, useRef, useState} from "react";
+import {type ReactNode, type RefObject, useEffect, useEffectEvent, useRef, useState} from "react";
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
+import {PHONE_SHEET_QUERY, SETTINGS_WIDE_QUERY, useCoarsePointer, useMediaQuery} from "../../lib/use-phone-sheet";
 import {SegmentedControl} from "../settings/segmented-control";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
@@ -54,6 +55,8 @@ export function CustomizeHeader({
 	const {data: catalog} = useQuery({...customizeDiscoverQueryOptions, enabled: discover});
 	const sortOptions = section.sort;
 	const sort = useSectionSort(section.sortStorageKey, search.sort);
+	// Upstream's width gate: at ≥768px the dialog keeps its nav and shows the always-visible field.
+	const wide = useMediaQuery(SETTINGS_WIDE_QUERY);
 
 	return (
 		<header className="flex flex-wrap justify-between gap-x-3 gap-y-4">
@@ -103,13 +106,24 @@ export function CustomizeHeader({
 				data-customize-controls=""
 				className="flex min-w-min flex-1 basis-0 flex-nowrap items-center justify-end gap-2"
 			>
-				<SearchField
-					placeholder={section.searchPlaceholder}
-					value={search.q ?? ""}
-					onChange={(q) => {
-						updateSearch({q});
-					}}
-				/>
+				{embedded && wide ? (
+					<FixedSearchField
+						placeholder={section.searchPlaceholder}
+						value={search.q ?? ""}
+						onChange={(q) => {
+							updateSearch({q});
+						}}
+					/>
+				) : (
+					<CollapsibleSearchField
+						placeholder={section.searchPlaceholder}
+						value={search.q ?? ""}
+						onChange={(q) => {
+							updateSearch({q});
+						}}
+						findShortcut={embedded}
+					/>
+				)}
 				{discover && (
 					<>
 						<OptionMenu
@@ -188,55 +202,181 @@ function isEditableTarget(target: EventTarget | null): boolean {
 	return target.isContentEditable || target.closest("input, textarea, select, [contenteditable]") !== null;
 }
 
-/**
- * Upstream's collapsible Customize search: a magnifier button while empty, expanding inline to a
- * 256px field on click or "/". Escape clears the text first (without closing the Settings dialog), then collapses; Clear search and
- * blurring an empty field collapse it too, handing focus back to the magnifier.
- */
-function SearchField({placeholder, value, onChange}: SearchFieldProps) {
-	// Local draft keeps the caret stable while each keystroke updates `?q=`.
+/** Upstream's shortcut guard: skip a field that is aria-hidden, inert, or behind another modal dialog. */
+function isHiddenFromShortcuts(element: HTMLElement | null): boolean {
+	if (element === null) return false;
+	if (element.closest('[aria-hidden="true"], [inert]') !== null) return true;
+	const modals = document.querySelectorAll(
+		'[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]',
+	);
+	return [...modals].some((modal) => !modal.contains(element));
+}
+
+interface SearchShortcutOptions {
+	input: RefObject<HTMLInputElement | null>;
+	anchor: RefObject<HTMLElement | null>;
+	onTrigger: () => void;
+	/** ⌘F (Ctrl+F) opens the search while focus is inside the surrounding dialog, unless the pointer is coarse. */
+	findShortcut: boolean;
+}
+
+/** Upstream's search shortcuts: "/" outside a field, and ⌘F within the Settings dialog on a fine pointer. */
+function useSearchShortcut({input, anchor, onTrigger, findShortcut}: SearchShortcutOptions) {
+	const coarse = useCoarsePointer();
+	const trigger = useEffectEvent(onTrigger);
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			const active = document.activeElement;
+			const find =
+				findShortcut &&
+				!coarse &&
+				event.metaKey !== event.ctrlKey &&
+				(event.key === "f" || (event.key === "F" && !event.shiftKey)) &&
+				(!isEditableTarget(active) || active === input.current) &&
+				(anchor.current?.closest('[role="dialog"]')?.contains(active) ?? false);
+			const slash =
+				event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey && !isEditableTarget(active);
+			if ((!find && !slash) || isHiddenFromShortcuts(anchor.current ?? input.current)) return;
+			event.preventDefault();
+			trigger();
+		};
+		document.addEventListener("keydown", onKeyDown, {capture: true});
+		return () => {
+			document.removeEventListener("keydown", onKeyDown, {capture: true});
+		};
+	}, [input, anchor, findShortcut, coarse]);
+	return coarse;
+}
+
+/** Local draft keeps the caret stable while each keystroke updates `?q=`. */
+function useSearchDraft(value: string, onChange: (value: string) => void) {
 	const [draft, setDraft] = useState(value);
 	const [syncedValue, setSyncedValue] = useState(value);
-	const [expanded, setExpanded] = useState(false);
-	// Set when a collapse should hand focus back to the magnifier as it mounts.
-	const focusButton = useRef(false);
 	if (value !== syncedValue) {
 		setSyncedValue(value);
 		setDraft(value);
 	}
-
 	const change = (next: string) => {
 		setDraft(next);
 		onChange(next);
 	};
+	return [draft, change] as const;
+}
+
+function focusAtEnd(input: HTMLInputElement | null) {
+	if (input === null) return;
+	input.focus({preventScroll: true});
+	input.setSelectionRange(input.value.length, input.value.length);
+}
+
+const SEARCH_INPUT_CLASS =
+	"min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-t6 [&::-webkit-search-cancel-button]:hidden";
+
+const CLEAR_BUTTON_CLASS =
+	"inline-flex size-5 shrink-0 items-center justify-center rounded-r3 text-t6 hover:text-primary";
+
+/**
+ * Upstream's ≥768px dialog header search (`le` with `collapsible: false`): an always-visible 256px
+ * field. Escape with text clears it without closing the dialog; on an empty field Escape reaches the
+ * dialog. Clear search shows only while there is text.
+ */
+function FixedSearchField({placeholder, value, onChange}: SearchFieldProps) {
+	const [draft, change] = useSearchDraft(value, onChange);
+	const input = useRef<HTMLInputElement>(null);
+	useSearchShortcut({
+		input,
+		anchor: input,
+		onTrigger: () => {
+			focusAtEnd(input.current);
+		},
+		findShortcut: false,
+	});
+
+	return (
+		<div className="inline-flex h-8 w-64 min-w-0 cursor-text items-center gap-1.5 rounded-r6 ps-2 pe-2 bg-[var(--settings-field-bg)] shadow-field-ring [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover has-[:focus-visible]:shadow-focus">
+			<Search aria-hidden="true" className="size-4 shrink-0 text-t6" />
+			<input
+				ref={input}
+				type="search"
+				placeholder={placeholder}
+				aria-label="Search"
+				maxLength={200}
+				value={draft}
+				onChange={(event) => {
+					change(event.target.value);
+				}}
+				onKeyDown={(event) => {
+					if (event.key !== "Escape" || event.nativeEvent.isComposing || draft === "") return;
+					event.stopPropagation();
+					change("");
+				}}
+				data-testid="customize-header-search"
+				className={SEARCH_INPUT_CLASS}
+			/>
+			{draft !== "" && (
+				<button
+					type="button"
+					aria-label="Clear search"
+					onClick={() => {
+						change("");
+						input.current?.focus();
+					}}
+					className={CLEAR_BUTTON_CLASS}
+				>
+					<X aria-hidden="true" className="size-3.5" />
+				</button>
+			)}
+		</div>
+	);
+}
+
+interface CollapsibleSearchFieldProps extends SearchFieldProps {
+	/** Inside the Settings dialog, ⌘F opens the search too (fine pointers only). */
+	findShortcut: boolean;
+}
+
+/**
+ * Upstream's collapsible Customize search (the page, and the dialog below 768px): a ghost magnifier
+ * button while empty, expanding to a 256px field (192px below 640px) on click, "/" or ⌘F. Escape
+ * clears the text first (without closing the Settings dialog), then collapses; Clear search and
+ * blurring an empty field collapse it too, handing focus back to the magnifier.
+ */
+function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: CollapsibleSearchFieldProps) {
+	const [draft, change] = useSearchDraft(value, onChange);
+	const [expanded, setExpanded] = useState(false);
+	const phone = useMediaQuery(PHONE_SHEET_QUERY);
+	const input = useRef<HTMLInputElement>(null);
+	const button = useRef<HTMLButtonElement>(null);
+	// Set when a collapse should hand focus back to the magnifier as it mounts.
+	const focusButton = useRef(false);
+	const open = expanded || draft !== "";
+
 	const collapse = () => {
 		focusButton.current = true;
 		setExpanded(false);
 	};
-
-	// Upstream opens the search on "/" when focus is not in a field.
-	useEffect(() => {
-		if (expanded || draft !== "") return undefined;
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
-			if (isEditableTarget(event.target)) return;
-			event.preventDefault();
+	const coarse = useSearchShortcut({
+		input,
+		anchor: open ? input : button,
+		onTrigger: () => {
+			if (input.current) {
+				focusAtEnd(input.current);
+				return;
+			}
 			setExpanded(true);
-		};
-		document.addEventListener("keydown", onKeyDown);
-		return () => {
-			document.removeEventListener("keydown", onKeyDown);
-		};
-	}, [expanded, draft]);
+		},
+		findShortcut,
+	});
 
-	if (!expanded && draft === "") {
+	if (!open) {
 		return (
-			<Tooltip content="Search">
+			<Tooltip content="Search" {...(findShortcut && !coarse ? {shortcut: "cmd+f"} : {})}>
 				<button
-					ref={(button) => {
-						if (button === null || !focusButton.current) return;
+					ref={(element) => {
+						button.current = element;
+						if (element === null || !focusButton.current) return;
 						focusButton.current = false;
-						button.focus();
+						element.focus();
 					}}
 					type="button"
 					aria-label="Search"
@@ -254,50 +394,53 @@ function SearchField({placeholder, value, onChange}: SearchFieldProps) {
 	return (
 		<div
 			role="search"
-			className="inline-flex h-8 w-0 max-w-64 min-w-40 flex-1 cursor-text items-center gap-1.5 rounded-r6 bg-surface-0/50 px-3 shadow-[inset_0_0_0_1px_var(--color-border)] has-[:focus-visible]:shadow-[inset_0_0_0_1px_var(--color-accent-100)]"
+			className={`flex max-w-full min-w-40 grow items-center gap-2 md:justify-end ${phone ? "w-48" : "w-64"}`}
 		>
-			<Search aria-hidden="true" className="size-4 shrink-0 text-t6" />
-			<input
-				type="search"
-				// oxlint-disable-next-line jsx-a11y/no-autofocus -- the field replaces the magnifier the user just pressed
-				autoFocus
-				placeholder={placeholder}
-				aria-label="Search"
-				maxLength={200}
-				value={draft}
-				onChange={(event) => {
-					change(event.target.value);
-				}}
-				onKeyDown={(event) => {
-					if (event.key !== "Escape") return;
-					// An empty field lets Escape reach the Settings dialog, which closes. With text, Escape only
-					// clears it: stopping propagation keeps Base UI's dismiss from closing the dialog too.
-					if (draft === "") {
+			<div className="inline-flex h-8 min-w-0 flex-1 cursor-text items-center gap-1.5 rounded-r6 ps-2 pe-2 bg-[var(--settings-field-bg)] shadow-field-ring [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover has-[:focus-visible]:shadow-focus md:max-w-sm">
+				<Search aria-hidden="true" className="size-4 shrink-0 text-t6" />
+				<input
+					ref={input}
+					type="search"
+					// oxlint-disable-next-line jsx-a11y/no-autofocus -- the field replaces the magnifier the user just pressed
+					autoFocus
+					autoComplete="off"
+					placeholder={placeholder}
+					aria-label="Search"
+					maxLength={200}
+					value={draft}
+					onChange={(event) => {
+						change(event.target.value);
+					}}
+					onKeyDown={(event) => {
+						if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
+						// An empty field lets Escape reach the Settings dialog, which closes. With text, Escape only
+						// clears it: stopping propagation keeps Base UI's dismiss from closing the dialog too.
+						if (draft === "") {
+							collapse();
+							return;
+						}
+						event.preventDefault();
+						event.stopPropagation();
+						change("");
+					}}
+					onBlur={() => {
+						if (draft === "") setExpanded(false);
+					}}
+					className={SEARCH_INPUT_CLASS}
+				/>
+				{/* Upstream's open field always offers Clear search, which also collapses it */}
+				<button
+					type="button"
+					aria-label="Clear search"
+					onClick={() => {
+						change("");
 						collapse();
-						return;
-					}
-					event.preventDefault();
-					event.stopPropagation();
-					change("");
-				}}
-				onBlur={() => {
-					if (draft === "") setExpanded(false);
-				}}
-				data-testid="customize-header-search"
-				className="min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-t6 [&::-webkit-search-cancel-button]:hidden"
-			/>
-			{/* Upstream's open field always offers Clear search, which also collapses it */}
-			<button
-				type="button"
-				aria-label="Clear search"
-				onClick={() => {
-					change("");
-					collapse();
-				}}
-				className="inline-flex size-5 shrink-0 items-center justify-center rounded-r3 text-t6 hover:text-primary"
-			>
-				<X aria-hidden="true" className="size-3.5" />
-			</button>
+					}}
+					className={CLEAR_BUTTON_CLASS}
+				>
+					<X aria-hidden="true" className="size-3.5" />
+				</button>
+			</div>
 		</div>
 	);
 }

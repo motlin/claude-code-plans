@@ -6,6 +6,9 @@ export const PHONE_SHEET_QUERY = "(width < 40rem)";
 /** claude.ai/code's Settings dialog switches to its phone layout (tab strip, no search) at ≤767px (`T`). */
 export const SETTINGS_PHONE_QUERY = "(max-width: 767px)";
 
+/** At ≥768px upstream's Settings dialog keeps its nav and the Customize header shows the always-visible search field. */
+export const SETTINGS_WIDE_QUERY = "(min-width: 768px)";
+
 /**
  * claude.ai/code's narrow-viewport query (`JJ`/`$C`): the sidebar is forced collapsed whatever the
  * stored pref at ≤ max(700, ceil(sidebarWidth) + 329)px, so ≤700px at the default 288 and ≤749px at 420.

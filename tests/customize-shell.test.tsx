@@ -30,6 +30,7 @@ import {
 	type SkillSummary,
 } from "../src/lib/api/customize";
 import {pluginsQueryOptions, userCommandsQueryOptions} from "../src/lib/api/plugins";
+import {PHONE_SHEET_QUERY, SETTINGS_WIDE_QUERY} from "../src/lib/use-phone-sheet";
 import {parseCustomizeHash} from "../src/lib/settings-hash";
 import {Route as CustomizeLayoutRoute} from "../src/routes/customize";
 import {Route as CustomizeConnectorsRoute} from "../src/routes/customize.connectors";
@@ -322,7 +323,7 @@ describe("customize shell", () => {
 		const input = openSearch();
 		const expanded = {
 			focused: document.activeElement === input,
-			width: input.closest("[role=search]")?.className.split(" ").includes("max-w-64"),
+			width: input.closest("[role=search]")?.className.split(" ").includes("w-64"),
 			button: screen.queryByRole("button", {name: "Search"}) !== null,
 		};
 		fireEvent.change(input, {target: {value: "deploy"}});
@@ -1417,7 +1418,7 @@ async function renderDialogPanel(
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
-	await screen.findByRole("button", {name: "Search"});
+	await screen.findByLabelText("Search");
 	return hashes;
 }
 
@@ -1557,7 +1558,7 @@ describe("returning to the unified search from an opened hit", () => {
 		});
 
 		fireEvent.click(back);
-		const field = await screen.findByTestId("customize-header-search");
+		const field = await screen.findByRole("searchbox", {name: "Search"});
 		expect({
 			hashes: hashes.slice(2),
 			value: (field as HTMLInputElement).value,
@@ -1752,5 +1753,144 @@ describe("retired NoSearchMatches fallback", () => {
 			"customize/plugins/yours": expected,
 			"customize/plugins/discover": expected,
 		});
+	});
+});
+
+/** Stub matchMedia so exactly the given queries match. */
+function stubViewport(matching: readonly string[]) {
+	vi.stubGlobal("matchMedia", (query: string) => ({
+		matches: matching.includes(query),
+		media: query,
+		onchange: null,
+		addEventListener: () => {},
+		removeEventListener: () => {},
+		dispatchEvent: () => false,
+	}));
+}
+
+describe("customize header search width gate", () => {
+	it("shows upstream's always-visible 256px field at ≥768px, with Clear search only while non-empty", async () => {
+		stubViewport([SETTINGS_WIDE_QUERY]);
+		await renderDialogPanel("customize/skills/yours");
+		const input = screen.getByTestId<HTMLInputElement>("customize-header-search");
+		const rest = {
+			attrs: ["type", "placeholder", "aria-label", "maxlength"].map((name) => input.getAttribute(name)),
+			button: screen.queryByRole("button", {name: "Search"}),
+			clear: screen.queryByRole("button", {name: "Clear search"}),
+			wrapper: input.parentElement?.className.split(" "),
+		};
+		fireEvent.change(input, {target: {value: "deploy"}});
+		const typed = {clear: screen.queryByRole("button", {name: "Clear search"}) !== null};
+		fireEvent.click(screen.getByRole("button", {name: "Clear search"}));
+
+		expect({
+			rest,
+			typed,
+			cleared: {
+				value: input.value,
+				field: screen.queryByTestId("customize-header-search") === input,
+				clear: screen.queryByRole("button", {name: "Clear search"}),
+				focused: document.activeElement === input,
+			},
+		}).toStrictEqual({
+			rest: {
+				attrs: ["search", "Search", "Search", "200"],
+				button: null,
+				clear: null,
+				wrapper: [
+					"inline-flex",
+					"h-8",
+					"w-64",
+					"min-w-0",
+					"cursor-text",
+					"items-center",
+					"gap-1.5",
+					"rounded-r6",
+					"ps-2",
+					"pe-2",
+					"bg-[var(--settings-field-bg)]",
+					"shadow-field-ring",
+					"[&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover",
+					"has-[:focus-visible]:shadow-focus",
+				],
+			},
+			typed: {clear: true},
+			cleared: {value: "", field: true, clear: null, focused: true},
+		});
+	});
+
+	it("lets Escape through only once the ≥768px field is empty, and focuses it on / outside a field", async () => {
+		stubViewport([SETTINGS_WIDE_QUERY]);
+		await renderDialogPanel("customize/skills/yours");
+		const input = screen.getByTestId<HTMLInputElement>("customize-header-search");
+		const escapes: string[] = [];
+		const onKeyDown = (event: KeyboardEvent) => {
+			escapes.push(event.key);
+		};
+		window.addEventListener("keydown", onKeyDown);
+		fireEvent.change(input, {target: {value: "gh"}});
+		fireEvent.keyDown(input, {key: "Escape"});
+		const afterFirst = {value: input.value, escapes: [...escapes]};
+		fireEvent.keyDown(input, {key: "Escape"});
+		window.removeEventListener("keydown", onKeyDown);
+		const afterSecond = {field: screen.queryByTestId("customize-header-search") === input, escapes};
+		input.blur();
+		fireEvent.keyDown(document.body, {key: "/"});
+
+		expect({afterFirst, afterSecond, slashFocused: document.activeElement === input}).toStrictEqual({
+			afterFirst: {value: "", escapes: []},
+			afterSecond: {field: true, escapes: ["Escape"]},
+			slashFocused: true,
+		});
+	});
+
+	it("collapses to the Search icon button below 768px, expanding into upstream's untagged w-64 field", async () => {
+		stubViewport([]);
+		await renderDialogPanel("customize/skills/yours");
+		const collapsed = {
+			button: screen.queryByRole("button", {name: "Search"}) !== null,
+			field: screen.queryByRole("searchbox"),
+		};
+		fireEvent.click(screen.getByRole("button", {name: "Search"}));
+		const input = screen.getByRole("searchbox", {name: "Search"});
+		const expanded = {
+			focused: document.activeElement === input,
+			wrapper: input.closest("[role=search]")?.className.split(" "),
+			testId: screen.queryByTestId("customize-header-search"),
+			clear: screen.queryByRole("button", {name: "Clear search"}) !== null,
+		};
+		fireEvent.click(screen.getByRole("button", {name: "Clear search"}));
+
+		expect({
+			collapsed,
+			expanded,
+			afterClear: {
+				field: screen.queryByRole("searchbox"),
+				focusedButton: document.activeElement === screen.getByRole("button", {name: "Search"}),
+			},
+		}).toStrictEqual({
+			collapsed: {button: true, field: null},
+			expanded: {
+				focused: true,
+				wrapper: ["flex", "max-w-full", "min-w-40", "grow", "items-center", "gap-2", "md:justify-end", "w-64"],
+				testId: null,
+				clear: true,
+			},
+			afterClear: {field: null, focusedButton: true},
+		});
+	});
+
+	it("narrows the expanded field to w-48 below 640px", async () => {
+		stubViewport([PHONE_SHEET_QUERY]);
+		await renderDialogPanel("customize/skills/yours");
+		fireEvent.click(screen.getByRole("button", {name: "Search"}));
+
+		expect(
+			screen
+				.getByRole("searchbox")
+				.closest("[role=search]")
+				?.className.split(" ")
+				.filter((name) => name.startsWith("w-")),
+		).toStrictEqual(["w-48"]);
 	});
 });
