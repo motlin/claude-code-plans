@@ -227,6 +227,7 @@ function DialogUnifiedSearch({q, onOpen, expanded, onExpandedChange}: DialogUnif
 	return (
 		<UnifiedSearchResults
 			q={q}
+			surface="dialog"
 			search={search}
 			catalogPending={catalog.isPending}
 			catalogError={catalog.isError}

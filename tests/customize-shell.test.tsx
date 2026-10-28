@@ -776,6 +776,7 @@ function renderResults(props: Partial<Parameters<typeof UnifiedSearchResults>[0]
 	render(
 		<UnifiedSearchResults
 			q="mcp"
+			surface="dialog"
 			search={{yours: [YOURS_HIT], more: MORE_HITS}}
 			catalogPending={false}
 			catalogError={false}
@@ -843,6 +844,45 @@ describe("UnifiedSearchResults", () => {
 				counter: "20",
 				counterPadding: ["px-[5.4px]"],
 				rows: 12,
+			},
+		});
+	});
+
+	it("spaces each section by surface: 16px on the page, 12px in the dialog, root and header unchanged", () => {
+		const layout = () => {
+			const root = screen.getByTestId("customize-unified-search-results");
+			const sections = [...root.querySelectorAll<HTMLElement>("section[data-testid^=customize-unified-search-]")];
+			return {
+				root: [...root.classList],
+				sections: sections.map((section) => ({
+					testId: section.dataset["testid"],
+					gap: [...section.classList].filter((c) => c.startsWith("gap-")),
+					header: [...(section.firstElementChild as HTMLElement).classList],
+				})),
+			};
+		};
+		renderResults({surface: "page"});
+		const page = layout();
+		cleanup();
+		renderResults({surface: "dialog"});
+		const dialog = layout();
+
+		const header = ["flex", "min-h-7", "items-center", "gap-2"];
+		const root = ["flex", "flex-col", "gap-7"];
+		expect({page, dialog}).toStrictEqual({
+			page: {
+				root,
+				sections: [
+					{testId: "customize-unified-search-yours", gap: ["gap-4"], header},
+					{testId: "customize-unified-search-more", gap: ["gap-4"], header},
+				],
+			},
+			dialog: {
+				root,
+				sections: [
+					{testId: "customize-unified-search-yours", gap: ["gap-3"], header},
+					{testId: "customize-unified-search-more", gap: ["gap-3"], header},
+				],
 			},
 		});
 	});
@@ -1048,6 +1088,7 @@ function renderHitRows(search: {yours: UnifiedHit[]; more: UnifiedHit[]}) {
 			<ToastProvider>
 				<UnifiedSearchResults
 					q="mcp"
+					surface="dialog"
 					search={search}
 					catalogPending={false}
 					catalogError={false}

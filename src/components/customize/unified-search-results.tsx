@@ -30,6 +30,12 @@ const KIND_ICON: Record<UnifiedHitKind, LucideIcon> = {
 
 const numberFormat = new Intl.NumberFormat("en-US");
 
+/** Where the results render: the standalone Customize page or the Settings dialog. */
+type UnifiedSearchSurface = "page" | "dialog";
+
+/** Upstream `DY()`: sections are `gap-md` (16px) on the standalone page, `gap-sm` (12px) elsewhere. */
+const SECTION_GAP: Record<UnifiedSearchSurface, string> = {page: "gap-4", dialog: "gap-3"};
+
 /** Upstream cds ghost Button, size sm. */
 const GHOST_SM_CLASS =
 	"inline-flex h-7 shrink-0 items-center gap-1 rounded-r5 ps-2.5 pe-1.5 text-body text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -85,6 +91,7 @@ interface HitSectionProps {
 	title: string;
 	hits: readonly UnifiedHit[];
 	limit: number;
+	gapClass: string;
 	counterInset: boolean;
 	rowTestId: string;
 	onOpen: ((hit: UnifiedHit) => void) | undefined;
@@ -98,6 +105,7 @@ function HitSection({
 	title,
 	hits,
 	limit,
+	gapClass,
 	counterInset,
 	rowTestId,
 	onOpen,
@@ -117,7 +125,12 @@ function HitSection({
 	const label = expanded ? "Show fewer" : `Show all ${numberFormat.format(hits.length)}`;
 
 	return (
-		<section ref={sectionRef} aria-labelledby={id} data-testid={testId} className={`flex flex-col gap-3 ${REVEAL}`}>
+		<section
+			ref={sectionRef}
+			aria-labelledby={id}
+			data-testid={testId}
+			className={`flex flex-col ${gapClass} ${REVEAL}`}
+		>
 			<SectionHeader
 				id={id}
 				title={title}
@@ -173,6 +186,7 @@ function HitSection({
 
 interface UnifiedSearchResultsProps {
 	q: string;
+	surface: UnifiedSearchSurface;
 	search: UnifiedSearch;
 	/** The plugin catalog ("More you can add") is still loading. */
 	catalogPending: boolean;
@@ -196,6 +210,7 @@ export type UnifiedSectionId = "yours" | "more";
  */
 export function UnifiedSearchResults({
 	q,
+	surface,
 	search,
 	catalogPending,
 	catalogError,
@@ -272,6 +287,7 @@ export function UnifiedSearchResults({
 						title="Yours"
 						hits={search.yours}
 						limit={YOURS_LIMIT}
+						gapClass={SECTION_GAP[surface]}
 						counterInset={false}
 						rowTestId="customize-list-row"
 						onOpen={onOpen}
@@ -285,6 +301,7 @@ export function UnifiedSearchResults({
 						title="More you can add"
 						hits={search.more}
 						limit={MORE_LIMIT}
+						gapClass={SECTION_GAP[surface]}
 						counterInset
 						rowTestId="customize-unified-search-addable-hit-row"
 						onOpen={onOpen}
