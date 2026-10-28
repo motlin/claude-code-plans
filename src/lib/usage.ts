@@ -91,6 +91,26 @@ export function formatLimitCaption(
 	return `Resets ${formatParts(resetsAt, timeZone, weekday)}`;
 }
 
+/**
+ * Settings ▸ Usage's footer text (upstream `Tr`): "just now" at or before the update,
+ * "less than a minute ago" under 60s, "N minute(s) ago" under an hour, else the update's
+ * time of day ("3:05 PM").
+ */
+export function formatUsageUpdated(iso: string, nowMs: number, timeZone?: string): string {
+	const updatedMs = Date.parse(iso);
+	const seconds = (nowMs - updatedMs) / 1000;
+	if (seconds <= 0) return "Last updated: just now";
+	if (seconds < 60) return "Last updated: less than a minute ago";
+	const minutes = Math.floor(seconds / 60);
+	if (minutes < 60) return `Last updated: ${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+	const time = new Intl.DateTimeFormat("en-US", {
+		hour: "numeric",
+		minute: "2-digit",
+		...(timeZone === undefined ? {} : {timeZone}),
+	}).format(updatedMs);
+	return `Last updated: ${time}`;
+}
+
 function calendarDay(ms: number, timeZone: string | undefined): number {
 	const parts = new Intl.DateTimeFormat("en-US", {
 		year: "numeric",

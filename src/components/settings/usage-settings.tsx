@@ -3,9 +3,9 @@ import {RefreshCw} from "lucide-react";
 import {useId} from "react";
 import {localAccountQueryOptions} from "../../lib/api/local-account";
 import {usageQueryOptions} from "../../lib/api/usage";
-import {formatUpdatedAgo} from "../../lib/composer-state";
 import {
 	formatLimitCaption,
+	formatUsageUpdated,
 	meterPercent,
 	paceHeadline,
 	usageVariant,
@@ -13,6 +13,7 @@ import {
 	type UsageVariant,
 	type UsageWindow,
 } from "../../lib/usage";
+import {Tooltip} from "../ui/tooltip";
 import {SettingsSection} from "./settings-row";
 
 /*
@@ -22,6 +23,9 @@ import {SettingsSection} from "./settings-row";
  * one row per rate-limit window with a 4px meter tinted by severity (upstream's `wV`). The
  * windows come from the newest local statusline snapshot.
  */
+
+/** Upstream's `Ei`: the usage-limits support article. */
+const USAGE_LIMITS_ARTICLE = "https://support.claude.com/en/articles/11647753-understanding-usage-and-length-limits";
 
 /** Upstream's cds Meter track (`bg-<variant>`) and fill (`bg-fill-<variant>`) per variant. */
 const TRACK_CLASS = {
@@ -172,20 +176,39 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 				</SettingsSection>
 			</div>
 
-			<div className="mt-4 flex items-center gap-2 text-footnote text-secondary">
-				{usage.updatedAt === null ? null : (
-					<span>Last updated: {formatUpdatedAgo(usage.updatedAt, nowMs)}</span>
-				)}
-				<button
-					type="button"
-					aria-label="Refresh usage"
-					title="Refresh usage"
-					disabled={refreshing}
-					onClick={onRefresh}
-					className="inline-flex size-6 items-center justify-center rounded-md hover:bg-alpha-1 disabled:opacity-50"
+			{usage.updatedAt === null ? null : (
+				<section className="mt-2">
+					<div data-settings-item="" className="flex items-center justify-between py-3">
+						<div className="flex items-center gap-2">
+							<span className="text-footnote text-secondary">
+								{formatUsageUpdated(usage.updatedAt, nowMs, timeZone)}
+							</span>
+							<Tooltip content="Refresh">
+								<button
+									type="button"
+									aria-label="Refresh"
+									aria-busy={refreshing || undefined}
+									disabled={refreshing}
+									onClick={onRefresh}
+									className="inline-flex size-6 items-center justify-center rounded-md text-secondary hover:bg-alpha-1 disabled:opacity-50"
+								>
+									<RefreshCw className={`size-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
+								</button>
+							</Tooltip>
+						</div>
+					</div>
+				</section>
+			)}
+			<div className="flex flex-col items-start gap-2 text-footnote">
+				<a
+					data-cds="TextLink"
+					href={USAGE_LIMITS_ARTICLE}
+					target="_blank"
+					rel="noopener"
+					className="text-link inline cursor-pointer"
 				>
-					<RefreshCw className={`size-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden />
-				</button>
+					Learn more about usage limits<span className="sr-only">(opens in new tab)</span>
+				</a>
 			</div>
 		</div>
 	);

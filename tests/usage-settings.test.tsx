@@ -3,6 +3,7 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {UsagePanel} from "../src/components/settings/usage-settings";
+import {formatUsageUpdated} from "../src/lib/usage";
 
 const NOW_MS = Date.UTC(2026, 8, 28, 12, 0);
 const NOW_SECONDS = NOW_MS / 1000;
@@ -51,9 +52,11 @@ describe("UsagePanel", () => {
 		expect(screen.getByText("Resets at 3:40 PM").textContent).toBe("Resets at 3:40 PM");
 		expect(screen.getByText("Resets Tuesday 9:00 AM").textContent).toBe("Resets Tuesday 9:00 AM");
 		expect(screen.getAllByText(/% used$/).map((node) => node.textContent)).toStrictEqual(["16% used", "66% used"]);
-		expect(screen.getByText("Last updated: just now").textContent).toBe("Last updated: just now");
+		expect(screen.getByText("Last updated: less than a minute ago").textContent).toBe(
+			"Last updated: less than a minute ago",
+		);
 
-		fireEvent.click(screen.getByRole("button", {name: "Refresh usage"}));
+		fireEvent.click(screen.getByRole("button", {name: "Refresh"}));
 		expect(onRefresh).toHaveBeenCalledTimes(1);
 	});
 
@@ -206,5 +209,81 @@ describe("UsagePanel", () => {
 		expect(screen.getByText("Usage appears after a Claude Code session reports its status line").textContent).toBe(
 			"Usage appears after a Claude Code session reports its status line",
 		);
+	});
+
+	it("copies upstream's footer and learn-more link", () => {
+		render(
+			<UsagePanel
+				usage={{
+					fiveHour: {usedPct: 10, resetsAt: NOW_SECONDS + 3_600},
+					sevenDay: {usedPct: 20, resetsAt: NOW_SECONDS + 21 * 3_600},
+					updatedAt: new Date(NOW_MS - 5 * 60_000).toISOString(),
+				}}
+				nowMs={NOW_MS}
+				timeZone="UTC"
+				refreshing={false}
+				onRefresh={() => {}}
+			/>,
+		);
+
+		const text = screen.getByText("Last updated: 5 minutes ago");
+		expect(text.className).toBe("text-footnote text-secondary");
+		const button = screen.getByRole("button", {name: "Refresh"});
+		expect(button.getAttribute("title")).toBeNull();
+		const group = text.parentElement;
+		expect(group?.className).toBe("flex items-center gap-2");
+		const item = group?.parentElement;
+		expect(item?.className).toBe("flex items-center justify-between py-3");
+		expect(item?.hasAttribute("data-settings-item")).toBe(true);
+		expect(item?.closest("section")?.className).toBe("mt-2");
+
+		const link = screen.getByRole("link", {name: "Learn more about usage limits(opens in new tab)"});
+		expect({
+			href: link.getAttribute("href"),
+			target: link.getAttribute("target"),
+			rel: link.getAttribute("rel"),
+			wrapper: link.parentElement?.className,
+		}).toStrictEqual({
+			href: "https://support.claude.com/en/articles/11647753-understanding-usage-and-length-limits",
+			target: "_blank",
+			rel: "noopener",
+			wrapper: "flex flex-col items-start gap-2 text-footnote",
+		});
+	});
+
+	it("omits the footer but keeps the link when nothing has been reported", () => {
+		render(
+			<UsagePanel
+				usage={{fiveHour: null, sevenDay: null, updatedAt: null}}
+				nowMs={NOW_MS}
+				timeZone="UTC"
+				refreshing={false}
+				onRefresh={() => {}}
+			/>,
+		);
+
+		expect(screen.queryByRole("button", {name: "Refresh"})).toBeNull();
+		expect(screen.queryByText(/^Last updated/)).toBeNull();
+		expect(screen.getByRole("link", {name: "Learn more about usage limits(opens in new tab)"}).tagName).toBe("A");
+	});
+});
+
+describe("formatUsageUpdated", () => {
+	const iso = (msAgo: number) => new Date(NOW_MS - msAgo).toISOString();
+
+	it("copies upstream's Tr wording", () => {
+		expect(
+			[0, -5_000, 30_000, 60_000, 5 * 60_000, 59 * 60_000 + 59_000, 2 * 3_600_000].map((msAgo) =>
+				formatUsageUpdated(iso(msAgo), NOW_MS, "UTC"),
+			),
+		).toStrictEqual([
+			"Last updated: just now",
+			"Last updated: just now",
+			"Last updated: less than a minute ago",
+			"Last updated: 1 minute ago",
+			"Last updated: 5 minutes ago",
+			"Last updated: 59 minutes ago",
+			"Last updated: 10:00 AM",
+		]);
 	});
 });
