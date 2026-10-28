@@ -2,7 +2,14 @@ import {Link} from "@tanstack/react-router";
 import {useQuery} from "@tanstack/react-query";
 import {type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useRef, useState} from "react";
 import {ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2} from "lucide-react";
-import {matchedVerbosityPreset, useSettings, type Motion, type Settings, type Verbosity} from "../settings-context";
+import {
+	matchedVerbosityPreset,
+	useSettings,
+	type Motion,
+	type NotificationSound,
+	type Settings,
+	type Verbosity,
+} from "../settings-context";
 import {InterfaceFontSchema} from "../../lib/appearance";
 import type {TranscriptTextSize} from "../../lib/appearance";
 import type {CapabilityId} from "../../lib/capabilities";
@@ -213,9 +220,40 @@ function NotificationsSection() {
 				settingKey="notifyPermissionRequests"
 				notificationPermission={notificationPermission}
 			/>
+			<NotificationSoundRow />
 		</SettingsSection>
 	);
 }
+
+/** Upstream's desktop Notification sound select; here it sets the browser notification's `silent`. */
+function NotificationSoundRow() {
+	const {settings, setSetting} = useSettings();
+
+	return (
+		<SettingsRow
+			slug="notification-sound"
+			title="Notification sound"
+			description="Played when an OS banner is shown."
+		>
+			<div className="w-[160px]">
+				<ThemedCombobox
+					aria-label="Notification sound"
+					value={settings.notificationSound}
+					options={NOTIFICATION_SOUND_OPTIONS}
+					onValueChange={(next) => {
+						setSetting("notificationSound", next);
+					}}
+					className="w-full"
+				/>
+			</div>
+		</SettingsRow>
+	);
+}
+
+const NOTIFICATION_SOUND_OPTIONS: Array<{value: NotificationSound; label: string}> = [
+	{value: "system", label: "System sound"},
+	{value: "none", label: "None"},
+];
 
 interface SelectRowProps {
 	label: string;

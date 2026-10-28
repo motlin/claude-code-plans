@@ -35,6 +35,10 @@ const SessionsGroupingSchema = z.enum(["project", "time"]);
 
 /** Upstream General ▸ Appearance ▸ Motion: follow the OS, or always reduce. */
 const MotionSchema = z.enum(["system", "reduced"]);
+
+/** Upstream's Notification sound: the OS default sound, or a silent banner. */
+const NotificationSoundSchema = z.enum(["system", "none"]);
+export type NotificationSound = z.infer<typeof NotificationSoundSchema>;
 export type Motion = z.infer<typeof MotionSchema>;
 
 export interface LinkCategoryRule {
@@ -100,6 +104,8 @@ export interface Settings {
 	notifyCompletions: boolean;
 	/** Desktop notification when a session waits on the user (upstream "Code permission requests"). */
 	notifyPermissionRequests: boolean;
+	/** "none" raises notifications with `silent: true` (upstream "Notification sound"). */
+	notificationSound: NotificationSound;
 
 	verbosity: Verbosity;
 
@@ -171,6 +177,7 @@ export const DEFAULTS: Settings = {
 
 	notifyCompletions: true,
 	notifyPermissionRequests: false,
+	notificationSound: "system",
 
 	verbosity: "normal",
 
@@ -225,6 +232,7 @@ export const STORAGE_KEYS: Record<keyof Settings, string> = {
 	sessionListPrefs: "ccp-session-list-prefs",
 	notifyCompletions: "ccp-notify-completions",
 	notifyPermissionRequests: "ccp-notify-permission-requests",
+	notificationSound: "ccp-notification-sound",
 	verbosity: "ccp-verbosity",
 	linkCategoryRules: "ccp-link-category-rules",
 	diffShowTree: "ccp-diff-show-tree",
@@ -402,6 +410,7 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 		}),
 	notifyCompletions: readBoolean,
 	notifyPermissionRequests: readBoolean,
+	notificationSound: readSchema(NotificationSoundSchema),
 	verbosity: readSchema(VerbositySchema),
 	linkCategoryRules: readJsonSchema(LINK_CATEGORY_RULES_SCHEMA),
 	diffShowTree: readBoolean,

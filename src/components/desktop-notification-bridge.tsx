@@ -66,6 +66,7 @@ export function DesktopNotificationBridge(): null {
 
 			const notification = new Notification(copy, {
 				tag: session.sessionId,
+				silent: settings.notificationSound === "none",
 			});
 			notification.onclick = () => {
 				window.focus();

@@ -32,6 +32,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{tab: "general", rowSlug: "hide-chrome", title: "Hide chrome"},
 	{tab: "general", rowSlug: "response-completions", title: "Response completions"},
 	{tab: "general", rowSlug: "code-permission-requests", title: "Code permission requests"},
+	{tab: "general", rowSlug: "notification-sound", title: "Notification sound"},
 	{tab: "general", rowSlug: "reset-settings", title: "Reset settings"},
 	{tab: "claude-code", rowSlug: "terminal-colors", title: "Terminal colors"},
 	{tab: "claude-code", rowSlug: "code-font", title: "Code font"},

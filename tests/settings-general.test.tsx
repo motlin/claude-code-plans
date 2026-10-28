@@ -213,6 +213,53 @@ describe("General settings ▸ Notifications", () => {
 		});
 	});
 
+	it("ends with a Notification sound select offering System sound / None in a 160px slot", async () => {
+		stubNotification("granted");
+		await renderGeneral();
+
+		const section = document.querySelector<HTMLElement>("section#notifications");
+		if (section === null) throw new Error("no notifications section");
+		const row = within(section).getByRole("group", {name: "Notification sound"});
+		const trigger = within(row).getByRole("combobox");
+		const rows = [...section.querySelectorAll("[data-settings-row]")].map((element) =>
+			element.getAttribute("data-settings-row"),
+		);
+		const description = row.querySelector("[data-settings-desc]")?.textContent;
+		const width = trigger.closest(".w-\\[160px\\]") !== null;
+		const before = trigger.textContent;
+		fireEvent.click(trigger);
+		const options = within(row)
+			.getAllByRole("option")
+			.map((option) => ({label: option.textContent, selected: option.getAttribute("aria-selected")}));
+
+		expect({rows, description, width, before, options}).toStrictEqual({
+			rows: ["response-completions", "code-permission-requests", "notification-sound"],
+			description: "Played when an OS banner is shown.",
+			width: true,
+			before: "System sound",
+			options: [
+				{label: "System sound", selected: "true"},
+				{label: "None", selected: "false"},
+			],
+		});
+	});
+
+	it("saves None as the notification sound", async () => {
+		stubNotification("granted");
+		await renderGeneral();
+
+		const row = screen.getByRole("group", {name: "Notification sound"});
+		fireEvent.click(within(row).getByRole("combobox"));
+		act(() => {
+			fireEvent.click(within(row).getByRole("option", {name: "None"}));
+		});
+
+		expect({
+			trigger: within(row).getByRole("combobox").textContent,
+			stored: localStorage.getItem("ccp-notification-sound"),
+		}).toStrictEqual({trigger: "None", stored: "none"});
+	});
+
 	it("shows both off until the browser grants permission, then asks on toggle", async () => {
 		const requestPermission = stubNotification("default");
 		await renderGeneral();
