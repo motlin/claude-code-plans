@@ -163,6 +163,7 @@ function HitSection({
 							testId={rowTestId}
 							icon={KIND_ICON[hit.kind]}
 							title={hit.name}
+							variant="hit"
 							kind={hit.kind}
 							match={hit.match}
 							verified={hit.verified}

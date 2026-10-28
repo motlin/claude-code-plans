@@ -1319,6 +1319,51 @@ describe("unified search hit rows", () => {
 			toast: "Command copied: claude plugin install mcp-server-dev@claude-plugins-official",
 		});
 	});
+
+	it("lays hit rows out at upstream page density: 16px gaps, 12px padding and a 1px-offset second line", () => {
+		renderHitRows({yours: [SKILL_HIT], more: [ADDABLE_HIT]});
+		const rows = [
+			within(screen.getByTestId("customize-unified-search-yours")).getByTestId("customize-list-row"),
+			within(screen.getByTestId("customize-unified-search-more")).getByTestId(
+				"customize-unified-search-addable-hit-row",
+			),
+		];
+
+		expect(
+			rows.map((row) => {
+				const main = row.querySelector<HTMLElement>("[data-testid=tabbed-list-item-row-main]");
+				return {
+					row: ["gap-3", "gap-4", "p-3", "-mx-3", "rounded-card"].filter((cls) =>
+						row.classList.contains(cls),
+					),
+					leading: ["gap-3", "gap-4"].filter((cls) => main?.parentElement?.classList.contains(cls)),
+					main: main === null ? null : [...main.classList],
+					second: [
+						...(row.querySelector("[data-testid=tabbed-list-item-row-second-line]")?.classList ?? []),
+					].filter((cls) => cls === "mt-px"),
+				};
+			}),
+		).toStrictEqual(
+			Array.from({length: 2}, () => ({
+				row: ["gap-4", "p-3", "-mx-3", "rounded-card"],
+				leading: ["gap-4"],
+				main: ["flex", "min-w-0", "flex-1", "flex-col"],
+				second: ["mt-px"],
+			})),
+		);
+	});
+
+	it("keeps the resting list row at its 12px gaps", async () => {
+		await renderDialogPanel("#customize/skills");
+		const row = screen.getAllByTestId("customize-list-row")[0]!;
+		const leading = row.querySelector<HTMLElement>("[data-testid=customize-icon-tile]")?.parentElement;
+
+		expect({
+			row: ["gap-3", "gap-4"].filter((cls) => row.classList.contains(cls)),
+			leading: ["gap-3", "gap-4"].filter((cls) => leading?.classList.contains(cls)),
+			main: row.querySelector("[data-testid=tabbed-list-item-row-main]"),
+		}).toStrictEqual({row: ["gap-3"], leading: ["gap-3"], main: null});
+	});
 });
 
 /** The Customize panel inside the Settings dialog, with its hash held in local state. */
