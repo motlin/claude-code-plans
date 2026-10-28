@@ -155,6 +155,7 @@ const queueOriginSourceLabels = {
 const historySuppressionCauseLabels = {
 	chokepoint_veto: "Vetoed for another account",
 	migration: "Migration",
+	restored_owner_mismatch: "Restored for another account",
 } satisfies Record<z.infer<typeof HistorySuppressionCauseSchema>, string>;
 
 export const permissionDecisionDecisionLabels = {

@@ -1077,6 +1077,7 @@ const QueuedCommandAttachmentPayload = z
 		reminderId: z.string().optional(),
 		humanTurn: z.boolean().optional(),
 		runId: z.string().optional(),
+		toolsUsedDelta: z.array(z.string()).optional(),
 		usage: z
 			.object({
 				totalTokens: z.number().optional(),
@@ -1864,7 +1865,7 @@ export const BridgeSessionRecordSchema = z
 	.strict();
 
 /** Why the CLI suppressed syncing this session's history to a remote bridge. */
-export const HistorySuppressionCauseSchema = z.enum(["chokepoint_veto", "migration"]);
+export const HistorySuppressionCauseSchema = z.enum(["chokepoint_veto", "migration", "restored_owner_mismatch"]);
 
 const HistorySuppressionRecordSchema = z
 	.object({
@@ -1883,6 +1884,8 @@ const ModelCostUsageSchema = z
 		thinkingTokens: z.number().optional(),
 		cacheReadInputTokens: z.number().optional(),
 		cacheCreationInputTokens: z.number().optional(),
+		cacheCreationEphemeral5mInputTokens: z.number().optional(),
+		cacheCreationEphemeral1hInputTokens: z.number().optional(),
 		webSearchRequests: z.number().optional(),
 		costUSD: z.number().optional(),
 	})
