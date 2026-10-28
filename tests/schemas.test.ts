@@ -2164,6 +2164,32 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
+
+	it("parses a synthetic stream-cut assistant error record with streamCutCause", () => {
+		const record = {
+			type: "assistant",
+			...baseFields,
+			message: {
+				id: "c26da95a-ca87-43a8-b66f-b1af0e4e4a6a",
+				model: "<synthetic>",
+				role: "assistant",
+				stop_reason: "stop_sequence",
+				stop_sequence: "",
+				type: "message",
+				content: [
+					{
+						type: "text",
+						text: "API Error: Your computer went to sleep mid-response. The response above may be incomplete.",
+					},
+				],
+			},
+			error: "server_error",
+			isApiErrorMessage: true,
+			streamCutCause: "stream_suspended",
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
 });
 
 describe("JsonlRecordSchema observed 2026-10-21 transcript fields", () => {

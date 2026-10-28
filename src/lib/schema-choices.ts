@@ -64,6 +64,7 @@ import type {
 	RenderedRoleSchema,
 	SessionRegistryStatusSchema,
 	SkillOverrideValueSchema,
+	StreamCutCauseSchema,
 	TaskStatusSchema,
 	ThinkingDisplaySchema,
 	ToolAdditionToolSchema,
@@ -506,6 +507,11 @@ const thinkingDisplayChoices = {
 	updates: true,
 	omitted: true,
 } satisfies Record<z.infer<typeof ThinkingDisplaySchema>, true>;
+
+/** Not consumed yet — `streamCutCause` on assistant error records is only validated. */
+const streamCutCauseChoices = {
+	stream_suspended: true,
+} satisfies Record<z.infer<typeof StreamCutCauseSchema>, true>;
 
 /** Not consumed yet — `/context` twin category kinds on `system/local_command` records. */
 const contextUsageCategoryKindChoices = {
@@ -1562,6 +1568,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"AttachmentPayloadSchema.<instructions>.reason": contextRefreshReasonChoices,
 	"JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
 	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
+	"JsonlRecordSchema.<assistant>.streamCutCause": streamCutCauseChoices,
 	"JsonlRecordSchema.<system>.contextUsage.over_limit.kind": contextUsageOverLimitKindChoices,
 	"JsonlRecordSchema.<system>.contextUsage.categories[].kind": contextUsageCategoryKindChoices,
 	"ClaudeSettingsSchema.hooks{}[].hooks[]": claudeHookVariants,

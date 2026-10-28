@@ -582,6 +582,9 @@ const RateLimitInfoSchema = z
 // How the assistant's thinking was surfaced: streamed as `updates`, or `omitted` (empty thinking text).
 export const ThinkingDisplaySchema = z.enum(["updates", "omitted"]);
 
+// Why the CLI cut an assistant response stream short (`stream_suspended`: the computer slept mid-response).
+export const StreamCutCauseSchema = z.enum(["stream_suspended"]);
+
 export const AssistantRecordSchema = z
 	.object({
 		type: z.literal("assistant"),
@@ -659,6 +662,7 @@ export const AssistantRecordSchema = z
 		errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 		healsDistinctCarrier: z.boolean().optional(),
 		isAbortedMidStream: z.boolean().optional(),
+		streamCutCause: StreamCutCauseSchema.optional(),
 		advisorModel: z.string().optional(),
 		apiBlockIndex: z.number().optional(),
 		perTurnEffort: z.union([z.string(), z.null()]).optional(),
