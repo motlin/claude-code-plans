@@ -67,8 +67,47 @@ function dependencies(
 		request,
 		nextSequence: () => ({timestamp: 946_684_800_000, ordinal: 0, value: 946_684_800_000_000}),
 		observe: (observation) => observations.push(observation),
+		reportedStates: new Map(),
 	};
 }
+
+/** Report each event in arrival order and return the states written by pane.report_agent. */
+async function reportedStatesFor(events: HookEvent[]): Promise<Array<{state: string; message: string}>> {
+	const reports: Array<{state: string; message: string}> = [];
+	const hookDependencies = dependencies(async (requestValue) => {
+		const request = requestValue as {method: string; params: {state: string; message: string}};
+		if (request.method === "pane.report_agent") {
+			reports.push({state: request.params.state, message: request.params.message});
+		}
+		return Promise.resolve({ok: true, value: request.method === "pane.get" ? paneInfo() : {type: "ok"}});
+	}, []);
+	for (const event of events) {
+		reportHookStateToHerdr(event, entry(), hookDependencies);
+		await settleDetachedReport();
+	}
+	return reports;
+}
+
+const askUserQuestionPreToolUse: HookEvent = {
+	...baseEvent,
+	hook_event_name: "PreToolUse",
+	tool_name: "AskUserQuestion",
+	tool_input: {questions: []},
+};
+const askUserQuestionPostToolUse: HookEvent = {
+	...baseEvent,
+	hook_event_name: "PostToolUse",
+	tool_name: "AskUserQuestion",
+	tool_input: {questions: []},
+	tool_response: {},
+};
+const messageDisplay: HookEvent = {...baseEvent, hook_event_name: "MessageDisplay", message: "Fabricated text"};
+const idlePrompt: HookEvent = {
+	...baseEvent,
+	hook_event_name: "Notification",
+	message: "Claude is waiting for your input",
+	notification_type: "idle_prompt",
+};
 
 async function settleDetachedReport(): Promise<void> {
 	await new Promise<void>((resolve) => {
@@ -162,6 +201,60 @@ describe("herdr hook-state reporting", () => {
 			{state: "idle", message: "turn failed: rate_limit"},
 			{state: "blocked", message: "waiting for server-test input"},
 			{state: "working", message: "answered server-test input"},
+		]);
+	});
+
+	it("maps the idle-prompt notification to idle", () => {
+		expect(stateForHerdrHookEvent(idlePrompt)).toStrictEqual({state: "idle", message: "waiting for input"});
+	});
+
+	it("ignores a MessageDisplay that arrives after Stop", async () => {
+		expect(await reportedStatesFor([{...baseEvent, hook_event_name: "Stop"}, messageDisplay])).toStrictEqual([
+			{state: "idle", message: "ready"},
+		]);
+	});
+
+	it("keeps an AskUserQuestion pane blocked through a late MessageDisplay until the answer", async () => {
+		expect(
+			await reportedStatesFor([
+				askUserQuestionPreToolUse,
+				messageDisplay,
+				askUserQuestionPostToolUse,
+				messageDisplay,
+			]),
+		).toStrictEqual([
+			{state: "blocked", message: "waiting for AskUserQuestion"},
+			{state: "working", message: "finished AskUserQuestion"},
+			{state: "working", message: "writing response"},
+		]);
+	});
+
+	it("reports a MessageDisplay for a session with no earlier report", async () => {
+		expect(await reportedStatesFor([messageDisplay])).toStrictEqual([
+			{state: "working", message: "writing response"},
+		]);
+	});
+
+	it("heals a lost Stop with the idle-prompt notification but never unblocks a dialog with it", async () => {
+		expect(
+			await reportedStatesFor([messageDisplay, idlePrompt, askUserQuestionPreToolUse, idlePrompt]),
+		).toStrictEqual([
+			{state: "working", message: "writing response"},
+			{state: "idle", message: "waiting for input"},
+			{state: "blocked", message: "waiting for AskUserQuestion"},
+		]);
+	});
+
+	it("forgets a session's last state at SessionEnd", async () => {
+		expect(
+			await reportedStatesFor([
+				{...baseEvent, hook_event_name: "Stop"},
+				{...baseEvent, hook_event_name: "SessionEnd", reason: "other"},
+				messageDisplay,
+			]),
+		).toStrictEqual([
+			{state: "idle", message: "ready"},
+			{state: "working", message: "writing response"},
 		]);
 	});
 

@@ -33,6 +33,8 @@ export interface HerdrHookStateDependencies {
 	request: HerdrRequester;
 	nextSequence: () => HerdrSequence;
 	observe: (observation: HerdrReportObservation) => void;
+	/** The last state reported per session, in hook arrival order. */
+	reportedStates: Map<string, HerdrReportedState>;
 }
 
 const SOURCE = "ccp";
@@ -78,6 +80,9 @@ export function stateForHerdrHookEvent(event: HookEvent): HerdrHookState | null 
 			return {state: "idle", message: "ready"};
 		case "StopFailure":
 			return {state: "idle", message: `turn failed: ${event.error}`};
+		case "Notification":
+			// Claude Code sends idle_prompt after the prompt sits idle, which heals a lost Stop.
+			return event.notification_type === "idle_prompt" ? {state: "idle", message: "waiting for input"} : null;
 		case "Elicitation":
 			return {state: "blocked", message: `waiting for ${event.mcp_server_name} input`};
 		case "ElicitationResult":
@@ -85,6 +90,17 @@ export function stateForHerdrHookEvent(event: HookEvent): HerdrHookState | null 
 		default:
 			return null;
 	}
+}
+
+/**
+ * Weak hook signals that must not override a settled state. A MessageDisplay can
+ * arrive after the Stop or AskUserQuestion PreToolUse that ended its stream, and
+ * the idle prompt can fire while a dialog is still open.
+ */
+function overridesReportedState(event: HookEvent, previous: HerdrReportedState | undefined): boolean {
+	if (event.hook_event_name === "MessageDisplay") return previous === undefined || previous === "working";
+	if (event.hook_event_name === "Notification") return previous !== "blocked";
+	return true;
 }
 
 function defaultObserver(observation: HerdrReportObservation): void {
@@ -98,6 +114,7 @@ const defaultDependencies: HerdrHookStateDependencies = {
 	request: herdrRequest,
 	nextSequence: createHerdrSequence(),
 	observe: defaultObserver,
+	reportedStates: new Map(),
 };
 
 function observeRequestError(
@@ -326,6 +343,14 @@ export function reportHookStateToHerdr(
 	dependencies: HerdrHookStateDependencies = defaultDependencies,
 ): void {
 	if (!dependencies.writesEnabled()) return;
+	if (event.hook_event_name === "SessionEnd") {
+		dependencies.reportedStates.delete(event.session_id);
+	} else {
+		const report = stateForHerdrHookEvent(event);
+		if (!report) return;
+		if (!overridesReportedState(event, dependencies.reportedStates.get(event.session_id))) return;
+		dependencies.reportedStates.set(event.session_id, report.state);
+	}
 	void sendHookState(event, entry, dependencies).catch((error: unknown) => {
 		dependencies.observe({
 			outcome: "request-error",
