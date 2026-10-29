@@ -997,7 +997,40 @@ describe("artifacts route", () => {
 		fireEvent.contextMenu(screen.getByRole("link", {name: "Quarterly plan"}), {clientX: 40, clientY: 50});
 		const contextMenu = (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
 
-		expect({menu, contextMenu}).toStrictEqual({menu: ["Pin", "Copy link"], contextMenu: ["Pin", "Copy link"]});
+		expect({menu, contextMenu}).toStrictEqual({menu: ["PinP", "Copy linkC"], contextMenu: ["PinP", "Copy linkC"]});
+	});
+
+	it("gives the card menu upstream's P / C keycaps, row hooks and 6px offset, and fires a row by its letter", async () => {
+		const writeText = vi.fn<(text: string) => Promise<void>>(async (_text: string) => {});
+		Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText}});
+		await renderArtifactsPage("/artifacts", true);
+
+		const card = screen.getByRole("link", {name: "Asap Ladder Queue"}).closest<HTMLElement>("li")!;
+		fireEvent.click(within(card).getByRole("button", {name: "More options for Asap Ladder Queue"}));
+		const menu = await screen.findByRole("menu");
+		const rows = screen.getAllByRole("menuitem").map((item) => ({
+			row: item.getAttribute("data-artifact-row"),
+			keys: item.getAttribute("aria-keyshortcuts"),
+			cap: item.querySelector("kbd")?.textContent,
+			capHidden: item.querySelector("kbd")?.closest(".pointer-coarse\\:hidden") !== null,
+		}));
+		const offset = menu.closest("[data-side-offset]")?.getAttribute("data-side-offset");
+		fireEvent.keyDown(menu, {key: "c"});
+
+		expect({
+			rows,
+			offset,
+			toast: (await screen.findByText("Link copied to clipboard.")).textContent,
+			copied: writeText.mock.calls,
+		}).toStrictEqual({
+			rows: [
+				{row: "pin", keys: "p", cap: "P", capHidden: true},
+				{row: "copy-link", keys: "c", cap: "C", capHidden: true},
+			],
+			offset: "6",
+			toast: "Link copied to clipboard.",
+			copied: [[LADDER_URL]],
+		});
 	});
 
 	it("moves a pinned row under Pinned, stores it per browser and unpins from the hover button", async () => {

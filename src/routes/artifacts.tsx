@@ -523,20 +523,27 @@ function togglePin(artifact: ArtifactSummary, pinned: boolean): void {
 	else pinArtifact(artifact.url);
 }
 
-/** Upstream's row menu within local limits: Rename, Duplicate and Delete are cloud mutations. */
+/** Upstream's row menu within local limits (Rename, Duplicate and Delete are cloud mutations), with its P / C keycaps. */
 function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinned: boolean}) {
 	const copyLink = useCopyArtifactLink();
 	return (
 		<>
 			<MenuItem
 				icon={pinned ? <Pin aria-hidden="true" fill="currentColor" /> : <Pin aria-hidden="true" />}
+				accelerator="p"
+				data-artifact-row="pin"
 				onSelect={() => {
 					togglePin(artifact, pinned);
 				}}
 			>
 				{pinned ? "Unpin" : "Pin"}
 			</MenuItem>
-			<MenuItem icon={<LinkIcon aria-hidden="true" />} onSelect={() => void copyLink(artifact)}>
+			<MenuItem
+				icon={<LinkIcon aria-hidden="true" />}
+				accelerator="c"
+				data-artifact-row="copy-link"
+				onSelect={() => void copyLink(artifact)}
+			>
 				Copy link
 			</MenuItem>
 		</>
@@ -574,6 +581,9 @@ function ArtifactPinButton({
 const CARD_MORE_CLASS =
 	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r5 bg-surface-1 text-ink-muted hover:bg-surface-3 hover:text-primary aria-expanded:bg-surface-3 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
+/** Upstream's card/row More menu sits 6px off its trigger. */
+const ARTIFACT_MENU_OFFSET = 6;
+
 function ArtifactMoreMenu({
 	artifact,
 	pinned,
@@ -588,7 +598,7 @@ function ArtifactMoreMenu({
 			<MenuTrigger aria-label={`More options for ${artifact.title}`} className={className}>
 				<EllipsisVertical aria-hidden="true" className="size-4" />
 			</MenuTrigger>
-			<MenuContent align="end">
+			<MenuContent align="end" sideOffset={ARTIFACT_MENU_OFFSET}>
 				<ArtifactMenuItems artifact={artifact} pinned={pinned} />
 			</MenuContent>
 		</Menu>
