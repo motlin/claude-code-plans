@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -192,5 +192,27 @@ describe("CommentEditor", () => {
 			focused: true,
 			caret: 3,
 		});
+	});
+
+	it("retries autoFocus until an unslotted textarea renders and takes focus", async () => {
+		// A diff annotation's card mounts before the diff library adds its shadow <slot>, so the first focus() is a no-op.
+		const realFocus = HTMLTextAreaElement.prototype.focus;
+		let slotted = false;
+		const focus = vi.spyOn(HTMLTextAreaElement.prototype, "focus").mockImplementation(function (
+			this: HTMLTextAreaElement,
+			options?: FocusOptions,
+		) {
+			if (slotted) realFocus.call(this, options);
+		});
+		render(<Controlled isEditing autoFocus initial="abc" />);
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox");
+		const before = document.activeElement === textarea;
+		slotted = true;
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(textarea);
+		});
+		focus.mockRestore();
+		expect({before, caret: textarea.selectionStart}).toStrictEqual({before: false, caret: 3});
 	});
 });

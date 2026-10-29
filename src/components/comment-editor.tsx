@@ -52,6 +52,9 @@ export type CommentEditorProps = {
 	cardRef?: Ref<HTMLDivElement>;
 };
 
+/** About half a second of frames to wait for an autoFocus textarea to become focusable. */
+const AUTO_FOCUS_ATTEMPTS = 30;
+
 const ICON_BUTTON_CLASS =
 	"rounded-sm p-0.75 text-ink-muted hover:bg-fill-ghost-hover hover:text-primary disabled:opacity-40";
 const REVEAL_BUTTON_CLASS =
@@ -107,12 +110,25 @@ export function CommentEditor({
 	const blocked = saveDisabledReason !== undefined;
 
 	useLayoutEffect(() => {
-		if (!autoFocus) return;
 		const textarea = textareaRef.current;
-		if (textarea === null) return;
-		textarea.focus();
-		textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-		textarea.scrollTop = textarea.scrollHeight;
+		if (!autoFocus || textarea === null) return undefined;
+		// A diff annotation's card mounts before `@pierre/diffs` adds the shadow <slot> it goes in, and an
+		// unslotted textarea ignores focus(); retry each frame until the browser takes it.
+		let frame = 0;
+		let attempts = 0;
+		const tryFocus = () => {
+			textarea.focus();
+			if (textarea.ownerDocument.activeElement !== textarea) {
+				if (++attempts < AUTO_FOCUS_ATTEMPTS) frame = requestAnimationFrame(tryFocus);
+				return;
+			}
+			textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+			textarea.scrollTop = textarea.scrollHeight;
+		};
+		tryFocus();
+		return () => {
+			cancelAnimationFrame(frame);
+		};
 	}, [autoFocus, textareaRef]);
 
 	const save = (viaKeyboard: boolean, submit: boolean) => {

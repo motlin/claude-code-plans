@@ -460,6 +460,22 @@ describe("Changes pane right-click menu", () => {
 		]);
 		expect(commentCard(container, "annotation-additions-3")).not.toBeNull();
 	});
+
+	it("focuses the new card's textarea after Add comment, not the menu's trigger", async () => {
+		const {container} = renderPane();
+		await rightClickLine(container, 3);
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Add comment on line 3"}));
+
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		await new Promise((resolve) => {
+			setTimeout(resolve, 50);
+		});
+		const card = commentCard(container, "annotation-additions-3");
+		if (card === null) throw new Error("no comment card");
+		expect(document.activeElement).toBe(within(card).getByRole("textbox", {name: "Comment on line 3"}));
+	});
 });
 
 describe("Changes pane gutter add-comment button", () => {
@@ -470,13 +486,41 @@ describe("Changes pane gutter add-comment button", () => {
 		expect({
 			title: button.getAttribute("title"),
 			className: button.className,
+			position: button.style.position,
 			top: button.style.top,
+			bottom: button.style.bottom,
 		}).toStrictEqual({
 			title: null,
 			className:
 				"-left-0.5 flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover",
+			position: "absolute",
 			top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)",
+			bottom: "auto",
 		});
+	});
+
+	it("focuses the new card's textarea after a click on +", async () => {
+		const {container} = renderPane();
+		const host = await waitFor(() => {
+			const found = container.querySelector("diffs-container");
+			if (!found?.shadowRoot?.querySelector('[data-line-type="change-addition"]'))
+				throw new Error("diff not rendered yet");
+			return found;
+		});
+		const plus = host.querySelector<HTMLButtonElement>('button[aria-label="Add comment on this line"]');
+		if (plus === null) throw new Error("no gutter button");
+		act(() => {
+			// The library resolves the hovered line from the pointer; stand in for it with the draft the click opens.
+			plus.focus();
+			openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 3});
+		});
+
+		await new Promise((resolve) => {
+			setTimeout(resolve, 50);
+		});
+		const card = commentCard(container, "annotation-additions-3");
+		if (card === null) throw new Error("no comment card");
+		expect(document.activeElement).toBe(within(card).getByRole("textbox", {name: "Comment on line 3"}));
 	});
 });
 

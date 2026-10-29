@@ -1,9 +1,9 @@
 import {getSingularPatch} from "@pierre/diffs";
 import type {FileDiffMetadata, GetHoveredLineResult} from "@pierre/diffs";
-import {FileDiff} from "@pierre/diffs/react";
+import {FileDiff, GutterUtilitySlotStyles} from "@pierre/diffs/react";
 import type {FileDiffOptions} from "@pierre/diffs/react";
 import {ArrowUpRight, ChevronDown, ChevronRight, Plus} from "lucide-react";
-import {type ReactNode, useMemo, useState} from "react";
+import {type CSSProperties, type ReactNode, useMemo, useState} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {LazyFileTypeIcon} from "../lazy-file-type-icon";
 import {DIFFS_STYLE_OVERRIDES} from "./diffs-config";
@@ -43,6 +43,16 @@ export interface DiffLineRange {
 }
 
 /** Upstream's 16px accent "+" (`Zc`) in the hovered line's gutter, centred on the line. */
+/**
+ * Upstream's gutter "+" style: the library's absolute slot style, centred on the line. Absolute, the button
+ * leaves the zero-width slot at the number cell's right edge and sits clear of the line number above it.
+ */
+const GUTTER_BUTTON_STYLE: CSSProperties = {
+	...GutterUtilitySlotStyles,
+	top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)",
+	bottom: "auto",
+};
+
 export function AddCommentGutterButton({
 	getHoveredLine,
 	onAddComment,
@@ -61,7 +71,7 @@ export function AddCommentGutterButton({
 				}
 			}}
 			className="-left-0.5 flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover"
-			style={{top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)"}}
+			style={GUTTER_BUTTON_STYLE}
 		>
 			<Plus aria-hidden="true" className="size-3" strokeWidth={2.5} />
 		</button>
