@@ -3,8 +3,7 @@ import {useSyncExternalStore} from "react";
 import type {ReviewComment} from "./context-attach";
 
 /**
- * "Request changes" comments on Changes pane diff lines, per session and in
- * memory only. An open comment card is a draft; Save comment queues it, and
+ * Comments on Changes pane diff lines, per session and in memory only. An open comment card is a draft; Save comment queues it, and
  * the session's composer sends the queued comments with its next prompt.
  */
 
@@ -29,9 +28,20 @@ export interface DiffComments {
 	queued: readonly QueuedDiffComment[];
 }
 
+/**
+ * The in-memory editing state beside the comments, as upstream's `bodiesBySession` and `activeBySession`:
+ * draft text survives its card unmounting, and the active card draws the accent border.
+ */
+export interface DiffCommentEditing {
+	bodies: Readonly<Record<string, string>>;
+	activeId: string | null;
+}
+
 const EMPTY: DiffComments = {drafts: [], queued: []};
+const NO_EDITING: DiffCommentEditing = {bodies: {}, activeId: null};
 
 let sessions = new Map<string, DiffComments>();
+let editing = new Map<string, DiffCommentEditing>();
 const listeners = new Set<() => void>();
 let nextId = 1;
 
@@ -41,6 +51,22 @@ function update(sessionId: string, change: (comments: DiffComments) => DiffComme
 	if (next.drafts.length === 0 && next.queued.length === 0) sessions.delete(sessionId);
 	else sessions.set(sessionId, next);
 	for (const listener of listeners) listener();
+}
+
+function updateEditing(sessionId: string, change: (state: DiffCommentEditing) => DiffCommentEditing): void {
+	const next = change(getDiffCommentEditing(sessionId));
+	editing = new Map(editing);
+	if (Object.keys(next.bodies).length === 0 && next.activeId === null) editing.delete(sessionId);
+	else editing.set(sessionId, next);
+	for (const listener of listeners) listener();
+}
+
+/** Drops a draft's text and clears the active card when it was this one. */
+function forgetDraft(sessionId: string, id: string): void {
+	updateEditing(sessionId, ({bodies, activeId}) => {
+		const {[id]: _dropped, ...rest} = bodies;
+		return {bodies: rest, activeId: activeId === id ? null : activeId};
+	});
 }
 
 function sameTarget(a: DiffCommentTarget, b: DiffCommentTarget): boolean {
@@ -53,10 +79,22 @@ export function getDiffComments(sessionId: string): DiffComments {
 	return sessions.get(sessionId) ?? EMPTY;
 }
 
-/** Opens a comment card on the target lines, reusing one already open there. */
+export function getDiffCommentEditing(sessionId: string): DiffCommentEditing {
+	return editing.get(sessionId) ?? NO_EDITING;
+}
+
+/** Keeps a draft's typed text in the store so it outlives its card. */
+export function setDiffCommentDraftBody(sessionId: string, id: string, text: string): void {
+	updateEditing(sessionId, (state) => ({...state, bodies: {...state.bodies, [id]: text}}));
+}
+
+/** Opens a comment card on the target lines, reusing one already open there, and makes it the active card. */
 export function openDiffCommentDraft(sessionId: string, target: DiffCommentTarget): string {
 	const existing = getDiffComments(sessionId).drafts.find((draft) => sameTarget(draft, target));
-	if (existing !== undefined) return existing.id;
+	if (existing !== undefined) {
+		updateEditing(sessionId, (state) => ({...state, activeId: existing.id}));
+		return existing.id;
+	}
 	const draft: DiffCommentDraft = {
 		id: `diff-comment-${nextId++}`,
 		path: target.path,
@@ -65,6 +103,7 @@ export function openDiffCommentDraft(sessionId: string, target: DiffCommentTarge
 		...(target.endLine === undefined || target.endLine === target.line ? {} : {endLine: target.endLine}),
 	};
 	update(sessionId, (comments) => ({...comments, drafts: [...comments.drafts, draft]}));
+	updateEditing(sessionId, (state) => ({...state, activeId: draft.id}));
 	return draft.id;
 }
 
@@ -73,6 +112,7 @@ export function discardDiffCommentDraft(sessionId: string, id: string): void {
 		...comments,
 		drafts: comments.drafts.filter((draft) => draft.id !== id),
 	}));
+	forgetDraft(sessionId, id);
 }
 
 /** Moves a draft into the queue with its comment text. */
@@ -83,6 +123,7 @@ export function saveDiffComment(sessionId: string, id: string, text: string): vo
 		drafts: comments.drafts.filter((candidate) => candidate.id !== id),
 		queued: [...comments.queued, {...draft, text: text.trim()}],
 	}));
+	forgetDraft(sessionId, id);
 }
 
 export function removeQueuedDiffComment(sessionId: string, id: string): void {
@@ -101,6 +142,7 @@ export function takeQueuedDiffComments(sessionId: string): readonly QueuedDiffCo
 
 export function clearDiffComments(sessionId: string): void {
 	if (sessions.has(sessionId)) update(sessionId, () => EMPTY);
+	if (editing.has(sessionId)) updateEditing(sessionId, () => NO_EDITING);
 }
 
 function subscribe(listener: () => void): () => void {
@@ -113,5 +155,13 @@ export function useDiffComments(sessionId: string | undefined): DiffComments {
 		subscribe,
 		() => (sessionId === undefined ? EMPTY : getDiffComments(sessionId)),
 		() => EMPTY,
+	);
+}
+
+export function useDiffCommentEditing(sessionId: string): DiffCommentEditing {
+	return useSyncExternalStore(
+		subscribe,
+		() => getDiffCommentEditing(sessionId),
+		() => NO_EDITING,
 	);
 }

@@ -306,6 +306,11 @@ export function requestComposerInsert(sessionId: string, text: string): boolean 
 	return handles.length > 0;
 }
 
+/** Upstream's `requestComposerAction` after a keyboard comment save: focus the composer, or send its prompt. */
+export function requestComposerAction(sessionId: string, action: "focus" | "submit"): boolean {
+	return action === "submit" ? submitComposer(sessionId) : focusComposer(sessionId);
+}
+
 /** Upstream's local take-back join: the cancelled message, a blank line, then the draft. */
 export function mergeTakeBack(text: string, draft: string): string {
 	return draft.trim() === "" ? text : `${text}\n\n${draft}`;

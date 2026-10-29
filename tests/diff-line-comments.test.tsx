@@ -105,9 +105,10 @@ describe("Changes pane line comments", () => {
 		});
 		const card = commentCard(container, "annotation-additions-3");
 		if (card === null) throw new Error("no comment card");
-		const textarea = within(card).getByPlaceholderText("Request changes");
+		const textarea = within(card).getByRole("textbox", {name: "Comment on line 3"});
 		const opened = {
 			label: within(card).getByText("Line 3").textContent,
+			placeholder: textarea.getAttribute("placeholder"),
 			saveDisabled: within(card).getByRole<HTMLButtonElement>("button", {name: "Save comment"}).disabled,
 		};
 
@@ -118,24 +119,113 @@ describe("Changes pane line comments", () => {
 			card: commentCard(container, "annotation-additions-3"),
 			comments: getDiffComments(SESSION),
 		}).toStrictEqual({
-			opened: {label: "Line 3", saveDisabled: true},
+			opened: {label: "Line 3", placeholder: "Tell Claude what to change", saveDisabled: true},
 			card: null,
 			comments: {drafts: [], queued: []},
 		});
 	});
 
-	it("keeps a card with text open on Escape", () => {
+	it("discards a card with text on Escape", () => {
 		const {container} = renderPane();
 		act(() => {
 			openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 3});
 		});
 		const card = commentCard(container, "annotation-additions-3");
 		if (card === null) throw new Error("no comment card");
-		const textarea = within(card).getByPlaceholderText("Request changes");
+		const textarea = within(card).getByPlaceholderText("Tell Claude what to change");
 		fireEvent.change(textarea, {target: {value: "Use a constant"}});
 		fireEvent.keyDown(textarea, {key: "Escape"});
 
-		expect(commentCard(container, "annotation-additions-3")).not.toBeNull();
+		expect({
+			card: commentCard(container, "annotation-additions-3"),
+			comments: getDiffComments(SESSION),
+		}).toStrictEqual({card: null, comments: {drafts: [], queued: []}});
+	});
+
+	it("saves on Enter and focuses the composer", () => {
+		const onSend = vi.fn<(prompt: string) => void>();
+		const {container} = renderPane(onSend);
+		act(() => {
+			openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 2, endLine: 3});
+		});
+		const card = commentCard(container, "annotation-additions-3");
+		if (card === null) throw new Error("no comment card");
+		const textarea = within(card).getByRole("textbox", {name: "Comment on lines 2–3"});
+		fireEvent.change(textarea, {target: {value: "Extract a helper"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({
+			queued: getDiffComments(SESSION).queued.map(({text}) => text),
+			drafts: getDiffComments(SESSION).drafts,
+			focused: document.activeElement === screen.getByRole("textbox", {name: "Prompt"}),
+			sent: onSend.mock.calls,
+		}).toStrictEqual({queued: ["Extract a helper"], drafts: [], focused: true, sent: []});
+	});
+
+	it("saves and sends the prompt on Meta+Enter", () => {
+		const onSend = vi.fn<(prompt: string) => void>();
+		const {container} = renderPane(onSend);
+		act(() => {
+			openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 2, endLine: 3});
+		});
+		const card = commentCard(container, "annotation-additions-3");
+		if (card === null) throw new Error("no comment card");
+		const textarea = within(card).getByRole("textbox", {name: "Comment on lines 2–3"});
+		fireEvent.change(textarea, {target: {value: "Extract a helper"}});
+		fireEvent.keyDown(textarea, {key: "Enter", metaKey: true});
+
+		expect({sent: onSend.mock.calls, comments: getDiffComments(SESSION)}).toStrictEqual({
+			sent: [["src/greet.ts:2-3 — Extract a helper", {}]],
+			comments: {drafts: [], queued: []},
+		});
+	});
+
+	it("discards an empty draft when focus leaves the card", () => {
+		vi.useFakeTimers({toFake: ["requestAnimationFrame", "cancelAnimationFrame"]});
+		try {
+			const {container} = renderPane();
+			act(() => {
+				openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 3});
+			});
+			const card = commentCard(container, "annotation-additions-3");
+			if (card === null) throw new Error("no comment card");
+			fireEvent.blur(within(card).getByRole("textbox", {name: "Comment on line 3"}), {
+				relatedTarget: document.body,
+			});
+			const beforeFrame = getDiffComments(SESSION).drafts.length;
+			act(() => {
+				vi.advanceTimersByTime(16);
+			});
+
+			expect({
+				beforeFrame,
+				card: commentCard(container, "annotation-additions-3"),
+				comments: getDiffComments(SESSION),
+			}).toStrictEqual({beforeFrame: 1, card: null, comments: {drafts: [], queued: []}});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("keeps draft text when the card unmounts and remounts", () => {
+		const first = renderPane();
+		act(() => {
+			openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 3});
+		});
+		const card = commentCard(first.container, "annotation-additions-3");
+		if (card === null) throw new Error("no comment card");
+		fireEvent.change(within(card).getByRole("textbox", {name: "Comment on line 3"}), {
+			target: {value: "abc"},
+		});
+		first.unmount();
+
+		const second = renderPane();
+		const remounted = commentCard(second.container, "annotation-additions-3");
+		if (remounted === null) throw new Error("no comment card after remount");
+
+		expect(within(remounted).getByRole<HTMLTextAreaElement>("textbox", {name: "Comment on line 3"}).value).toBe(
+			"abc",
+		);
 	});
 
 	it("queues saved comments as chips and prepends them to the next prompt", () => {
@@ -151,7 +241,7 @@ describe("Changes pane line comments", () => {
 		});
 		const card = commentCard(container, "annotation-additions-3");
 		if (card === null) throw new Error("no comment card");
-		fireEvent.change(within(card).getByPlaceholderText("Request changes"), {
+		fireEvent.change(within(card).getByPlaceholderText("Tell Claude what to change"), {
 			target: {value: "Extract a helper"},
 		});
 		fireEvent.click(within(card).getByRole("button", {name: "Save comment"}));
@@ -193,7 +283,7 @@ describe("Changes pane line comments", () => {
 		});
 		const card = document.querySelector<HTMLElement>('[slot="annotation-additions-5"] [data-line-comment]');
 		if (card === null) throw new Error("no comment card");
-		fireEvent.change(within(card).getByPlaceholderText("Request changes"), {
+		fireEvent.change(within(card).getByPlaceholderText("Tell Claude what to change"), {
 			target: {value: "Rename"},
 		});
 		fireEvent.click(within(card).getByRole("button", {name: "Save comment"}));

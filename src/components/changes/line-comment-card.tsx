@@ -1,74 +1,80 @@
 import {X} from "lucide-react";
-import {useState} from "react";
+import {useRef} from "react";
+import {flushSync} from "react-dom";
 
+import {requestComposerAction} from "../../lib/context-attach";
 import {
 	type DiffCommentDraft,
 	type QueuedDiffComment,
 	discardDiffCommentDraft,
+	getDiffCommentEditing,
 	removeQueuedDiffComment,
 	saveDiffComment,
+	setDiffCommentDraftBody,
+	useDiffCommentEditing,
 } from "../../lib/diff-comments";
+import {CommentEditor} from "../comment-editor";
 
 const CARD_CLASS =
 	"flex flex-col gap-1.5 rounded-r6 border border-border bg-surface-3 p-2 font-sans text-body text-primary";
-
-const TEXTAREA_CLASS =
-	"block min-h-[40px] w-full resize-none rounded-r5 bg-transparent px-1 py-0.5 font-sans text-body text-primary [field-sizing:content] placeholder:text-ink-muted focus:outline-none";
-
-const SAVE_BUTTON_CLASS =
-	"h-6 cursor-pointer rounded-r5 bg-accent-100 px-2 text-footnote text-white transition-opacity disabled:cursor-default disabled:opacity-40";
 
 /** "Line 3", or "Lines 2–5" for a range. */
 function lineLabel({line, endLine}: {line: number; endLine?: number | undefined}) {
 	return endLine === undefined || endLine === line ? `Line ${line}` : `Lines ${line}–${endLine}`;
 }
 
-function isSaveShortcut(event: React.KeyboardEvent): boolean {
-	return event.key === "Enter" && (event.metaKey || event.ctrlKey);
+/** Upstream's input label: "Comment on line 3", or "Comment on lines 2–5". */
+function inputLabel({line, endLine}: {line: number; endLine?: number | undefined}) {
+	return endLine === undefined || endLine === line
+		? `Comment on line ${line}`
+		: `Comment on lines ${line}–${endLine}`;
 }
 
 /**
- * Upstream's inline comment card: "Line N", a "Request changes" textarea and
- * Save comment. Escape on an empty card removes it.
+ * Upstream's diff draft card (`Ie` + `Uc`): the shared inline `CommentEditor` with "Tell Claude what to
+ * change". Enter saves and focuses the composer, ⌘Enter saves and sends, Escape discards the draft, and an
+ * empty draft is discarded once focus leaves the card. The typed text lives in the store, so it outlives
+ * the card.
  */
 export function LineCommentCard({sessionId, draft}: {sessionId: string; draft: DiffCommentDraft}) {
-	const [text, setText] = useState("");
-	const empty = text.trim() === "";
-	const save = () => {
-		saveDiffComment(sessionId, draft.id, text);
-	};
+	const {bodies, activeId} = useDiffCommentEditing(sessionId);
+	const cardRef = useRef<HTMLDivElement>(null);
 	return (
-		<div className="px-2 py-1">
-			<div data-line-comment={draft.id} className={CARD_CLASS}>
-				<span className="px-1 text-footnote text-ink-muted">{lineLabel(draft)}</span>
-				<textarea
-					// oxlint-disable-next-line jsx-a11y/no-autofocus -- the card opens to be typed in
-					autoFocus
-					aria-label={`Request changes on ${lineLabel(draft).toLowerCase()}`}
-					placeholder="Request changes"
-					value={text}
-					rows={1}
-					onChange={(event) => {
-						setText(event.target.value);
-					}}
-					onKeyDown={(event) => {
-						if (event.key === "Escape" && empty) {
-							event.preventDefault();
-							event.stopPropagation();
+		<div data-line-comment={draft.id}>
+			<CommentEditor
+				isEditing
+				autoFocus
+				isActive={activeId === draft.id}
+				label={lineLabel(draft)}
+				inputLabel={inputLabel(draft)}
+				placeholder="Tell Claude what to change"
+				value={bodies[draft.id] ?? ""}
+				onChange={(text) => {
+					setDiffCommentDraftBody(sessionId, draft.id, text);
+				}}
+				onSave={(text, {submit, viaKeyboard}) => {
+					if (!viaKeyboard) {
+						saveDiffComment(sessionId, draft.id, text);
+						return;
+					}
+					// Commit the queued comment first, so the composer's send sees it.
+					flushSync(() => {
+						saveDiffComment(sessionId, draft.id, text);
+					});
+					requestComposerAction(sessionId, submit ? "submit" : "focus");
+				}}
+				onCancel={() => {
+					discardDiffCommentDraft(sessionId, draft.id);
+				}}
+				onInputBlur={(event) => {
+					if (event.relatedTarget instanceof Node && cardRef.current?.contains(event.relatedTarget)) return;
+					requestAnimationFrame(() => {
+						if ((getDiffCommentEditing(sessionId).bodies[draft.id] ?? "").trim() === "")
 							discardDiffCommentDraft(sessionId, draft.id);
-						} else if (isSaveShortcut(event) && !empty) {
-							event.preventDefault();
-							save();
-						}
-					}}
-					className={TEXTAREA_CLASS}
-				/>
-				<div className="flex justify-end">
-					<button type="button" disabled={empty} onClick={save} className={SAVE_BUTTON_CLASS}>
-						Save comment
-					</button>
-				</div>
-			</div>
+					});
+				}}
+				cardRef={cardRef}
+			/>
 		</div>
 	);
 }
