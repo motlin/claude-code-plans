@@ -27,12 +27,12 @@ function tokens(selector: string): Record<string, string | null> {
 }
 
 describe("chart tokens", () => {
-	it("defines upstream's light --cds-chart-* values (fizzy-lake off)", () => {
+	it("defines upstream's light --cds-chart-* values (fizzy-lake off; categorical-1 read live 2026-10-29)", () => {
 		expect(tokens(":root")).toStrictEqual({
 			"--chart-reference": "#898781",
 			"--chart-muted": "#c3c2b7",
 			"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
-			"--chart-categorical-1": "#2a78d6",
+			"--chart-categorical-1": "#257de0",
 			"--chart-categorical-2": "#eb6834",
 			"--chart-categorical-3": "#1baf7a",
 			"--chart-categorical-4": "#eda100",
@@ -44,7 +44,7 @@ describe("chart tokens", () => {
 			"--chart-reference": "#97958d",
 			"--chart-muted": "#5f5e5a",
 			"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
-			"--chart-categorical-1": "#3987e5",
+			"--chart-categorical-1": "#338ced",
 			"--chart-categorical-2": "#d95926",
 			"--chart-categorical-3": "#199e70",
 			"--chart-categorical-4": "#c98500",

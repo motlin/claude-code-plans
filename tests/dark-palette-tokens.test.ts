@@ -60,7 +60,7 @@ describe("dark palette", () => {
 			"--menu-muted": "#898781",
 			"--settings-muted": "#898781",
 			"--upstream-code-ink": "#ec7e7e",
-			"--upstream-accent": "#6da7ec",
+			"--upstream-accent": "#6aabf1",
 			"--upstream-border": "hsl(0 0% 100% / 0.1)",
 			"--upstream-border-strong": "hsl(0 0% 100% / 0.2)",
 			"--upstream-fill-primary": "#fff",

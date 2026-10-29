@@ -307,8 +307,8 @@ html[data-interface-font="dyslexic"] {
 	--text-pro: #5437b8;
 	--accent-000: hsl(210 73.7% 40.2%);
 	/* Upstream claude.ai/code accent ink: transcript links, file refs, PR chips,
-	   and pressed toggles. */
-	--upstream-accent: rgb(24 79 149);
+	   and pressed toggles (`--cds-text-accent`, read live from .cds-root 2026-10-29). */
+	--upstream-accent: #1757ac;
 	/* Upstream `--cds-fill-accent` (checks and accent fills; read live from .cds-root 2026-10-29), the same in both modes. */
 	--upstream-fill-accent: #257de0;
 	/* Upstream `--cds-fill-accent-hover` / `--cds-on-accent` (read live from .cds-root 2026-10-29), the same in both modes. */
@@ -500,7 +500,8 @@ html[data-interface-font="dyslexic"] {
 	--chart-reference: #898781;
 	--chart-muted: #c3c2b7;
 	--chart-reference-tint: hsl(from var(--chart-reference) h s l / 15%);
-	--chart-categorical-1: #2a78d6;
+	/* categorical-1 read live from .cds-root 2026-10-29. */
+	--chart-categorical-1: #257de0;
 	--chart-categorical-2: #eb6834;
 	--chart-categorical-3: #1baf7a;
 	--chart-categorical-4: #eda100;
@@ -575,7 +576,8 @@ html[data-interface-font="dyslexic"] {
 	--warning-tint: #fbb31514;
 	--text-pro: #a89af0;
 	--accent-000: hsl(210 65.5% 67.1%);
-	--upstream-accent: #6da7ec;
+	/* Upstream `--cds-text-accent` (dark; read live from .cds-root 2026-10-29). */
+	--upstream-accent: #6aabf1;
 	--upstream-fill-accent: #257de0;
 	/* Upstream `--cds-fill-accent-hover` / `--cds-on-accent` (read live from .cds-root 2026-10-29), the same in both modes. */
 	--upstream-fill-accent-hover: #2171ca;
@@ -679,7 +681,8 @@ html[data-interface-font="dyslexic"] {
 	--chart-reference: #97958d;
 	--chart-muted: #5f5e5a;
 	--chart-reference-tint: hsl(from var(--chart-reference) h s l / 15%);
-	--chart-categorical-1: #3987e5;
+	/* categorical-1 read live from .cds-root 2026-10-29. */
+	--chart-categorical-1: #338ced;
 	--chart-categorical-2: #d95926;
 	--chart-categorical-3: #199e70;
 	--chart-categorical-4: #c98500;

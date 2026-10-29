@@ -21,8 +21,8 @@ describe("transcript link styles", () => {
 			dark: tokenIn(".dark", "--upstream-accent"),
 			themeColor: tokenIn("@theme inline", "--color-upstream-accent"),
 		}).toStrictEqual({
-			light: "rgb(24 79 149)",
-			dark: "#6da7ec",
+			light: "#1757ac",
+			dark: "#6aabf1",
 			themeColor: "var(--upstream-accent)",
 		});
 	});
