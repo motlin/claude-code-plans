@@ -24,12 +24,13 @@ function UsageBandShell({
 	danger?: boolean;
 	onDismiss?: () => void;
 }) {
-	// Inside the notice region its list is the live region, so the band doesn't nest another.
-	const live = !useInNoticeRegion();
+	// Inside the notice region its list is the live region and its item reveals in, so the band
+	// nests neither another live region nor its own enter animation.
+	const inline = !useInNoticeRegion();
 	return (
 		<div
-			{...(live ? {role: "status", "aria-live": "polite"} : {})}
-			className="flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter"
+			{...(inline ? {role: "status", "aria-live": "polite"} : {})}
+			className={`flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body${inline ? " usage-band-enter" : ""}`}
 		>
 			<span className="flex h-[1lh] shrink-0 items-center">
 				<Gauge className={`size-4 ${danger ? "text-danger-000" : "text-ink-muted"}`} aria-hidden="true" />

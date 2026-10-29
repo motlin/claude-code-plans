@@ -11,6 +11,7 @@ import {
 	useComposerNotice,
 } from "../src/components/composer-notice-region";
 import type {NoticeSlot} from "../src/lib/composer-notices";
+import {UsagePaceBand} from "../src/components/usage-pace-banner";
 
 afterEach(() => {
 	cleanup();
@@ -163,5 +164,29 @@ describe("ComposerNoticeRegion", () => {
 		const {container} = render(<Band slot="limit" id="code_usage_limit" text="Limit" />);
 
 		expect(container.innerHTML).toBe('<span data-inline-band="true">Limit</span>');
+	});
+
+	it("drops the usage band's own enter animation inside the region, whose item already reveals in", () => {
+		function RegisteredBand() {
+			const claimed = useComposerNotice("limit", {
+				id: "code_usage_limit",
+				content: <UsagePaceBand resetText="Resets at 5:00 PM" onDismiss={() => {}} />,
+			});
+			return claimed ? null : <UsagePaceBand resetText="Resets at 5:00 PM" onDismiss={() => {}} />;
+		}
+		const {container: inRegion} = render(
+			<ComposerNoticeProvider>
+				<ComposerNoticeRegion />
+				<RegisteredBand />
+			</ComposerNoticeProvider>,
+		);
+		const {container: inline} = render(<RegisteredBand />);
+
+		const bandClass =
+			"flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body";
+		expect({
+			inRegion: inRegion.querySelector('[data-cds="ChatComposerNotices"] .bg-alpha-1')?.className,
+			inline: inline.querySelector(".bg-alpha-1")?.className,
+		}).toStrictEqual({inRegion: bandClass, inline: `${bandClass} usage-band-enter`});
 	});
 });
