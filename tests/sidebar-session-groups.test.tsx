@@ -357,6 +357,45 @@ describe("sidebar SessionGroups", () => {
 		});
 	});
 
+	it("shows an expanded section's caret while any of its rows holds data-hover-within, one section at a time", async () => {
+		const {container} = await renderGroups(FIXTURE);
+		const hovered = () =>
+			[...container.querySelectorAll("[data-group-key][data-hover-within]")].map((section) =>
+				section.getAttribute("data-group-key"),
+			);
+		const workingRow = container.querySelector<HTMLElement>(
+			'[data-group-key="state-working"] a[data-row-main-button]',
+		);
+		const doneRow = container.querySelector<HTMLElement>('[data-group-key="state-done"] a[data-row-main-button]');
+		if (workingRow === null || doneRow === null) throw new Error("rows missing");
+
+		fireEvent.mouseOver(workingRow);
+		const afterWorking = hovered();
+		fireEvent.mouseOver(doneRow);
+		const afterDone = hovered();
+		fireEvent.mouseOut(doneRow, {relatedTarget: document.body});
+
+		expect({
+			afterWorking,
+			afterDone,
+			afterLeave: hovered(),
+			caret: container
+				.querySelector('[data-group-key="state-done"] [data-group-caret]')
+				?.getAttribute("class")
+				?.split(" ")
+				.filter((name) => name.includes("opacity")),
+		}).toStrictEqual({
+			afterWorking: ["state-working"],
+			afterDone: ["state-done"],
+			afterLeave: [],
+			caret: [
+				"opacity-0",
+				"group-data-[hover-within]/section:opacity-100",
+				"group-focus-visible/label:opacity-100",
+			],
+		});
+	});
+
 	it("leaves a collapsed header unbadged when every hidden row is settled and read", async () => {
 		const rows = [session("d1", "Done read", "done", 5), session("d2", "Done read too", "done", 6)];
 		__unreadStoreTesting.reset();

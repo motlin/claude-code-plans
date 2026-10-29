@@ -497,11 +497,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.small.mutations": {
-		"ceiling": 47,
+		"ceiling": 48,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
-		"raisedAt": "2026-10-25"
+		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted. The sidebar section under the pointer carries data-hover-within (upstream G4), set from React onMouseOver: the lab's hover on the target row before the click adds that one attribute.",
+		"raisedAt": "2026-10-29"
 	},
 	"client.sessionSwitch.typical.commits": {
 		"ceiling": 10,
@@ -536,11 +536,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.mutations": {
-		"ceiling": 47,
+		"ceiling": 48,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted.",
-		"raisedAt": "2026-10-25"
+		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted. The sidebar section under the pointer carries data-hover-within (upstream G4), set from React onMouseOver: the lab's hover on the target row before the click adds that one attribute.",
+		"raisedAt": "2026-10-29"
 	},
 	"hot.claudeEventsReducer.replay-200.calls": {
 		"ceiling": 300,

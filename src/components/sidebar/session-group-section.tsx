@@ -1,3 +1,4 @@
+import {sectionHoverWithinProps} from "../../lib/section-hover-within";
 import {Link, useNavigate} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {ChevronRight} from "lucide-react";
@@ -324,7 +325,7 @@ export function GroupSection({
 				data-group-caret
 				className={`h-3 w-3 shrink-0 transition-transform duration-[60ms] motion-reduce:transition-none ${
 					expanded
-						? "rotate-90 opacity-0 group-hover/section:opacity-100 group-focus-visible/label:opacity-100"
+						? "rotate-90 opacity-0 group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100"
 						: "opacity-100"
 				}`}
 			/>
@@ -346,6 +347,7 @@ export function GroupSection({
 				sectionRef?.(element);
 			}}
 			data-group-key={group.key}
+			{...sectionHoverWithinProps}
 			className="group/section relative isolate flex flex-col pb-[var(--sb-group-pb)]"
 		>
 			<div
