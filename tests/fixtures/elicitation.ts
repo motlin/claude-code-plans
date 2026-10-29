@@ -40,3 +40,20 @@ export const elicitationResultFixture = {
 	content: {username: "alice"},
 	mode: "form" as const,
 };
+
+/** A permission-style elicitation: upstream draws a "verdict" schema as its permission card. */
+export const elicitationVerdictFixture = {
+	...base,
+	hook_event_name: "Elicitation" as const,
+	mcp_server_name: "my-mcp-server",
+	message: "Allow my-mcp-server to delete the deploy branch?",
+	mode: "form" as const,
+	elicitation_id: "elicit-verdict-1",
+	requested_schema: {
+		type: "object",
+		properties: {
+			verdict: {type: "string", enum: ["allow", "deny", "always_allow"]},
+		},
+		required: ["verdict"],
+	},
+};

@@ -128,7 +128,7 @@ export const HookSessionCronPayloadSchema: z.ZodType<HookSessionCronPayload> = z
  * the matching `ElicitationResult` or the turn ends. `mode` is "form" when the
  * hook omitted it (the MCP default); `requestedSchema` is the server's JSON Schema.
  */
-const PendingElicitationSchema = z.strictObject({
+export const PendingElicitationSchema = z.strictObject({
 	elicitationId: z.string().optional(),
 	serverName: z.string(),
 	message: z.string(),

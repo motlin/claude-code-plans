@@ -1,4 +1,6 @@
 import {findLastPendingToolUse, type PendingToolUse} from "./approval-dock";
+import type {PendingElicitation} from "./domain-event-payload-schemas";
+import {asRecord} from "./narrow";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import type {PermissionDialogDecision, PersistentAllowKind} from "./permission-suggestions";
 import {markerEventsFromRecords} from "./working-marker";
@@ -121,6 +123,37 @@ export function findPendingPermission({
 	}
 	if (OWN_CARD_TOOLS.has(toolUse.name)) return null;
 	return withPersistentAllow(permissionFor(notification.id, toolUse), notification);
+}
+
+/** The `verdict` property's enum values, or null when the schema has no such enum. */
+function verdictEnum(schema: unknown): readonly unknown[] | null {
+	const verdict = asRecord(asRecord(asRecord(schema)?.["properties"])?.["verdict"]);
+	const values = verdict?.["enum"];
+	return Array.isArray(values) ? values : null;
+}
+
+/** Upstream's `Xr`: a permission-style elicitation, whose `verdict` enum offers both "allow" and "deny". */
+export function isVerdictSchema(schema: unknown): boolean {
+	const values = verdictEnum(schema);
+	return values !== null && values.includes("allow") && values.includes("deny");
+}
+
+/**
+ * The oldest verdict elicitation as upstream's permission card: "Allow Claude
+ * to use {server}?" with the message below, and Always allow only when the
+ * verdict enum offers "always_allow" (upstream's `NH`). Forms and url asks get no card.
+ */
+export function findPendingElicitationPermission(entries: readonly PendingElicitation[]): PendingPermission | null {
+	const entry = entries.find((candidate) => candidate.mode === "form" && isVerdictSchema(candidate.requestedSchema));
+	if (entry === undefined) return null;
+	const permission: PendingPermission = {
+		notificationId: `elicitation:${entry.elicitationId ?? `${entry.serverName}:${entry.receivedAt}`}`,
+		title: {action: `use ${entry.serverName}`, meta: null},
+		detail: null,
+		description: entry.message,
+	};
+	if (verdictEnum(entry.requestedSchema)?.includes("always_allow") === true) permission.persistentAllow = "always";
+	return permission;
 }
 
 function withPersistentAllow(permission: PendingPermission, notification: PermissionNotification): PendingPermission {

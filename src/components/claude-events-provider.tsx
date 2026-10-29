@@ -12,6 +12,7 @@ import {
 import {asRecord} from "../lib/narrow";
 import {PendingQuestionResponse, applyPendingQuestionChanged} from "../lib/api/pending-question";
 import {PendingPlanResponse, applyPendingPlanChanged} from "../lib/api/pending-plan";
+import {PendingElicitationsResponse, applyPendingElicitationsChanged} from "../lib/api/pending-elicitations";
 import {groupedSessionsQueryOptions, recentSessionsInfiniteQueryOptions, sessionQueryKeys} from "../lib/api/sessions";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {syncUnseenFromQueryCache} from "../lib/unseen-query-sync";
@@ -68,6 +69,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SESSION_TOOL_FAILED,
 	DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED,
 	DOMAIN_EVENTS.SESSION_PENDING_PLAN_CHANGED,
+	DOMAIN_EVENTS.SESSION_ELICITATION_CHANGED,
 	DOMAIN_EVENTS.SESSION_COMPACTING,
 	DOMAIN_EVENTS.SESSION_COMPACTED,
 	DOMAIN_EVENTS.SUBAGENT_STARTED,
@@ -531,6 +533,16 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					const parsed = PendingPlanResponse.safeParse({pendingPlan: data["pendingPlan"]});
 					if (typeof sessionId === "string" && parsed.success) {
 						applyPendingPlanChanged(queryClient, {sessionId, ...parsed.data});
+					}
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_ELICITATION_CHANGED: {
+					const sessionId = data["sessionId"];
+					const parsed = PendingElicitationsResponse.safeParse({
+						pendingElicitations: data["pendingElicitations"],
+					});
+					if (typeof sessionId === "string" && parsed.success) {
+						applyPendingElicitationsChanged(queryClient, {sessionId, ...parsed.data});
 					}
 					break;
 				}

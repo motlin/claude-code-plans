@@ -54,11 +54,11 @@
 		"raisedAt": "2026-10-28"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1233094,
+		"ceiling": 1245529,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home Next steps folder rows (2026-10-27): useHomeNextSteps now builds the launch folder's Worktree row, so home ships folderNextStepCandidates (until now tree-shaken), sessionRunningIn and the folder git-status query with the hook. Together with the earlier worktree toggle work this took raw from the 1220653 trim to 1233094, just past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-27"
+		"reason": "Verdict elicitation card (2026-10-29): the events provider now patches the pending-elicitations query from session:elicitation-changed (its response schema and cache patcher ship with the provider on every page), on top of the growth since the 2026-10-27 Next steps raise. Raw went from 1233094 to 1245529, about 100 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 633227,

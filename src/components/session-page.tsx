@@ -143,6 +143,7 @@ import {
 import {notificationsQueryOptions} from "../lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
+import {pendingElicitationsQueryOptions} from "../lib/api/pending-elicitations";
 import {
 	DeferredDockedPlanApproval,
 	DeferredInlinePlanApproval,
@@ -152,7 +153,12 @@ import {
 } from "./session-prompt-cards-entry";
 import {useSendRejectionActions} from "./use-send-rejection-actions";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
-import {findPendingPermission, permissionWaitToolUseId, type PermissionDecision} from "../lib/permission-card";
+import {
+	findPendingElicitationPermission,
+	findPendingPermission,
+	permissionWaitToolUseId,
+	type PermissionDecision,
+} from "../lib/permission-card";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
 import type {QuestionAnswer} from "../lib/hook-events";
@@ -526,6 +532,12 @@ function SessionView({
 		enabled: sessionSummaryState === "waiting",
 		select: (data) => data.pendingPlan,
 	}).data;
+	const pendingElicitations = useQuery({
+		...pendingElicitationsQueryOptions(sessionId),
+		// Only a waiting session can have one; SSE patches the cache either way.
+		enabled: sessionSummaryState === "waiting",
+		select: (data) => data.pendingElicitations,
+	}).data;
 	// The CLI writes a pending ExitPlanMode to the JSONL only once answered, so its hook copy docks until then.
 	const dockedPlan = useMemo(
 		() => dockedHookPlan({hookPlan, state: sessionSummaryState, records: transcript.records}),
@@ -714,7 +726,7 @@ function SessionView({
 		},
 		[toast],
 	);
-	const pendingPermission = useMemo(
+	const toolPermission = useMemo(
 		() =>
 			inlineQuestion === null
 				? findPendingPermission({
@@ -727,6 +739,15 @@ function SessionView({
 				: null,
 		[isActive, inlineQuestion, sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
+	// Upstream draws a verdict elicitation as a permission card; a tool's own prompt takes the slot first.
+	const elicitationPermission = useMemo(
+		() =>
+			inlineQuestion === null && toolPermission === null
+				? findPendingElicitationPermission(pendingElicitations ?? [])
+				: null,
+		[inlineQuestion, toolPermission, pendingElicitations],
+	);
+	const pendingPermission = toolPermission ?? elicitationPermission;
 	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
 	const workingLineWaits = workingLineWaitsOnUser({
 		awaitingPermission,
@@ -1447,7 +1468,12 @@ function SessionView({
 											detailNote={pendingPermission.detailNote ?? null}
 											description={pendingPermission.description ?? null}
 											tokenWarning={pendingPermission.tokenWarning === true}
-											canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+											canAnswer={
+												// The CLI's elicitation dialog has no herdr key map yet, so the terminal answers it.
+												elicitationPermission === null &&
+												promptBehavior.hasLivePane &&
+												herdr.writesEnabled
+											}
 											persistentAllow={pendingPermission.persistentAllow ?? null}
 											onDecision={answerPermission}
 											footer={
