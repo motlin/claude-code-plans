@@ -1871,7 +1871,7 @@ export const BridgeSessionRecordSchema = z
 /** Why the CLI suppressed syncing this session's history to a remote bridge. */
 export const HistorySuppressionCauseSchema = z.enum(["chokepoint_veto", "migration", "restored_owner_mismatch"]);
 
-const HistorySuppressionRecordSchema = z
+export const HistorySuppressionRecordSchema = z
 	.object({
 		type: z.literal("history-suppression"),
 		sessionId: z.string(),

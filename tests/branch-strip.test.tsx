@@ -51,6 +51,7 @@ function renderStrip(
 		cwd: session.cwd,
 		bridgeSessionId: null,
 		remoteControl: null,
+		remoteHistory: null,
 		githubUrl: null,
 	});
 	return render(

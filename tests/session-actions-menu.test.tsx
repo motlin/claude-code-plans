@@ -97,6 +97,7 @@ async function renderRow(
 			cwd,
 			bridgeSessionId: null,
 			remoteControl: null,
+			remoteHistory: null,
 			githubUrl: null,
 		});
 	}

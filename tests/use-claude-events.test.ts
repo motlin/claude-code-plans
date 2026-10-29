@@ -595,6 +595,7 @@ describe("applySessionUpdated", () => {
 		const openIn = (state: "on" | "off" | null) => ({
 			cwd: "/tmp/test/alice-project",
 			bridgeSessionId: null,
+			remoteHistory: null,
 			githubUrl: null,
 			remoteControl:
 				state === null ? null : {state, url: state === "on" ? "https://claude.ai/code/session_x" : null},

@@ -70,4 +70,38 @@ describe("GET /api/sessions/$id/open-in", () => {
 			ended: null,
 		});
 	});
+
+	it("reports unsynced remote history from the transcript's bridge-session and history-suppression records", async () => {
+		const projectDir = join(directory, ".claude", "projects", "-tmp-test-alice-project");
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			join(projectDir, `${SESSION_ID}.jsonl`),
+			[
+				{
+					type: "history-suppression",
+					sessionId: SESSION_ID,
+					cause: "chokepoint_veto",
+					ts: "2026-10-23T00:29:58.293Z",
+				},
+				{
+					type: "bridge-session",
+					sessionId: SESSION_ID,
+					bridgeSessionId: "cse_alice_100",
+					noHistoryBackfill: true,
+				},
+			]
+				.map((record) => JSON.stringify(record))
+				.join("\n") + "\n",
+		);
+		const {handlers} = (OpenInRoute as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}})
+			.options.server;
+		const response = await handlers["GET"]!({params: {id: SESSION_ID}});
+		expect(await response.json()).toStrictEqual({
+			cwd: null,
+			bridgeSessionId: "cse_alice_100",
+			remoteControl: null,
+			remoteHistory: {reason: "Vetoed for another account"},
+			githubUrl: null,
+		});
+	});
 });

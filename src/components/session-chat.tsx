@@ -1600,6 +1600,36 @@ function TaskEventRunRow({
 	);
 }
 
+/**
+ * The muted system line an Artifact watch's end draws in place of its raw `<task-notification>`,
+ * named by the record's `queueOrigin.displayName` (which arrives already quoted).
+ */
+function ArtifactWatchEndedRow({
+	displayName,
+	footer,
+	recordIndex,
+}: {
+	displayName: string;
+	footer: React.ReactNode;
+	recordIndex: number;
+}) {
+	return (
+		<div
+			data-record-index={recordIndex}
+			className="group/msg flex flex-col w-full pb-4 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+		>
+			<TurnStatusFrame leading={false}>
+				<div data-turn-status="" className={TURN_STATUS_CLASS}>
+					<span data-artifact-watch-ended="" className="text-body text-secondary min-w-0 truncate">
+						Stopped watching {displayName}
+					</span>
+				</div>
+			</TurnStatusFrame>
+			{footer}
+		</div>
+	);
+}
+
 function TaskEventRunStatus({events}: {events: readonly TaskEvent[]}) {
 	return (
 		<TurnStatusFrame leading={false}>
@@ -2801,6 +2831,27 @@ function buildSessionListEntries(
 				assistantSpan: displaySpans?.get(line.lineIndex),
 				opensWithStatus: "marker",
 				element: <AgentCompletionRow completion={agentCompletion} footer={footerFor(line)} />,
+			});
+			i++;
+			continue;
+		}
+
+		const watchEnded = verbose || line.type !== "user" ? undefined : line.artifactWatchEnded;
+		if (watchEnded !== undefined) {
+			entries.push({
+				key: `line-${line.lineIndex}`,
+				startRecordIndex: line.lineIndex,
+				isPrompt: false,
+				kind: "assistant_tool",
+				assistantSpan: displaySpans?.get(line.lineIndex),
+				opensWithStatus: "marker",
+				element: (
+					<ArtifactWatchEndedRow
+						displayName={watchEnded}
+						footer={footerFor(line)}
+						recordIndex={line.lineIndex}
+					/>
+				),
 			});
 			i++;
 			continue;

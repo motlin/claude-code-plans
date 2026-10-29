@@ -90,6 +90,8 @@ const MessageLineSchema = z.object({
 	turnOrigin: TurnOriginSchema.optional(),
 	scheduledTaskId: z.string().optional(),
 	queuePriority: z.literal("later").optional(),
+	/** The `queueOrigin.displayName` of an Artifact watch whose end this task-notification announces. */
+	artifactWatchEnded: z.string().optional(),
 	isApiErrorMessage: z.boolean().optional(),
 	/** The `api-request` this line's run of records came from; only the run's first line carries it. */
 	requestRef: z.string().optional(),
@@ -1132,6 +1134,10 @@ function processRecordBatch(
 			}
 			if (record.scheduledTaskId !== undefined) {
 				processedLine.scheduledTaskId = record.scheduledTaskId;
+			}
+			const queueOrigin = record.queueOrigin;
+			if (queueOrigin?.source === "artifact-watch-lifecycle" && queueOrigin.watchEnded === true) {
+				processedLine.artifactWatchEnded = queueOrigin.displayName;
 			}
 			const classifier = record.serverClassifierContext?.context;
 			if (classifier !== undefined) {

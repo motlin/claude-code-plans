@@ -213,6 +213,7 @@ async function renderHarness(sessionId: string) {
 		cwd: null,
 		bridgeSessionId: null,
 		remoteControl: null,
+		remoteHistory: null,
 		githubUrl: null,
 	});
 	const rootRoute = createRootRoute({

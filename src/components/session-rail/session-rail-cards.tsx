@@ -227,7 +227,13 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 				(openInPending && inputs.live ? (
 					<RemoteControlRowPending />
 				) : (
-					remoteControl !== null && <RemoteControlRow state={remoteControl.state} url={remoteControl.url} />
+					remoteControl !== null && (
+						<RemoteControlRow
+							state={remoteControl.state}
+							url={remoteControl.url}
+							historySuppressed={openIn?.remoteHistory ?? null}
+						/>
+					)
 				))}
 			{model !== null && <RailRow icon={<Icon icon={Cpu} />} label={model} />}
 			{herdrPane === null ? (

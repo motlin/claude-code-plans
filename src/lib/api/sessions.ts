@@ -139,6 +139,8 @@ export const SessionOpenInResponse = z
 		bridgeSessionId: z.string().nullable(),
 		/** The live registry entry's Remote Control bridge for the rail's row; null without a live process. */
 		remoteControl: z.strictObject({state: RemoteControlStateSchema, url: z.string().nullable()}).nullable(),
+		/** Non-null when the CLI did not backfill the session's history to claude.ai, with the latest suppression cause's label. */
+		remoteHistory: z.strictObject({reason: z.string().nullable()}).nullable(),
 		/** The web URL of the session checkout's GitHub `origin`, or null when it has none. */
 		githubUrl: z.string().nullable(),
 	})

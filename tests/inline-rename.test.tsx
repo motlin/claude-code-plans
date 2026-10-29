@@ -51,6 +51,7 @@ async function renderWithProviders(content: ReactNode) {
 		cwd: null,
 		bridgeSessionId: null,
 		remoteControl: null,
+		remoteHistory: null,
 		githubUrl: null,
 	});
 	const rootRoute = createRootRoute({

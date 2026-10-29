@@ -66,6 +66,7 @@ async function renderWithRouter(content: ReactNode, cwd: string | null = null) {
 		cwd,
 		bridgeSessionId: null,
 		remoteControl: null,
+		remoteHistory: null,
 		githubUrl: null,
 	});
 	const rootRoute = createRootRoute({

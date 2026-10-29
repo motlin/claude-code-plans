@@ -199,6 +199,7 @@ async function renderTitlebar(
 		cwd: data.cwd,
 		bridgeSessionId: null,
 		remoteControl: null,
+		remoteHistory: null,
 		githubUrl: null,
 	});
 	const content: ReactNode = (

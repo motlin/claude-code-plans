@@ -106,6 +106,7 @@ function newQueryClient(): QueryClient {
 		cwd: PROJECT_PATH,
 		bridgeSessionId: null,
 		remoteControl: null,
+		remoteHistory: null,
 		githubUrl: null,
 	});
 	return queryClient;

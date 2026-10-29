@@ -6,7 +6,7 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {handleOpenInFinder, type OpenInFinderDependencies} from "../src/lib/open-in-finder";
 import {getSessionMenuItems, type SessionMenuCapability, type SessionMenuSession} from "../src/lib/session-menu-items";
 import {claudeAiSessionUrl, sessionResumeCommand, vscodeFolderUrl} from "../src/lib/session-open-in";
-import {readBridgeSessionId} from "../src/lib/sessions";
+import {readBridgeSession} from "../src/lib/sessions";
 import {rejectCrossSite} from "../src/lib/same-origin-guard";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
@@ -100,7 +100,7 @@ describe("Open in targets", () => {
 	});
 });
 
-describe("readBridgeSessionId", () => {
+describe("readBridgeSession", () => {
 	let dir: string;
 
 	beforeEach(async () => {
@@ -135,29 +135,84 @@ describe("readBridgeSessionId", () => {
 			bridgeRecord("cse_alice_200", 2),
 		]);
 
-		expect(await readBridgeSessionId(filePath)).toBe("cse_alice_200");
+		expect(await readBridgeSession(filePath)).toStrictEqual({
+			bridgeSessionId: "cse_alice_200",
+			remoteHistory: null,
+		});
 	});
 
 	it("returns null without a bridge-session record", async () => {
 		const filePath = await transcript([{type: "custom-title", customTitle: "Daily"}]);
 
-		expect(await readBridgeSessionId(filePath)).toBeNull();
+		expect(await readBridgeSession(filePath)).toStrictEqual({bridgeSessionId: null, remoteHistory: null});
 	});
 
 	it("reads bridge-session records carrying keys newer than the schema", async () => {
 		const filePath = await transcript([{...bridgeRecord("cse_alice_100", 1), extra: true}]);
 
-		expect(await readBridgeSessionId(filePath)).toBe("cse_alice_100");
+		expect(await readBridgeSession(filePath)).toStrictEqual({
+			bridgeSessionId: "cse_alice_100",
+			remoteHistory: null,
+		});
 	});
 
 	it("ignores bridge-session records that fail the schema", async () => {
 		const filePath = await transcript([{...bridgeRecord("cse_alice_100", 1), lastSequenceNum: "one"}]);
 
-		expect(await readBridgeSessionId(filePath)).toBeNull();
+		expect(await readBridgeSession(filePath)).toStrictEqual({bridgeSessionId: null, remoteHistory: null});
 	});
 
 	it("returns null for a missing file", async () => {
-		expect(await readBridgeSessionId(join(dir, "missing.jsonl"))).toBeNull();
+		expect(await readBridgeSession(join(dir, "missing.jsonl"))).toStrictEqual({
+			bridgeSessionId: null,
+			remoteHistory: null,
+		});
+	});
+
+	it("reports unsynced remote history from the latest bridge record's noHistoryBackfill, with the latest suppression cause", async () => {
+		const suppressedResult = await readBridgeSession(
+			await transcript([
+				{
+					type: "history-suppression",
+					sessionId: SESSION_ID,
+					cause: "chokepoint_veto",
+					ts: "2026-10-23T00:29:58.293Z",
+				},
+				{
+					type: "history-suppression",
+					sessionId: SESSION_ID,
+					cause: "migration",
+					ts: "2026-10-23T01:10:36.337Z",
+				},
+				{...bridgeRecord("cse_alice_100", 0), noHistoryBackfill: true},
+			]),
+		);
+		const backfilledResult = await readBridgeSession(
+			await transcript([
+				{...bridgeRecord("cse_alice_100", 0), noHistoryBackfill: true},
+				bridgeRecord("cse_alice_200", 1),
+			]),
+		);
+		const unknownCause = await readBridgeSession(
+			await transcript([
+				{
+					type: "history-suppression",
+					sessionId: SESSION_ID,
+					cause: "future_cause",
+					ts: "2026-10-23T01:10:36.337Z",
+				},
+				{...bridgeRecord("cse_alice_100", 0), noHistoryBackfill: true},
+			]),
+		);
+		const noCause = await readBridgeSession(
+			await transcript([{...bridgeRecord("cse_alice_100", 0), noHistoryBackfill: true}]),
+		);
+		expect({suppressedResult, backfilledResult, unknownCause, noCause}).toStrictEqual({
+			suppressedResult: {bridgeSessionId: "cse_alice_100", remoteHistory: {cause: "migration"}},
+			backfilledResult: {bridgeSessionId: "cse_alice_200", remoteHistory: null},
+			unknownCause: {bridgeSessionId: "cse_alice_100", remoteHistory: {cause: "future_cause"}},
+			noCause: {bridgeSessionId: "cse_alice_100", remoteHistory: {cause: null}},
+		});
 	});
 });
 

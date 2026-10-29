@@ -148,17 +148,22 @@ const queueOriginKindLabels = {
 	"task-notification": "Task notification",
 } satisfies Record<z.infer<typeof QueueOriginKindSchema>, string>;
 
-/** Not consumed yet — `queueOrigin` is only validated. */
+/** Labels not consumed yet — the transcript reads `queueOrigin` only for an ended Artifact watch. */
 const queueOriginSourceLabels = {
 	"artifact-watch-lifecycle": "Artifact watch",
 } satisfies Record<z.infer<typeof QueueOriginSourceSchema>, string>;
 
-/** Not consumed yet — `history-suppression` records are only validated. */
 const historySuppressionCauseLabels = {
 	chokepoint_veto: "Vetoed for another account",
 	migration: "Migration",
 	restored_owner_mismatch: "Restored for another account",
 } satisfies Record<z.infer<typeof HistorySuppressionCauseSchema>, string>;
+
+/** A `history-suppression` cause's label, or undefined for a cause newer than the schema. */
+export function historySuppressionCauseLabel(cause: string): string | undefined {
+	const labels: Readonly<Record<string, string>> = historySuppressionCauseLabels;
+	return Object.hasOwn(labels, cause) ? labels[cause] : undefined;
+}
 
 export const permissionDecisionDecisionLabels = {
 	accept: "Accepted",

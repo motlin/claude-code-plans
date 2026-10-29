@@ -14,6 +14,7 @@ import {
 	BridgeSessionRecordSchema,
 	CustomTitleRecordSchema,
 	CustomTitleSidecarSchema,
+	HistorySuppressionRecordSchema,
 	SessionsIndexSchema,
 } from "./runtime-schemas";
 import {isCountableMessageRecord} from "./message-count";
@@ -522,28 +523,49 @@ export async function readSessionTitleSources(filePath: string): Promise<Session
 	return collector.finish(filePath);
 }
 
-/** The claude.ai/code session a transcript was bridged to (Remote Control), from its latest `bridge-session` record. */
-export async function readBridgeSessionId(filePath: string): Promise<string | null> {
+/** A transcript's Remote Control bridge, from its `bridge-session` and `history-suppression` records. */
+export interface BridgeSession {
+	/** The claude.ai/code session the transcript was bridged to, from its latest `bridge-session` record. */
+	bridgeSessionId: string | null;
+	/**
+	 * Non-null when the latest `bridge-session` record says the CLI did not backfill this session's history to
+	 * claude.ai (`noHistoryBackfill`), with the latest `history-suppression` record's cause when there is one.
+	 */
+	remoteHistory: {cause: string | null} | null;
+}
+
+/** Reads a transcript's Remote Control bridge; a missing or unreadable file has none. */
+export async function readBridgeSession(filePath: string): Promise<BridgeSession> {
 	let bridgeSessionId: string | null = null;
+	let noHistoryBackfill = false;
+	let cause: string | null = null;
 	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	try {
 		for await (const line of rl) {
-			if (!line.includes('"bridge-session"')) continue;
+			const bridge = line.includes('"bridge-session"');
+			if (!bridge && !line.includes('"history-suppression"')) continue;
 			try {
-				const parsed = BridgeSessionRecordSchema.safeParse(JSON.parse(line));
-				if (parsed.success && parsed.data.bridgeSessionId !== undefined) {
-					bridgeSessionId = parsed.data.bridgeSessionId;
+				const record: unknown = JSON.parse(line);
+				if (bridge) {
+					const parsed = BridgeSessionRecordSchema.safeParse(record);
+					if (parsed.success && parsed.data.bridgeSessionId !== undefined) {
+						bridgeSessionId = parsed.data.bridgeSessionId;
+						noHistoryBackfill = parsed.data.noHistoryBackfill === true;
+					}
+				} else {
+					const parsed = HistorySuppressionRecordSchema.safeParse(record);
+					if (parsed.success) cause = parsed.data.cause;
 				}
 			} catch {
 				// skip malformed lines
 			}
 		}
 	} catch {
-		return null;
+		return {bridgeSessionId: null, remoteHistory: null};
 	} finally {
 		await rl.close();
 	}
-	return bridgeSessionId;
+	return {bridgeSessionId, remoteHistory: noHistoryBackfill ? {cause} : null};
 }
 
 async function listSessionsForProject(projectsDir: string, project: string): Promise<SessionEntry[] | null> {

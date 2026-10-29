@@ -15,6 +15,7 @@ import {
 	AttachmentPayloadSchema as StrictAttachmentPayloadSchema,
 	AttachmentRecordSchema as StrictAttachmentRecordSchema,
 	BridgeSessionRecordSchema as StrictBridgeSessionRecordSchema,
+	HistorySuppressionRecordSchema as StrictHistorySuppressionRecordSchema,
 	ClaudeJsonMcpSchema as StrictClaudeJsonMcpSchema,
 	ClaudeJsonOauthAccountSchema as StrictClaudeJsonOauthAccountSchema,
 	ClaudeJsonProjectMcpSchema as StrictClaudeJsonProjectMcpSchema,
@@ -57,6 +58,7 @@ export const FileEditToolUseResultSchema = /* @__PURE__ */ toLenient(StrictFileE
 export const FileHistorySnapshotSchema = /* @__PURE__ */ toLenient(StrictFileHistorySnapshotSchema);
 export const ForkedFromSchema = /* @__PURE__ */ toLenient(StrictForkedFromSchema);
 export const GitOperationSchema = /* @__PURE__ */ toLenient(StrictGitOperationSchema);
+export const HistorySuppressionRecordSchema = /* @__PURE__ */ toLenient(StrictHistorySuppressionRecordSchema);
 export const JsonlRecordSchema = /* @__PURE__ */ toLenient(StrictJsonlRecordSchema);
 export const McpConfigSchema = /* @__PURE__ */ toLenient(StrictMcpConfigSchema);
 export const McpNeedsAuthCacheSchema = /* @__PURE__ */ toLenient(StrictMcpNeedsAuthCacheSchema);

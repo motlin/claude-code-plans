@@ -259,6 +259,7 @@ describe("Environment card", () => {
 		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 			cwd: BASE.cwd,
 			bridgeSessionId: "cse_bridge",
+			remoteHistory: null,
 			githubUrl: null,
 			remoteControl: {state: "on", url: "https://claude.ai/code/session_bridge"},
 		});
@@ -269,6 +270,7 @@ describe("Environment card", () => {
 		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 			cwd: BASE.cwd,
 			bridgeSessionId: "cse_bridge",
+			remoteHistory: null,
 			githubUrl: null,
 			remoteControl: {state: "off", url: null},
 		});
@@ -279,6 +281,7 @@ describe("Environment card", () => {
 		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 			cwd: BASE.cwd,
 			bridgeSessionId: "cse_bridge",
+			remoteHistory: null,
 			githubUrl: null,
 			remoteControl: null,
 		});
@@ -288,6 +291,7 @@ describe("Environment card", () => {
 		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 			cwd: BASE.cwd,
 			bridgeSessionId: null,
+			remoteHistory: null,
 			githubUrl: null,
 			remoteControl: null,
 		});
@@ -366,6 +370,28 @@ describe("Environment card", () => {
 				["herdr", "No pane"],
 			],
 			remoteControl: null,
+		});
+	});
+
+	it("notes on a bridged Remote Control row that the session's history never reached claude.ai, titled with the suppression cause", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null}, (client) => {
+			client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
+				cwd: BASE.cwd,
+				bridgeSessionId: "cse_bridge",
+				remoteHistory: {reason: "Vetoed for another account"},
+				githubUrl: null,
+				remoteControl: {state: "on", url: "https://claude.ai/code/session_bridge"},
+			});
+		});
+		const hint = document.querySelector<HTMLElement>("[data-rail-remote-control] [data-rail-row-hint]");
+
+		expect({rows: rows("Environment"), title: hint?.title ?? null}).toStrictEqual({
+			rows: [
+				["~/projects/avalonlogs", "Local"],
+				["Remote Control", "History not synced"],
+				["herdr", "No pane"],
+			],
+			title: "Remote history not synced to claude.ai · Vetoed for another account",
 		});
 	});
 
@@ -559,6 +585,7 @@ describe("Environment card", () => {
 			cwd: BASE.cwd,
 			bridgeSessionId: null,
 			remoteControl: null,
+			remoteHistory: null,
 			githubUrl: "https://github.com/alice/avalonlogs",
 		});
 	}

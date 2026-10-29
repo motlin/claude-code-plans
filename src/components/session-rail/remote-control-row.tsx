@@ -31,6 +31,11 @@ export interface RemoteControlRowProps {
 	url: string | null;
 	onToggle?: ((on: boolean) => void) | undefined;
 	toggleDisabled?: boolean | undefined;
+	/**
+	 * Set when the CLI did not backfill the session's history to claude.ai (`bridge-session.noHistoryBackfill`),
+	 * with the latest `history-suppression` cause's label, or null for an unknown cause.
+	 */
+	historySuppressed?: {reason: string | null} | null | undefined;
 }
 
 function RemoteControlIcon() {
@@ -41,7 +46,20 @@ function RemoteControlIcon() {
 	);
 }
 
-export function RemoteControlRow({state, url, onToggle, toggleDisabled = false}: RemoteControlRowProps) {
+/** The hover title of the "History not synced" hint, naming the suppression cause when known. */
+function historyNoteTitle(reason: string | null): string {
+	return reason === null
+		? "Remote history not synced to claude.ai"
+		: `Remote history not synced to claude.ai · ${reason}`;
+}
+
+export function RemoteControlRow({
+	state,
+	url,
+	onToggle,
+	toggleDisabled = false,
+	historySuppressed = null,
+}: RemoteControlRowProps) {
 	const switchId = useId();
 	const toast = useToast();
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -63,6 +81,15 @@ export function RemoteControlRow({state, url, onToggle, toggleDisabled = false}:
 			<label data-rail-row-label="" htmlFor={switchId} className={LABEL_CLASS}>
 				Remote Control
 			</label>
+			{state === "on" && historySuppressed !== null && (
+				<span
+					data-rail-row-hint=""
+					title={historyNoteTitle(historySuppressed.reason)}
+					className="shrink-0 text-[12px]/[15px] text-ink-muted"
+				>
+					History not synced
+				</span>
+			)}
 			{optionsUrl !== null && (
 				<span className={OPTIONS_WRAPPER_CLASS}>
 					<Menu open={menuOpen} onOpenChange={setMenuOpen}>

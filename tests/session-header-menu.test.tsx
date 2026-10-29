@@ -148,6 +148,7 @@ async function renderTitlebar(
 		cwd: PROJECT_PATH,
 		bridgeSessionId,
 		remoteControl: null,
+		remoteHistory: null,
 		githubUrl,
 	});
 	const rootRoute = createRootRoute({
@@ -575,6 +576,7 @@ async function renderSessionPage() {
 		cwd: PROJECT_PATH,
 		bridgeSessionId: null,
 		remoteControl: null,
+		remoteHistory: null,
 		githubUrl: null,
 	});
 	const rootRoute = createRootRoute({
