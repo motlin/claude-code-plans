@@ -589,11 +589,24 @@ export async function fetchEarlierTranscript(queryClient: QueryClient, sessionId
 		`/api/sessions/${encodeURIComponent(sessionId)}/transcript?before=${before}`,
 		TranscriptResponse,
 	)
-		.then((page) => {
+		.then((page): "merged" | "chain-changed" | "page-newer" => {
+			const current = queryClient.getQueryData<TranscriptData>(queryKey);
+			if (current && current.chainVersion !== cached.chainVersion) return "chain-changed";
+			if (page.chainVersion !== cached.chainVersion) return "page-newer";
 			queryClient.setQueryData<TranscriptData>(queryKey, (old) => (old ? mergeTranscriptData(old, page) : page));
+			return "merged";
 		})
 		.finally(() => {
 			inFlight.delete(key);
+		})
+		.then(async (outcome) => {
+			// A page cut under a different chain than the cache's carries the
+			// wrong hidden rows, so it is dropped (upstream `discarded_in_flight`).
+			// When the cache already moved to the new chain, page back from its
+			// new window; when only the server has, refetch the tail so the cache
+			// catches up and scrolling pages again from there.
+			if (outcome === "chain-changed") await fetchEarlierTranscript(queryClient, sessionId);
+			if (outcome === "page-newer") await queryClient.invalidateQueries({queryKey});
 		});
 	inFlight.set(key, request);
 	return request;

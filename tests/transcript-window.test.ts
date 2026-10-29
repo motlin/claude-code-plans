@@ -228,6 +228,78 @@ describe("fetchEarlierTranscript", () => {
 		expect(fetchSpy.mock.calls).toStrictEqual([]);
 	});
 
+	it("discards a page that lands after the chain changed and pages again from the new window", async () => {
+		// A forking prompt replaced the cached pages with the new tail while an
+		// earlier page was on the wire. That page was cut under the old chain, so
+		// its hidden rows are wrong (upstream `discarded_in_flight`).
+		const queryClient = new QueryClient();
+		const queryKey = sessionQueryKeys.transcript("sess-1");
+		queryClient.setQueryData(queryKey, window_(3, 2));
+		let resolveStale: (response: Response) => void = () => {};
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			const before = Number(new URL(String(input)).searchParams.get("before"));
+			if (before === 3) {
+				return new Promise<Response>((resolve) => {
+					resolveStale = resolve;
+				});
+			}
+			return Promise.resolve(
+				new Response(JSON.stringify(window_(4, 2, {chainVersion: "v2"})), {
+					status: 200,
+					headers: {"Content-Type": "application/json"},
+				}),
+			);
+		});
+
+		const pending = fetchEarlierTranscript(queryClient, "sess-1");
+		await vi.waitFor(() => {
+			expect(fetchSpy.mock.calls.length).toBe(1);
+		});
+		queryClient.setQueryData(queryKey, window_(6, 2, {chainVersion: "v2"}));
+		resolveStale(
+			new Response(JSON.stringify(window_(0, 3)), {
+				status: 200,
+				headers: {"Content-Type": "application/json"},
+			}),
+		);
+		await pending;
+
+		expect(
+			fetchSpy.mock.calls.map((call) => {
+				const url = new URL(String(call[0]));
+				return url.pathname + url.search;
+			}),
+		).toStrictEqual(["/api/sessions/sess-1/transcript?before=3", "/api/sessions/sess-1/transcript?before=6"]);
+		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual({
+			records: [record(4), record(5), record(6), record(7)],
+			byteOffset: 0,
+			startIndex: 4,
+			precedingMessageCount: 4,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v2",
+		});
+	});
+
+	it("discards a page cut under a newer chain than the cache and refetches the tail", async () => {
+		// The server saw the fork before the cache did: merging would splice a
+		// post-fork page onto pre-fork rows, so the tail is refetched instead.
+		const queryClient = new QueryClient();
+		const queryKey = sessionQueryKeys.transcript("sess-1");
+		queryClient.setQueryData(queryKey, window_(3, 2));
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(JSON.stringify(window_(0, 3, {chainVersion: "v2"})), {
+				status: 200,
+				headers: {"Content-Type": "application/json"},
+			}),
+		);
+
+		await fetchEarlierTranscript(queryClient, "sess-1");
+
+		expect(queryClient.getQueryData<TranscriptData>(queryKey)).toStrictEqual(window_(3, 2));
+		expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true);
+	});
+
 	it("does not call the endpoint when nothing is cached yet", async () => {
 		const queryClient = new QueryClient();
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
