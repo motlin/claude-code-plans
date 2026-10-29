@@ -188,7 +188,7 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 							href={line.url}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="text-accent-500 hover:underline"
+							className="text-upstream-accent hover:underline"
 							title={line.url}
 						>
 							Open in claude.ai

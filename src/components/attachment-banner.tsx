@@ -555,7 +555,7 @@ function AttachmentContent({
 					{attachment.taskListPath && (
 						<Link
 							to="/tasks"
-							className="inline-flex items-center gap-1 text-accent-500 hover:underline"
+							className="inline-flex items-center gap-1 text-upstream-accent hover:underline"
 							title={attachment.taskListPath}
 						>
 							<ClipboardList className="h-3 w-3" />

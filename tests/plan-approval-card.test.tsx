@@ -98,7 +98,7 @@ describe("PlanApprovalCard", () => {
 			"py-1.5",
 			"text-body",
 			"text-primary",
-			"placeholder:text-tertiary",
+			"placeholder:text-ink-muted",
 			"shadow-[inset_0_0_0_1px_var(--color-border)]",
 			"outline-none",
 			"focus-visible:shadow-[var(--focus-shadow)]",

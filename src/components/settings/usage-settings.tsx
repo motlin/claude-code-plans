@@ -106,7 +106,7 @@ function UsageMeterRow({
 					<UsageMeter percent={percent} variant={variant} used={used} labelId={labelId} />
 				</div>
 				<span
-					className={`min-w-20 whitespace-nowrap text-end text-footnote ${variant === "danger" && !dimmed ? "text-danger-ink" : "text-secondary"}`}
+					className={`min-w-20 whitespace-nowrap text-end text-footnote ${variant === "danger" && !dimmed ? "text-danger" : "text-secondary"}`}
 				>
 					{used}
 				</span>

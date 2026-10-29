@@ -92,7 +92,7 @@ function ProjectSessionsPage() {
 						<button
 							type="button"
 							onClick={() => void navigate({to: ".", search: {}, replace: true})}
-							className="flex items-center gap-1 rounded-full bg-accent-main-100 px-2 py-0.5 text-[11px] font-medium text-oncolor-100 transition-colors hover:bg-accent-main-200"
+							className="flex items-center gap-1 rounded-full bg-fill-accent px-2 py-0.5 text-[11px] font-medium text-oncolor-100 transition-colors hover:bg-fill-accent-hover"
 						>
 							<GitBranch className="h-3 w-3" />
 							{branch}

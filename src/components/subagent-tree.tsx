@@ -132,7 +132,7 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 					{node.agent.description ?? node.agent.slug ?? node.agent.id}
 				</span>
 				{node.agent.workflowState === "failed" && (
-					<span className="shrink-0 text-[10px] text-danger-ink">Failed</span>
+					<span className="shrink-0 text-[10px] text-danger">Failed</span>
 				)}
 				{liveStatus === "running" && (
 					<span className="flex shrink-0 items-center gap-1 text-[10px] text-success-000">

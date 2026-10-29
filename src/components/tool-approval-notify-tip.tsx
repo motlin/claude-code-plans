@@ -26,7 +26,7 @@ const TIP_LOOK = {
 	offer: {Icon: Bell, tone: "text-secondary"},
 	asking: {Icon: Bell, tone: "text-secondary"},
 	on: {Icon: CircleCheck, tone: "text-success"},
-	blocked: {Icon: BellOff, tone: "text-danger-ink"},
+	blocked: {Icon: BellOff, tone: "text-danger"},
 } as const;
 
 /** Upstream's mapping from the tip's phase to the line it shows; null keeps it mounted but invisible. */

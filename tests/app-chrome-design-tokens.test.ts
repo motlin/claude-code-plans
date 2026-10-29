@@ -1,5 +1,13 @@
 import {globSync, readFileSync} from "node:fs";
+import {createRequire} from "node:module";
+import {dirname, join, resolve} from "node:path";
+import {__unstable__loadDesignSystem} from "tailwindcss";
 import {describe, expect, it} from "vite-plus/test";
+
+const require = createRequire(import.meta.url);
+/** A `text-`, `bg-`, or `border-` utility, its arbitrary value and opacity modifier included. */
+const COLOUR_PREFIXED_UTILITY =
+	/(?<![\w\-[./])(?:text|bg|border)-[a-z][\w-]*(?:\[[^\]\s]*\])?(?:\/(?:\d+|\[[^\]\s]*\]))?/g;
 
 const RETIRED_CHROME_UTILITY = /(?:text-text|bg-bg|border-border)-[A-Za-z0-9]+|rounded-\[[0-9]+px\]/g;
 
@@ -17,15 +25,32 @@ describe("app chrome design tokens", () => {
 		expect(violations).toStrictEqual({});
 	});
 
-	it("never uses the bare text-danger utility, which the theme leaves without a --color-danger rule", () => {
-		const violations = Object.fromEntries(
-			globSync("src/**/*.{css,ts,tsx}").flatMap((path) => {
-				const matches = [...readFileSync(path, "utf8").matchAll(/\btext-danger(?![-\w])/g)].map(
-					([utility]) => utility,
-				);
-				return matches.length === 0 ? [] : [[path, matches]];
-			}),
+	it("gives every text-, bg-, and border- utility in src a rule, so no colour class names an undefined token", async () => {
+		const tailwindRoot = dirname(require.resolve("tailwindcss/package.json"));
+		const css = readFileSync("src/styles/globals.css", "utf8").replaceAll(/^@import (?!"tailwindcss").*$/gm, "");
+		const designSystem = await __unstable__loadDesignSystem(css, {
+			base: process.cwd(),
+			loadStylesheet: async (id: string, base: string) => {
+				const path = id === "tailwindcss" ? join(tailwindRoot, "index.css") : resolve(base, id);
+				return Promise.resolve({path, base: dirname(path), content: readFileSync(path, "utf8")});
+			},
+		});
+		const cssClasses = new Set(
+			globSync("src/**/*.css").flatMap((path) =>
+				[...readFileSync(path, "utf8").matchAll(/\.([a-z][\w-]*)/g)].map(([, name]) => name),
+			),
 		);
+		const utilities = globSync("src/**/*.{ts,tsx}").flatMap((path) => {
+			const code = readFileSync(path, "utf8")
+				.replaceAll(/\/\*[\s\S]*?\*\//g, "")
+				.replaceAll(/(^|[^:])\/\/.*$/gm, "$1");
+			return [...code.matchAll(COLOUR_PREFIXED_UTILITY)].map(([utility]) => ({path, utility}));
+		});
+		const rules = designSystem.candidatesToCss(utilities.map(({utility}) => utility));
+		const violations: Record<string, string[]> = {};
+		utilities.forEach(({path, utility}, index) => {
+			if (rules[index] === null && !cssClasses.has(utility)) (violations[path] ??= []).push(utility);
+		});
 
 		expect(violations).toStrictEqual({});
 	});

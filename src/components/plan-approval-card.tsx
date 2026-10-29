@@ -42,7 +42,7 @@ const PLAN_ACTIONS_CLASS = `flex flex-wrap justify-between gap-x-1 gap-y-2 [&>sp
 
 /** Upstream's cds TextArea (`bg-fill-field shadow-field-ring px-md py-sm rounded`): 6px radius, 5% fill, field ring, accent focus shadow. */
 const FEEDBACK_CLASS =
-	"w-full resize-none rounded-r6 bg-alpha-1 px-2 py-1.5 text-body text-primary placeholder:text-tertiary shadow-[inset_0_0_0_1px_var(--color-border)] outline-none focus-visible:shadow-[var(--focus-shadow)] hover:not-focus:shadow-[inset_0_0_0_1px_var(--color-strong)]";
+	"w-full resize-none rounded-r6 bg-alpha-1 px-2 py-1.5 text-body text-primary placeholder:text-ink-muted shadow-[inset_0_0_0_1px_var(--color-border)] outline-none focus-visible:shadow-[var(--focus-shadow)] hover:not-focus:shadow-[inset_0_0_0_1px_var(--color-strong)]";
 
 /** Where a plan key may act: anywhere a docked card key may, plus ⇧⌘⏎ from a composer holding a draft (upstream lets it through). */
 function planKeyAllowed(target: EventTarget | null, action: PlanKeyAction): boolean {

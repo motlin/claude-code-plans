@@ -383,7 +383,7 @@ describe("Claude Code settings ▸ Sessions", () => {
 			inRow: row("local-sandbox").contains(alert),
 		}).toStrictEqual({
 			checked: "false",
-			alertParent: "text-footnote text-danger-000",
+			alertParent: "text-footnote text-danger",
 			rowClass: true,
 			inRow: true,
 		});

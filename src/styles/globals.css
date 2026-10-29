@@ -136,6 +136,10 @@ html[data-interface-font="dyslexic"] {
 	--color-code-ink: var(--upstream-code-ink);
 	/* Upstream danger text (failed tool rows and their output) shares the chip ink. */
 	--color-danger-ink: var(--upstream-code-ink);
+	/* Upstream bare text-danger / text-success / text-warning (--cds-text-*): failed and error labels, the notify tip's "on" line, stalled workflow counts. */
+	--color-danger: var(--upstream-text-danger);
+	--color-success: var(--upstream-text-success);
+	--color-warning: var(--upstream-warning);
 	/* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
 	--color-diff-added: var(--upstream-git-added);
 	--color-diff-removed: var(--upstream-git-removed);
@@ -425,6 +429,9 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — row status dots (--cds-text-muted / fill-warning|accent|danger) */
 	--upstream-text-muted: #898781;
 	--upstream-code-ink: rgb(142 38 38);
+	/* Upstream --cds-text-danger / --cds-text-success (light). */
+	--upstream-text-danger: #a42528;
+	--upstream-text-success: #006c10;
 	/* Upstream --cds-text-git-*: PR and branch state ink. */
 	--git-opened: #1e9e3c;
 	--git-draft: #737373;
@@ -648,6 +655,9 @@ html[data-interface-font="dyslexic"] {
 
 	--upstream-text-muted: #898781;
 	--upstream-code-ink: #ec7e7e;
+	/* Upstream --cds-text-danger / --cds-text-success (dark). */
+	--upstream-text-danger: #f17778;
+	--upstream-text-success: #53c556;
 	--git-opened: #32d74b;
 	--git-draft: #a6a6a6;
 	--git-merged: #b796ff;
