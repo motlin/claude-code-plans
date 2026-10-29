@@ -1,16 +1,21 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {useState} from "react";
 import {
 	ComposerNoticeProvider,
 	ComposerNoticeRegion,
 	NOTICE_ENTER_CLASS,
+	NOTICE_EXIT_CLASS,
 	useComposerNotice,
 } from "../src/components/composer-notice-region";
 import type {NoticeSlot} from "../src/lib/composer-notices";
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.useRealTimers();
+});
 
 function Band({slot, id, text}: {slot: NoticeSlot; id: string; text: string}) {
 	const claimed = useComposerNotice(slot, {id, content: <span>{text}</span>});
@@ -60,7 +65,7 @@ describe("ComposerNoticeRegion", () => {
 		expect(itemsOf(container)).toStrictEqual([{text: "Limit", className: "pb-1"}]);
 	});
 
-	it("drops a notice when its band unregisters", () => {
+	it("marks a notice leaving, in its slot position, when its band unregisters", () => {
 		const {container, rerender} = render(
 			<ComposerNoticeProvider>
 				<ComposerNoticeRegion />
@@ -75,7 +80,83 @@ describe("ComposerNoticeRegion", () => {
 			</ComposerNoticeProvider>,
 		);
 
-		expect(itemsOf(container)).toStrictEqual([{text: "Sleeping", className: `pb-1 ${NOTICE_ENTER_CLASS}`}]);
+		expect(itemsOf(container)).toStrictEqual([
+			{text: "Limit", className: `pb-1 ${NOTICE_EXIT_CLASS} pointer-events-none`},
+			{text: "Sleeping", className: `pb-1 ${NOTICE_ENTER_CLASS}`},
+		]);
+	});
+
+	it("holds a leaving notice inert for up to 300ms and hands focus to the list root", () => {
+		vi.useFakeTimers();
+		function Dismissible() {
+			const [shown, setShown] = useState(true);
+			useComposerNotice(
+				"limit",
+				shown
+					? {
+							id: "code_usage_limit",
+							content: (
+								<button
+									type="button"
+									onClick={() => {
+										setShown(false);
+									}}
+								>
+									Dismiss
+								</button>
+							),
+						}
+					: null,
+			);
+			return null;
+		}
+		const {container, getByRole} = render(
+			<ComposerNoticeProvider>
+				<ComposerNoticeRegion />
+				<Dismissible />
+			</ComposerNoticeProvider>,
+		);
+		const dismiss = getByRole("button", {name: "Dismiss"});
+		dismiss.focus();
+		fireEvent.click(dismiss);
+
+		const list = container.querySelector('[data-cds="ChatComposerNotices"]');
+		const leaving = container.querySelector("[inert]");
+		expect(leaving?.outerHTML).toBe(
+			`<div class="pb-1 ${NOTICE_EXIT_CLASS} pointer-events-none" aria-hidden="true" inert=""><button type="button">Dismiss</button></div>`,
+		);
+		expect(document.activeElement).toBe(list);
+
+		act(() => {
+			vi.advanceTimersByTime(299);
+		});
+		expect(container.querySelector("[inert]")).toBe(leaving);
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+		expect(container.querySelector("[inert]")).toBeNull();
+		expect(document.activeElement).toBe(list);
+	});
+
+	it("drops a leaving notice as soon as its exit animation ends", () => {
+		const {container, rerender} = render(
+			<ComposerNoticeProvider>
+				<ComposerNoticeRegion />
+				<Band slot="limit" id="code_usage_limit" text="Limit" />
+			</ComposerNoticeProvider>,
+		);
+		rerender(
+			<ComposerNoticeProvider>
+				<ComposerNoticeRegion />
+			</ComposerNoticeProvider>,
+		);
+		const leaving = container.querySelector("[inert]");
+		expect(leaving?.textContent).toBe("Limit");
+
+		// jsdom has no AnimationEvent, so React listens for the prefixed name instead of `animationend`.
+		fireEvent(leaving!, new Event("webkitAnimationEnd", {bubbles: true}));
+
+		expect(itemsOf(container)).toStrictEqual([]);
 	});
 
 	it("leaves a band inline when no region provider is mounted", () => {

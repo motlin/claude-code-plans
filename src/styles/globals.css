@@ -1160,6 +1160,28 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
+/* Upstream cds-reveal-out (`PY`): a leaving composer notice fades and drops 4px, mirroring reveal-in. */
+@keyframes reveal-out {
+	from {
+		opacity: 1;
+		transform: none;
+	}
+	to {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+}
+
+.notice-reveal-out {
+	animation: reveal-out 200ms cubic-bezier(0.165, 0.84, 0.44, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.notice-reveal-out {
+		animation: none;
+	}
+}
+
 /* Toast entrance, applied via `motion-safe:` so reduced-motion users get none. */
 @keyframes toast-in {
 	from {

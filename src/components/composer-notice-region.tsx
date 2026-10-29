@@ -1,5 +1,16 @@
-import {createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode} from "react";
-import {orderNotices, type Notice, type NoticeSlot} from "../lib/composer-notices";
+import {
+	createContext,
+	useContext,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+	type AnimationEvent,
+	type ReactNode,
+	type RefObject,
+} from "react";
+import {NOTICE_ORDER, orderNotices, type Notice, type NoticeSlot, type OrderedNotice} from "../lib/composer-notices";
 
 /** A band's descriptor for the region: its id (keying the item) and what it draws. */
 export interface ComposerNotice extends Notice {
@@ -32,6 +43,12 @@ export function useInNoticeRegion(): boolean {
 
 /** Upstream cds-reveal-in at --cds-dur-base (.2s) with --cds-ease-out, motion-safe only. */
 export const NOTICE_ENTER_CLASS = "motion-safe:animate-[reveal-in_200ms_cubic-bezier(.165,.84,.44,1)_both]";
+
+/** Upstream's exit (`PY` = cds-reveal-out); keyframes in globals.css, none under reduced motion. */
+export const NOTICE_EXIT_CLASS = "notice-reveal-out";
+
+/** Upstream `QU` drops every exiting notice 300ms after the exiting set last changed, if animationend never fired. */
+const EXIT_HOLD_MS = 300;
 
 /**
  * Upstream's notice provider (`hn`): bands under it register descriptors by slot instead of
@@ -96,32 +113,121 @@ export function useComposerNotice(slot: NoticeSlot, notice: ComposerNotice | nul
 	return registry !== null;
 }
 
+interface RegionItem extends OrderedNotice<RegionEntry> {
+	readonly exiting: boolean;
+}
+
+/** Merges notices still leaving into the live list, each at its slot's NOTICE_ORDER position. */
+function mergeLeaving(
+	live: OrderedNotice<RegionEntry>[],
+	leaving: readonly OrderedNotice<RegionEntry>[],
+): RegionItem[] {
+	const items: RegionItem[] = [
+		...live.map((item) => ({...item, exiting: false})),
+		...leaving.map((item) => ({...item, exiting: true})),
+	];
+	const rank = (item: RegionItem) => NOTICE_ORDER.indexOf(item.slot) * 2 + (item.exiting ? 0 : 1);
+	return items.toSorted((a, b) => rank(a) - rank(b));
+}
+
 /**
  * Upstream's region (`gce` + cds `ChatComposerNotices`): every registered notice stacked in
  * NOTICE_ORDER inside one polite status list. The wrapper's -mb-1.5 cancels the dock column's gap.
+ * A withdrawn notice stays in place, inert, until its exit animation ends or 300ms pass (`QU`).
  */
 export function ComposerNoticeRegion() {
 	const registry = useContext(RegistryContext);
 	const entries = useContext(EntriesContext);
+	const listRef = useRef<HTMLDivElement>(null);
 	useLayoutEffect(() => {
 		registry?.setRegionMounted(true);
 		return () => {
 			registry?.setRegionMounted(false);
 		};
 	}, [registry]);
+
+	const live = orderNotices(entries);
+	// Derived during render (not in an effect) so a leaving item keeps its DOM node and focus.
+	const [previousLive, setPreviousLive] = useState(live);
+	const [leaving, setLeaving] = useState<readonly OrderedNotice<RegionEntry>[]>([]);
+	let currentLeaving = leaving;
+	if (previousLive.map(({key}) => key).join() !== live.map(({key}) => key).join()) {
+		const liveKeys = new Set(live.map(({key}) => key));
+		currentLeaving = [
+			...leaving.filter(({key}) => !liveKeys.has(key)),
+			...previousLive.filter(({key}) => !liveKeys.has(key) && !leaving.some((item) => item.key === key)),
+		];
+		setPreviousLive(live);
+		setLeaving(currentLeaving);
+	}
+
+	const leavingKeys = currentLeaving.map(({key}) => key).join();
+	useEffect(() => {
+		if (leavingKeys === "") return undefined;
+		const timer = setTimeout(() => {
+			setLeaving([]);
+		}, EXIT_HOLD_MS);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, [leavingKeys]);
+
+	const onExited = (key: string) => {
+		setLeaving((previous) => previous.filter((item) => item.key !== key));
+	};
+
 	return (
 		<div data-cds-dock-group="" data-code-column-notices="" className="-mb-1.5">
-			<div data-cds="ChatComposerNotices" data-cds-dock-group="" tabIndex={-1} className="w-full">
+			<div ref={listRef} data-cds="ChatComposerNotices" data-cds-dock-group="" tabIndex={-1} className="w-full">
 				<div role="status" aria-live="polite" aria-atomic="false">
 					<InRegionContext.Provider value>
-						{orderNotices(entries).map(({key, notice}) => (
-							<div key={key} className={notice.early ? "pb-1" : `pb-1 ${NOTICE_ENTER_CLASS}`}>
-								{notice.content}
-							</div>
+						{mergeLeaving(live, currentLeaving).map((item) => (
+							<NoticeItem key={item.key} item={item} listRef={listRef} onExited={onExited} />
 						))}
 					</InRegionContext.Provider>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function NoticeItem({
+	item,
+	listRef,
+	onExited,
+}: {
+	item: RegionItem;
+	listRef: RefObject<HTMLDivElement | null>;
+	onExited: (key: string) => void;
+}) {
+	const ref = useRef<HTMLDivElement>(null);
+	const {exiting, key, notice} = item;
+	useLayoutEffect(() => {
+		const element = ref.current;
+		if (element === null) return;
+		// Upstream `Vq`/`WY`: focus inside a leaving notice moves to the list root before it goes inert.
+		if (exiting && element.contains(document.activeElement)) listRef.current?.focus();
+		element.toggleAttribute("inert", exiting);
+	}, [exiting, listRef]);
+	const className = exiting
+		? `pb-1 ${NOTICE_EXIT_CLASS} pointer-events-none`
+		: notice.early
+			? "pb-1"
+			: `pb-1 ${NOTICE_ENTER_CLASS}`;
+	return (
+		<div
+			ref={ref}
+			className={className}
+			aria-hidden={exiting || undefined}
+			onAnimationEnd={
+				exiting
+					? (event: AnimationEvent<HTMLDivElement>) => {
+							if (event.target === event.currentTarget) onExited(key);
+						}
+					: undefined
+			}
+		>
+			{notice.content}
 		</div>
 	);
 }
