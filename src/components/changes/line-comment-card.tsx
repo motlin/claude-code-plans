@@ -1,4 +1,3 @@
-import {X} from "lucide-react";
 import {useRef} from "react";
 import {flushSync} from "react-dom";
 
@@ -6,17 +5,36 @@ import {requestComposerAction} from "../../lib/context-attach";
 import {
 	type DiffCommentDraft,
 	type QueuedDiffComment,
+	activateDiffComment,
+	cancelDiffCommentEdit,
 	discardDiffCommentDraft,
 	getDiffCommentEditing,
 	removeQueuedDiffComment,
 	saveDiffComment,
 	setDiffCommentDraftBody,
+	setDiffCommentEditBody,
+	updateQueuedDiffComment,
 	useDiffCommentEditing,
 } from "../../lib/diff-comments";
 import {CommentEditor} from "../comment-editor";
 
-const CARD_CLASS =
-	"flex flex-col gap-1.5 rounded-r6 border border-border bg-surface-3 p-2 font-sans text-body text-primary";
+/**
+ * Runs a comment save; after a keyboard save it then focuses the composer (Enter) or sends it (⌘Enter), as
+ * upstream `onAnnotationSaved` does.
+ */
+function saveThenRequestComposer(
+	sessionId: string,
+	{submit, viaKeyboard}: {submit: boolean; viaKeyboard: boolean},
+	save: () => void,
+): void {
+	if (!viaKeyboard) {
+		save();
+		return;
+	}
+	// Commit the queued comment first, so the composer's send sees it.
+	flushSync(save);
+	requestComposerAction(sessionId, submit ? "submit" : "focus");
+}
 
 /** "Line 3", or "Lines 2–5" for a range. */
 function lineLabel({line, endLine}: {line: number; endLine?: number | undefined}) {
@@ -52,16 +70,10 @@ export function LineCommentCard({sessionId, draft}: {sessionId: string; draft: D
 				onChange={(text) => {
 					setDiffCommentDraftBody(sessionId, draft.id, text);
 				}}
-				onSave={(text, {submit, viaKeyboard}) => {
-					if (!viaKeyboard) {
-						saveDiffComment(sessionId, draft.id, text);
-						return;
-					}
-					// Commit the queued comment first, so the composer's send sees it.
-					flushSync(() => {
+				onSave={(text, options) => {
+					saveThenRequestComposer(sessionId, options, () => {
 						saveDiffComment(sessionId, draft.id, text);
 					});
-					requestComposerAction(sessionId, submit ? "submit" : "focus");
 				}}
 				onCancel={() => {
 					discardDiffCommentDraft(sessionId, draft.id);
@@ -79,27 +91,46 @@ export function LineCommentCard({sessionId, draft}: {sessionId: string; draft: D
 	);
 }
 
-/** A saved comment under its line, "Queued" until the next prompt sends it. */
-export function QueuedCommentCard({sessionId, comment}: {sessionId: string; comment: QueuedDiffComment}) {
+/**
+ * A saved comment under its line (upstream `Ie` with an annotation): the same card with a clickable body and
+ * revealed Edit and Delete. Clicking the body or Edit opens it for editing; Enter saves (and focuses the
+ * composer, ⌘Enter sends), Escape reverts to the saved text. The composer sends it with the next prompt.
+ */
+export function SavedCommentCard({sessionId, comment}: {sessionId: string; comment: QueuedDiffComment}) {
+	const {editBodies, activeId} = useDiffCommentEditing(sessionId);
+	const isEditing = activeId === comment.id;
 	return (
-		<div className="px-2 py-1">
-			<div data-queued-comment={comment.id} className={CARD_CLASS}>
-				<div className="flex items-center gap-1.5 px-1">
-					<span className="text-footnote text-ink-muted">{lineLabel(comment)}</span>
-					<span className="rounded-r5 bg-fill-control px-1 text-caption text-secondary">Queued</span>
-					<button
-						type="button"
-						aria-label="Remove comment"
-						onClick={() => {
-							removeQueuedDiffComment(sessionId, comment.id);
-						}}
-						className="ml-auto flex size-5 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
-					>
-						<X aria-hidden="true" className="size-3" />
-					</button>
-				</div>
-				<p className="whitespace-pre-wrap break-words px-1">{comment.text}</p>
-			</div>
+		<div data-saved-comment={comment.id}>
+			<CommentEditor
+				isEditing={isEditing}
+				isActive={isEditing}
+				autoFocus={isEditing}
+				label={lineLabel(comment)}
+				inputLabel={inputLabel(comment)}
+				placeholder="Tell Claude what to change"
+				value={isEditing ? (editBodies[comment.id] ?? comment.text) : comment.text}
+				onChange={(text) => {
+					setDiffCommentEditBody(sessionId, comment.id, text);
+				}}
+				onActivate={() => {
+					activateDiffComment(sessionId, comment.id);
+				}}
+				onDelete={
+					isEditing
+						? undefined
+						: () => {
+								removeQueuedDiffComment(sessionId, comment.id);
+							}
+				}
+				onSave={(text, options) => {
+					saveThenRequestComposer(sessionId, options, () => {
+						updateQueuedDiffComment(sessionId, comment.id, text);
+					});
+				}}
+				onCancel={() => {
+					cancelDiffCommentEdit(sessionId, comment.id);
+				}}
+			/>
 		</div>
 	);
 }

@@ -251,7 +251,7 @@ describe("Changes pane line comments", () => {
 			chips: within(chips)
 				.getAllByRole("listitem")
 				.map((chip) => chip.textContent),
-			badge: container.querySelector('[slot="annotation-additions-3"] [data-queued-comment]')?.textContent,
+			saved: container.querySelector('[slot="annotation-additions-3"] [data-saved-comment]')?.textContent,
 			sendEnabled: !screen.getByRole<HTMLButtonElement>("button", {name: "Send"}).disabled,
 		};
 
@@ -267,7 +267,7 @@ describe("Changes pane line comments", () => {
 		}).toStrictEqual({
 			queued: {
 				chips: ["greet.ts:2-3Extract a helper"],
-				badge: "Lines 2–3QueuedExtract a helper",
+				saved: "Lines 2–3Extract a helper",
 				sendEnabled: true,
 			},
 			sent: [["src/greet.ts:2-3 — Extract a helper\n\nPlease address these", {}]],
@@ -293,6 +293,110 @@ describe("Changes pane line comments", () => {
 			chips: screen.queryByRole("list", {name: "Attached context"}),
 			comments: getDiffComments(SESSION),
 		}).toStrictEqual({chips: null, comments: {drafts: [], queued: []}});
+	});
+});
+
+describe("Changes pane saved comments", () => {
+	function saveComment(container: HTMLElement, text: string): HTMLElement {
+		act(() => {
+			openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 5});
+		});
+		const draft = commentCard(container, "annotation-additions-5");
+		if (draft === null) throw new Error("no comment card");
+		fireEvent.change(within(draft).getByPlaceholderText("Tell Claude what to change"), {target: {value: text}});
+		fireEvent.click(within(draft).getByRole("button", {name: "Save comment"}));
+		const saved = container.querySelector<HTMLElement>('[slot="annotation-additions-5"] [data-saved-comment]');
+		if (saved === null) throw new Error("no saved card");
+		return saved;
+	}
+
+	function chipTexts(): (string | null)[] {
+		const chips = screen.queryByRole("list", {name: "Attached context"});
+		return chips === null
+			? []
+			: within(chips)
+					.getAllByRole("listitem")
+					.map((chip) => chip.textContent);
+	}
+
+	it("renders a saved comment as a clickable card with revealed Edit and Delete", () => {
+		const {container} = renderPane();
+		const saved = saveComment(container, "Rename");
+
+		expect({
+			queuedText: within(saved).queryByText("Queued"),
+			body: within(saved).getByRole("button", {name: "Rename"}).textContent,
+			edit: within(saved).getByRole("button", {name: "Edit comment"}).classList.contains("opacity-0"),
+			remove: within(saved).getByRole("button", {name: "Delete comment"}).classList.contains("opacity-0"),
+		}).toStrictEqual({queuedText: null, body: "Rename", edit: true, remove: true});
+	});
+
+	it("edits a saved comment from its body and updates the composer chip", () => {
+		const {container} = renderPane();
+		const saved = saveComment(container, "Rename");
+		fireEvent.click(within(saved).getByRole("button", {name: "Rename"}));
+		const textarea = within(saved).getByRole<HTMLTextAreaElement>("textbox", {name: "Comment on line 5"});
+		const editing = {
+			value: textarea.value,
+			border: saved.querySelector<HTMLElement>(".group\\/card")?.style.borderColor,
+			deleteButton: within(saved).queryByRole("button", {name: "Delete comment"}),
+		};
+		fireEvent.change(textarea, {target: {value: "Rename it"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({
+			editing,
+			chips: chipTexts(),
+			queued: getDiffComments(SESSION).queued.map(({text}) => text),
+			body: within(saved).getByRole("button", {name: "Rename it"}).textContent,
+		}).toStrictEqual({
+			editing: {value: "Rename", border: "var(--color-fill-accent)", deleteButton: null},
+			chips: ["greet.ts:5Rename it"],
+			queued: ["Rename it"],
+			body: "Rename it",
+		});
+	});
+
+	it("restores the saved text on Escape during an edit", () => {
+		const {container} = renderPane();
+		const saved = saveComment(container, "Rename");
+		fireEvent.click(within(saved).getByRole("button", {name: "Edit comment"}));
+		const textarea = within(saved).getByRole("textbox", {name: "Comment on line 5"});
+		fireEvent.change(textarea, {target: {value: "Something else"}});
+		fireEvent.keyDown(textarea, {key: "Escape"});
+
+		expect({
+			textbox: within(saved).queryByRole("textbox"),
+			body: within(saved).getByRole("button", {name: "Rename"}).textContent,
+			queued: getDiffComments(SESSION).queued.map(({text}) => text),
+		}).toStrictEqual({textbox: null, body: "Rename", queued: ["Rename"]});
+	});
+
+	it("removes the card and chip on Delete comment", () => {
+		const {container} = renderPane();
+		const saved = saveComment(container, "Rename");
+		fireEvent.click(within(saved).getByRole("button", {name: "Delete comment"}));
+
+		expect({
+			card: container.querySelector('[slot="annotation-additions-5"] [data-saved-comment]'),
+			chips: chipTexts(),
+			comments: getDiffComments(SESSION),
+		}).toStrictEqual({card: null, chips: [], comments: {drafts: [], queued: []}});
+	});
+
+	it("sends the active card's unsaved edit text", () => {
+		const onSend = vi.fn<(prompt: string) => void>();
+		const {container} = renderPane(onSend);
+		const saved = saveComment(container, "Rename");
+		fireEvent.click(within(saved).getByRole("button", {name: "Rename"}));
+		fireEvent.change(within(saved).getByRole("textbox", {name: "Comment on line 5"}), {
+			target: {value: "Rename it"},
+		});
+		const prompt = screen.getByRole("textbox", {name: "Prompt"});
+		fireEvent.change(prompt, {target: {value: "Go"}});
+		fireEvent.keyDown(prompt, {key: "Enter"});
+
+		expect(onSend.mock.calls).toStrictEqual([["src/greet.ts:5 — Rename it\n\nGo", {}]]);
 	});
 });
 

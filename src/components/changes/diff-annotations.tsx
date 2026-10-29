@@ -1,7 +1,7 @@
 import type {DiffCommentDraft, QueuedDiffComment} from "../../lib/diff-comments";
 import type {ReviewFinding} from "../../lib/review-diff";
 import type {DiffFileAnnotation} from "./diff-file";
-import {LineCommentCard, QueuedCommentCard} from "./line-comment-card";
+import {LineCommentCard, SavedCommentCard} from "./line-comment-card";
 import {type FindingActions, ReviewFindingAnnotation} from "./review-finding-annotation";
 
 /** Open comment cards and queued comments on `path` as inline diff annotations. */
@@ -17,7 +17,7 @@ export function commentAnnotations(
 			.map((comment) => ({
 				side: comment.side,
 				lineNumber: comment.endLine ?? comment.line,
-				content: <QueuedCommentCard key={comment.id} sessionId={sessionId} comment={comment} />,
+				content: <SavedCommentCard key={comment.id} sessionId={sessionId} comment={comment} />,
 			})),
 		...drafts
 			.filter((draft) => draft.path === path)
