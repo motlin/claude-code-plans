@@ -8,7 +8,6 @@ export type ArtifactTypeFilter = "all" | "slides" | "design" | "design-system" |
 /** Upstream's ownership tabs: All, Yours (you own it), Shared with you (any other audience). */
 export type ArtifactView = "all" | "yours" | "shared";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const RECENT_DAYS = 7;
 
 interface DatedArtifact {
@@ -42,38 +41,76 @@ export function artifactTimestamp(artifact: DatedArtifact): number {
 	return artifact.lastPublishedAt ?? artifact.firstSeenAt;
 }
 
-function startOfDay(date: Date): number {
-	return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+/** Upstream's `ot` day starts: today's local midnight, then each of the previous six. */
+function recentDayStarts(now: Date): number[] {
+	return Array.from({length: RECENT_DAYS}, (_, index) =>
+		new Date(now.getFullYear(), now.getMonth(), now.getDate() - index).getTime(),
+	);
+}
+
+function dayLabel(index: number, dayStart: number): string {
+	if (index === 0) return "Today";
+	if (index === 1) return "Yesterday";
+	return new Date(dayStart).toLocaleDateString("en-US", {month: "short", day: "numeric"});
+}
+
+function monthLabel(year: number, month: number, now: Date): string {
+	return new Date(year, month, 1).toLocaleDateString("en-US", {
+		month: "long",
+		...(year === now.getFullYear() ? {} : {year: "numeric"}),
+	});
 }
 
 /**
- * Upstream's gallery buckets: a day label ("Sep 26") within the last week, the month name for
- * the rest of the current year, then "Month YYYY".
+ * Upstream's gallery buckets: "Today", "Yesterday", then a day label ("Sep 26") within the last
+ * week (anything later than today's midnight counts as Today), the month name for the rest of
+ * the current year, then "Month YYYY".
  */
 export function artifactDateGroupLabel(ms: number, now: Date): string {
+	const dayStarts = recentDayStarts(now);
+	const index = dayStarts.findIndex((dayStart) => ms >= dayStart);
+	if (index !== -1) return dayLabel(index, dayStarts[index] ?? ms);
 	const date = new Date(ms);
-	const daysAgo = Math.round((startOfDay(now) - startOfDay(date)) / DAY_MS);
-	if (daysAgo >= 0 && daysAgo < RECENT_DAYS) {
-		return date.toLocaleDateString("en-US", {month: "short", day: "numeric"});
-	}
-	if (date.getFullYear() === now.getFullYear()) {
-		return date.toLocaleDateString("en-US", {month: "long"});
-	}
-	return date.toLocaleDateString("en-US", {month: "long", year: "numeric"});
+	return monthLabel(date.getFullYear(), date.getMonth(), now);
 }
 
-/** Groups already-sorted artifacts into consecutive date buckets. */
+/**
+ * Upstream's `ot`: seven day buckets, then month buckets newest first, then a trailing "Older"
+ * bucket for items without a usable timestamp. Each bucket is sorted newest first.
+ */
 export function groupArtifactsByDate<T extends DatedArtifact>(
 	items: readonly T[],
 	now: Date,
 ): Array<{label: string; items: T[]}> {
-	const groups: Array<{label: string; items: T[]}> = [];
+	const dayStarts = recentDayStarts(now);
+	const days: T[][] = dayStarts.map(() => []);
+	const months = new Map<number, T[]>();
+	const older: T[] = [];
 	for (const item of items) {
-		const label = artifactDateGroupLabel(artifactTimestamp(item), now);
-		const last = groups.at(-1);
-		if (last?.label === label) last.items.push(item);
-		else groups.push({label, items: [item]});
+		const ms = artifactTimestamp(item);
+		if (!Number.isFinite(ms)) {
+			older.push(item);
+			continue;
+		}
+		const index = dayStarts.findIndex((dayStart) => ms >= dayStart);
+		if (index !== -1) {
+			days[index]?.push(item);
+			continue;
+		}
+		const date = new Date(ms);
+		const key = date.getFullYear() * 12 + date.getMonth();
+		const bucket = months.get(key);
+		if (bucket) bucket.push(item);
+		else months.set(key, [item]);
 	}
+	const newestFirst = (bucket: T[]) => bucket.toSorted((a, b) => artifactTimestamp(b) - artifactTimestamp(a));
+	const groups = days.flatMap((bucket, index) =>
+		bucket.length === 0 ? [] : [{label: dayLabel(index, dayStarts[index] ?? 0), items: newestFirst(bucket)}],
+	);
+	for (const [key, bucket] of [...months].toSorted(([a], [b]) => b - a)) {
+		groups.push({label: monthLabel(Math.floor(key / 12), key % 12, now), items: newestFirst(bucket)});
+	}
+	if (older.length > 0) groups.push({label: "Older", items: older});
 	return groups;
 }
 

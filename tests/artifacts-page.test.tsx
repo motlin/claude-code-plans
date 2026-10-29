@@ -38,25 +38,48 @@ function localMs(year: number, monthIndex: number, day: number, hour = 10): numb
 }
 
 describe("artifactDateGroupLabel", () => {
-	it("uses upstream's buckets: days within a week, then months this year, then month and year", () => {
+	it("uses upstream's buckets: Today, Yesterday, days within a week, then months this year, then month and year", () => {
+		const ago = (hours: number) => artifactDateGroupLabel(NOW.getTime() - hours * 60 * 60 * 1000, NOW);
 		expect([
+			ago(2),
+			ago(26),
+			ago(72),
 			artifactDateGroupLabel(localMs(2026, 8, 29), NOW),
+			artifactDateGroupLabel(localMs(2026, 8, 28, 0), NOW),
 			artifactDateGroupLabel(localMs(2026, 8, 26), NOW),
 			artifactDateGroupLabel(localMs(2026, 8, 23), NOW),
 			artifactDateGroupLabel(localMs(2026, 8, 22), NOW),
 			artifactDateGroupLabel(localMs(2026, 5, 10), NOW),
 			artifactDateGroupLabel(localMs(2026, 0, 1, 0), NOW),
 			artifactDateGroupLabel(localMs(2025, 10, 3), NOW),
-		]).toStrictEqual(["Sep 29", "Sep 26", "Sep 23", "September", "June", "January", "November 2025"]);
+			artifactDateGroupLabel(localMs(2026, 9, 1), NOW),
+		]).toStrictEqual([
+			"Today",
+			"Yesterday",
+			"Sep 26",
+			"Today",
+			"Yesterday",
+			"Sep 26",
+			"Sep 23",
+			"September",
+			"June",
+			"January",
+			"November 2025",
+			"Today",
+		]);
 	});
 
-	it("groups consecutive items that share a bucket, keyed by the last publish", () => {
+	it("buckets like upstream: days then months descending, each sorted newest first, untimed items last as Older", () => {
 		const items = [
-			{id: "a", lastPublishedAt: localMs(2026, 8, 26, 15), firstSeenAt: localMs(2026, 0, 1)},
-			{id: "b", lastPublishedAt: localMs(2026, 8, 26, 9), firstSeenAt: localMs(2026, 0, 1)},
+			{id: "a", lastPublishedAt: localMs(2026, 8, 26, 9), firstSeenAt: localMs(2026, 0, 1)},
 			{id: "c", lastPublishedAt: null, firstSeenAt: localMs(2026, 8, 10)},
-			{id: "d", lastPublishedAt: localMs(2026, 8, 2), firstSeenAt: localMs(2026, 8, 1)},
 			{id: "e", lastPublishedAt: localMs(2025, 10, 3), firstSeenAt: localMs(2025, 10, 3)},
+			{id: "u", lastPublishedAt: null, firstSeenAt: Number.NaN},
+			{id: "b", lastPublishedAt: localMs(2026, 8, 26, 15), firstSeenAt: localMs(2026, 0, 1)},
+			{id: "t", lastPublishedAt: localMs(2026, 8, 29, 8), firstSeenAt: localMs(2026, 0, 1)},
+			{id: "d", lastPublishedAt: localMs(2026, 8, 12), firstSeenAt: localMs(2026, 8, 1)},
+			{id: "y", lastPublishedAt: localMs(2026, 8, 28, 23), firstSeenAt: localMs(2026, 0, 1)},
+			{id: "j", lastPublishedAt: localMs(2026, 5, 10), firstSeenAt: localMs(2026, 5, 10)},
 		];
 
 		expect(
@@ -65,9 +88,13 @@ describe("artifactDateGroupLabel", () => {
 				ids: group.items.map((item) => item.id),
 			})),
 		).toStrictEqual([
-			{label: "Sep 26", ids: ["a", "b"]},
-			{label: "September", ids: ["c", "d"]},
+			{label: "Today", ids: ["t"]},
+			{label: "Yesterday", ids: ["y"]},
+			{label: "Sep 26", ids: ["b", "a"]},
+			{label: "September", ids: ["d", "c"]},
+			{label: "June", ids: ["j"]},
 			{label: "November 2025", ids: ["e"]},
+			{label: "Older", ids: ["u"]},
 		]);
 	});
 });
