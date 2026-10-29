@@ -55,6 +55,13 @@ import {asRecord} from "./narrow";
 import {clearPendingQuestion, pendingQuestionFromToolInput, setPendingQuestion} from "./pending-question-store";
 import {clearPendingPlan, getPendingPlan, pendingPlanFromToolInput, setPendingPlan} from "./pending-plan-store";
 import {forgetHookContext, recordHookContext} from "./hook-context-store";
+import {
+	addPendingElicitation,
+	clearPendingElicitations,
+	getPendingElicitations,
+	resolvePendingElicitation,
+} from "./pending-elicitations";
+import type {PendingElicitation, SessionElicitationChangedPayload} from "./domain-event-payload-schemas";
 import {z} from "zod";
 
 const StringArraySchema = z.array(z.string());
@@ -457,6 +464,55 @@ function trackPendingPlan(event: HookEvent, broadcast: (type: string, data: Reco
 	} satisfies SessionPendingPlanChangedPayload);
 }
 
+/** The pending entry an `Elicitation` hook describes; `mode` defaults to the MCP's "form". */
+function pendingElicitationFrom(event: Extract<HookEvent, {hook_event_name: "Elicitation"}>): PendingElicitation {
+	const entry: PendingElicitation = {
+		serverName: event.mcp_server_name,
+		message: event.message,
+		mode: event.mode ?? "form",
+		receivedAt: Date.now(),
+	};
+	if (event.elicitation_id !== undefined) entry.elicitationId = event.elicitation_id;
+	if (event.url !== undefined) entry.url = event.url;
+	if (event.requested_schema !== undefined) entry.requestedSchema = event.requested_schema;
+	return entry;
+}
+
+/**
+ * Keep each MCP elicitation's payload from its `Elicitation` hook until the
+ * matching `ElicitationResult` or the end of the turn, so a card can be built
+ * from the schema the notification drops.
+ */
+function trackPendingElicitations(
+	event: HookEvent,
+	broadcast: (type: string, data: Record<string, unknown>) => void,
+): void {
+	switch (event.hook_event_name) {
+		case "Elicitation":
+			addPendingElicitation(event.session_id, pendingElicitationFrom(event));
+			break;
+		case "ElicitationResult": {
+			const result =
+				event.elicitation_id === undefined
+					? {serverName: event.mcp_server_name}
+					: {serverName: event.mcp_server_name, elicitationId: event.elicitation_id};
+			if (!resolvePendingElicitation(event.session_id, result)) return;
+			break;
+		}
+		case "Stop":
+		case "StopFailure":
+		case "SessionEnd":
+			if (!clearPendingElicitations(event.session_id)) return;
+			break;
+		default:
+			return;
+	}
+	broadcast(DOMAIN_EVENTS.SESSION_ELICITATION_CHANGED, {
+		sessionId: event.session_id,
+		pendingElicitations: getPendingElicitations(event.session_id),
+	} satisfies SessionElicitationChangedPayload);
+}
+
 /**
  * Route a single parsed hook event to the active-session store and SSE
  * broadcaster. Each case emits enriched domain-level deltas that the client
@@ -505,6 +561,9 @@ export async function dispatchHookEvent({
 		trackPendingQuestion(event, broadcast);
 		trackPendingPlan(event, broadcast);
 	}
+
+	// A subagent's MCP server can ask the user too, so this runs for both scopes.
+	trackPendingElicitations(event, broadcast);
 
 	switch (event.hook_event_name) {
 		case "SessionStart": {

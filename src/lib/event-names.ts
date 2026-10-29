@@ -48,6 +48,8 @@ export const DOMAIN_EVENTS = {
 	SESSION_TOOL_FAILED: "session:tool-failed",
 	SESSION_PENDING_QUESTION_CHANGED: "session:pending-question-changed",
 	SESSION_PENDING_PLAN_CHANGED: "session:pending-plan-changed",
+	/** A session's pending MCP elicitations changed: one arrived, was answered, or its turn ended. */
+	SESSION_ELICITATION_CHANGED: "session:elicitation-changed",
 	SESSION_COMPACTING: "session:compacting",
 	SESSION_COMPACTED: "session:compacted",
 	SUBAGENT_STARTED: "subagent:started",

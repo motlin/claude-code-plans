@@ -11,6 +11,7 @@ import type {
 	SessionSummaryPayload,
 } from "./hook-events";
 import type {LiveSubagentNode} from "./live-subagent-store";
+import {JsonValueSchema} from "./json-value-schema";
 import {PrStatusSchema} from "./pr-status";
 import {SessionBucketSchema} from "./session-state";
 
@@ -121,3 +122,26 @@ export const HookSessionCronPayloadSchema: z.ZodType<HookSessionCronPayload> = z
 	recurring: z.boolean(),
 	prompt: z.string(),
 });
+
+/**
+ * An MCP elicitation a session waits on, kept from its `Elicitation` hook until
+ * the matching `ElicitationResult` or the turn ends. `mode` is "form" when the
+ * hook omitted it (the MCP default); `requestedSchema` is the server's JSON Schema.
+ */
+const PendingElicitationSchema = z.strictObject({
+	elicitationId: z.string().optional(),
+	serverName: z.string(),
+	message: z.string(),
+	mode: z.enum(["form", "url"]),
+	url: z.string().optional(),
+	requestedSchema: JsonValueSchema.optional(),
+	receivedAt: z.number(),
+});
+export type PendingElicitation = z.infer<typeof PendingElicitationSchema>;
+
+/** Payload broadcast when a session's pending elicitations change; the full list, oldest first. */
+export const SessionElicitationChangedPayloadSchema = z.strictObject({
+	sessionId: z.string(),
+	pendingElicitations: z.array(PendingElicitationSchema),
+});
+export type SessionElicitationChangedPayload = z.infer<typeof SessionElicitationChangedPayloadSchema>;
