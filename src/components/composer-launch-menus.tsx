@@ -23,6 +23,7 @@ import {
 	Menu,
 	MenuCheckboxSwitchItem,
 	MenuContent,
+	MenuItem,
 	MenuLabel,
 	MenuRadioGroup,
 	MenuRadioItem,
@@ -185,6 +186,7 @@ export function ModelMenu({
 	onSelectEffort,
 	fastMode,
 	onFastModeChange,
+	settingsOverride,
 	surface,
 }: ControlledMenuProps & {
 	/** Upstream's new-session bar pins a "Model · this session" header; session chins have none. */
@@ -198,6 +200,8 @@ export function ModelMenu({
 	onSelectEffort: (effort: EffortLevel) => void;
 	fastMode: boolean;
 	onFastModeChange: (on: boolean) => void;
+	/** The pick differs from the settings.json model: accent label, "(settings: X)" tooltip, "Use settings’ X". */
+	settingsOverride: {label: string; onUse: () => void} | null;
 }) {
 	/** Upstream's checked row shows its ✓ in place of its digit; the others keep their position's digit. */
 	const primary = primaryModelMenuValue(current);
@@ -211,7 +215,13 @@ export function ModelMenu({
 			aria-label={`Model: ${currentLabel}${fastShown ? " Fast" : ""} ${effortLabel}`}
 			className={CHIN_TRIGGER_CLASS}
 		>
-			<span className="truncate">{currentLabel}</span>
+			{settingsOverride === null ? (
+				<span className="truncate">{currentLabel}</span>
+			) : (
+				<span data-overridden="" className="flex min-w-0 items-center gap-1 text-accent-100">
+					<span className="truncate">{currentLabel}</span>
+				</span>
+			)}
 			{/* Upstream's tail order: the " Fast" word, then the effort. */}
 			{fastShown && (
 				<span data-fast-label="" className={EFFORT_LABEL_CLASS}>
@@ -230,9 +240,18 @@ export function ModelMenu({
 	);
 	return (
 		<Menu open={open} onOpenChange={onOpenChange}>
-			{/* Upstream's new-session bar tooltips the model "Model ⇧⌘I"; session chins have no tooltip. */}
-			{surface === "bar" ? (
-				<Tooltip content="Model" shortcut={modelKeys} side="top" suppressAfterPopup>
+			{/* Upstream's new-session bar tooltips the model "Model ⇧⌘I"; session chins have none unless overridden. */}
+			{surface === "bar" || settingsOverride !== null ? (
+				<Tooltip
+					content={
+						settingsOverride === null
+							? "Model"
+							: `Model for this session (settings: ${settingsOverride.label})`
+					}
+					shortcut={modelKeys}
+					side="top"
+					suppressAfterPopup
+				>
 					{trigger}
 				</Tooltip>
 			) : (
@@ -353,6 +372,12 @@ export function ModelMenu({
 						<MenuCheckboxSwitchItem decorative checked={fastMode} onCheckedChange={onFastModeChange}>
 							Enable fast mode
 						</MenuCheckboxSwitchItem>
+					</>
+				)}
+				{settingsOverride !== null && (
+					<>
+						<MenuSeparator />
+						<MenuItem onSelect={settingsOverride.onUse}>Use settings’ {settingsOverride.label}</MenuItem>
 					</>
 				)}
 			</MenuContent>

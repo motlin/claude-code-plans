@@ -88,6 +88,8 @@ export interface ComposerState {
 	model: string;
 	/** The id behind `model`; the Model menu checks its row. */
 	modelId: string;
+	/** The model settings.json launches with; a session pick that differs gets upstream's overridden cue. */
+	settingsModelId: string;
 	effort: ComposerLabelled;
 	/** The trigger's " Fast" word and the chin's "Fast mode on|off" live status. */
 	fastMode: boolean;
@@ -168,6 +170,7 @@ export function resolveComposerState(sources: ComposerStateSources): ComposerSta
 		mode: modeId === null ? null : {id: modeId, label: MODE_LABELS[modeId] ?? modeId},
 		model: nonEmpty(sources.statuslineModel) ?? formatModelName(modelId) ?? modelId,
 		modelId,
+		settingsModelId: resolveLaunchModel(sources.settingsModel),
 		effort: {id: effortId, label: EFFORT_LABELS[effortId] ?? effortId},
 		fastMode: sources.fastMode,
 		usage: resolveComposerUsage(sources, modelId),

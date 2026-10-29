@@ -256,6 +256,15 @@ export const ComposerChin = memo(function ComposerChin({
 			? (state.mode?.label ?? "Manual")
 			: modeTriggerLabel(launchOptions.permissionMode);
 	const modelText = launchOptions.model === undefined ? state.model : modelLabel(launchOptions.model);
+	// Upstream's environment baseline; locally the settings.json model is what a pick overrides.
+	const settingsModel = modelMenuValue(state.settingsModelId) ?? state.settingsModelId;
+	const overridden =
+		launchOptions.model !== undefined &&
+		(modelMenuValue(launchOptions.model) ?? launchOptions.model) !== settingsModel;
+	const clearModel = () => {
+		const {model: _cleared, ...rest} = launchOptions;
+		onLaunchOptionsChange(rest);
+	};
 	return (
 		<>
 			<div className="flex min-w-0 items-center self-start">
@@ -283,6 +292,7 @@ export const ComposerChin = memo(function ComposerChin({
 					currentLabel={modelText}
 					currentEffort={currentEffort}
 					onSelect={selectModel}
+					settingsOverride={overridden ? {label: modelLabel(settingsModel), onUse: clearModel} : null}
 					onSelectEffort={selectEffort}
 					fastMode={fastMode}
 					onFastModeChange={selectFastMode}

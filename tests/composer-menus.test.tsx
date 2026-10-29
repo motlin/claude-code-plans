@@ -26,6 +26,7 @@ const CHIN: ComposerState = {
 	mode: {id: "default", label: "Manual"},
 	model: "Opus 5.5",
 	modelId: "claude-opus-5-5",
+	settingsModelId: "claude-opus-5-5",
 	fastMode: false,
 	effort: {id: "high", label: "High"},
 	usage: null,
@@ -1307,6 +1308,96 @@ describe("Composer chin tooltips and contrast", () => {
 		const label = within(menu).getByText("Mode");
 
 		expect(label.getAttribute("class")).toBe("px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]");
+	});
+});
+
+describe("Composer model settings-baseline override cue", () => {
+	async function pickSonnet() {
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		fireEvent.keyDown(menu, {key: "3", code: "Digit3"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+	}
+
+	function overriddenLabel() {
+		const label = document.querySelector("[data-cds=ModelSelector] [data-overridden]");
+		return label === null ? null : {text: label.textContent, className: label.getAttribute("class")};
+	}
+
+	it("has no cue or Use settings item while the model matches settings.json", async () => {
+		renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			label: overriddenLabel(),
+			useSettings: within(menu).queryByRole("menuitem", {name: /^Use settings/}),
+		}).toStrictEqual({label: null, useSettings: null});
+	});
+
+	it("marks a session pick that differs from settings.json in accent ink", async () => {
+		renderComposer();
+
+		await pickSonnet();
+
+		expect(overriddenLabel()).toStrictEqual({
+			text: "Sonnet 5.5",
+			className: "flex min-w-0 items-center gap-1 text-accent-100",
+		});
+	});
+
+	it("ends the menu with a separator and Use settings’ Opus 5.5, which clears the pick", async () => {
+		const onSend = renderComposer();
+		await pickSonnet();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const items = within(menu).getAllByRole("menuitem");
+		const last = items[items.length - 1];
+		if (last === undefined) throw new Error("model menu has no items");
+		const previous = last.previousElementSibling;
+		const shape = {
+			text: last.textContent,
+			afterSeparator: previous?.getAttribute("role") ?? null,
+		};
+		fireEvent.click(last);
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		const cleared = overriddenLabel();
+		sendPrompt("Continue Ivan's test");
+
+		expect({shape, cleared, calls: onSend.mock.calls}).toStrictEqual({
+			shape: {text: "Use settings’ Opus 5.5", afterSeparator: "separator"},
+			cleared: null,
+			calls: [["Continue Ivan's test", {}]],
+		});
+	});
+
+	it("tooltips an overridden home bar model Model for this session (settings: Opus 5.5) ⇧⌘I", async () => {
+		renderHomeComposer();
+		await pickSonnet();
+
+		vi.useFakeTimers();
+		try {
+			const anchor = screen.getByRole("button", {name: "Model: Sonnet 5.5 High"}).parentElement;
+			if (anchor === null) throw new Error("trigger has no parent");
+			// The tooltip stays shut as focus returns from the closed menu; a fresh hover opens it.
+			fireEvent.pointerLeave(anchor);
+			fireEvent.pointerEnter(anchor);
+			act(() => {
+				vi.advanceTimersByTime(400);
+			});
+
+			expect(screen.queryByRole("tooltip")?.textContent ?? null).toBe(
+				"Model for this session (settings: Opus 5.5)⇧Shift⌘CommandI",
+			);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
 
