@@ -3,8 +3,9 @@ import {useSyncExternalStore} from "react";
 import type {ReviewComment} from "./context-attach";
 
 /**
- * Comments on Changes pane diff lines, per session and in memory only. An open comment card is a draft; Save comment queues it, and
- * the session's composer sends the queued comments with its next prompt.
+ * Comments on Changes pane diff lines, per session. An open comment card is a draft; Save comment queues it, and
+ * the session's composer sends the queued comments with its next prompt. Saved comments persist per browser in
+ * `localStorage["diff-annotations"]`, as upstream's zustand `persist`; drafts and edit text stay in memory.
  */
 
 export type DiffSide = "additions" | "deletions";
@@ -42,16 +43,86 @@ export interface DiffCommentEditing {
 const EMPTY: DiffComments = {drafts: [], queued: []};
 const NO_EDITING: DiffCommentEditing = {bodies: {}, editBodies: {}, activeId: null};
 
+/** Upstream's persist key; the stored shape is `{version: 0, state: {commentsBySession}}`. */
+const DIFF_COMMENTS_STORAGE_KEY = "diff-annotations";
+
+const ID_PREFIX = "diff-comment-";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Reads one stored comment, or undefined when it is malformed (hand-checked to keep zod out of the client bundle). */
+function readStoredComment(value: unknown): QueuedDiffComment | undefined {
+	if (!isRecord(value)) return undefined;
+	const {id, path, side, line, endLine, text} = value;
+	if (typeof id !== "string" || typeof path !== "string" || typeof text !== "string") return undefined;
+	if ((side !== "additions" && side !== "deletions") || typeof line !== "number") return undefined;
+	if (endLine !== undefined && typeof endLine !== "number") return undefined;
+	return endLine === undefined ? {id, path, side, line, text} : {id, path, side, line, endLine, text};
+}
+
+function readStored(value: unknown): Map<string, DiffComments> | undefined {
+	if (!isRecord(value) || value["version"] !== 0 || !isRecord(value["state"])) return undefined;
+	const bySession = value["state"]["commentsBySession"];
+	if (!isRecord(bySession)) return undefined;
+	const restored = new Map<string, DiffComments>();
+	for (const [sessionId, stored] of Object.entries(bySession)) {
+		if (!Array.isArray(stored)) return undefined;
+		const queued: QueuedDiffComment[] = [];
+		for (const item of stored) {
+			const comment = readStoredComment(item);
+			if (comment === undefined) return undefined;
+			queued.push(comment);
+		}
+		if (queued.length > 0) restored.set(sessionId, {drafts: [], queued});
+	}
+	return restored;
+}
+
 let sessions = new Map<string, DiffComments>();
 let editing = new Map<string, DiffCommentEditing>();
 const listeners = new Set<() => void>();
 let nextId = 1;
+let hydrated = false;
+
+function hydrate(): void {
+	if (hydrated) return;
+	hydrated = true;
+	try {
+		const raw = localStorage.getItem(DIFF_COMMENTS_STORAGE_KEY);
+		if (raw === null) return;
+		const restored = readStored(JSON.parse(raw));
+		if (restored === undefined) return;
+		for (const {queued} of restored.values()) {
+			for (const {id} of queued) {
+				const n = id.startsWith(ID_PREFIX) ? Number(id.slice(ID_PREFIX.length)) : Number.NaN;
+				if (Number.isInteger(n) && n >= nextId) nextId = n + 1;
+			}
+		}
+		sessions = restored;
+	} catch {
+		// Unreadable storage or a corrupt value starts empty.
+	}
+}
+
+function persist(): void {
+	const commentsBySession: Record<string, readonly QueuedDiffComment[]> = {};
+	for (const [sessionId, {queued}] of sessions) if (queued.length > 0) commentsBySession[sessionId] = queued;
+	try {
+		localStorage.setItem(DIFF_COMMENTS_STORAGE_KEY, JSON.stringify({version: 0, state: {commentsBySession}}));
+	} catch {
+		// Storage full or blocked: comments stay in memory for this page.
+	}
+}
 
 function update(sessionId: string, change: (comments: DiffComments) => DiffComments): void {
-	const next = change(getDiffComments(sessionId));
+	const before = getDiffComments(sessionId);
+	const next = change(before);
 	sessions = new Map(sessions);
 	if (next.drafts.length === 0 && next.queued.length === 0) sessions.delete(sessionId);
 	else sessions.set(sessionId, next);
+	if (next.queued !== before.queued) persist();
 	for (const listener of listeners) listener();
 }
 
@@ -87,6 +158,7 @@ function sameTarget(a: DiffCommentTarget, b: DiffCommentTarget): boolean {
 }
 
 export function getDiffComments(sessionId: string): DiffComments {
+	hydrate();
 	return sessions.get(sessionId) ?? EMPTY;
 }
 
@@ -107,7 +179,7 @@ export function openDiffCommentDraft(sessionId: string, target: DiffCommentTarge
 		return existing.id;
 	}
 	const draft: DiffCommentDraft = {
-		id: `diff-comment-${nextId++}`,
+		id: `${ID_PREFIX}${nextId++}`,
 		path: target.path,
 		side: target.side,
 		line: target.line,
@@ -190,6 +262,7 @@ export function takeQueuedDiffComments(sessionId: string): readonly QueuedDiffCo
 }
 
 export function clearDiffComments(sessionId: string): void {
+	hydrate();
 	if (sessions.has(sessionId)) update(sessionId, () => EMPTY);
 	if (editing.has(sessionId)) updateEditing(sessionId, () => NO_EDITING);
 }

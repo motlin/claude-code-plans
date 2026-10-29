@@ -68,10 +68,10 @@
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1896452,
+		"ceiling": 1915839,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Elicitation waiting notice (2026-10-29): the session page names the asking MCP server and its message in the waiting notice for a pending form or url elicitation (findElicitationWaitingNotice plus the notice's message line, +377 bytes), on top of the growth since the 2026-10-27 bundle trim (1877453 to 1896075, already within the 1% tolerance). Raw went to 1896452, about 225 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Persisted diff comments (2026-10-29): the Changes pane's saved comments hydrate from and write to localStorage[\"diff-annotations\"] with a hand-written validator (no zod), on top of the growth since the 2026-10-29 elicitation raise (diff comment editor cards, gutter button, plan comment marks; 1896452 to about 1914300, within the 1% tolerance). Raw went to 1915839, about 423 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-29"
 	},
 	"client.coldHome.default.commitsToRows": {
