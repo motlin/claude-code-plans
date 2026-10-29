@@ -815,6 +815,7 @@ const systemSubtypeLabels = {
 	scheduled_task_fire: "Scheduled task fire",
 	local_command: "Local command",
 	bridge_status: "Remote Control status",
+	model_refusal_no_fallback: "Request refused",
 } satisfies Record<Extract<ProcessedLine, {type: "system"}>["subtype"], string>;
 
 const messageLineTypeLabels = {

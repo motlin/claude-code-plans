@@ -190,6 +190,44 @@ describe("SystemBanner scheduled fires and local commands", () => {
 		expect(html).not.toContain("<a ");
 	});
 
+	it("renders model_refusal_no_fallback with its category, explanation and original model", () => {
+		const html = renderBanner({
+			type: "system",
+			subtype: "model_refusal_no_fallback",
+			content: "",
+			originalModel: "claude-sonnet-5-5",
+			requestId: "req_011CgFaXu4vBJjAD4zM5mZ3W",
+			apiRefusalCategory: "cyber",
+			apiRefusalExplanation: "This request triggered restrictions on violative cyber content.",
+			lineIndex: 0,
+		});
+		const text = html
+			.replace(/<[^>]+>/g, "|")
+			.split("|")
+			.filter((part) => part.trim() !== "");
+		expect(text).toStrictEqual([
+			"Request refused",
+			"cyber",
+			"claude-sonnet-5-5",
+			"This request triggered restrictions on violative cyber content.",
+		]);
+		expect(html).toContain('title="req_011CgFaXu4vBJjAD4zM5mZ3W"');
+	});
+
+	it("renders model_refusal_no_fallback without a category or explanation as the bare headline", () => {
+		const html = renderBanner({
+			type: "system",
+			subtype: "model_refusal_no_fallback",
+			content: "",
+			lineIndex: 0,
+		});
+		const text = html
+			.replace(/<[^>]+>/g, "|")
+			.split("|")
+			.filter((part) => part.trim() !== "");
+		expect(text).toStrictEqual(["Request refused"]);
+	});
+
 	it("renders local_command with the slash command and its output", () => {
 		const html = renderBanner({
 			type: "system",

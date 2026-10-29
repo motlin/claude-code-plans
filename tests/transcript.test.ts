@@ -1731,6 +1731,55 @@ describe("system record lines", () => {
 		]);
 	});
 
+	it("emits model_refusal_no_fallback records with their category, explanation and original model", () => {
+		const records = [
+			{
+				type: "system",
+				subtype: "model_refusal_no_fallback",
+				content: "",
+				level: "warning",
+				originalModel: "claude-sonnet-5-5",
+				requestId: "req_011CgFaXu4vBJjAD4zM5mZ3W",
+				apiRefusalCategory: "cyber",
+				apiRefusalExplanation: "This request triggered restrictions on violative cyber content.",
+				refusedUserMessageUuid: "06ac5d00-1f7a-4e96-a16b-462c368c8aeb",
+				uuid: "refusal-1",
+			},
+			{
+				type: "system",
+				subtype: "model_refusal_no_fallback",
+				content: "",
+				originalModel: "claude-opus-5-5",
+				requestId: null,
+				apiRefusalCategory: null,
+				apiRefusalExplanation: null,
+				refusedUserMessageUuid: null,
+				uuid: "refusal-2",
+			},
+		];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{
+				type: "system",
+				subtype: "model_refusal_no_fallback",
+				content: "",
+				originalModel: "claude-sonnet-5-5",
+				requestId: "req_011CgFaXu4vBJjAD4zM5mZ3W",
+				apiRefusalCategory: "cyber",
+				apiRefusalExplanation: "This request triggered restrictions on violative cyber content.",
+				uuid: "refusal-1",
+				lineIndex: 0,
+			},
+			{
+				type: "system",
+				subtype: "model_refusal_no_fallback",
+				content: "",
+				originalModel: "claude-opus-5-5",
+				uuid: "refusal-2",
+				lineIndex: 1,
+			},
+		]);
+	});
+
 	it("emits local_command records that name the slash command they ran", () => {
 		const records = [
 			{

@@ -1,4 +1,4 @@
-import {Clock, Laptop, SquareTerminal, Webhook} from "lucide-react";
+import {Clock, Laptop, ShieldAlert, SquareTerminal, Webhook} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {Banner, Pre} from "./attachment-banner";
 import {CollapsibleSection} from "./tool-renderers/shared";
@@ -31,7 +31,8 @@ function jsonText(value: unknown): string {
 
 /**
  * Renders a system JSONL record (compact_boundary, stop_hook_summary,
- * api_error, turn_duration, scheduled_task_fire, local_command, bridge_status) as a compact informational banner, mirroring
+ * api_error, turn_duration, scheduled_task_fire, local_command, bridge_status,
+ * model_refusal_no_fallback) as a compact informational banner, mirroring
  * the visual language of AttachmentBanner.
  */
 export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: string | undefined}) {
@@ -193,6 +194,28 @@ export function SystemBanner({line, sessionId}: {line: SystemLine; sessionId?: s
 						>
 							Open in claude.ai
 						</a>
+					)}
+				</Banner>
+			);
+		case "model_refusal_no_fallback":
+			// The API refused the turn and no fallback model retried it.
+			return (
+				<Banner
+					icon={<ShieldAlert className="h-3.5 w-3.5" />}
+					label="Request refused"
+					sessionId={sessionId}
+					uuid={line.uuid}
+				>
+					{line.apiRefusalCategory !== undefined && (
+						<span className="font-mono text-danger-000">{line.apiRefusalCategory}</span>
+					)}
+					{line.originalModel !== undefined && (
+						<span className="font-mono" {...(line.requestId === undefined ? {} : {title: line.requestId})}>
+							{line.originalModel}
+						</span>
+					)}
+					{line.apiRefusalExplanation !== undefined && (
+						<span className="basis-full min-w-0 text-t5">{line.apiRefusalExplanation}</span>
 					)}
 				</Banner>
 			);

@@ -209,6 +209,7 @@ const RenderedSystemSubtypeSchema = z.enum([
 	"scheduled_task_fire",
 	"local_command",
 	"bridge_status",
+	"model_refusal_no_fallback",
 ]);
 
 const SystemLineSchema = z.object({
@@ -235,6 +236,10 @@ const SystemLineSchema = z.object({
 	noOpStreak: z.number().optional(),
 	commandRun: z.object({command: z.string(), args: z.string().optional()}).optional(),
 	url: z.string().optional(),
+	originalModel: z.string().optional(),
+	requestId: z.string().optional(),
+	apiRefusalCategory: z.string().optional(),
+	apiRefusalExplanation: z.string().optional(),
 	uuid: z.string().optional(),
 	timestamp: z.string().optional(),
 	sessionId: z.string().optional(),
@@ -1052,6 +1057,13 @@ function processRecordBatch(
 			if (record.noOpStreak !== undefined) systemLine.noOpStreak = record.noOpStreak;
 			if (record.commandRun !== undefined) systemLine.commandRun = record.commandRun;
 			if (record.url !== undefined) systemLine.url = record.url;
+			if (record.originalModel !== undefined) systemLine.originalModel = record.originalModel;
+			if (typeof record.requestId === "string") systemLine.requestId = record.requestId;
+			if (typeof record.apiRefusalCategory === "string")
+				systemLine.apiRefusalCategory = record.apiRefusalCategory;
+			if (typeof record.apiRefusalExplanation === "string") {
+				systemLine.apiRefusalExplanation = record.apiRefusalExplanation;
+			}
 			if (uuid !== undefined) systemLine.uuid = uuid;
 			if (record.timestamp !== undefined) systemLine.timestamp = record.timestamp;
 			if (sessionId !== undefined) systemLine.sessionId = sessionId;
