@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
+import {AddCommentGutterButton} from "../src/components/changes/diff-file";
 import {Composer} from "../src/components/composer";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
@@ -411,20 +412,23 @@ describe("Changes pane right-click menu", () => {
 		fireEvent.contextMenu(row);
 	}
 
-	it("offers Attach as context, Request changes and Copy", async () => {
+	it("offers Attach as context, Add comment, a separator and Copy", async () => {
 		const {container} = renderPane();
 		await rightClickLine(container, 3);
-		const items = await screen.findAllByRole("menuitem");
+		const menu = await screen.findByRole("menu");
 
 		expect(
-			items.map((item) => [
+			[...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((item) => [
+				item.getAttribute("role"),
 				item.textContent.replace(/(⌘C|Ctrl\+C)$/, ""),
+				item.getAttribute("aria-label"),
 				item.getAttribute("aria-keyshortcuts"),
 			]),
 		).toStrictEqual([
-			["Attach as context", null],
-			["Request changes", null],
-			["Copy", "Control+c"],
+			["menuitem", "Attach as context", null, null],
+			["menuitem", "Add comment", "Add comment on line 3", null],
+			["separator", "", null, null],
+			["menuitem", "Copy", null, "Control+c"],
 		]);
 	});
 
@@ -446,14 +450,32 @@ describe("Changes pane right-click menu", () => {
 		]);
 	});
 
-	it("opens a comment card on the clicked line from Request changes", async () => {
+	it("opens a comment card on the clicked line from Add comment", async () => {
 		const {container} = renderPane();
 		await rightClickLine(container, 3);
-		fireEvent.click(await screen.findByRole("menuitem", {name: /Request changes/}));
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Add comment on line 3"}));
 
 		expect(getDiffComments(SESSION).drafts.map(({path, side, line}) => ({path, side, line}))).toStrictEqual([
 			{path: "src/greet.ts", side: "additions", line: 3},
 		]);
 		expect(commentCard(container, "annotation-additions-3")).not.toBeNull();
+	});
+});
+
+describe("Changes pane gutter add-comment button", () => {
+	it("renders upstream's accent + with no title", () => {
+		render(<AddCommentGutterButton getHoveredLine={() => undefined} onAddComment={() => {}} />);
+		const button = screen.getByRole("button", {name: "Add comment on this line"});
+
+		expect({
+			title: button.getAttribute("title"),
+			className: button.className,
+			top: button.style.top,
+		}).toStrictEqual({
+			title: null,
+			className:
+				"-left-0.5 flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover",
+			top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)",
+		});
 	});
 });

@@ -105,6 +105,8 @@ html[data-interface-font="dyslexic"] {
 	--color-accent-000: var(--accent-000);
 	--color-accent-100: var(--accent-100);
 	--color-fill-accent: var(--upstream-fill-accent);
+	--color-fill-accent-hover: var(--upstream-fill-accent-hover);
+	--color-on-accent: var(--upstream-on-accent);
 	--color-fill-brand: var(--upstream-fill-brand);
 	--color-fill-brand-hover: var(--upstream-fill-brand-hover);
 	--color-accent-900: var(--accent-900);
@@ -309,6 +311,9 @@ html[data-interface-font="dyslexic"] {
 	--upstream-accent: rgb(24 79 149);
 	/* Upstream `--cds-fill-accent` (checks and accent fills), the same in both modes. */
 	--upstream-fill-accent: #2a78d6;
+	/* Upstream `--cds-fill-accent-hover` / `--cds-on-accent` (read live from .cds-root 2026-10-29), the same in both modes. */
+	--upstream-fill-accent-hover: #2171ca;
+	--upstream-on-accent: #fff;
 	/* Upstream `--cds-fill-brand` / `hover:bg-fill-brand-hover` (the palette's running dot and the Compose Send), the same in both modes. */
 	--upstream-fill-brand: #c6613f;
 	--upstream-fill-brand-hover: #d97757;
@@ -572,6 +577,9 @@ html[data-interface-font="dyslexic"] {
 	--accent-000: hsl(210 65.5% 67.1%);
 	--upstream-accent: #6da7ec;
 	--upstream-fill-accent: #2a78d6;
+	/* Upstream `--cds-fill-accent-hover` / `--cds-on-accent` (read live from .cds-root 2026-10-29), the same in both modes. */
+	--upstream-fill-accent-hover: #2171ca;
+	--upstream-on-accent: #fff;
 	/* Upstream `--cds-fill-brand` / `hover:bg-fill-brand-hover` (the palette's running dot and the Compose Send), the same in both modes. */
 	--upstream-fill-brand: #c6613f;
 	--upstream-fill-brand-hover: #d97757;

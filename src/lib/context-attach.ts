@@ -52,7 +52,7 @@ export function formatAttachContext({path, range, text, language}: AttachContext
 	return `${mention}\n${formatFencedExcerpt(text, language)}`;
 }
 
-/** A "Request changes" comment on a line, or a range of lines, of a diff. */
+/** A diff comment on a line, or a range of lines, of a diff. */
 export interface ReviewComment {
 	path: string;
 	line: number;

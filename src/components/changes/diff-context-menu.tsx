@@ -70,6 +70,11 @@ function selectionOf(rows: Element[]): DiffLineSelection | null {
 	return {side: rowSide(last), line, endLine, text: rows.map(rowText).join("\n")};
 }
 
+/** Upstream's "line N" / "lines A–B" for a comment's accessible name. */
+function linesLabel({line, endLine}: DiffLineSelection): string {
+	return line === endLine ? `line ${line}` : `lines ${line}–${endLine}`;
+}
+
 /** Resolves a right-click inside a `@pierre/diffs` shadow root to diff lines. */
 function diffLinesAt(event: MouseEvent): DiffLineSelection | null {
 	const path = event.nativeEvent.composedPath();
@@ -90,7 +95,7 @@ function diffLinesAt(event: MouseEvent): DiffLineSelection | null {
 
 /**
  * The Changes pane body's right-click menu, as on claude.ai/code:
- * Attach as context · Request changes · ─ · Copy ⌘C.
+ * Attach as context · Add comment · ─ · Copy ⌘C.
  */
 export function DiffContextMenu({sessionId, path, children}: {sessionId: string; path: string; children: ReactNode}) {
 	const [target, setTarget] = useState<DiffLineSelection | null>(null);
@@ -140,6 +145,7 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 				</MenuItem>
 				<MenuItem
 					disabled={target === null}
+					{...(target === null ? {} : {"aria-label": `Add comment on ${linesLabel(target)}`})}
 					onSelect={() =>
 						target &&
 						openDiffCommentDraft(sessionId, {
@@ -150,7 +156,7 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 						})
 					}
 				>
-					Request changes
+					Add comment
 				</MenuItem>
 				<MenuSeparator />
 				<MenuItem

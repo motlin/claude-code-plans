@@ -42,26 +42,26 @@ export interface DiffLineRange {
 	line: number;
 }
 
-/** Upstream's 16px accent "+" in the hovered line's gutter. */
-function RequestChangesGutterButton({
+/** Upstream's 16px accent "+" (`Zc`) in the hovered line's gutter, centred on the line. */
+export function AddCommentGutterButton({
 	getHoveredLine,
-	onRequestChanges,
+	onAddComment,
 }: {
 	getHoveredLine: () => GetHoveredLineResult<"diff"> | undefined;
-	onRequestChanges: (target: DiffLineRange) => void;
+	onAddComment: (target: DiffLineRange) => void;
 }) {
 	return (
 		<button
 			type="button"
-			aria-label="Request changes on this line"
-			title="Request changes on this line"
+			aria-label="Add comment on this line"
 			onClick={() => {
 				const hovered = getHoveredLine();
 				if (hovered !== undefined) {
-					onRequestChanges({side: hovered.side, line: hovered.lineNumber});
+					onAddComment({side: hovered.side, line: hovered.lineNumber});
 				}
 			}}
-			className="flex size-4 cursor-pointer items-center justify-center rounded-r5 bg-accent-100 text-white"
+			className="-left-0.5 flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover"
+			style={{top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)"}}
 		>
 			<Plus aria-hidden="true" className="size-3" strokeWidth={2.5} />
 		</button>
@@ -223,10 +223,7 @@ export function DiffFile({
 				? {}
 				: {
 						renderGutterUtility: (getHoveredLine) => (
-							<RequestChangesGutterButton
-								getHoveredLine={getHoveredLine}
-								onRequestChanges={onRequestChanges}
-							/>
+							<AddCommentGutterButton getHoveredLine={getHoveredLine} onAddComment={onRequestChanges} />
 						),
 					})}
 			renderCustomHeader={(file) => {
