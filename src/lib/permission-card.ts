@@ -147,13 +147,18 @@ export function findPendingElicitationPermission(entries: readonly PendingElicit
 	const entry = entries.find((candidate) => candidate.mode === "form" && isVerdictSchema(candidate.requestedSchema));
 	if (entry === undefined) return null;
 	const permission: PendingPermission = {
-		notificationId: `elicitation:${entry.elicitationId ?? `${entry.serverName}:${entry.receivedAt}`}`,
+		notificationId: elicitationKey(entry),
 		title: {action: `use ${entry.serverName}`, meta: null},
 		detail: null,
 		description: entry.message,
 	};
 	if (verdictEnum(entry.requestedSchema)?.includes("always_allow") === true) permission.persistentAllow = "always";
 	return permission;
+}
+
+/** The oldest form or url elicitation: one the CLI's terminal dialog answers, not a verdict card. */
+function oldestTerminalElicitation(entries: readonly PendingElicitation[]): PendingElicitation | undefined {
+	return entries.find((candidate) => candidate.mode === "url" || !isVerdictSchema(candidate.requestedSchema));
 }
 
 /** Upstream's `kE`: the longest elicitation message it draws. */
@@ -167,12 +172,40 @@ const ELICITATION_MESSAGE_MAX = 4000;
 export function findElicitationWaitingNotice(
 	entries: readonly PendingElicitation[],
 ): {title: string; message: string} | null {
-	const entry = entries.find((candidate) => candidate.mode === "url" || !isVerdictSchema(candidate.requestedSchema));
+	const entry = oldestTerminalElicitation(entries);
 	if (entry === undefined) return null;
 	return {
 		title: `${entry.serverName} requests your input`,
 		message: entry.message.slice(0, ELICITATION_MESSAGE_MAX),
 	};
+}
+
+/** A url elicitation the dock can answer: Open presses the CLI dialog's Accept, Decline its Decline. */
+export interface UrlElicitationCardModel {
+	/** Stable per elicitation: its id, else server and arrival. */
+	key: string;
+	serverName: string;
+	message: string;
+	url: string;
+}
+
+/**
+ * The url elicitation the CLI shows now, as a card: the oldest form or url
+ * elicitation (the order the CLI shows them in), when it is a url ask with a url.
+ */
+export function findUrlElicitationCard(entries: readonly PendingElicitation[]): UrlElicitationCardModel | null {
+	const entry = oldestTerminalElicitation(entries);
+	if (entry?.mode !== "url" || entry.url === undefined) return null;
+	return {
+		key: elicitationKey(entry),
+		serverName: entry.serverName,
+		message: entry.message.slice(0, ELICITATION_MESSAGE_MAX),
+		url: entry.url,
+	};
+}
+
+function elicitationKey(entry: PendingElicitation): string {
+	return `elicitation:${entry.elicitationId ?? `${entry.serverName}:${entry.receivedAt}`}`;
 }
 
 function withPersistentAllow(permission: PendingPermission, notification: PermissionNotification): PendingPermission {

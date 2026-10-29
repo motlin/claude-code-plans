@@ -8,6 +8,7 @@ import type {PendingElicitation} from "../src/lib/domain-event-payload-schemas";
 import {
 	findElicitationWaitingNotice,
 	findPendingElicitationPermission,
+	findUrlElicitationCard,
 	isVerdictSchema,
 } from "../src/lib/permission-card";
 import {addPendingElicitation, clearAllPendingElicitations} from "../src/lib/pending-elicitations";
@@ -142,6 +143,47 @@ describe("findElicitationWaitingNotice", () => {
 			title: "my-mcp-server requests your input",
 			message: "x".repeat(4000),
 		});
+	});
+});
+
+describe("findUrlElicitationCard", () => {
+	const URL_ENTRY: PendingElicitation = {
+		elicitationId: "elicit-url-1",
+		serverName: elicitationUrlFixture.mcp_server_name,
+		message: elicitationUrlFixture.message,
+		mode: "url",
+		url: elicitationUrlFixture.url,
+		receivedAt: 1_700_000_000_001,
+	};
+
+	it("is the oldest form-or-url elicitation when it is a url ask with a url", () => {
+		const {elicitationId: _id, ...withoutId} = URL_ENTRY;
+		expect([
+			findUrlElicitationCard([URL_ENTRY]),
+			findUrlElicitationCard([verdictEntry(["allow", "deny"]), withoutId]),
+		]).toStrictEqual([
+			{
+				key: "elicitation:elicit-url-1",
+				serverName: "my-mcp-server",
+				message: "Please authenticate",
+				url: elicitationUrlFixture.url,
+			},
+			{
+				key: "elicitation:my-mcp-server:1700000000001",
+				serverName: "my-mcp-server",
+				message: "Please authenticate",
+				url: elicitationUrlFixture.url,
+			},
+		]);
+	});
+
+	it("is null behind an older form, for a url ask without a url, and with nothing pending", () => {
+		const {url: _url, ...withoutUrl} = URL_ENTRY;
+		expect([
+			findUrlElicitationCard([FORM_ENTRY, URL_ENTRY]),
+			findUrlElicitationCard([withoutUrl]),
+			findUrlElicitationCard([]),
+		]).toStrictEqual([null, null, null]);
 	});
 });
 

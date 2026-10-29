@@ -17,6 +17,8 @@ import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} fr
 const HerdrElicitationSchema = z.strictObject({
 	sessionId: z.string().min(1),
 	decision: z.enum(["allow", "always", "deny", "cancel"]),
+	/** The card's elicitation kind; the answer is refused when the pending elicitation is another kind. */
+	kind: z.enum(["form", "url"]).optional(),
 });
 
 export interface HerdrElicitationDependencies {
@@ -70,6 +72,12 @@ function showsElicitation(dialog: ElicitationDialog, pending: PendingElicitation
 	);
 }
 
+/** The dialog on a screen when it shows the stored elicitation, else null. */
+function shownDialog(screen: string, pending: PendingElicitation): ElicitationDialog | null {
+	const dialog = parseElicitationDialog(screen);
+	return dialog !== null && showsElicitation(dialog, pending) ? dialog : null;
+}
+
 function stepCall(
 	paneId: string,
 	step: {key: string} | {text: string},
@@ -77,6 +85,61 @@ function stepCall(
 	return "key" in step
 		? {method: "agent.send_keys", params: {target: paneId, keys: [step.key]}}
 		: {method: "pane.send_text", params: {pane_id: paneId, text: step.text}};
+}
+
+type DialogRead = {ok: true; paneId: string; dialog: ElicitationDialog} | {ok: false; response: Response};
+
+/** Read the pane's dialog, refusing unless it shows the pending elicitation. */
+async function readPendingDialog(
+	sessionId: string,
+	pending: PendingElicitation,
+	paneId: string,
+	dependencies: HerdrElicitationDependencies,
+): Promise<DialogRead> {
+	const screen = await dependencies.readScreen(sessionId, paneId);
+	if (!screen.ok) return {ok: false, response: errorResponse(screen.message, 502)};
+	const dialog = shownDialog(screen.value, pending);
+	if (dialog === null) return {ok: false, response: errorResponse(NOT_SHOWN, 409)};
+	return {ok: true, paneId, dialog};
+}
+
+/** The pending elicitation's pane, after the guards both endpoints share. */
+async function resolvePending(
+	sessionId: string,
+	dependencies: HerdrElicitationDependencies,
+): Promise<{ok: true; pending: PendingElicitation; paneId: string} | {ok: false; response: Response}> {
+	const pending = dependencies.pendingElicitation(sessionId);
+	if (pending === null) return {ok: false, response: errorResponse("No elicitation is pending", 409)};
+	const target = await dependencies.resolveTarget(sessionId);
+	if (!target.ok) return {ok: false, response: errorResponse(target.message, 502)};
+	return {ok: true, pending, paneId: target.value.paneId};
+}
+
+function rejectEarly(request: Request, dependencies: HerdrElicitationDependencies): Response | null {
+	const rejection = dependencies.rejectRequest(request);
+	if (rejection) return rejection;
+	if (!dependencies.writesEnabled()) return errorResponse("herdr writes are disabled", 403);
+	return null;
+}
+
+/**
+ * GET: the session's elicitation dialog as the pane shows it, so a card offers
+ * only what the dialog can do from where it stands (a URL the CLI won't open
+ * starts on Decline).
+ */
+export async function handleHerdrElicitationDialog(
+	request: Request,
+	dependencies: HerdrElicitationDependencies = defaultHerdrElicitationDependencies,
+): Promise<Response> {
+	const rejection = rejectEarly(request, dependencies);
+	if (rejection) return rejection;
+	const sessionId = new URL(request.url).searchParams.get("sessionId") ?? "";
+	if (sessionId === "") return errorResponse("sessionId is required", 400);
+	const resolved = await resolvePending(sessionId, dependencies);
+	if (!resolved.ok) return resolved.response;
+	const read = await readPendingDialog(sessionId, resolved.pending, resolved.paneId, dependencies);
+	if (!read.ok) return read.response;
+	return Response.json({dialog: read.dialog});
 }
 
 /**
@@ -91,30 +154,20 @@ export async function handleHerdrElicitation(
 	request: Request,
 	dependencies: HerdrElicitationDependencies = defaultHerdrElicitationDependencies,
 ): Promise<Response> {
-	const rejection = dependencies.rejectRequest(request);
+	const rejection = rejectEarly(request, dependencies);
 	if (rejection) return rejection;
-	if (!dependencies.writesEnabled()) return errorResponse("herdr writes are disabled", 403);
 	const parsed = HerdrElicitationSchema.safeParse(await request.json());
 	if (!parsed.success) return errorResponse(BAD_REQUEST, 400);
-	const {sessionId, decision} = parsed.data;
+	const {sessionId, decision, kind} = parsed.data;
 
-	const pending = dependencies.pendingElicitation(sessionId);
-	if (pending === null) return errorResponse("No elicitation is pending", 409);
-	const target = await dependencies.resolveTarget(sessionId);
-	if (!target.ok) return errorResponse(target.message, 502);
-	const {paneId} = target.value;
+	const resolved = await resolvePending(sessionId, dependencies);
+	if (!resolved.ok) return resolved.response;
+	const {pending, paneId} = resolved;
+	if (kind !== undefined && pending.mode !== kind) return errorResponse(`No ${kind} elicitation is pending`, 409);
 
-	const readDialog = async (): Promise<HerdrResult<ElicitationDialog | null>> => {
-		const screen = await dependencies.readScreen(sessionId, paneId);
-		if (!screen.ok) return screen;
-		const dialog = parseElicitationDialog(screen.value);
-		return {ok: true, value: dialog !== null && showsElicitation(dialog, pending) ? dialog : null};
-	};
-
-	const first = await readDialog();
-	if (!first.ok) return errorResponse(first.message, 502);
-	if (first.value === null) return errorResponse(NOT_SHOWN, 409);
-	const steps = elicitationSteps(pending.requestedSchema, decision, first.value);
+	const first = await readPendingDialog(sessionId, pending, paneId, dependencies);
+	if (!first.ok) return first.response;
+	const steps = elicitationSteps(pending.requestedSchema, decision, first.dialog);
 	if (steps === null) return errorResponse(NO_STEPS, 409);
 
 	const expected = decision === "deny" ? "decline" : "accept";
@@ -129,9 +182,9 @@ export async function handleHerdrElicitation(
 		previous = step;
 		const guardedEnter = index > 0 && index === steps.length - 1 && "key" in step && step.key === "enter";
 		if (guardedEnter) {
-			const again = await readDialog();
+			const again = await dependencies.readScreen(sessionId, paneId);
 			if (!again.ok) return errorResponse(again.message, 502);
-			if (again.value?.focus?.stop !== expected) {
+			if (shownDialog(again.value, pending)?.focus?.stop !== expected) {
 				const stop = expected === "accept" ? "Accept" : "Decline";
 				return errorResponse(`The terminal dialog did not reach ${stop}; nothing more was sent`, 409);
 			}

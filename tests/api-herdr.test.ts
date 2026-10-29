@@ -1,6 +1,7 @@
 import {describe, expect, it, vi} from "vite-plus/test";
 import {
 	HerdrPaneIndexResponse,
+	fetchHerdrElicitationDialog,
 	herdrPanesQueryOptions,
 	sendHerdrElicitationDecision,
 	sendHerdrPrompt,
@@ -166,6 +167,25 @@ describe("sendHerdrElicitationDecision", () => {
 		]);
 	});
 
+	it("names a url card's answer with kind url", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(Response.json({ok: true}));
+
+		await sendHerdrElicitationDecision("session-test-100", "allow", fetcher, "url");
+
+		expect(fetcher.mock.calls).toStrictEqual([
+			[
+				"/api/herdr/elicitation",
+				{
+					method: "POST",
+					credentials: "same-origin",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({sessionId: "session-test-100", decision: "allow", kind: "url"}),
+				},
+			],
+		]);
+	});
+
 	it("throws the endpoint's error on a 409", async () => {
 		const fetcher = vi.fn<typeof fetch>();
 		fetcher.mockResolvedValue(
@@ -173,6 +193,40 @@ describe("sendHerdrElicitationDecision", () => {
 		);
 
 		await expect(sendHerdrElicitationDecision("session-test-100", "allow", fetcher)).rejects.toThrow(
+			"The terminal is not showing this elicitation",
+		);
+	});
+});
+
+describe("fetchHerdrElicitationDialog", () => {
+	const dialog = {
+		kind: "url",
+		server: "spike-elicit",
+		message: "Open the spike page (url-decline)",
+		focus: {stop: "decline"},
+		expanded: false,
+		fieldCount: 0,
+	};
+
+	it("reads the session's elicitation dialog off its pane", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(Response.json({dialog}));
+
+		const result = await fetchHerdrElicitationDialog("session-test-100", fetcher);
+
+		expect({result, calls: fetcher.mock.calls}).toStrictEqual({
+			result: dialog,
+			calls: [["/api/herdr/elicitation?sessionId=session-test-100", {credentials: "same-origin"}]],
+		});
+	});
+
+	it("throws the endpoint's error on a 409", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(
+			Response.json({error: "The terminal is not showing this elicitation"}, {status: 409}),
+		);
+
+		await expect(fetchHerdrElicitationDialog("session-test-100", fetcher)).rejects.toThrow(
 			"The terminal is not showing this elicitation",
 		);
 	});

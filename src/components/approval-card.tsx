@@ -1,5 +1,7 @@
-import type {ButtonHTMLAttributes, DragEvent, KeyboardEvent, ReactNode, Ref} from "react";
+import {useState, type ButtonHTMLAttributes, type DragEvent, type KeyboardEvent, type ReactNode, type Ref} from "react";
 
+import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
+import {DisabledReason} from "./ui/disabled-reason";
 import {Spinner} from "./ui/spinner";
 
 const ACTION_BUTTON =
@@ -232,5 +234,121 @@ export function WaitingForInputNotice({
 				<span className="text-footnote text-secondary">{TERMINAL_FOOTNOTE}</span>
 			</span>
 		</div>
+	);
+}
+
+/** Why Open is off while the terminal dialog is still being read. */
+export const URL_OPEN_LOADING_REASON = "Reading the terminal dialog…";
+/**
+ * Why Open is off when the terminal dialog is not on Accept: the CLI starts on
+ * Decline for a URL it can't show exactly or that is too long.
+ */
+export const URL_OPEN_UNAVAILABLE_REASON = "Claude Code won't open this URL from here. Check it in the terminal.";
+const URL_OPENS_ON_CLI = "Claude Code opens the link on the machine it runs on.";
+
+/** The URL with its scheme's authority (the host) bold, as the CLI dialog draws it; other text stays plain. */
+function UrlWithBoldHost({url}: {url: string}) {
+	const match = /^([a-z][a-z\d+.-]*:\/\/)([^/?#]+)(.*)$/is.exec(url);
+	if (match === null) return url;
+	return (
+		<>
+			{match[1]}
+			<strong>{match[2]}</strong>
+			{match[3]}
+		</>
+	);
+}
+
+/**
+ * A url elicitation docked above the composer, answered through the CLI's
+ * terminal dialog (upstream draws nothing for one): "{server} wants to open a
+ * URL", the message, the URL with its host bold, and Decline / Open. Open
+ * presses the dialog's Accept, so it is on only while the dialog read off the
+ * pane (`dialogFocus`; undefined while reading) sits on Accept. A decision
+ * holds both buttons until the `ElicitationResult` drops the card, since the
+ * CLI can refuse an answer; a refused one shows its error and re-enables them.
+ */
+export function UrlElicitationCard({
+	serverName,
+	message,
+	url,
+	dialogFocus,
+	onDecision,
+}: {
+	serverName: string;
+	message: string;
+	url: string;
+	dialogFocus: ElicitationFocus | null | undefined;
+	onDecision: (decision: "allow" | "deny") => Promise<void>;
+}) {
+	const [decided, setDecided] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const title = `${serverName} wants to open a URL`;
+	const openReason =
+		dialogFocus === undefined
+			? URL_OPEN_LOADING_REASON
+			: dialogFocus?.stop === "accept"
+				? null
+				: URL_OPEN_UNAVAILABLE_REASON;
+
+	const decide = async (decision: "allow" | "deny") => {
+		setError(null);
+		setDecided(true);
+		try {
+			await onDecision(decision);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to answer the URL request");
+			setDecided(false);
+		}
+	};
+
+	return (
+		<ApprovalCardShell
+			label={title}
+			body={
+				<div data-url-elicitation className="flex flex-col gap-[10px]">
+					<span data-approval-card-title className={`${APPROVAL_CARD_TITLE} [unicode-bidi:plaintext]`}>
+						{title}
+					</span>
+					<div className="flex flex-col gap-[12px]">
+						{message !== "" && (
+							<span className="text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere] select-text [unicode-bidi:plaintext]">
+								{message}
+							</span>
+						)}
+						<div
+							data-elicitation-url
+							dir="ltr"
+							className="bg-alpha-1 rounded-r4 py-2 px-3 text-code text-secondary [overflow-wrap:anywhere] select-text"
+						>
+							<UrlWithBoldHost url={url} />
+						</div>
+						<span className="text-footnote text-secondary">{URL_OPENS_ON_CLI}</span>
+						{error !== null && (
+							<p role="alert" className="text-footnote text-extended-pink">
+								{error}
+							</p>
+						)}
+					</div>
+				</div>
+			}
+			actions={
+				<>
+					<ApprovalActionButton variant="secondary" disabled={decided} onClick={() => void decide("deny")}>
+						Decline
+					</ApprovalActionButton>
+					<DisabledReason reason={decided ? null : openReason}>
+						<ApprovalActionButton
+							variant="primary"
+							data-approval-primary=""
+							disabled={decided || openReason !== null}
+							onClick={() => void decide("allow")}
+						>
+							Open
+						</ApprovalActionButton>
+					</DisabledReason>
+				</>
+			}
+		/>
 	);
 }

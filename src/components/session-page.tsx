@@ -73,6 +73,7 @@ import {sessionFastMode} from "../lib/session-fast-mode";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
 import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
+import {UrlElicitationDock} from "./url-elicitation-dock";
 import {QuestionCard} from "./question-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {NotifyMePrompt} from "./notify-me-prompt";
@@ -158,6 +159,7 @@ import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {
 	findElicitationWaitingNotice,
 	findPendingElicitationPermission,
+	findUrlElicitationCard,
 	findPendingPermission,
 	permissionWaitToolUseId,
 	type PermissionDecision,
@@ -762,6 +764,14 @@ function SessionView({
 		() => findElicitationWaitingNotice(pendingElicitations ?? []),
 		[pendingElicitations],
 	);
+	// A url elicitation docks its own Decline / Open card while the live pane can be typed into.
+	const urlElicitationCard = useMemo(
+		() =>
+			sessionSummaryState === "waiting" && promptBehavior.hasLivePane && herdr.writesEnabled
+				? findUrlElicitationCard(pendingElicitations ?? [])
+				: null,
+		[sessionSummaryState, promptBehavior.hasLivePane, herdr.writesEnabled, pendingElicitations],
+	);
 	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
 	const workingLineWaits = workingLineWaitsOnUser({
 		awaitingPermission,
@@ -771,7 +781,8 @@ function SessionView({
 			inlineQuestion !== null ||
 			hookQuestionCardShown ||
 			inlinePlanId !== null ||
-			dockedPlan !== null,
+			dockedPlan !== null ||
+			urlElicitationCard !== null,
 	});
 	const hookQuestionToolUseId = hookQuestion?.toolUseId;
 	const answerHookQuestion = useCallback(
@@ -1301,12 +1312,21 @@ function SessionView({
 													hasDockedCard:
 														inlineQuestion !== null ||
 														pendingPermission !== null ||
-														dockedPlan !== null,
+														dockedPlan !== null ||
+														urlElicitationCard !== null,
 													workingLineWaits,
 												}) &&
 													!unansweredHookQuestion && (
 														<WaitingForInputNotice {...elicitationNotice} />
 													)}
+												{/* A url elicitation answers through the CLI's terminal dialog: Decline, or Open on the CLI's machine */}
+												{urlElicitationCard !== null && (
+													<UrlElicitationDock
+														key={urlElicitationCard.key}
+														sessionId={sessionId}
+														card={urlElicitationCard}
+													/>
+												)}
 												{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
 												{dockedPlan !== null && (
 													<DeferredDockedPlanApproval

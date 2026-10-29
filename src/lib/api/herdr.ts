@@ -149,19 +149,22 @@ export async function sendHerdrPermissionDecision(
 }
 
 /**
- * Answer the CLI's MCP verdict elicitation in the session's live herdr pane:
- * allow and always pick the verdict and Accept, deny takes Decline as upstream does.
+ * Answer the CLI's MCP elicitation in the session's live herdr pane: on a
+ * verdict, allow and always pick the verdict and Accept, deny takes Decline as
+ * upstream does; on a url ask (`kind` "url"), allow presses Accept, which opens
+ * the link on the CLI's machine, and deny presses Decline.
  */
 export async function sendHerdrElicitationDecision(
 	sessionId: string,
 	decision: PermissionDialogDecision,
 	fetcher: typeof fetch = fetch,
+	kind?: "url",
 ): Promise<void> {
 	const response = await fetcher("/api/herdr/elicitation", {
 		method: "POST",
 		credentials: "same-origin",
 		headers: {"Content-Type": "application/json"},
-		body: JSON.stringify({sessionId, decision}),
+		body: JSON.stringify(kind === undefined ? {sessionId, decision} : {sessionId, decision, kind}),
 	});
 	const json: unknown = await response.json();
 
@@ -192,6 +195,38 @@ export async function sendHerdrQuestionAnswer(
 	}
 
 	HerdrPromptSuccessResponse.parse(json);
+}
+
+const ElicitationFocusSchema = z.discriminatedUnion("stop", [
+	z.strictObject({stop: z.literal("field"), index: z.number()}),
+	z.strictObject({stop: z.literal("accept")}),
+	z.strictObject({stop: z.literal("decline")}),
+]);
+
+/** Mirrors `ElicitationDialog` (`../herdr/elicitation-keys`): the elicitation dialog read off a pane. */
+const HerdrElicitationDialogResponse = z.strictObject({
+	dialog: z.strictObject({
+		kind: z.enum(["form", "url"]),
+		server: z.string(),
+		message: z.string(),
+		focus: ElicitationFocusSchema.nullable(),
+		expanded: z.boolean(),
+		fieldCount: z.number(),
+	}),
+});
+export type HerdrElicitationDialog = z.infer<typeof HerdrElicitationDialogResponse>["dialog"];
+
+/** The session's MCP elicitation dialog as its pane shows it; rejects when the pane is not showing it. */
+export async function fetchHerdrElicitationDialog(
+	sessionId: string,
+	fetcher: typeof fetch = fetch,
+): Promise<HerdrElicitationDialog> {
+	const response = await fetcher(`/api/herdr/elicitation?sessionId=${encodeURIComponent(sessionId)}`, {
+		credentials: "same-origin",
+	});
+	const json: unknown = await response.json();
+	if (!response.ok) throw new Error(HerdrPromptErrorResponse.parse(json).error);
+	return HerdrElicitationDialogResponse.parse(json).dialog;
 }
 
 const HerdrPlanDialogResponse = z.strictObject({dialog: PlanDialogSchema});

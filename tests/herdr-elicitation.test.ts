@@ -1,5 +1,10 @@
 import {describe, expect, it} from "vite-plus/test";
-import {handleHerdrElicitation, type HerdrElicitationDependencies} from "../src/lib/herdr/elicitation";
+import {
+	handleHerdrElicitation,
+	handleHerdrElicitationDialog,
+	type HerdrElicitationDependencies,
+} from "../src/lib/herdr/elicitation";
+import {parseElicitationDialog} from "../src/lib/herdr/elicitation-keys";
 import type {PendingElicitation} from "../src/lib/domain-event-payload-schemas";
 import {rejectCrossSite} from "../src/lib/same-origin-guard";
 import {
@@ -15,6 +20,14 @@ const verdictSchema = {
 	type: "object",
 	properties: {verdict: {type: "string", enum: ["allow", "deny", "always_allow"]}},
 	required: ["verdict"],
+};
+
+const PENDING_URL: PendingElicitation = {
+	serverName: "spike-elicit",
+	message: "Open the spike page (url-decline)",
+	mode: "url",
+	url: "https://example.com/spike",
+	receivedAt: 1,
 };
 
 const PENDING_VERDICT: PendingElicitation = {
@@ -184,6 +197,45 @@ describe("herdr elicitation handler", () => {
 		});
 	});
 
+	it("opens a URL elicitation with one Enter when the card says kind url and the dialog is on Accept", async () => {
+		const {log, dependencies} = harness([URL_ACCEPT_FOCUSED], {pendingElicitation: () => PENDING_URL});
+		const response = await handleHerdrElicitation(
+			postRequest({sessionId: "session-1", decision: "allow", kind: "url"}),
+			dependencies,
+		);
+		expect({response: await describeResponse(response), log}).toStrictEqual({
+			response: {body: {ok: true}, status: 200},
+			log: ["pane.read session-1 w1:p1", "agent.send_keys enter"],
+		});
+	});
+
+	it("refuses to open a URL whose dialog starts on Decline", async () => {
+		const {log, dependencies} = harness([URL_DECLINE_FOCUSED], {pendingElicitation: () => PENDING_URL});
+		const response = await handleHerdrElicitation(
+			postRequest({sessionId: "session-1", decision: "allow", kind: "url"}),
+			dependencies,
+		);
+		expect({response: await describeResponse(response), log}).toStrictEqual({
+			response: {
+				body: {error: "The elicitation dialog can't be answered that way from where it stands"},
+				status: 409,
+			},
+			log: ["pane.read session-1 w1:p1"],
+		});
+	});
+
+	it("refuses a url card's answer with zero reads or writes when the pending elicitation is a form", async () => {
+		const {log, dependencies} = harness([VERDICT_FIELD_FOCUSED]);
+		const response = await handleHerdrElicitation(
+			postRequest({sessionId: "session-1", decision: "allow", kind: "url"}),
+			dependencies,
+		);
+		expect({response: await describeResponse(response), log}).toStrictEqual({
+			response: {body: {error: "No url elicitation is pending"}, status: 409},
+			log: [],
+		});
+	});
+
 	it("refuses with zero writes when the screen shows a different elicitation", async () => {
 		const {log, dependencies} = harness([VERDICT_FIELD_FOCUSED.replace("(verdict-allow)", "(verdict-other)")]);
 		const response = await handleHerdrElicitation(
@@ -270,5 +322,51 @@ describe("herdr elicitation handler", () => {
 			dependencies,
 		);
 		expect({status: response.status, log}).toStrictEqual({status: 403, log: []});
+	});
+});
+
+function getRequest(sessionId: string): Request {
+	return new Request(`http://127.0.0.1:7526/api/herdr/elicitation?sessionId=${sessionId}`);
+}
+
+describe("herdr elicitation dialog read", () => {
+	it("returns the dialog on screen when it is the pending elicitation", async () => {
+		const {log, dependencies} = harness([URL_DECLINE_FOCUSED], {pendingElicitation: () => PENDING_URL});
+		const response = await handleHerdrElicitationDialog(getRequest("session-1"), dependencies);
+		expect({response: await describeResponse(response), log}).toStrictEqual({
+			response: {body: {dialog: parseElicitationDialog(URL_DECLINE_FOCUSED)}, status: 200},
+			log: ["pane.read session-1 w1:p1"],
+		});
+	});
+
+	it.each([
+		{
+			name: "the screen shows another elicitation",
+			overrides: {pendingElicitation: () => ({...PENDING_URL, message: "Something else"})},
+			response: {body: {error: "The terminal is not showing this elicitation"}, status: 409},
+		},
+		{
+			name: "no elicitation is pending",
+			overrides: {pendingElicitation: () => null},
+			response: {body: {error: "No elicitation is pending"}, status: 409},
+		},
+		{
+			name: "writes are disabled",
+			overrides: {writesEnabled: () => false},
+			response: {body: {error: "herdr writes are disabled"}, status: 403},
+		},
+	])("refuses when $name", async ({overrides, response}) => {
+		const {dependencies} = harness([URL_DECLINE_FOCUSED], {pendingElicitation: () => PENDING_URL, ...overrides});
+		const result = await handleHerdrElicitationDialog(getRequest("session-1"), dependencies);
+		expect(await describeResponse(result)).toStrictEqual(response);
+	});
+
+	it("requires a sessionId", async () => {
+		const {log, dependencies} = harness([URL_DECLINE_FOCUSED], {pendingElicitation: () => PENDING_URL});
+		const result = await handleHerdrElicitationDialog(getRequest(""), dependencies);
+		expect({response: await describeResponse(result), log}).toStrictEqual({
+			response: {body: {error: "sessionId is required"}, status: 400},
+			log: [],
+		});
 	});
 });
