@@ -342,6 +342,44 @@ describe("DB-backed subagents", () => {
 		]);
 	});
 
+	it("carries a workflow agent's run id, phase and phase index", () => {
+		db.index
+			.insert(schema.subagents)
+			.values({
+				id: "agent-aw1",
+				sessionId: "session-test",
+				projectId: "project-test",
+				agentType: "workflow-subagent",
+				description: "diff:a",
+				workflowRunId: "wf_x-1",
+				workflowPhase: "Diff",
+				workflowPhaseIndex: 2,
+				filePath: "/tmp/test/subagents/workflows/wf_x-1/agent-aw1.jsonl",
+				mtimeMs: 1_000,
+			})
+			.run();
+
+		const agents = getSubagentsForSession(db.index, "session-test").map(toClientSubagent);
+		expect(agents).toStrictEqual([
+			{
+				id: "agent-aw1",
+				sessionId: "session-test",
+				projectId: "project-test",
+				parentAgentId: null,
+				agentType: "workflow-subagent",
+				attributionAgent: null,
+				slug: null,
+				description: "diff:a",
+				model: null,
+				startedAt: null,
+				finishedAt: null,
+				workflowRunId: "wf_x-1",
+				workflowPhase: "Diff",
+				workflowPhaseIndex: 2,
+			},
+		]);
+	});
+
 	it("carries the slow command finish times only when the agent ran one", () => {
 		const row = {
 			sessionId: "session-test",

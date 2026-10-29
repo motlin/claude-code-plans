@@ -187,6 +187,9 @@ CREATE TABLE IF NOT EXISTS subagents (
   name TEXT,
   pending_command TEXT,
   idle INTEGER NOT NULL DEFAULT 0,
+  workflow_run_id TEXT,
+  workflow_phase TEXT,
+  workflow_phase_index INTEGER,
   file_path TEXT NOT NULL,
   mtime_ms INTEGER NOT NULL
 );

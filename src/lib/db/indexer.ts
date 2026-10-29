@@ -33,6 +33,7 @@ import {retryWhileBusy} from "./busy";
 import * as schema from "./schema";
 import {ArtifactEventCollector, deleteArtifactEventsForSessions, replaceArtifactEvents} from "./artifact-index";
 import {SlowCommandCollector} from "../slow-commands";
+import {readWorkflowAgentInfo} from "./workflow-agent-info";
 import {deleteRoutinesForSessions, replaceRoutines} from "./routine-index";
 import {RoutineCollector} from "../routines";
 import {UsageCollector} from "../home-stats";
@@ -1237,6 +1238,7 @@ async function persistSubagentIndexState(
 	let requestedModel: string | null = null;
 	let taskKind: string | null = null;
 	let teammateName: string | null = null;
+	let metaWorkflowPhase: string | null = null;
 	try {
 		const meta: unknown = JSON.parse(await readFile(metaPath, "utf-8"));
 		agentType = stringField(meta, "agentType");
@@ -1244,9 +1246,15 @@ async function persistSubagentIndexState(
 		requestedModel = stringField(meta, "model");
 		taskKind = stringField(meta, "taskKind");
 		teammateName = stringField(meta, "name");
+		metaWorkflowPhase = stringField(meta, "workflowPhase");
 	} catch {
 		// no meta file
 	}
+	const workflow = await readWorkflowAgentInfo(filePath, {phase: metaWorkflowPhase, description: metaDescription});
+	const description = workflow?.label ?? metaDescription;
+	const workflowRunId = workflow?.runId ?? null;
+	const workflowPhase = workflow?.phase ?? null;
+	const workflowPhaseIndex = workflow?.phaseIndex ?? null;
 
 	const {slug, attributionAgent, resolvedModel, startedAt, finishedAt} = state;
 	const slowCommands: SlowCommandCollector = state.slowCommands;
@@ -1267,7 +1275,7 @@ async function persistSubagentIndexState(
 			agentType: agentType ?? attributionAgent,
 			attributionAgent,
 			slug,
-			description: metaDescription,
+			description,
 			model: resolvedModel ?? requestedModel,
 			startedAt,
 			finishedAt,
@@ -1276,6 +1284,9 @@ async function persistSubagentIndexState(
 			name: teammateName,
 			pendingCommand,
 			idle,
+			workflowRunId,
+			workflowPhase,
+			workflowPhaseIndex,
 			filePath,
 			mtimeMs: fileStat.mtimeMs,
 		})
@@ -1290,11 +1301,14 @@ async function persistSubagentIndexState(
 				agentType: agentType ?? attributionAgent,
 				attributionAgent,
 				slug,
-				description: metaDescription,
+				description,
 				model: resolvedModel ?? requestedModel,
 				startedAt,
 				finishedAt,
 				slowCommandsJson,
+				workflowRunId,
+				workflowPhase,
+				workflowPhaseIndex,
 				filePath,
 				mtimeMs: fileStat.mtimeMs,
 			},

@@ -612,6 +612,9 @@ const SessionSubagentSchema = z.object({
 	stopped: z.literal(true).optional(),
 	pendingCommand: z.string().nullish(),
 	idle: z.boolean().optional(),
+	workflowRunId: z.string().nullish(),
+	workflowPhase: z.string().nullish(),
+	workflowPhaseIndex: z.number().nullish(),
 });
 export const SessionSubagentsResponse = z.array(SessionSubagentSchema);
 export type SessionSubagentsData = z.infer<typeof SessionSubagentsResponse>;

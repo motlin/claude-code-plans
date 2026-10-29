@@ -1487,6 +1487,153 @@ describe("indexer", () => {
 		});
 	});
 
+	describe("workflow agent run, phase and label", () => {
+		const project = "-tmp-alice-project";
+		const workflowColumns = {
+			id: schema.subagents.id,
+			workflowRunId: schema.subagents.workflowRunId,
+			workflowPhase: schema.subagents.workflowPhase,
+			workflowPhaseIndex: schema.subagents.workflowPhaseIndex,
+			description: schema.subagents.description,
+		};
+
+		function writeWorkflowAgent(agentId: string, meta: Record<string, unknown>, journal: string): void {
+			const projectDir = join(testDir, project);
+			const runDir = join(projectDir, "sess-1", "subagents", "workflows", "wf_x-1");
+			mkdirSync(runDir, {recursive: true});
+			writeFileSync(
+				join(projectDir, "sess-1.jsonl"),
+				jsonl({type: "user", message: {content: "Run the workflow"}}),
+			);
+			writeFileSync(
+				join(runDir, `agent-${agentId}.jsonl`),
+				jsonl({
+					type: "assistant",
+					agentId,
+					isSidechain: true,
+					timestamp: "2000-01-01T00:00:00.000Z",
+					message: {content: "Working"},
+				}),
+			);
+			writeFileSync(join(runDir, `agent-${agentId}.meta.json`), JSON.stringify(meta));
+			writeFileSync(join(runDir, "journal.jsonl"), journal);
+		}
+
+		it("reads the run id from the path and the phase and label from new-format meta", async () => {
+			writeWorkflowAgent(
+				"aw1",
+				{
+					agentType: "workflow-subagent",
+					description: "ours:shell-sidebar",
+					workflowPhase: "Inventory",
+					spawnDepth: 1,
+				},
+				jsonl({type: "launched"}),
+			);
+
+			await fullScan(db.index, db.summaries, testDir);
+
+			expect(db.index.select(workflowColumns).from(schema.subagents).all()).toStrictEqual([
+				{
+					id: "agent-aw1",
+					workflowRunId: "wf_x-1",
+					workflowPhase: "Inventory",
+					workflowPhaseIndex: null,
+					description: "ours:shell-sidebar",
+				},
+			]);
+		});
+
+		it("falls back to the run JSON progress for old-format meta", async () => {
+			writeWorkflowAgent("aw2", {agentType: "workflow-subagent", spawnDepth: 1}, jsonl({type: "launched"}));
+			const workflowsDir = join(testDir, project, "sess-1", "workflows");
+			mkdirSync(workflowsDir, {recursive: true});
+			writeFileSync(
+				join(workflowsDir, "wf_x-1.json"),
+				JSON.stringify({
+					runId: "wf_x-1",
+					status: "completed",
+					workflowProgress: [
+						{type: "workflow_phase", index: 1, title: "Inventory"},
+						{type: "workflow_phase", index: 2, title: "Diff"},
+						{
+							type: "workflow_agent",
+							index: 1,
+							label: "diff:a",
+							agentId: "aw2",
+							state: "done",
+							phaseIndex: 2,
+							phaseTitle: "Diff",
+						},
+					],
+				}),
+			);
+
+			await fullScan(db.index, db.summaries, testDir);
+
+			expect(db.index.select(workflowColumns).from(schema.subagents).all()).toStrictEqual([
+				{
+					id: "agent-aw2",
+					workflowRunId: "wf_x-1",
+					workflowPhase: "Diff",
+					workflowPhaseIndex: 2,
+					description: "diff:a",
+				},
+			]);
+		});
+
+		it("falls back to the journal started event without meta phase or run JSON", async () => {
+			writeWorkflowAgent(
+				"aw3",
+				{agentType: "workflow-subagent", spawnDepth: 1},
+				jsonl(
+					{type: "launched"},
+					{type: "started", key: "v2:a", agentId: "aw0", label: "survey", phase: "Survey"},
+					{type: "started", key: "v2:b", agentId: "aw3", label: "seed", phase: "Seed"},
+					{type: "result", key: "v2:b", agentId: "aw3", result: {ok: true}},
+				),
+			);
+
+			await fullScan(db.index, db.summaries, testDir);
+
+			expect(db.index.select(workflowColumns).from(schema.subagents).all()).toStrictEqual([
+				{
+					id: "agent-aw3",
+					workflowRunId: "wf_x-1",
+					workflowPhase: "Seed",
+					workflowPhaseIndex: 2,
+					description: "seed",
+				},
+			]);
+		});
+
+		it("leaves workflow fields null for a non-workflow agent", async () => {
+			const subagentsDir = join(testDir, project, "sess-1", "subagents");
+			mkdirSync(subagentsDir, {recursive: true});
+			writeFileSync(join(testDir, project, "sess-1.jsonl"), jsonl({type: "user", message: {content: "Hi"}}));
+			writeFileSync(
+				join(subagentsDir, "agent-a1.jsonl"),
+				jsonl({type: "assistant", agentId: "a1", isSidechain: true, message: {content: "Explore"}}),
+			);
+			writeFileSync(
+				join(subagentsDir, "agent-a1.meta.json"),
+				JSON.stringify({agentType: "Explore", description: "Find files"}),
+			);
+
+			await fullScan(db.index, db.summaries, testDir);
+
+			expect(db.index.select(workflowColumns).from(schema.subagents).all()).toStrictEqual([
+				{
+					id: "agent-a1",
+					workflowRunId: null,
+					workflowPhase: null,
+					workflowPhaseIndex: null,
+					description: "Find files",
+				},
+			]);
+		});
+	});
+
 	it("does not prune when a project directory cannot be enumerated", async () => {
 		const project = "-tmp-alice-project";
 		const projectDir = join(testDir, project);

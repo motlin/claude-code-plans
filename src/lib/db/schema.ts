@@ -257,6 +257,12 @@ export const subagents = sqliteTable(
 		pendingCommand: text("pending_command"),
 		/** The agent's last turn ended (its final message is an end_turn) and nothing has woken it since. */
 		idle: integer("idle", {mode: "boolean"}).notNull().default(false),
+		/** The workflow run (`wf_…`) this agent ran in, from its `subagents/workflows/<runId>/` directory. */
+		workflowRunId: text("workflow_run_id"),
+		/** The workflow phase title: meta `workflowPhase`, else the journal `started.phase`, else the run JSON `phaseTitle`. */
+		workflowPhase: text("workflow_phase"),
+		/** The 1-based workflow phase index: the run JSON `phaseIndex`, else the phase's first-seen order in the journal. */
+		workflowPhaseIndex: integer("workflow_phase_index"),
 		filePath: text("file_path").notNull(),
 		mtimeMs: integer("mtime_ms").notNull(),
 	},

@@ -42,6 +42,12 @@ export interface Subagent {
 	pendingCommand?: string | null | undefined;
 	/** The agent's last turn ended and nothing has woken it since; an idle teammate is not a running task upstream. */
 	idle?: boolean | undefined;
+	/** The workflow run (`wf_…`) this agent ran in. */
+	workflowRunId?: string | null | undefined;
+	/** The agent's workflow phase title. */
+	workflowPhase?: string | null | undefined;
+	/** The agent's 1-based workflow phase index. */
+	workflowPhaseIndex?: number | null | undefined;
 }
 
 export interface ActiveSubagent {
@@ -87,6 +93,9 @@ export function toClientSubagent(row: DbSubagent): Subagent {
 		...(row.name == null ? {} : {name: row.name}),
 		...(row.pendingCommand == null ? {} : {pendingCommand: row.pendingCommand}),
 		...(row.idle === true ? {idle: true as const} : {}),
+		...(row.workflowRunId == null ? {} : {workflowRunId: row.workflowRunId}),
+		...(row.workflowPhase == null ? {} : {workflowPhase: row.workflowPhase}),
+		...(row.workflowPhaseIndex == null ? {} : {workflowPhaseIndex: row.workflowPhaseIndex}),
 	};
 }
 

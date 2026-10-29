@@ -704,6 +704,12 @@ export interface DbSubagent {
 	pendingCommand?: string | null;
 	/** The agent's last turn ended and nothing has woken it since. */
 	idle?: boolean;
+	/** The workflow run (`wf_…`) this agent ran in. */
+	workflowRunId?: string | null;
+	/** The agent's workflow phase title. */
+	workflowPhase?: string | null;
+	/** The agent's 1-based workflow phase index. */
+	workflowPhaseIndex?: number | null;
 	filePath: string;
 	mtimeMs: number;
 }
