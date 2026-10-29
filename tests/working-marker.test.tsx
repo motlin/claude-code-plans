@@ -535,7 +535,7 @@ describe("markerEventsFromRecords", () => {
 			{kind: "prompt", at: at(0)},
 			{kind: "tool", at: at(1), label: "Reading app.ts"},
 			{kind: "progress", at: at(2)},
-			{kind: "retry", at: at(3), attempt: 1, maxRetries: 10, error: "Overloaded"},
+			{kind: "retry", at: at(3), attempt: 1, maxRetries: 10, error: "Model overloaded"},
 			{kind: "progress", at: at(4)},
 			{kind: "stop", at: at(5)},
 			{kind: "prompt", at: at(60)},
@@ -1109,5 +1109,60 @@ describe("WorkingMarker pre-stream phases", () => {
 		const view = render(<WorkingMarker state={UNREPLIED} />);
 		view.rerender(<WorkingMarker state={{...UNREPLIED, replied: true}} />);
 		expect(visibleLineText(view.container)).toBe("5s");
+	});
+});
+
+describe("retry wording", () => {
+	function retryText(record: Record<string, unknown>): string {
+		const events = markerEventsFromRecords([
+			{type: "user", timestamp: "2026-09-29T12:00:00.000Z", message: {role: "user", content: "go"}},
+			{type: "system", subtype: "api_error", timestamp: "2026-09-29T12:00:03.000Z", ...record},
+		]);
+		return workingMarkerText(workingMarkerState(events, at(3)));
+	}
+
+	it("maps api_error shapes to upstream's short retry phrases", () => {
+		const retry = {retryAttempt: 2, retryInMs: 4000, maxRetries: 10};
+		expect({
+			connection: retryText({
+				...retry,
+				error: {message: "Connection error.", formatted: "Unable to connect to API (ConnectionRefused)"},
+			}),
+			overloadedString: retryText({...retry, error: "Overloaded"}),
+			overloadedStatus: retryText({...retry, error: {status: 529, message: "boom"}}),
+			rateLimitStatus: retryText({...retry, error: {status: 429, message: "boom"}}),
+			rateLimitText: retryText({...retry, error: {message: "Rate limit exceeded"}}),
+			auth401: retryText({...retry, error: {status: 401}}),
+			auth403: retryText({...retry, error: {status: 403}}),
+			authText: retryText({...retry, error: "authentication_error: invalid x-api-key"}),
+			credentials: retryText({...retry, error: {message: "cloud_credential_error"}}),
+			other: retryText({...retry, error: "boom"}),
+			missing: retryText(retry),
+		}).toStrictEqual({
+			connection: "No response from the API · Retrying (2/10) · 3s",
+			overloadedString: "Model overloaded · Retrying (2/10) · 3s",
+			overloadedStatus: "Model overloaded · Retrying (2/10) · 3s",
+			rateLimitStatus: "Rate limited · Retrying (2/10) · 3s",
+			rateLimitText: "Rate limited · Retrying (2/10) · 3s",
+			auth401: "Authentication failed · Retrying (2/10) · 3s",
+			auth403: "Authentication failed · Retrying (2/10) · 3s",
+			authText: "Authentication failed · Retrying (2/10) · 3s",
+			credentials: "Cloud credentials unavailable · Retrying (2/10) · 3s",
+			other: "Request failed · Retrying (2/10) · 3s",
+			missing: "Request failed · Retrying (2/10) · 3s",
+		});
+	});
+
+	it("says Trying once more for a last no-response retry", () => {
+		const error = {message: "Connection error.", formatted: "Unable to connect to API (ConnectionRefused)"};
+		expect({
+			onceMore: retryText({error, retryAttempt: 1, retryInMs: 120_000, maxRetries: 1}),
+			onceMoreRoundsUp: retryText({error, retryAttempt: 1, retryInMs: 90_000, maxRetries: 1}),
+			onceMoreOverloaded: retryText({error: "Overloaded", retryAttempt: 1, retryInMs: 120_000, maxRetries: 1}),
+		}).toStrictEqual({
+			onceMore: "Trying once more, for up to 2 min · 3s",
+			onceMoreRoundsUp: "Trying once more, for up to 2 min · 3s",
+			onceMoreOverloaded: "Model overloaded · Retrying (1/1) · 3s",
+		});
 	});
 });

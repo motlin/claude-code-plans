@@ -262,7 +262,7 @@ export function workingLineParts(state: WorkingMarkerState, tokens = 0): Working
 			};
 		case "retrying":
 			return {
-				label: `${state.error} · Retrying (${state.attempt}/${state.maxRetries})`,
+				label: retryLabel(state),
 				stats: liveElapsedStats(state.elapsedSeconds),
 			};
 		default:
@@ -360,6 +360,7 @@ const MarkerRecordSchema = z.object({
 	isCompactSummary: z.boolean().optional(),
 	retryAttempt: z.number().optional(),
 	maxRetries: z.number().optional(),
+	retryInMs: z.number().optional(),
 	error: z.unknown().optional(),
 	message: z.object({content: z.union([z.string(), z.array(ContentBlockSchema)]).optional()}).optional(),
 });
@@ -367,14 +368,42 @@ const MarkerRecordSchema = z.object({
 type MarkerRecord = z.infer<typeof MarkerRecordSchema>;
 
 const ErrorObjectSchema = z.object({
+	status: z.number().optional(),
 	formatted: z.string().optional(),
 	message: z.string().optional(),
 });
 
+const NO_RESPONSE = "No response from the API";
+
+/** Upstream's short retry phrases (`je`/`xO`), matched on the HTTP status or the error text. */
 function errorHeadline(error: unknown): string {
-	if (typeof error === "string") return error;
 	const parsed = ErrorObjectSchema.safeParse(error);
-	return (parsed.success ? (parsed.data.formatted ?? parsed.data.message) : undefined) ?? "API error";
+	const status = parsed.success ? parsed.data.status : undefined;
+	const raw = typeof error === "string" ? error : error === undefined ? "" : JSON.stringify(error);
+	const text = raw.toLowerCase();
+	if (status === 429 || text.includes("rate limit") || text.includes("rate_limit")) return "Rate limited";
+	if (status === 529 || text.includes("overloaded")) return "Model overloaded";
+	if (status === 401 || status === 403 || text.includes("authentication")) return "Authentication failed";
+	if (text.includes("cloud_credential")) return "Cloud credentials unavailable";
+	if (text.includes("unable to connect") || text.includes("connection error")) return NO_RESPONSE;
+	return "Request failed";
+}
+
+const ONCE_MORE_PREFIX = "Trying once more";
+
+/**
+ * The retry line's headline: upstream's short phrase, or "Trying once more,
+ * for up to {minutes} min" for a single no-response retry whose wait is known.
+ */
+function retryHeadline(record: MarkerRecord): string {
+	const headline = errorHeadline(record.error);
+	if (headline !== NO_RESPONSE || record.maxRetries !== 1 || record.retryInMs === undefined) return headline;
+	return `${ONCE_MORE_PREFIX}, for up to ${Math.max(1, Math.ceil(record.retryInMs / 60_000))} min`;
+}
+
+/** "{headline} · Retrying (n/m)", except the once-more sentence stands alone. */
+function retryLabel({error, attempt, maxRetries}: Readonly<{error: string; attempt: number; maxRetries: number}>) {
+	return error.startsWith(ONCE_MORE_PREFIX) ? error : `${error} · Retrying (${attempt}/${maxRetries})`;
 }
 
 function userEvent(record: MarkerRecord, at: number): WorkingMarkerEvent | null {
@@ -412,7 +441,7 @@ function systemEvent(record: MarkerRecord, at: number): WorkingMarkerEvent | nul
 			at,
 			attempt: record.retryAttempt,
 			maxRetries: record.maxRetries,
-			error: errorHeadline(record.error),
+			error: retryHeadline(record),
 		};
 	}
 	return null;
