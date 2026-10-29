@@ -8,6 +8,7 @@ import {SEARCH_FIELD_CLASS, SEARCH_FIELD_WRAPPER_CLASS, SearchFieldContents} fro
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 import {SessionSkeleton} from "./session-skeleton";
+import {Skeleton} from "./ui/skeleton";
 import {HOME_COLUMN} from "./home/home-column";
 import {HomeTitlebar} from "./home/home-page";
 import type {ShellChinLabels} from "../lib/shell-chin-store";
@@ -142,8 +143,9 @@ function ArtifactsSkeleton() {
 						<span className={`h-6 w-10 ${BAR_CLASS}`} />
 						<span className={`h-6 w-12 ${BAR_CLASS}`} />
 						<span className={`h-6 w-28 ${BAR_CLASS}`} />
-						<span className="ms-auto flex gap-2">
-							{[0, 1, 2].map((index) => (
+						{/* Upstream holds only Search and List view while loading: no Filter button yet. */}
+						<span data-artifacts-skeleton-toolbar="" className="ms-auto flex gap-2">
+							{[0, 1].map((index) => (
 								<span key={index} className={`size-6 ${BAR_CLASS}`} />
 							))}
 						</span>
@@ -156,11 +158,18 @@ function ArtifactsSkeleton() {
 							<div
 								key={index}
 								data-artifacts-skeleton-card=""
-								className="flex h-[252px] flex-col overflow-hidden rounded-card border border-border"
+								className="flex h-full flex-col rounded-card bg-surface-2 shadow-card-ring"
 							>
-								<span className="h-[160px] shrink-0 animate-pulse bg-fill-ghost-hover" />
-								<span className={`m-3 h-4 w-3/4 ${BAR_CLASS}`} />
-								<span className={`mx-3 h-3 w-1/3 ${BAR_CLASS}`} />
+								<div className="h-[160px]" />
+								<div className="mx-px border-t border-alpha-1" />
+								<div className="flex flex-col gap-1.5 p-3.5">
+									<div className="flex h-[1lh] items-center text-body">
+										<Skeleton className="rounded" style={{width: "70%", height: 14}} />
+									</div>
+									<div className="flex h-[1lh] items-center text-caption">
+										<Skeleton className="rounded" style={{width: "50%", height: 11}} />
+									</div>
+								</div>
 							</div>
 						))}
 					</div>

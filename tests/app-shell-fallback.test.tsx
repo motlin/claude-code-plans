@@ -367,6 +367,39 @@ describe("AppShellFallback", () => {
 		});
 	});
 
+	it("draws the artifacts skeleton like upstream's: ring cards with a 160px preview, divider and 70%/50% shimmer bars, and only Search + List view placeholders in the toolbar", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/artifacts" />);
+		const skeleton = host.querySelector('[data-testid="artifacts-skeleton"]');
+		const card = skeleton?.querySelector("[data-artifacts-skeleton-card]");
+		const bars = [...(card?.querySelectorAll('[data-cds="Skeleton"]') ?? [])];
+
+		expect({
+			toolbar: skeleton?.querySelectorAll("[data-artifacts-skeleton-toolbar] > *").length,
+			card: card?.className,
+			preview: card?.children[0]?.className,
+			divider: card?.children[1]?.className,
+			body: card?.children[2]?.className,
+			lines: [...(card?.children[2]?.children ?? [])].map((line) => line.className),
+			bars: bars.map((bar) => ({
+				style: bar.getAttribute("style"),
+				pulse: bar.className.split(" ").includes("animate-pulse"),
+				reducedMotion: bar.className.split(" ").includes("motion-reduce:after:hidden"),
+			})),
+		}).toStrictEqual({
+			toolbar: 2,
+			card: "flex h-full flex-col rounded-card bg-surface-2 shadow-card-ring",
+			preview: "h-[160px]",
+			divider: "mx-px border-t border-alpha-1",
+			body: "flex flex-col gap-1.5 p-3.5",
+			lines: ["flex h-[1lh] items-center text-body", "flex h-[1lh] items-center text-caption"],
+			bars: [
+				{style: "width:70%;height:14px", pulse: false, reducedMotion: true},
+				{style: "width:50%;height:11px", pulse: false, reducedMotion: true},
+			],
+		});
+	});
+
 	it("lays the home skeleton in the same tile shell as the loaded home page, titlebar first, so it does not jump", () => {
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback pathname="/" />);
