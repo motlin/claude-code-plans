@@ -71,7 +71,7 @@ import {ComposerNoticeProvider, ComposerNoticeRegion} from "./composer-notice-re
 import {sessionProcessLive} from "../lib/session-state";
 import {sessionFastMode} from "../lib/session-fast-mode";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
-import {tailMarkerQuiet, workingLineWaitsOnUser} from "../lib/working-marker";
+import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
 import {QuestionCard} from "./question-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
@@ -551,6 +551,7 @@ function SessionView({
 		() => withPendingPlan(sessionPlanModel(processed.lines), dockedPlan),
 		[processed.lines, dockedPlan],
 	);
+	const turnTokens = useMemo(() => turnTokenEstimate(transcript.records), [transcript.records]);
 	const workingMarkerState = useWorkingMarkerState({
 		records: transcript.records,
 		sessionState: sessionSummaryState,
@@ -1102,9 +1103,10 @@ function SessionView({
 				runningTasks={runningTaskCount}
 				inline={inline}
 				sending={promptSending}
+				tokens={turnTokens}
 			/>
 		),
-		[workingMarkerState, workingLineQuiet, workingLineWaits, runningTaskCount, promptSending],
+		[workingMarkerState, workingLineQuiet, workingLineWaits, runningTaskCount, promptSending, turnTokens],
 	);
 	const transcriptTail = useMemo(
 		() => (workingLineFollowsTranscript ? null : workingLine(true)),

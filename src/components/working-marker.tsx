@@ -128,6 +128,7 @@ export function WorkingMarker({
 	waitingOnUser = false,
 	inline = false,
 	sending = false,
+	tokens = 0,
 }: Readonly<{
 	state: WorkingMarkerState;
 	runningTasks?: number;
@@ -137,13 +138,15 @@ export function WorkingMarker({
 	inline?: boolean;
 	/** A prompt sent to the live pane has not reached the transcript yet. */
 	sending?: boolean;
+	/** The turn's token estimate (`turnTokenEstimate`); shown after the clock while working. */
+	tokens?: number;
 }>) {
 	const reduceMotion = usePrefersReducedMotion();
 	const phase = useSettledPhase(useLinePhase(state, sending, waitingOnUser));
 	// Upstream draws no mark while the turn waits on the user.
 	const turnWorking = !waitingOnUser && (phase !== null || (state.status !== "idle" && state.status !== "waiting"));
 	const busy = turnWorking && !quiet;
-	const parts = workingLineParts(state);
+	const parts = workingLineParts(state, tokens);
 	const label = phase ?? parts.label;
 	const stats = phase === null ? parts.stats : [];
 	const tasks = runningTasks > 0;
@@ -171,7 +174,7 @@ export function WorkingMarker({
 						<span className="inline-flex min-w-0 items-center text-secondary">
 							{label !== "" && (
 								<span
-									title={phase ?? workingMarkerText(state)}
+									title={phase ?? workingMarkerText(state, tokens)}
 									className={`truncate whitespace-nowrap${
 										state.status === "stopping" ? ` ${STOPPING_MORPH_CLASS}` : ""
 									}`}

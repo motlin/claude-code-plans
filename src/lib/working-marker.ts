@@ -180,6 +180,19 @@ function liveElapsedStats(elapsedSeconds: number): string[] {
 	return elapsedSeconds < ELAPSED_MIN_SECONDS ? [] : [formatElapsed(elapsedSeconds)];
 }
 
+const COMPACT_TOKENS = new Intl.NumberFormat("en", {notation: "compact", maximumFractionDigits: 1});
+
+/** Upstream's token stat: "1 token", else "{n} tokens" with a compact lowercase count ("50.2k tokens"). */
+export function formatTokenEstimate(tokens: number): string {
+	if (tokens === 1) return "1 token";
+	return `${COMPACT_TOKENS.format(tokens).toLowerCase()} tokens`;
+}
+
+/** Upstream shows the token stat with the clock (from 2s) and only once the count is non-zero. */
+function tokenStats(elapsedSeconds: number, tokens: number): string[] {
+	return elapsedSeconds < ELAPSED_MIN_SECONDS || tokens <= 0 ? [] : [formatTokenEstimate(tokens)];
+}
+
 /**
  * Whether the working line goes quiet because the transcript draws the
  * in-flight call as its own busy row: upstream keeps the line mounted but
@@ -228,7 +241,8 @@ export interface WorkingLineParts {
 	stats: string[];
 }
 
-export function workingLineParts(state: WorkingMarkerState): WorkingLineParts {
+/** `tokens` is the turn's token estimate (`turnTokenEstimate`), shown only while working. */
+export function workingLineParts(state: WorkingMarkerState, tokens = 0): WorkingLineParts {
 	switch (state.status) {
 		case "idle":
 		case "waiting":
@@ -237,10 +251,14 @@ export function workingLineParts(state: WorkingMarkerState): WorkingLineParts {
 			// Upstream's e2() strips the trailing ellipsis: "Stopping", with no clock.
 			return {label: "Stopping", stats: []};
 		case "working":
-			// Upstream appends a plain "Thinking" stat while a thinking block streams.
+			// Upstream's order is "{elapsed} · {tokens} · Thinking", with Thinking a plain stat while a thinking block streams.
 			return {
 				label: "",
-				stats: [...liveElapsedStats(state.elapsedSeconds), ...(state.thinking ? [THINKING_STAT] : [])],
+				stats: [
+					...liveElapsedStats(state.elapsedSeconds),
+					...tokenStats(state.elapsedSeconds, tokens),
+					...(state.thinking ? [THINKING_STAT] : []),
+				],
 			};
 		case "retrying":
 			return {
@@ -252,8 +270,8 @@ export function workingLineParts(state: WorkingMarkerState): WorkingLineParts {
 	}
 }
 
-export function workingMarkerText(state: WorkingMarkerState): string {
-	const {label, stats} = workingLineParts(state);
+export function workingMarkerText(state: WorkingMarkerState, tokens = 0): string {
+	const {label, stats} = workingLineParts(state, tokens);
 	return [label, ...stats].filter((part) => part !== "").join(" · ");
 }
 
@@ -327,6 +345,8 @@ export function toolActivityLabel(name: string, input: unknown): string {
 const ContentBlockSchema = z.object({
 	type: z.string(),
 	text: z.string().optional(),
+	thinking: z.string().optional(),
+	content: z.unknown().optional(),
 	name: z.string().optional(),
 	input: z.unknown().optional(),
 });
@@ -396,6 +416,53 @@ function systemEvent(record: MarkerRecord, at: number): WorkingMarkerEvent | nul
 		};
 	}
 	return null;
+}
+
+const ToolResultContentSchema = z.union([
+	z.string(),
+	z.array(z.object({type: z.string(), text: z.string().optional()})),
+]);
+
+function toolResultLength(content: unknown): number {
+	const parsed = ToolResultContentSchema.safeParse(content);
+	if (!parsed.success) return 0;
+	if (typeof parsed.data === "string") return parsed.data.length;
+	return parsed.data.reduce((sum, block) => sum + (block.text?.length ?? 0), 0);
+}
+
+function streamedLength(block: z.infer<typeof ContentBlockSchema>): number {
+	switch (block.type) {
+		case "text":
+			return block.text?.length ?? 0;
+		case "thinking":
+			return block.thinking?.length ?? 0;
+		case "tool_use":
+			return block.input === undefined ? 0 : JSON.stringify(block.input).length;
+		case "tool_result":
+			return toolResultLength(block.content);
+		default:
+			return 0;
+	}
+}
+
+/**
+ * Upstream's token counter, locally: the main thread's streamed characters
+ * since the turn's prompt (assistant text, thinking and tool_use input JSON,
+ * and tool_result content) divided by 4. Scans back only to that prompt.
+ */
+export function turnTokenEstimate(records: readonly unknown[]): number {
+	let characters = 0;
+	for (let i = records.length - 1; i >= 0; i--) {
+		const parsed = MarkerRecordSchema.safeParse(records[i]);
+		if (!parsed.success || parsed.data.isSidechain === true) continue;
+		const record = parsed.data;
+		if (record.type === "user" && userEvent(record, 0)?.kind === "prompt") break;
+		if (record.type !== "user" && record.type !== "assistant") continue;
+		const content = record.message?.content;
+		if (!Array.isArray(content)) continue;
+		for (const block of content) characters += streamedLength(block);
+	}
+	return Math.floor(characters / 4);
 }
 
 /** The main thread's turn signals from raw JSONL records, oldest first. */

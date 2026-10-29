@@ -15,6 +15,8 @@ import {
 	markerEventsFromRecords,
 	tailMarkerQuiet,
 	toolActivityLabel,
+	formatTokenEstimate,
+	turnTokenEstimate,
 	workingLineAnnouncement,
 	workingLineWaitsOnUser,
 	workingMarkerState,
@@ -307,6 +309,86 @@ describe("workingMarkerText thinking", () => {
 				elapsedSeconds,
 			});
 		expect([thinking(1), thinking(9)]).toStrictEqual(["Thinking", "9s · Thinking"]);
+	});
+});
+
+describe("turnTokenEstimate", () => {
+	const prompt = (content: string) => ({type: "user", message: {role: "user", content}});
+	const assistantText = (text: string) => ({
+		type: "assistant",
+		message: {role: "assistant", content: [{type: "text", text}]},
+	});
+
+	it("estimates the turn's streamed characters / 4, as upstream's token counter", () => {
+		expect(
+			[400, 4, 201_000].map((length) =>
+				formatTokenEstimate(turnTokenEstimate([prompt("go"), assistantText("x".repeat(length))])),
+			),
+		).toStrictEqual(["100 tokens", "1 token", "50.3k tokens"]);
+	});
+
+	it("counts thinking, tool_use input JSON and tool_result content since the turn's prompt only", () => {
+		const input = {file_path: "/w/a.ts"};
+		const records = [
+			prompt("earlier"),
+			assistantText("y".repeat(4000)),
+			prompt("now"),
+			{
+				type: "assistant",
+				message: {
+					role: "assistant",
+					content: [
+						{type: "thinking", thinking: "t".repeat(8)},
+						{type: "tool_use", id: "t1", name: "Read", input},
+					],
+				},
+			},
+			{
+				type: "user",
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: "t1", content: "r".repeat(12)}],
+				},
+			},
+			{
+				type: "user",
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: "t2", content: [{type: "text", text: "s".repeat(4)}]}],
+				},
+			},
+			{
+				type: "assistant",
+				isSidechain: true,
+				message: {role: "assistant", content: [{type: "text", text: "z".repeat(400)}]},
+			},
+		];
+		expect(turnTokenEstimate(records)).toStrictEqual(Math.floor((8 + JSON.stringify(input).length + 12 + 4) / 4));
+	});
+
+	it("is zero before anything streams", () => {
+		expect([turnTokenEstimate([]), turnTokenEstimate([prompt("go")])]).toStrictEqual([0, 0]);
+	});
+});
+
+describe("workingMarkerText tokens", () => {
+	const working = (elapsedSeconds: number, thinking = false) =>
+		({
+			status: "working",
+			label: "Working…",
+			thinking,
+			replied: true,
+			turnStartedAt: at(0),
+			elapsedSeconds,
+		}) as const;
+
+	it('shows the token estimate between the clock and Thinking from 2s once non-zero, as upstream\'s "9s · 49.7k tokens · Thinking"', () => {
+		expect([
+			workingMarkerText(working(1), 49_700),
+			workingMarkerText(working(9), 0),
+			workingMarkerText(working(9, true), 49_700),
+			workingMarkerText({status: "stopping"}, 49_700),
+		]).toStrictEqual(["", "9s", "9s · 49.7k tokens · Thinking", "Stopping"]);
 	});
 });
 
@@ -674,6 +756,24 @@ describe("WorkingMarker", () => {
 			stats: [...(status?.querySelectorAll(".tabular-nums") ?? [])].map((el) => el.textContent),
 			activity: container.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
 		}).toStrictEqual({text: "9s·Thinking", stats: ["9s", "·", "Thinking"], activity: "think"});
+	});
+
+	it("shows the token estimate as a muted stat after the clock", () => {
+		stubReducedMotion(false);
+		const {container} = render(
+			<WorkingMarker
+				state={{
+					status: "working",
+					label: "Working…",
+					thinking: false,
+					replied: true,
+					turnStartedAt: at(0),
+					elapsedSeconds: 7,
+				}}
+				tokens={49_700}
+			/>,
+		);
+		expect(visibleLineText(container)).toStrictEqual("7s·49.7k tokens");
 	});
 
 	it("holds the working mark still under reduced motion", () => {
