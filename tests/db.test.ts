@@ -1634,6 +1634,66 @@ describe("indexer", () => {
 		});
 	});
 
+	it("fullScan re-links only workflow agent transcripts whose mtime changed", async () => {
+		const project = "-tmp-alice-project";
+		const projectDir = join(testDir, project);
+		const subagentsDir = join(projectDir, "sess-1", "subagents");
+		const runDir = join(subagentsDir, "workflows", "wf_x-1");
+		const rootPath = join(projectDir, "sess-1.jsonl");
+		const workflowAgentPath = join(runDir, "agent-aw1.jsonl");
+		mkdirSync(runDir, {recursive: true});
+		writeFileSync(rootPath, jsonl({type: "user", message: {content: "Run the workflow"}}));
+		writeFileSync(
+			workflowAgentPath,
+			jsonl(
+				{
+					type: "assistant",
+					agentId: "aw1",
+					isSidechain: true,
+					message: {
+						content: [{type: "tool_use", id: "tu1", name: "Agent", input: {description: "Child task"}}],
+					},
+				},
+				{
+					type: "user",
+					agentId: "aw1",
+					isSidechain: true,
+					message: {content: [{type: "tool_result", tool_use_id: "tu1", content: "agentId: c1"}]},
+				},
+			),
+		);
+		writeFileSync(
+			join(subagentsDir, "agent-c1.jsonl"),
+			jsonl({type: "user", agentId: "c1", isSidechain: true, message: {content: "Do the child task"}}),
+		);
+		utimesSync(rootPath, 1000, 1000);
+		utimesSync(workflowAgentPath, 1000, 1000);
+		const readChild = () =>
+			db.index
+				.select({parentAgentId: schema.subagents.parentAgentId, description: schema.subagents.description})
+				.from(schema.subagents)
+				.where(eq(schema.subagents.id, "agent-c1"))
+				.get();
+		const clearChildLink = () =>
+			db.index.run(sql`UPDATE subagents SET parent_agent_id = NULL, description = NULL WHERE id = 'agent-c1'`);
+
+		await fullScan(db.index, db.summaries, testDir);
+		const firstScan = readChild();
+		clearChildLink();
+		utimesSync(rootPath, 2000, 2000);
+		await fullScan(db.index, db.summaries, testDir);
+		const afterRootChange = readChild();
+		utimesSync(workflowAgentPath, 2000, 2000);
+		await fullScan(db.index, db.summaries, testDir);
+		const afterWorkflowAgentChange = readChild();
+
+		expect({firstScan, afterRootChange, afterWorkflowAgentChange}).toStrictEqual({
+			firstScan: {parentAgentId: "agent-aw1", description: "Child task"},
+			afterRootChange: {parentAgentId: null, description: null},
+			afterWorkflowAgentChange: {parentAgentId: "agent-aw1", description: "Child task"},
+		});
+	});
+
 	it("does not prune when a project directory cannot be enumerated", async () => {
 		const project = "-tmp-alice-project";
 		const projectDir = join(testDir, project);

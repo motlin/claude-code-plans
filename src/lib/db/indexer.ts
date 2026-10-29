@@ -1922,8 +1922,8 @@ async function listSubagentTranscripts(
 	subagentsDir: string,
 	subFiles: readonly string[],
 	readDirectory: ReadDirectory,
-): Promise<string[]> {
-	const paths = subFiles.filter(isAgentTranscript).map((name) => join(subagentsDir, name));
+): Promise<{path: string; workflow: boolean}[]> {
+	const paths = subFiles.filter(isAgentTranscript).map((name) => ({path: join(subagentsDir, name), workflow: false}));
 	if (!subFiles.includes("workflows")) return paths;
 	const workflowsDir = join(subagentsDir, "workflows");
 	let runDirs: string[];
@@ -1940,7 +1940,7 @@ async function listSubagentTranscripts(
 		} catch {
 			continue;
 		}
-		paths.push(...runFiles.filter(isAgentTranscript).map((name) => join(runDir, name)));
+		paths.push(...runFiles.filter(isAgentTranscript).map((name) => ({path: join(runDir, name), workflow: true})));
 	}
 	return paths;
 }
@@ -2062,23 +2062,34 @@ export async function fullScan(
 				}
 
 				let changed = knownMtimes.get(sessionJsonlPath) !== sessionMtime;
-				const subagentJsonlPaths: string[] = [];
-				for (const sfPath of await listSubagentTranscripts(subagentsDir, subFiles, readDirectory)) {
+				let hasTranscripts = false;
+				const linkPaths: string[] = [];
+				for (const {path: sfPath, workflow} of await listSubagentTranscripts(
+					subagentsDir,
+					subFiles,
+					readDirectory,
+				)) {
 					let sfMtime = 0;
 					try {
 						sfMtime = (await stat(sfPath)).mtimeMs;
 					} catch {
 						continue;
 					}
-					if (knownMtimes.get(sfPath) !== sfMtime) changed = true;
+					const fileChanged = knownMtimes.get(sfPath) !== sfMtime;
+					if (fileChanged) changed = true;
 					await step(`subagent ${sfPath}`, async () =>
 						indexSubagentFile(indexDb, sfPath, sessionId, project),
 					);
-					subagentJsonlPaths.push(sfPath);
+					// A session can hold thousands of workflow agents (one measured at
+					// 2,193 files, 1.2 GB); re-streaming them all whenever anything in
+					// the session changed cost seconds per startup scan. Their links
+					// only come from their own content, so re-link just the changed ones.
+					hasTranscripts = true;
+					if (!workflow || fileChanged) linkPaths.push(sfPath);
 				}
 
-				if (changed && subagentJsonlPaths.length > 0) {
-					for (const saPath of subagentJsonlPaths) {
+				if (changed && hasTranscripts) {
+					for (const saPath of linkPaths) {
 						await step(`subagent links ${saPath}`, async () =>
 							linkSubagentParents(indexDb, saPath, basename(saPath, ".jsonl")),
 						);
