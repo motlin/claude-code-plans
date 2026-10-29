@@ -29,7 +29,7 @@ const REASON_AGENTS = {
 
 /**
  * A short phrase for what allowed or blocked a tool call, e.g. "Allowed by auto
- * mode" or "Approved once". Null when the user rejected or aborted the call, which the
+ * mode", "Approved once" or "Approved for session". Null when the user rejected or aborted the call, which the
  * row's "Denied"/"Stopped" status already says.
  */
 export function permissionDecisionLabel(permission: PermissionDecision): string | null {
@@ -37,8 +37,10 @@ export function permissionDecisionLabel(permission: PermissionDecision): string 
 		case "user_reject":
 		case "user_abort":
 			return null;
-		case "user_temporary":
-			return permission.decision === "accept" ? "Approved once" : "Rejected once";
+		case "user_temporary": {
+			const reach = permission.grantScope === "session" ? "for session" : "once";
+			return `${permission.decision === "accept" ? "Approved" : "Rejected"} ${reach}`;
+		}
 		case "user_permanent":
 			return permission.decision === "accept" ? "Approved always" : "Rejected always";
 		case "classifier":

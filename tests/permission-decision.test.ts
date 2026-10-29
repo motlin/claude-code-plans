@@ -71,6 +71,26 @@ describe("permissionDecisionLabel", () => {
 	});
 });
 
+describe("permissionDecisionLabel grant scope", () => {
+	it("says how far a temporary approval reaches", () => {
+		expect(
+			labels([
+				{decision: "accept", source: "user_temporary", grantScope: "once"},
+				{decision: "accept", source: "user_temporary", grantScope: "session"},
+				{decision: "reject", source: "user_temporary", grantScope: "once"},
+				{decision: "reject", source: "user_temporary", grantScope: "session"},
+				{decision: "accept", source: "user_temporary"},
+			]),
+		).toStrictEqual([
+			"Approved once",
+			"Approved for session",
+			"Rejected once",
+			"Rejected for session",
+			"Approved once",
+		]);
+	});
+});
+
 describe("permissionDecisionLabel classifier source", () => {
 	it("names the classifier when it allowed or blocked the call", () => {
 		expect(
