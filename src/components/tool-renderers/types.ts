@@ -61,6 +61,8 @@ export interface ClientToolCall {
 	artifactList?: ArtifactListEntry[] | undefined;
 	/** How the call was permitted or denied; see `ToolResultInfo.permission`. */
 	permission?: PermissionDecision | undefined;
+	/** Whether the Bash call ran inside the sandbox; see `ToolResultInfo.sandboxed`. */
+	sandboxed?: boolean | undefined;
 	/** The images the result returned; see `ToolResultInfo.images`. */
 	outputImages?: readonly ToolResultImage[] | undefined;
 	/** The input failed the tool's schema, so the call renders raw under a generic label. */
@@ -258,6 +260,7 @@ export function buildClientToolCall(
 		if (resultInfo.artifact !== undefined) call.artifact = resultInfo.artifact;
 		if (resultInfo.artifactList !== undefined) call.artifactList = resultInfo.artifactList;
 		if (resultInfo.permission !== undefined) call.permission = resultInfo.permission;
+		if (resultInfo.sandboxed !== undefined) call.sandboxed = resultInfo.sandboxed;
 		if (resultInfo.images !== undefined) call.outputImages = resultInfo.images;
 	}
 

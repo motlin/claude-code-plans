@@ -183,6 +183,19 @@ describe("processTranscript", () => {
 		});
 	});
 
+	it("carries the sandboxed flag onto the tool result", () => {
+		const records = [
+			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
+			userRecord([{type: "tool_result", tool_use_id: "tool-1", content: "ok"}], {uuid: "u-1", sandboxed: false}),
+		];
+		expect(processTranscript(records).toolResultMap.get("tool-1")).toStrictEqual({
+			result: "ok",
+			isError: false,
+			resultUuid: "u-1",
+			sandboxed: false,
+		});
+	});
+
 	it("marks error tool results", () => {
 		const records = [
 			assistantRecord(

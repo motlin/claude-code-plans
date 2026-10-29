@@ -5546,6 +5546,8 @@ function ToolCallRow({
 	const rangeLabel = displayParam ? readRangeLabel(call) : null;
 	// What allowed or blocked the call is a diagnostic upstream never shows, so only Verbose names it.
 	const permissionLabel = verbose && call.permission !== undefined ? permissionDecisionLabel(call.permission) : null;
+	// Likewise whether a Bash call ran inside the sandbox.
+	const sandboxed = verbose && call.name === "Bash" ? call.sandboxed : undefined;
 
 	// Upstream leads a standalone in-flight row with its activity WorkingMark and follows the label with the elapsed time.
 	const runningRow = pending && isTurnStatus;
@@ -5698,6 +5700,15 @@ function ToolCallRow({
 					className="shrink-0 text-body text-t6"
 				>
 					{permissionLabel}
+				</span>
+			)}
+			{sandboxed !== undefined && (
+				<span
+					data-sandboxed={String(sandboxed)}
+					title={sandboxed ? "Ran inside the Bash sandbox" : "Ran outside the Bash sandbox"}
+					className="shrink-0 text-body text-t6"
+				>
+					{sandboxed ? "Sandboxed" : "Unsandboxed"}
 				</span>
 			)}
 		</>

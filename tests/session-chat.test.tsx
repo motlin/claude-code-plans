@@ -1067,6 +1067,58 @@ describe("SessionChat tool row permission decision", () => {
 	});
 });
 
+describe("SessionChat Bash tool row sandbox badge", () => {
+	const sandboxSpans = (sandboxed: boolean, transcriptMode: TranscriptMode, name = "Bash") => {
+		const input = name === "Bash" ? {command: "ls"} : {pattern: "alice"};
+		const {lines, toolResultMap} = processTranscript(toolResultRecords({name, input}, "ok", false, {sandboxed}));
+		const container = render(
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				transcriptMode={transcriptMode}
+				shouldScrollToEnd={false}
+			/>,
+		).container;
+		return Array.from(container.querySelectorAll("[data-sandboxed]"), (el) => ({
+			text: el.textContent,
+			sandboxed: el.getAttribute("data-sandboxed"),
+			title: el.getAttribute("title"),
+			className: el.className,
+		}));
+	};
+
+	it("badges a sandboxed Bash call in Verbose", () => {
+		expect(sandboxSpans(true, "verbose")).toStrictEqual([
+			{
+				text: "Sandboxed",
+				sandboxed: "true",
+				title: "Ran inside the Bash sandbox",
+				className: "shrink-0 text-body text-t6",
+			},
+		]);
+	});
+
+	it("badges an unsandboxed Bash call in Verbose", () => {
+		expect(sandboxSpans(false, "verbose")).toStrictEqual([
+			{
+				text: "Unsandboxed",
+				sandboxed: "false",
+				title: "Ran outside the Bash sandbox",
+				className: "shrink-0 text-body text-t6",
+			},
+		]);
+	});
+
+	it("leaves the sandbox badge out of Normal, which upstream never shows", () => {
+		expect(sandboxSpans(true, "normal")).toStrictEqual([]);
+	});
+
+	it("only badges Bash rows", () => {
+		expect(sandboxSpans(true, "verbose", "Grep")).toStrictEqual([]);
+	});
+});
+
 describe("SessionChat failed tool row label", () => {
 	const bash = (description: string) => ({name: "Bash", input: {command: "git push", description}});
 	const denied = (kind: string) =>

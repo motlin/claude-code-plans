@@ -882,6 +882,7 @@ function processRecordBatch(
 						);
 						if (resultMeta !== undefined) info.resultMeta = resultMeta;
 						if (record.permissionDecision !== undefined) info.permission = record.permissionDecision;
+						if (record.sandboxed !== undefined) info.sandboxed = record.sandboxed;
 						// Only an array result can hold image blocks; skipping the call keeps string
 						// results off the hot path.
 						if (Array.isArray(block.content)) {

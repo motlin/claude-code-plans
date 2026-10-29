@@ -153,6 +153,8 @@ export interface ToolResultInfo {
 	artifactList?: ArtifactListEntry[] | undefined;
 	/** How the call was permitted or denied, from the result record's `permissionDecision`. */
 	permission?: PermissionDecision | undefined;
+	/** Whether the Bash call ran inside the sandbox, from the result record's top-level `sandboxed`. */
+	sandboxed?: boolean | undefined;
 	/** The images the result returned, such as a Read of a .png or a browser screenshot. */
 	images?: readonly ToolResultImage[] | undefined;
 }
