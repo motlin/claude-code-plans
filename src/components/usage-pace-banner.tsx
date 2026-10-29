@@ -1,15 +1,16 @@
 import {useQuery} from "@tanstack/react-query";
 import {Gauge, X} from "lucide-react";
 import {usageQueryOptions} from "../lib/api/usage";
-import type {ReactNode} from "react";
+import type {ReactElement, ReactNode} from "react";
 import {formatPaceBannerReset, limitReached, meterPercent, usageBand} from "../lib/usage";
 import {ResetCountdown} from "./reset-countdown";
+import {useComposerNotice, useInNoticeRegion} from "./composer-notice-region";
 import {useUsageBandDismissals, writeUsageBandDismissal} from "../lib/usage-pace-dismissal";
 
 /**
  * Upstream's band shell (`uc`): an icon slot, a wrapping body whose words put the headline and
  * detail on one baseline 10px apart (the detail wrapping under it on a narrow dock), and an
- * optional Dismiss slot. Live region `polite`, centred on the first line via `1lh`. The exceeded
+ * optional Dismiss slot. Live region `polite` (dropped inside the notice region, whose list is one), centred on the first line via `1lh`. The exceeded
  * band inks its icon and headline `danger`; the detail is always muted.
  */
 function UsageBandShell({
@@ -23,10 +24,11 @@ function UsageBandShell({
 	danger?: boolean;
 	onDismiss?: () => void;
 }) {
+	// Inside the notice region its list is the live region, so the band doesn't nest another.
+	const live = !useInNoticeRegion();
 	return (
 		<div
-			role="status"
-			aria-live="polite"
+			{...(live ? {role: "status", "aria-live": "polite"} : {})}
 			className="flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter"
 		>
 			<span className="flex h-[1lh] shrink-0 items-center">
@@ -92,9 +94,16 @@ export function UsageLimitBand({headline, resetsAt}: {headline: string; resetsAt
 
 /**
  * The band: the limit-reached band while the statusline reports a window spent before its reset,
- * else the approaching or on-pace band unless dismissed for its window's threshold and reset.
+ * else the approaching or on-pace band unless dismissed for its window's threshold and reset. Under
+ * a composer notice region it registers as the `limit` slot instead of rendering inline.
  */
 export function UsagePaceBanner() {
+	const band = useUsageBandElement();
+	const claimed = useComposerNotice("limit", band === null ? null : {id: "code_usage_limit", content: band});
+	return claimed ? null : band;
+}
+
+function useUsageBandElement(): ReactElement | null {
 	const {data: usage, dataUpdatedAt} = useQuery(usageQueryOptions);
 	const dismissals = useUsageBandDismissals();
 	if (usage === undefined) return null;

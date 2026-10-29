@@ -67,6 +67,7 @@ import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-l
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
+import {ComposerNoticeProvider, ComposerNoticeRegion} from "./composer-notice-region";
 import {sessionProcessLive} from "../lib/session-state";
 import {sessionFastMode} from "../lib/session-fast-mode";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
@@ -1257,135 +1258,140 @@ function SessionView({
 								{/* Sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript */}
 								<div data-session-footer className={SESSION_FOOTER_CLASS}>
 									<div className={!chromeHidden && sessionDirectory ? "pt-2" : ""}>
-										<SessionDock
-											anchorRef={scrollAnchorRef}
-											needsInput={
-												pendingQuestion !== null ||
-												pendingPermission !== null ||
-												dockedPlan !== null ||
-												(sessionSummaryState === "waiting" &&
-													unansweredHookQuestion !== undefined &&
-													unansweredHookQuestion !== null)
-											}
-										>
-											{!chromeHidden &&
-												sessionDirectory &&
-												(data.pr !== undefined || data.prStatus !== undefined) && (
-													<BranchStrip
-														sessionId={sessionId}
-														session={data}
-														statusline={statusline}
-													/>
-												)}
-											{!chromeHidden &&
-												sessionDirectory &&
-												settings.showChangesStrip &&
-												data.pr === undefined &&
-												data.prStatus === undefined && (
-													<BranchStrip
-														sessionId={sessionId}
-														session={data}
-														statusline={statusline}
-													/>
-												)}
-											{/* With no question to draw inline, a waiting session says it needs input above the composer */}
-											{showsWaitingForInputNotice({
-												state: sessionSummaryState,
-												hasDockedCard:
-													inlineQuestion !== null ||
+										<ComposerNoticeProvider>
+											<SessionDock
+												anchorRef={scrollAnchorRef}
+												needsInput={
+													pendingQuestion !== null ||
 													pendingPermission !== null ||
-													dockedPlan !== null,
-												workingLineWaits,
-											}) &&
-												!unansweredHookQuestion && (
-													<WaitingForInputNotice {...elicitationNotice} />
-												)}
-											{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
-											{dockedPlan !== null && (
-												<DeferredDockedPlanApproval
-													key={dockedPlan.toolUseId}
-													pendingPlan={dockedPlan}
-													plan={planApprovalCtx}
-												/>
-											)}
-											{/* Upstream docks a rejected send's session-error card above the composer */}
-											{liveHerdrPrompt.state.rejection !== null && (
-												<DeferredSendRejectedCard
-													rejection={liveHerdrPrompt.state.rejection}
-													onRetry={retryRejection}
-													onDismiss={dismissRejection}
-												/>
-											)}
-											{/* Upstream sets the usage chip between the docked card and the composer */}
-											{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
-											{!chromeHidden && sessionDirectory && (
-												<NotifyMePrompt sessionId={sessionId} />
-											)}
-											{/* Upstream's composer stand-in: an archived session shows the Unarchive note in place of the editor */}
-											{!chromeHidden && sessionDirectory && data.archived && (
-												<div
-													className="contents"
-													data-band-enter={archivedNoteEnters ? "" : undefined}
-												>
-													<ArchivedComposerNote sessionId={sessionId} />
-												</div>
-											)}
-											{!chromeHidden && sessionDirectory && !data.archived && (
-												<SessionBackgroundTasksOpener
-													sessionId={sessionId}
-													running={COMPOSER_RUNNING_LAUNCHES}
-												>
-													<Composer
-														variant="session"
-														draftKey={sessionId}
-														onSend={(prompt, launchOptions) => {
-															if (
-																handleBtwPrompt(prompt, {
-																	sessionId,
-																	messageCount: data.messageCount,
-																	toast,
-																})
-															) {
-																return;
-															}
-															submitComposer("send", prompt, launchOptions);
-														}}
-														onFork={(prompt, launchOptions) =>
-															submitComposer("fork", prompt, launchOptions)
-														}
-														forkLabel={forkSubmitLabel({
-															pane: paneState,
-															writesEnabled: herdr.writesEnabled,
-														})}
-														onCancel={() => {
-															void chatStream.cancel();
-														}}
-														isStreaming={
-															!promptBehavior.usesHerdr && chatStream.state.isStreaming
-														}
-														onStop={stopAvailable ? stopResponse : undefined}
-														disabled={
-															promptBehavior.disabled ||
-															(!promptBehavior.usesHerdr &&
-																liveHerdrPrompt.state.isPending)
-														}
-														queue={promptBehavior.usesHerdr ? composerQueue : undefined}
-														onQueueForLater={
-															promptBehavior.usesHerdr ? enqueuePrompt : undefined
-														}
-														deliveryHint={promptBehavior.deliveryHint}
-														chin={composerChin}
-														{...slashMenu}
-														bypassPermissionsAllowed={bypassPermissionsAllowed}
-														live={liveLaunchAvailable ? liveLaunch : undefined}
-														mentionSessionId={sessionId}
-														mentionCwd={sessionDirectory}
-														promptHistory={promptHistory}
-														onRewind={rewindAvailableFromComposer}
+													dockedPlan !== null ||
+													(sessionSummaryState === "waiting" &&
+														unansweredHookQuestion !== undefined &&
+														unansweredHookQuestion !== null)
+												}
+											>
+												{!chromeHidden &&
+													sessionDirectory &&
+													(data.pr !== undefined || data.prStatus !== undefined) && (
+														<BranchStrip
+															sessionId={sessionId}
+															session={data}
+															statusline={statusline}
+														/>
+													)}
+												{!chromeHidden &&
+													sessionDirectory &&
+													settings.showChangesStrip &&
+													data.pr === undefined &&
+													data.prStatus === undefined && (
+														<BranchStrip
+															sessionId={sessionId}
+															session={data}
+															statusline={statusline}
+														/>
+													)}
+												{/* With no question to draw inline, a waiting session says it needs input above the composer */}
+												{showsWaitingForInputNotice({
+													state: sessionSummaryState,
+													hasDockedCard:
+														inlineQuestion !== null ||
+														pendingPermission !== null ||
+														dockedPlan !== null,
+													workingLineWaits,
+												}) &&
+													!unansweredHookQuestion && (
+														<WaitingForInputNotice {...elicitationNotice} />
+													)}
+												{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
+												{dockedPlan !== null && (
+													<DeferredDockedPlanApproval
+														key={dockedPlan.toolUseId}
+														pendingPlan={dockedPlan}
+														plan={planApprovalCtx}
 													/>
-												</SessionBackgroundTasksOpener>
-											)}
-										</SessionDock>
+												)}
+												{/* Upstream docks a rejected send's session-error card above the composer */}
+												{liveHerdrPrompt.state.rejection !== null && (
+													<DeferredSendRejectedCard
+														rejection={liveHerdrPrompt.state.rejection}
+														onRetry={retryRejection}
+														onDismiss={dismissRejection}
+													/>
+												)}
+												{/* Upstream sets the usage chip between the docked card and the composer */}
+												{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
+												{!chromeHidden && sessionDirectory && (
+													<NotifyMePrompt sessionId={sessionId} />
+												)}
+												{/* Upstream's composer stand-in: an archived session shows the Unarchive note in place of the editor */}
+												{!chromeHidden && sessionDirectory && data.archived && (
+													<div
+														className="contents"
+														data-band-enter={archivedNoteEnters ? "" : undefined}
+													>
+														<ArchivedComposerNote sessionId={sessionId} />
+													</div>
+												)}
+												{/* Upstream's notice region: registered bands (usage → `limit`) stacked in NOTICE_ORDER */}
+												{!chromeHidden && sessionDirectory && <ComposerNoticeRegion />}
+												{!chromeHidden && sessionDirectory && !data.archived && (
+													<SessionBackgroundTasksOpener
+														sessionId={sessionId}
+														running={COMPOSER_RUNNING_LAUNCHES}
+													>
+														<Composer
+															variant="session"
+															draftKey={sessionId}
+															onSend={(prompt, launchOptions) => {
+																if (
+																	handleBtwPrompt(prompt, {
+																		sessionId,
+																		messageCount: data.messageCount,
+																		toast,
+																	})
+																) {
+																	return;
+																}
+																submitComposer("send", prompt, launchOptions);
+															}}
+															onFork={(prompt, launchOptions) =>
+																submitComposer("fork", prompt, launchOptions)
+															}
+															forkLabel={forkSubmitLabel({
+																pane: paneState,
+																writesEnabled: herdr.writesEnabled,
+															})}
+															onCancel={() => {
+																void chatStream.cancel();
+															}}
+															isStreaming={
+																!promptBehavior.usesHerdr &&
+																chatStream.state.isStreaming
+															}
+															onStop={stopAvailable ? stopResponse : undefined}
+															disabled={
+																promptBehavior.disabled ||
+																(!promptBehavior.usesHerdr &&
+																	liveHerdrPrompt.state.isPending)
+															}
+															queue={promptBehavior.usesHerdr ? composerQueue : undefined}
+															onQueueForLater={
+																promptBehavior.usesHerdr ? enqueuePrompt : undefined
+															}
+															deliveryHint={promptBehavior.deliveryHint}
+															chin={composerChin}
+															{...slashMenu}
+															bypassPermissionsAllowed={bypassPermissionsAllowed}
+															live={liveLaunchAvailable ? liveLaunch : undefined}
+															mentionSessionId={sessionId}
+															mentionCwd={sessionDirectory}
+															promptHistory={promptHistory}
+															onRewind={rewindAvailableFromComposer}
+														/>
+													</SessionBackgroundTasksOpener>
+												)}
+											</SessionDock>
+										</ComposerNoticeProvider>
 									</div>
 								</div>
 							</>
