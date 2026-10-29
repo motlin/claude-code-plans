@@ -18,6 +18,7 @@ import {DevOverlays} from "../components/dev-overlays";
 import {AppFrame} from "../components/app-frame";
 import {NotFoundContent} from "../components/not-found-content";
 import {AppShellFallback} from "../components/app-shell-fallback";
+import {useMarkAppMounted} from "../lib/app-mounted";
 import {getShellChinLabels} from "../lib/shell-chin-store";
 import {ChunkPrefetch} from "../components/chunk-prefetch";
 import {WaitingSessionPrefetch} from "../components/waiting-session-prefetch";
@@ -118,6 +119,7 @@ function RootComponent() {
 
 function RootApplication({children}: Readonly<{children: ReactNode}>) {
 	const {queryClient} = Route.useRouteContext();
+	useMarkAppMounted();
 	return (
 		<>
 			<QueryClientProvider client={queryClient}>
@@ -222,6 +224,7 @@ export function RootTopRow() {
 }
 
 function NotFound() {
+	useMarkAppMounted();
 	return <NotFoundContent />;
 }
 

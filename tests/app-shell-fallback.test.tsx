@@ -136,10 +136,48 @@ describe("AppShellFallback", () => {
 		]);
 	});
 
-	it("removes itself once the client hydrates", () => {
-		const {container} = render(<AppShellFallback />);
+	// With `ssr: false` the app only renders once the route loaders resolve, so
+	// hiding on hydration left an empty body for that whole wait on every hard load.
+	it("stays painted after hydration until the app mounts, then removes itself in the same commit", async () => {
+		vi.resetModules();
+		const {AppShellFallback: FreshFallback} = await import("../src/components/app-shell-fallback");
+		const {useMarkAppMounted} = await import("../src/lib/app-mounted");
+		function App() {
+			useMarkAppMounted();
+			return <main data-testid="app" />;
+		}
+		const {container, rerender} = render(<FreshFallback />);
+		const beforeApp = container.querySelector('[data-testid="app-shell-fallback"]') !== null;
+		let paintedWithApp: boolean | undefined;
+		function ProbeApp() {
+			useLayoutEffect(() => {
+				paintedWithApp = container.querySelector('[data-testid="app-shell-fallback"]') !== null;
+			});
+			return null;
+		}
+		rerender(
+			<>
+				<FreshFallback />
+				<App />
+			</>,
+		);
+		rerender(
+			<>
+				<FreshFallback />
+				<App />
+				<ProbeApp />
+			</>,
+		);
 
-		expect(container.innerHTML).toStrictEqual("");
+		expect({
+			beforeApp,
+			paintedWithApp,
+			afterApp: container.innerHTML,
+		}).toStrictEqual({
+			beforeApp: true,
+			paintedWithApp: false,
+			afterApp: '<main data-testid="app"></main>',
+		});
 	});
 
 	it("paints the current shell's layout: serif wordmark, New row, nav and More, a session list, footer and composer", () => {

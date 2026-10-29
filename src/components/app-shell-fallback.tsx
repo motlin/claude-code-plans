@@ -1,5 +1,6 @@
 import {Ellipsis, Folder, Plus} from "lucide-react";
-import {useEffect, useState} from "react";
+import {useState} from "react";
+import {useAppMounted} from "../lib/app-mounted";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
 import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
 import {getVisibleNavItems, navItems} from "./sidebar/navigation";
@@ -39,9 +40,9 @@ const SESSION_ROW_WIDTHS = ["w-3/4", "w-2/3", "w-5/6", "w-1/2", "w-3/5", "w-4/5"
  * This component lives in `shellComponent`, which does render on the server, so
  * a hard load paints the current shell's layout immediately instead of a blank
  * white frame: the sidebar's titlebar, New row, nav and session list, and the
- * same session skeleton an in-app switch shows, above the composer. It
- * removes itself on hydration, at which point the real `RootLayout` is already
- * mounted underneath it.
+ * same session skeleton an in-app switch shows, above the composer. It stays
+ * up through hydration and the route loaders, and removes itself in the same
+ * commit the real `RootApplication` first mounts (`useMarkAppMounted`).
  */
 
 /**
@@ -242,15 +243,11 @@ export function AppShellFallback({
 	/** The chin's labels, which only the server knows; null paints the chin's icons alone. */
 	chin?: ShellChinLabels | null;
 }) {
-	const [hydrated, setHydrated] = useState(false);
+	const appMounted = useAppMounted();
 	const [labels] = useState(() => chin ?? readPaintedChin());
 	const {keys: searchKeys} = useShortcutKeys("search_or_start");
 
-	useEffect(() => {
-		setHydrated(true);
-	}, []);
-
-	if (hydrated) return null;
+	if (appMounted) return null;
 
 	return (
 		<div
