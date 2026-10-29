@@ -63,12 +63,15 @@ function useSendNowFocusHandoff(): (button: HTMLButtonElement | null) => void {
 function SendNowButton({
 	onSendNow,
 	onFocusComposer,
+	busy,
 }: {
 	onSendNow: (() => Promise<void> | void) | undefined;
 	onFocusComposer: (() => void) | undefined;
+	busy: boolean;
 }) {
 	const descriptionId = useId();
-	const [sending, setSending] = useState(false);
+	const [interrupting, setInterrupting] = useState(false);
+	const sending = interrupting || busy;
 	const pointerTypeRef = useRef("");
 	const buttonRef = useSendNowFocusHandoff();
 	const onClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -81,9 +84,9 @@ function SendNowButton({
 			button.blur();
 		}
 		if (onSendNow === undefined) return;
-		setSending(true);
+		setInterrupting(true);
 		void Promise.resolve(onSendNow()).finally(() => {
-			setSending(false);
+			setInterrupting(false);
 		});
 	};
 	return (
@@ -128,6 +131,7 @@ export function WaitingUserTurn({
 	head,
 	delivered = false,
 	onSendNow,
+	sendNowBusy = false,
 	onFocusComposer,
 	onCancel,
 	...rest
@@ -139,6 +143,8 @@ export function WaitingUserTurn({
 	delivered?: boolean;
 	/** Stops Claude's current response so it reads this message next; absent leaves Send now inert. */
 	onSendNow?: (() => Promise<void> | void) | undefined;
+	/** Keeps Send now busy past its own interrupt, while the CLI has yet to take the prompt. */
+	sendNowBusy?: boolean;
 	/** Focuses the session composer, where a mouse click on Send now leaves focus. */
 	onFocusComposer?: (() => void) | undefined;
 	/** Upstream's "Cancel and edit message": only while the browser holds the text, never once the CLI does. */
@@ -159,7 +165,9 @@ export function WaitingUserTurn({
 					</p>
 				</div>
 				<WaitingMessageActions text={text} unread={!head} onCancel={onCancel}>
-					{head && <SendNowButton onSendNow={onSendNow} onFocusComposer={onFocusComposer} />}
+					{head && (
+						<SendNowButton onSendNow={onSendNow} onFocusComposer={onFocusComposer} busy={sendNowBusy} />
+					)}
 				</WaitingMessageActions>
 			</div>
 		</div>

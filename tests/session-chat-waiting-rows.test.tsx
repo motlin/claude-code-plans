@@ -222,3 +222,69 @@ describe("head waiting row Send now focus", () => {
 		expect(onFocusComposer.mock.calls).toStrictEqual([[]]);
 	});
 });
+
+describe("JSONL head row Send now stays busy until the CLI takes the prompt", () => {
+	// CLI 2.1.312, checked in a scratch pane: Esc with prompts queued interrupts the turn and the
+	// CLI dequeues and sends every queued prompt itself, so Send now is the interrupt alone.
+	function chat(records: unknown[], onSendNow: () => Promise<void>) {
+		const {lines, toolResultMap} = processTranscript(records);
+		return (
+			<SessionChat
+				sessionId="s-1"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				shouldScrollToEnd={false}
+				transcriptMode="normal"
+				sessionLive
+				onSendNow={onSendNow}
+			/>
+		);
+	}
+	const waiting = [assistant("a-1", "2026-01-01T00:00:00Z", "working"), enqueue("2026-01-01T00:00:01Z", "hi")];
+	const sendNowState = (container: HTMLElement) =>
+		[...container.querySelectorAll("[data-testid=awaiting-turn-send-now]")].map((button) =>
+			button.getAttribute("aria-busy"),
+		);
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("interrupts once and stays busy after the interrupt settles, ignoring a second click", async () => {
+		const onSendNow = vi.fn<() => Promise<void>>(async () => {});
+		const {container, rerender} = render(chat(waiting, onSendNow));
+		const click = () => {
+			const button = container.querySelector("[data-testid=awaiting-turn-send-now]");
+			if (button !== null) fireEvent.click(button);
+		};
+		click();
+		await act(async () => {});
+		click();
+		rerender(chat([...waiting, assistant("a-2", "2026-01-01T00:00:02Z", "still working")], onSendNow));
+		await act(async () => {});
+		expect({calls: onSendNow.mock.calls.length, busy: sendNowState(container)}).toStrictEqual({
+			calls: 1,
+			busy: ["true"],
+		});
+	});
+
+	it("clears busy after the pickup timeout without interrupting again", async () => {
+		vi.useFakeTimers();
+		const onSendNow = vi.fn<() => Promise<void>>(async () => {});
+		const {container} = render(chat(waiting, onSendNow));
+		const button = container.querySelector("[data-testid=awaiting-turn-send-now]");
+		if (button !== null) fireEvent.click(button);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(2999);
+		});
+		const before = sendNowState(container);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1);
+		});
+		expect({calls: onSendNow.mock.calls.length, before, after: sendNowState(container)}).toStrictEqual({
+			calls: 1,
+			before: ["true"],
+			after: [null],
+		});
+	});
+});

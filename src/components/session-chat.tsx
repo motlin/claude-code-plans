@@ -194,23 +194,69 @@ const WorkflowRunsContext = createContext<ReadonlyMap<string, SessionWorkflowRun
 
 const TranscriptModeContext = createContext<TranscriptMode>("normal");
 interface SendNowHandlers {
-	sendNow: (() => Promise<void> | void) | undefined;
+	sendNow: ((entryId: string) => Promise<void>) | undefined;
+	/** The waiting row whose Send now already interrupted and waits for the CLI to take its prompt. */
+	pendingEntryId: string | null;
 	focusComposer: (() => void) | undefined;
 }
 const SendNowContext = createContext<SendNowHandlers>({
 	sendNow: undefined,
+	pendingEntryId: null,
 	focusComposer: undefined,
 });
 
+/** How long a CLI-queue Send now stays busy waiting for the CLI to take its prompt. */
+const SEND_NOW_PICKUP_TIMEOUT_MS = 3000;
+
+/**
+ * Send now for prompts waiting in the CLI's own queue. Esc with prompts queued interrupts the turn
+ * and the CLI dequeues and sends every queued prompt itself (checked against CLI 2.1.312), so the
+ * interrupt alone sends them. The row stays busy until its prompt leaves the queue or
+ * {@link SEND_NOW_PICKUP_TIMEOUT_MS} passes; the state lives above the virtualized list so a
+ * remounted row keeps it.
+ */
+function useQueuedSendNow(
+	interrupt: (() => Promise<void> | void) | undefined,
+	waitingIds: readonly string[],
+): Pick<SendNowHandlers, "sendNow" | "pendingEntryId"> {
+	const [pendingEntryId, setPendingEntryId] = useState<string | null>(null);
+	const pendingRef = useRef<string | null>(null);
+	if (pendingEntryId !== null && !waitingIds.includes(pendingEntryId)) {
+		pendingRef.current = null;
+		setPendingEntryId(null);
+	}
+	useEffect(() => {
+		if (pendingEntryId === null) return undefined;
+		const timer = setTimeout(() => {
+			pendingRef.current = null;
+			setPendingEntryId(null);
+		}, SEND_NOW_PICKUP_TIMEOUT_MS);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, [pendingEntryId]);
+	const sendNow = useMemo(() => {
+		if (interrupt === undefined) return undefined;
+		return async (entryId: string) => {
+			if (pendingRef.current !== null) return;
+			pendingRef.current = entryId;
+			setPendingEntryId(entryId);
+			await interrupt();
+		};
+	}, [interrupt]);
+	return {sendNow, pendingEntryId};
+}
+
 /** A prompt waiting in the CLI's queue, whose head row's Send now interrupts the running turn. */
 function QueuedWaitingTurn({entryId, text, head}: {entryId: string; text: string; head: boolean}) {
-	const {sendNow, focusComposer} = useContext(SendNowContext);
+	const {sendNow, pendingEntryId, focusComposer} = useContext(SendNowContext);
 	return (
 		<WaitingUserTurn
 			entryId={entryId}
 			text={text}
 			head={head}
-			onSendNow={sendNow}
+			onSendNow={sendNow === undefined ? undefined : async () => sendNow(entryId)}
+			sendNowBusy={pendingEntryId === entryId}
 			onFocusComposer={focusComposer}
 		/>
 	);
@@ -583,10 +629,6 @@ export const SessionChat = React.memo(function SessionChat({
 	rewoundUuids = NO_REWOUND_UUIDS,
 	workflowRuns = NO_WORKFLOW_RUNS,
 }: SessionChatProps) {
-	const sendNowHandlers = useMemo(
-		() => ({sendNow: onSendNow, focusComposer: onFocusComposer}),
-		[onSendNow, onFocusComposer],
-	);
 	const measurementKey = JSON.stringify([
 		sessionId,
 		initialScrollKey,
@@ -626,6 +668,11 @@ export const SessionChat = React.memo(function SessionChat({
 	const lastError = useMemo(() => ({line: fullErrorLine, recovery: errorRecovery}), [fullErrorLine, errorRecovery]);
 	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
 	const waitingIds = useMemo(() => queuedEntryIds(listedLines), [listedLines]);
+	const {sendNow, pendingEntryId} = useQueuedSendNow(onSendNow, waitingIds);
+	const sendNowHandlers = useMemo(
+		() => ({sendNow, pendingEntryId, focusComposer: onFocusComposer}),
+		[sendNow, pendingEntryId, onFocusComposer],
+	);
 	useTranscriptSelectionAttach(sessionId, containerRef);
 
 	useEffect(() => {
