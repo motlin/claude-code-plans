@@ -68,11 +68,11 @@
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1877453,
+		"ceiling": 1896452,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Bundle trim (2026-10-27): the SSE event names and pending AskUserQuestion/ExitPlanMode schemas moved out of hook-events.ts, JsonValueSchema and SkillOverrideValueSchema out of schemas.ts, and the server-only halves of composer-state, session-cost and api-request-log into their own modules; type-only imports written as `import {type X}` became `import type`. The client no longer downloads the hook event schemas, and home no longer downloads the strict transcript schemas. Home went from 419761 gzip / 1275032 raw to 404545 / 1220653, session from 631660 / 1897962 to 626645 / 1877453. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-27"
+		"reason": "Elicitation waiting notice (2026-10-29): the session page names the asking MCP server and its message in the waiting notice for a pending form or url elicitation (findElicitationWaitingNotice plus the notice's message line, +377 bytes), on top of the growth since the 2026-10-27 bundle trim (1877453 to 1896075, already within the 1% tolerance). Raw went to 1896452, about 225 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-29"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

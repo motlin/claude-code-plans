@@ -156,6 +156,25 @@ export function findPendingElicitationPermission(entries: readonly PendingElicit
 	return permission;
 }
 
+/** Upstream's `kE`: the longest elicitation message it draws. */
+const ELICITATION_MESSAGE_MAX = 4000;
+
+/**
+ * The oldest form or url elicitation, named for the waiting notice with
+ * upstream's form-card heading "{server} requests your input" and its message.
+ * Verdict elicitations draw a permission card instead, so they are skipped.
+ */
+export function findElicitationWaitingNotice(
+	entries: readonly PendingElicitation[],
+): {title: string; message: string} | null {
+	const entry = entries.find((candidate) => candidate.mode === "url" || !isVerdictSchema(candidate.requestedSchema));
+	if (entry === undefined) return null;
+	return {
+		title: `${entry.serverName} requests your input`,
+		message: entry.message.slice(0, ELICITATION_MESSAGE_MAX),
+	};
+}
+
 function withPersistentAllow(permission: PendingPermission, notification: PermissionNotification): PendingPermission {
 	return notification.persistentAllow === undefined
 		? permission

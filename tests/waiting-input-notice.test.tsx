@@ -47,4 +47,31 @@ describe("WaitingForInputNotice", () => {
 			controls: 0,
 		});
 	});
+
+	it("names the asking MCP server, then its message, then the terminal footnote", () => {
+		const {container} = render(
+			<WaitingForInputNotice
+				title="my-mcp-server requests your input"
+				message={"Please provide\nyour credentials"}
+			/>,
+		);
+
+		const notice = screen.getByRole("status", {name: "my-mcp-server requests your input"});
+		const lines = [...container.querySelectorAll("[data-waiting-input-notice] > span:last-child > span")];
+		expect({
+			text: notice.textContent,
+			lines: lines.map((line) => ({text: line.textContent, className: line.className})),
+		}).toStrictEqual({
+			text: "my-mcp-server requests your inputPlease provide\nyour credentialsAnswer in the terminal running this session.",
+			lines: [
+				{text: "my-mcp-server requests your input", className: "font-[580]"},
+				{
+					text: "Please provide\nyour credentials",
+					className:
+						"text-footnote text-secondary whitespace-pre-wrap [overflow-wrap:anywhere] [unicode-bidi:plaintext]",
+				},
+				{text: "Answer in the terminal running this session.", className: "text-footnote text-secondary"},
+			],
+		});
+	});
 });

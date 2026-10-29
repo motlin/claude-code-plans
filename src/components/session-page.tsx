@@ -155,6 +155,7 @@ import {
 import {useSendRejectionActions} from "./use-send-rejection-actions";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {
+	findElicitationWaitingNotice,
 	findPendingElicitationPermission,
 	findPendingPermission,
 	permissionWaitToolUseId,
@@ -749,6 +750,11 @@ function SessionView({
 		[inlineQuestion, toolPermission, pendingElicitations],
 	);
 	const pendingPermission = toolPermission ?? elicitationPermission;
+	// A form or url elicitation stays with the terminal dialog, but the waiting notice names its server.
+	const elicitationNotice = useMemo(
+		() => findElicitationWaitingNotice(pendingElicitations ?? []),
+		[pendingElicitations],
+	);
 	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
 	const workingLineWaits = workingLineWaitsOnUser({
 		awaitingPermission,
@@ -1285,7 +1291,9 @@ function SessionView({
 													dockedPlan !== null,
 												workingLineWaits,
 											}) &&
-												!unansweredHookQuestion && <WaitingForInputNotice />}
+												!unansweredHookQuestion && (
+													<WaitingForInputNotice {...elicitationNotice} />
+												)}
 											{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
 											{dockedPlan !== null && (
 												<DeferredDockedPlanApproval

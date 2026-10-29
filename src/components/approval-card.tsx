@@ -205,13 +205,17 @@ const TERMINAL_FOOTNOTE = "Answer in the terminal running this session.";
 /**
  * Stands where upstream docks the pending question card, directly above the composer,
  * when no hook reported the question: the awaiting dot and a plain line, with
- * no options to pick, since the question itself is not on disk yet.
+ * no options to pick, since the question itself is not on disk yet. A pending
+ * MCP form or url elicitation names its server in `title` and adds its `message`.
  */
-export function WaitingForInputNotice() {
+export function WaitingForInputNotice({
+	title = "Waiting for your input",
+	message,
+}: {title?: string; message?: string} = {}) {
 	return (
 		<div
 			role="status"
-			aria-label="Waiting for your input"
+			aria-label={title}
 			data-waiting-input-notice
 			className="flex items-start gap-2 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
 		>
@@ -219,7 +223,12 @@ export function WaitingForInputNotice() {
 				<span className="status-dot" data-kind="awaiting" />
 			</span>
 			<span className="flex min-w-0 flex-col">
-				<span className="font-[580]">Waiting for your input</span>
+				<span className="font-[580]">{title}</span>
+				{message !== undefined && (
+					<span className="text-footnote text-secondary whitespace-pre-wrap [overflow-wrap:anywhere] [unicode-bidi:plaintext]">
+						{message}
+					</span>
+				)}
 				<span className="text-footnote text-secondary">{TERMINAL_FOOTNOTE}</span>
 			</span>
 		</div>

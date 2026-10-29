@@ -5,10 +5,14 @@ import {
 	pendingElicitationsQueryOptions,
 } from "../src/lib/api/pending-elicitations";
 import type {PendingElicitation} from "../src/lib/domain-event-payload-schemas";
-import {findPendingElicitationPermission, isVerdictSchema} from "../src/lib/permission-card";
+import {
+	findElicitationWaitingNotice,
+	findPendingElicitationPermission,
+	isVerdictSchema,
+} from "../src/lib/permission-card";
 import {addPendingElicitation, clearAllPendingElicitations} from "../src/lib/pending-elicitations";
 import {handlePendingElicitationsRequest} from "../src/routes/api/sessions.$id.pending-elicitations";
-import {elicitationFormFixture, elicitationVerdictFixture} from "./fixtures/elicitation";
+import {elicitationFormFixture, elicitationUrlFixture, elicitationVerdictFixture} from "./fixtures/elicitation";
 
 afterEach(() => {
 	clearAllPendingElicitations();
@@ -103,6 +107,41 @@ describe("findPendingElicitationPermission", () => {
 		expect(
 			findPendingElicitationPermission([FORM_ENTRY, verdictEntry(["allow", "deny"])])?.notificationId,
 		).toStrictEqual("elicitation:elicit-verdict-1");
+	});
+});
+
+describe("findElicitationWaitingNotice", () => {
+	const URL_ENTRY: PendingElicitation = {
+		serverName: elicitationUrlFixture.mcp_server_name,
+		message: elicitationUrlFixture.message,
+		mode: "url",
+		url: elicitationUrlFixture.url,
+		receivedAt: 1_700_000_000_001,
+	};
+
+	it("names the server of the oldest form or url elicitation with upstream's heading and its message", () => {
+		expect([
+			findElicitationWaitingNotice([FORM_ENTRY, URL_ENTRY]),
+			findElicitationWaitingNotice([URL_ENTRY]),
+		]).toStrictEqual([
+			{title: "my-mcp-server requests your input", message: "Please provide your credentials"},
+			{title: "my-mcp-server requests your input", message: "Please authenticate"},
+		]);
+	});
+
+	it("skips verdict elicitations, which draw a permission card instead", () => {
+		expect([
+			findElicitationWaitingNotice([verdictEntry(["allow", "deny"])]),
+			findElicitationWaitingNotice([verdictEntry(["allow", "deny"]), URL_ENTRY]),
+			findElicitationWaitingNotice([]),
+		]).toStrictEqual([null, {title: "my-mcp-server requests your input", message: "Please authenticate"}, null]);
+	});
+
+	it("caps the message at upstream's 4000 characters", () => {
+		expect(findElicitationWaitingNotice([{...URL_ENTRY, message: "x".repeat(4005)}])).toStrictEqual({
+			title: "my-mcp-server requests your input",
+			message: "x".repeat(4000),
+		});
 	});
 });
 
