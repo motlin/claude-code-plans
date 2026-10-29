@@ -281,6 +281,12 @@ function attachmentDetailSections(
 	if (attachment.type === "structured_output") {
 		return textSection("Structured output", JSON.stringify(attachment.data, null, 2));
 	}
+	if (attachment.type === "session_cron_carry") {
+		return linesSection(
+			`Scheduled tasks (${attachment.tasks.length})`,
+			attachment.tasks.map((task) => `${task.cron} (${task.recurring ? "recurring" : "once"}): ${task.prompt}`),
+		);
+	}
 	return [];
 }
 

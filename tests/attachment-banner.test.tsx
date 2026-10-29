@@ -602,6 +602,39 @@ describe("AttachmentBanner", () => {
 			]);
 		});
 
+		it("lists each carried-over scheduled task with its cron, recurrence and prompt", () => {
+			expect(
+				detailSections({
+					type: "session_cron_carry",
+					tasks: [
+						{
+							id: "9672e493",
+							cron: "7 13 19 10 *",
+							prompt: "Restore the .envrc references",
+							createdAt: 1792343284261,
+							recurring: false,
+						},
+						{
+							id: "1a2b3c4d",
+							cron: "*/5 * * * *",
+							prompt: "Check the deploy",
+							createdAt: 1792343284262,
+							recurring: true,
+						},
+					],
+				}),
+			).toStrictEqual([
+				[
+					"Scheduled tasks (2)",
+					"7 13 19 10 * (once): Restore the .envrc references\n*/5 * * * * (recurring): Check the deploy",
+				],
+			]);
+		});
+
+		it("omits the scheduled task list when no tasks were carried over", () => {
+			expect(detailSections({type: "session_cron_carry", tasks: []})).toStrictEqual([]);
+		});
+
 		it("puts the type-specific details before the rendered reminder", () => {
 			expect(
 				detailSections(
