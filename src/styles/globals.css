@@ -2134,6 +2134,13 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 	background-color: rgb(249 115 22 / 0.65);
 }
 
+/* The Plan pane selection a comment popover is open for, kept painted after the window selection is cleared
+   (upstream's epitaxy-plan-selection highlight). */
+::highlight(plan-selection) {
+	background-color: highlight;
+	color: highlighttext;
+}
+
 /* Composer image preview morph (cb1b78cfa ImagePreviewModal, shared-10 `Uy`):
    the tile image grows into the preview over .35s and shrinks back over .25s,
    its radius and shadow easing from the tile's to the preview's. With no tile

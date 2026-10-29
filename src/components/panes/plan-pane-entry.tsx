@@ -111,6 +111,7 @@ export function planPaneDefinition(
 		render: () => (
 			<SessionPlanPane
 				key={`${sessionId}:${planFilename ?? ""}`}
+				sessionId={sessionId}
 				planFilename={planFilename}
 				model={model}
 				commentsEnabled={commentsEnabled}

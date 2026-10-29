@@ -22,7 +22,16 @@ const EMPTY: SessionPlanModel = {content: null, todos: [], editsPlanFile: false}
 describe("SessionPlanPane", () => {
 	it("shows a hook-only pending plan, which the docked approval card no longer repeats", () => {
 		const model = withPendingPlan(EMPTY, {toolUseId: "", plan: "# P\n\nDo it.", planFilePath: "/tmp/plans/p.md"});
-		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} commentsEnabled={false} />));
+		render(
+			withQueryClient(
+				<SessionPlanPane
+					sessionId="fabricated-session"
+					planFilename={undefined}
+					model={model}
+					commentsEnabled={false}
+				/>,
+			),
+		);
 		const pane = screen.getByTestId("session-plan-pane");
 
 		expect(
@@ -33,7 +42,16 @@ describe("SessionPlanPane", () => {
 	});
 
 	it("shows upstream's empty state when the session has no plan and no todos", () => {
-		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={EMPTY} commentsEnabled={false} />));
+		render(
+			withQueryClient(
+				<SessionPlanPane
+					sessionId="fabricated-session"
+					planFilename={undefined}
+					model={EMPTY}
+					commentsEnabled={false}
+				/>,
+			),
+		);
 		const pane = screen.getByTestId("session-plan-pane");
 
 		expect({
@@ -65,7 +83,16 @@ describe("SessionPlanPane", () => {
 			],
 			editsPlanFile: false,
 		};
-		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} commentsEnabled={false} />));
+		render(
+			withQueryClient(
+				<SessionPlanPane
+					sessionId="fabricated-session"
+					planFilename={undefined}
+					model={model}
+					commentsEnabled={false}
+				/>,
+			),
+		);
 		const pane = screen.getByTestId("session-plan-pane");
 		const column = pane.firstElementChild;
 		const hint = pane.querySelector("[data-plan-hint]");
@@ -106,7 +133,16 @@ describe("SessionPlanPane", () => {
 			todos: [{content: "Rebase", status: "pending"}],
 			editsPlanFile: false,
 		};
-		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} commentsEnabled={false} />));
+		render(
+			withQueryClient(
+				<SessionPlanPane
+					sessionId="fabricated-session"
+					planFilename={undefined}
+					model={model}
+					commentsEnabled={false}
+				/>,
+			),
+		);
 		const pane = screen.getByTestId("session-plan-pane");
 
 		expect({
@@ -128,7 +164,12 @@ describe("SessionPlanPane", () => {
 		const model: SessionPlanModel = {content: "# Tea plan\n\nBrew it.", todos: [], editsPlanFile: false};
 		render(
 			withQueryClient(
-				<SessionPlanPane planFilename={undefined} model={model} commentsEnabled={commentsEnabled} />,
+				<SessionPlanPane
+					sessionId="fabricated-session"
+					planFilename={undefined}
+					model={model}
+					commentsEnabled={commentsEnabled}
+				/>,
 			),
 		);
 		const hint = screen.getByTestId("session-plan-pane").querySelector("[data-plan-hint]");

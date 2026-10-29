@@ -1,12 +1,13 @@
 import {useQuery} from "@tanstack/react-query";
 import {ListChecks, Loader2, MessageCircle} from "lucide-react";
-import type {ReactNode} from "react";
+import {type ReactNode, useRef} from "react";
 
 import {planQueryOptions} from "../../lib/api/plans";
 import {toMdSlug} from "../../lib/md-slug";
 import type {PlanTodo, SessionPlanModel} from "../../lib/session-plan-model";
 import {MarkdownView} from "../markdown-view";
 import {TodoChecklist} from "../tool-renderers/task-checklist-renderer";
+import {PlanCommentsLayer} from "./plan-comments-layer";
 
 /**
  * Upstream's Plan pane: the session's plan (its linked plan file, else its latest ExitPlanMode or
@@ -15,27 +16,36 @@ import {TodoChecklist} from "../tool-renderers/task-checklist-renderer";
  * comment hint, whose wording follows `commentsEnabled` (plan mode, or a plan waiting for approval).
  */
 export function SessionPlanPane({
+	sessionId,
 	planFilename,
 	model,
 	commentsEnabled,
 }: {
+	sessionId: string;
 	planFilename: string | undefined;
 	model: SessionPlanModel;
 	commentsEnabled: boolean;
 }) {
 	return planFilename === undefined ? (
-		<PlanBody content={model.content} todos={model.todos} commentsEnabled={commentsEnabled} />
+		<PlanBody sessionId={sessionId} content={model.content} todos={model.todos} commentsEnabled={commentsEnabled} />
 	) : (
-		<LinkedPlanBody planFilename={planFilename} model={model} commentsEnabled={commentsEnabled} />
+		<LinkedPlanBody
+			sessionId={sessionId}
+			planFilename={planFilename}
+			model={model}
+			commentsEnabled={commentsEnabled}
+		/>
 	);
 }
 
 /** The linked plan file's markdown, falling back to the transcript's plan text when the file is gone. */
 function LinkedPlanBody({
+	sessionId,
 	planFilename,
 	model,
 	commentsEnabled,
 }: {
+	sessionId: string;
 	planFilename: string;
 	model: SessionPlanModel;
 	commentsEnabled: boolean;
@@ -51,18 +61,28 @@ function LinkedPlanBody({
 			</div>
 		);
 	}
-	return <PlanBody content={plan?.markdown ?? model.content} todos={model.todos} commentsEnabled={commentsEnabled} />;
+	return (
+		<PlanBody
+			sessionId={sessionId}
+			content={plan?.markdown ?? model.content}
+			todos={model.todos}
+			commentsEnabled={commentsEnabled}
+		/>
+	);
 }
 
 function PlanBody({
+	sessionId,
 	content,
 	todos,
 	commentsEnabled,
 }: {
+	sessionId: string;
 	content: string | null;
 	todos: readonly PlanTodo[];
 	commentsEnabled: boolean;
 }) {
+	const commentsRef = useRef<HTMLDivElement>(null);
 	if (content === null && todos.length === 0) {
 		return (
 			<PlanEmptyState
@@ -80,9 +100,14 @@ function PlanBody({
 		>
 			<div className="mx-auto max-w-[68ch]">
 				{content !== null && <PlanCommentHint commentsEnabled={commentsEnabled} />}
-				{content !== null && <MarkdownView markdown={content} />}
+				{content !== null && (
+					<div ref={commentsRef}>
+						<MarkdownView markdown={content} />
+					</div>
+				)}
 				{todos.length > 0 && <PlanTasks todos={todos} />}
 			</div>
+			<PlanCommentsLayer rootRef={commentsRef} sessionId={sessionId} commentsEnabled={commentsEnabled} />
 		</div>
 	);
 }
