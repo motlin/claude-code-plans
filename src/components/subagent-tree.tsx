@@ -54,7 +54,7 @@ export function SubagentTypeBadges({
 			<span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${getTypeStyle(agentType)}`}>
 				{getShortType(agentType)}
 			</span>
-			{attributionAgent && (
+			{attributionAgent && attributionAgent !== agentType && (
 				<span
 					className="shrink-0 rounded bg-fill-control px-1.5 py-0.5 font-mono text-[10px] text-t6"
 					title="Transcript attribution agent"

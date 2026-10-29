@@ -74,6 +74,20 @@ describe("SubagentTypeBadges", () => {
 		expect(html).toContain('title="Transcript attribution agent"');
 	});
 
+	it("renders one badge when the attribution agent equals the agent type", () => {
+		const html = renderToStaticMarkup(
+			createElement(SubagentTypeBadges, {
+				agentType: "workflow-subagent",
+				attributionAgent: "workflow-subagent",
+				model: null,
+			}),
+		);
+
+		expect(html).toBe(
+			'<span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-500/15 text-gray-400">workflow-subagent</span>',
+		);
+	});
+
 	it("names the model the agent ran on rather than its raw id", () => {
 		const html = renderToStaticMarkup(
 			createElement(SubagentTypeBadges, {
