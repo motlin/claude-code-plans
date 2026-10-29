@@ -379,6 +379,67 @@ describe("buildSubagentTree workflow runs", () => {
 			],
 		});
 	});
+
+	it("sets superseded attempts apart from the phase's agents and counts, and counts a failed agent as an error", () => {
+		const [run] = buildSubagentTree(
+			[
+				{
+					...workflowAgent(
+						"agent-a1",
+						"wf_a",
+						{title: "Draft", index: 1},
+						"1999-12-31T00:00:00.000Z",
+						"1999-12-31T00:00:10.000Z",
+					),
+					workflowState: "done",
+					workflowAttempt: "final",
+				},
+				{
+					...workflowAgent(
+						"agent-a2",
+						"wf_a",
+						{title: "Draft", index: 1},
+						"1999-12-31T00:00:01.000Z",
+						"1999-12-31T00:00:20.000Z",
+					),
+					workflowState: "failed",
+					workflowAttempt: "final",
+				},
+				{
+					...workflowAgent("agent-a3", "wf_a", {title: "Draft", index: 1}, "1999-12-31T00:00:02.000Z"),
+					workflowState: "ended",
+					workflowAttempt: "superseded",
+				},
+			],
+			{workflowRuns: [{runId: "wf_a", workflowName: "poems", status: "completed"}]},
+		);
+
+		expect(
+			run !== undefined && "type" in run && run.type === "workflow-run"
+				? {
+						agentCount: run.agentCount,
+						phases: run.phases.map(({title, counts, status, agents, supersededAgents}) => ({
+							title,
+							counts,
+							status,
+							agents: agents.map((node) => node.agent.id),
+							supersededAgents: supersededAgents.map((node) => node.agent.id),
+						})),
+					}
+				: run,
+		).toStrictEqual({
+			agentCount: 2,
+			phases: [
+				{
+					title: "Draft",
+					counts: {done: 1, running: 0, stalled: 0, error: 1, stopped: 0, pending: 0, total: 2},
+					status: "error",
+					agents: ["agent-a1", "agent-a2"],
+					supersededAgents: ["agent-a3"],
+				},
+			],
+		});
+	});
 });
 
 describe("phaseAriaLabel", () => {

@@ -131,6 +131,9 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 				<span className="min-w-0 truncate text-xs text-primary">
 					{node.agent.description ?? node.agent.slug ?? node.agent.id}
 				</span>
+				{node.agent.workflowState === "failed" && (
+					<span className="shrink-0 text-[10px] text-danger">Failed</span>
+				)}
 				{liveStatus === "running" && (
 					<span className="flex shrink-0 items-center gap-1 text-[10px] text-success-000">
 						<span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success-000" />
@@ -232,6 +235,41 @@ function WorkflowPhaseNode({
 			{expanded && (
 				<div className="ml-5 border-l border-strong pl-3">
 					{phase.agents.map((agent) => (
+						<TreeNode key={agent.agent.id} node={agent} presentation={presentation} />
+					))}
+					{phase.supersededAgents.length > 0 && (
+						<EarlierAttempts agents={phase.supersededAgents} presentation={presentation} />
+					)}
+				</div>
+			)}
+		</div>
+	);
+}
+
+/** A resumed run's earlier-launch agents, which upstream hides; local-only, collapsed by default. */
+function EarlierAttempts({agents, presentation}: {agents: SubagentTreeNode[]; presentation: TreePresentation}) {
+	const [expanded, setExpanded] = useState(false);
+
+	return (
+		<div>
+			<button
+				type="button"
+				aria-expanded={expanded}
+				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 text-start hover:bg-surface-0/50"
+				onClick={() => {
+					setExpanded((current) => !current);
+				}}
+			>
+				<span className="min-w-0 truncate text-xs text-t6">Earlier attempts ({agents.length})</span>
+				<ChevronRight
+					size={14}
+					aria-hidden="true"
+					className={`shrink-0 text-t6 transition-transform motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
+				/>
+			</button>
+			{expanded && (
+				<div className="ml-5 border-l border-strong pl-3 opacity-60">
+					{agents.map((agent) => (
 						<TreeNode key={agent.agent.id} node={agent} presentation={presentation} />
 					))}
 				</div>

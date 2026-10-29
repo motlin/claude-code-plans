@@ -58,4 +58,37 @@ describe("SubagentTreeEntries workflow runs", () => {
 		expect(phase.getAttribute("aria-expanded")).toBe("false");
 		expect(screen.queryByText("poem-1")).toBeNull();
 	});
+
+	it('tucks superseded attempts under a collapsed "Earlier attempts (N)" disclosure and tags failed agents', () => {
+		const entries = buildSubagentTree(
+			[
+				{
+					...workflowAgent("agent-a1", "poem-1", "1999-12-31T00:00:05.000Z"),
+					workflowState: "failed",
+					workflowAttempt: "final",
+				},
+				{
+					...workflowAgent("agent-a0", "poem-1-first-try", null),
+					workflowState: "ended",
+					workflowAttempt: "superseded",
+				},
+			],
+			{workflowRuns: [{runId: "wf_a", workflowName: "poems", status: "running"}]},
+		);
+		render(<SubagentTreeEntries entries={entries} presentation={presentation} />);
+
+		const failed = screen.getByText("Failed");
+		expect({text: failed.textContent, danger: failed.classList.contains("text-danger")}).toStrictEqual({
+			text: "Failed",
+			danger: true,
+		});
+		const earlier = screen.getByRole("button", {name: "Earlier attempts (1)"});
+		expect(earlier.getAttribute("aria-expanded")).toBe("false");
+		expect(screen.queryByText("poem-1-first-try")).toBeNull();
+
+		fireEvent.click(earlier);
+
+		expect(earlier.getAttribute("aria-expanded")).toBe("true");
+		expect(screen.getByText("poem-1-first-try").textContent).toBe("poem-1-first-try");
+	});
 });

@@ -3,6 +3,7 @@ import type {DbSubagent} from "./db/queries";
 import {getAgentTypeOrNull} from "./tool-utils";
 import {asRecord, isRecord} from "./narrow";
 import {SlowCommandSchema, type SlowCommand} from "./slow-commands";
+import type {WorkflowAgentState, WorkflowAttempt} from "./workflow-journal";
 
 /**
  * Subagent record extracted from transcript JSONL records.
@@ -48,6 +49,10 @@ export interface Subagent {
 	workflowPhase?: string | null | undefined;
 	/** The agent's 1-based workflow phase index. */
 	workflowPhaseIndex?: number | null | undefined;
+	/** The agent's state from its run's journal. */
+	workflowState?: WorkflowAgentState | undefined;
+	/** Whether the agent belongs to its run's final launch or an earlier, superseded attempt. */
+	workflowAttempt?: WorkflowAttempt | undefined;
 }
 
 export interface ActiveSubagent {

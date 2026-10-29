@@ -21,6 +21,8 @@ export interface WorkflowPhaseGroup {
 	counts: WorkflowProgressCounts;
 	status: PhaseStatus;
 	agents: SubagentTreeNode[];
+	/** Earlier attempts of a resumed run, which upstream hides; kept out of `counts`. */
+	supersededAgents: SubagentTreeNode[];
 }
 
 /** A workflow run's agents, grouped by phase; it sorts among root entries by its earliest agent. */
@@ -94,8 +96,11 @@ function buildWorkflowRun(
 	toNode: (agent: Subagent) => SubagentTreeNode,
 ): WorkflowRunGroup {
 	agents.sort(compareStartedAt);
+	const finalAgents = agents.filter((agent) => agent.workflowAttempt !== "superseded");
 	const settled =
-		info?.status === undefined ? agents.every((agent) => agent.finishedAt !== null) : info.status !== "running";
+		info?.status === undefined
+			? finalAgents.every((agent) => agent.finishedAt !== null)
+			: info.status !== "running";
 	const byIndex = new Map<number, WorkflowPhaseGroup>();
 	for (const agent of agents) {
 		const index = agent.workflowPhaseIndex ?? UNPHASED_INDEX;
@@ -108,14 +113,20 @@ function buildWorkflowRun(
 				counts: {...ZERO_COUNTS},
 				status: "pending",
 				agents: [],
+				supersededAgents: [],
 			};
 			byIndex.set(index, phase);
 		} else if (agent.workflowPhase && phase.title === `Phase ${index}`) {
 			phase.title = agent.workflowPhase;
 		}
+		if (agent.workflowAttempt === "superseded") {
+			phase.supersededAgents.push(toNode(agent));
+			continue;
+		}
 		phase.agents.push(toNode(agent));
 		phase.counts.total += 1;
-		if (agent.finishedAt === null) phase.counts.running += 1;
+		if (agent.workflowState === "failed") phase.counts.error += 1;
+		else if (agent.finishedAt === null) phase.counts.running += 1;
 		else phase.counts.done += 1;
 	}
 	const unphased = byIndex.get(UNPHASED_INDEX);
@@ -135,7 +146,7 @@ function buildWorkflowRun(
 		name: info?.workflowName ?? runId,
 		startedAt: agents[0]?.startedAt ?? null,
 		durationMs,
-		agentCount: agents.length,
+		agentCount: finalAgents.length,
 		settled,
 		phases,
 	};

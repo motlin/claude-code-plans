@@ -446,6 +446,8 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					const sessionId = data["sessionId"];
 					if (typeof sessionId === "string") {
 						void queryClient.invalidateQueries({queryKey: sessionQueryKeys.workflows(sessionId)});
+						// Agent states and superseded attempts come from the same journal and run file.
+						void queryClient.invalidateQueries({queryKey: sessionQueryKeys.subagents(sessionId)});
 					}
 					break;
 				}
