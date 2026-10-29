@@ -78,12 +78,40 @@ export function groupArtifactsByDate<T extends DatedArtifact>(
 }
 
 /** The "Edited Sep 26" date: month and day this year, with the year otherwise. */
-export function formatArtifactDate(ms: number, now: Date): string {
+function formatArtifactDate(ms: number, now: Date): string {
 	const date = new Date(ms);
 	return date.toLocaleDateString("en-US", {
 		month: "short",
 		day: "numeric",
 		...(date.getFullYear() === now.getFullYear() ? {} : {year: "numeric"}),
+	});
+}
+
+const MINUTE_MS = 60 * 1000;
+const HOUR_MS = 60 * MINUTE_MS;
+/** Upstream's RelativeTime `absoluteAfterHours: 48`. */
+const RELATIVE_HOURS = 48;
+
+/** Upstream's RelativeTime (`relativeFormat: "narrow"`): "now", "5m ago", "14h ago" within 48h, else the date. */
+export function formatArtifactRelative(ms: number, now: Date): string {
+	const elapsed = now.getTime() - ms;
+	if (elapsed >= 0 && elapsed < RELATIVE_HOURS * HOUR_MS) {
+		if (elapsed < MINUTE_MS) return "now";
+		if (elapsed < HOUR_MS) return `${Math.floor(elapsed / MINUTE_MS)}m ago`;
+		return `${Math.floor(elapsed / HOUR_MS)}h ago`;
+	}
+	return formatArtifactDate(ms, now);
+}
+
+/** The RelativeTime tooltip: "Oct 2, 2026, 8:19 PM EDT". */
+export function formatArtifactTooltip(ms: number): string {
+	return new Date(ms).toLocaleString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+		timeZoneName: "short",
 	});
 }
 

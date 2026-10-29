@@ -14,7 +14,6 @@ import {
 	Lock,
 	Map as MapIcon,
 	Pin,
-	PinOff,
 	Shapes,
 	SlidersVertical,
 } from "lucide-react";
@@ -24,7 +23,8 @@ import {
 	artifactInView,
 	artifactTimestamp,
 	filterArtifacts,
-	formatArtifactDate,
+	formatArtifactRelative,
+	formatArtifactTooltip,
 	groupArtifactsByDate,
 	readArtifactsLayout,
 	writeArtifactsLayout,
@@ -463,7 +463,11 @@ function PrivacyAndDate({
 			)}
 			<span data-artifact-meta="">
 				{artifact.lastPublishedAt === null ? "Viewed" : "Edited"}{" "}
-				<time dateTime={new Date(ms).toISOString()}>{formatArtifactDate(ms, now)}</time>
+				<Tooltip content={formatArtifactTooltip(ms)} className="pointer-events-auto">
+					<time data-cds="RelativeTime" dateTime={new Date(ms).toISOString()}>
+						{formatArtifactRelative(ms, now)}
+					</time>
+				</Tooltip>
 			</span>
 		</>
 	);
@@ -525,7 +529,7 @@ function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinne
 	return (
 		<>
 			<MenuItem
-				icon={pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+				icon={pinned ? <Pin aria-hidden="true" fill="currentColor" /> : <Pin aria-hidden="true" />}
 				onSelect={() => {
 					togglePin(artifact, pinned);
 				}}
@@ -553,18 +557,14 @@ function ArtifactPinButton({
 		<Tooltip content={pinLabel}>
 			<button
 				type="button"
-				aria-label={`${pinLabel} ${artifact.title}`}
+				aria-label={pinLabel}
 				aria-pressed={pinned}
 				className={`${ROW_ACTION_CLASS} ${className}`}
 				onClick={() => {
 					togglePin(artifact, pinned);
 				}}
 			>
-				{pinned ? (
-					<PinOff aria-hidden="true" className="size-4" />
-				) : (
-					<Pin aria-hidden="true" className="size-4" />
-				)}
+				<Pin aria-hidden="true" className="size-4" {...(pinned ? {fill: "currentColor"} : {})} />
 			</button>
 		</Tooltip>
 	);

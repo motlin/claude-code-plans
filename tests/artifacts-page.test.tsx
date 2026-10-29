@@ -17,6 +17,8 @@ import {
 	ARTIFACTS_LAYOUT_STORAGE_KEY,
 	artifactDateGroupLabel,
 	filterArtifacts,
+	formatArtifactRelative,
+	formatArtifactTooltip,
 	groupArtifactsByDate,
 } from "../src/lib/artifact-gallery";
 import {getArtifacts} from "../src/lib/db/artifact-queries";
@@ -67,6 +69,31 @@ describe("artifactDateGroupLabel", () => {
 			{label: "September", ids: ["c", "d"]},
 			{label: "November 2025", ids: ["e"]},
 		]);
+	});
+});
+
+describe("formatArtifactRelative", () => {
+	it("uses upstream's narrow RelativeTime within 48h and the absolute date after", () => {
+		const now = new Date(2026, 9, 4, 10, 30, 0);
+		const ago = (ms: number) => formatArtifactRelative(now.getTime() - ms, now);
+
+		expect([
+			ago(20 * 1000),
+			ago(5 * 60 * 1000),
+			ago(14 * 60 * 60 * 1000),
+			ago(47 * 60 * 60 * 1000),
+			ago(49 * 60 * 60 * 1000),
+		]).toStrictEqual(["now", "5m ago", "14h ago", "47h ago", "Oct 2"]);
+	});
+
+	it("titles the time with the absolute date, time and zone, as upstream's RelativeTime tooltip", () => {
+		const tz = process.env["TZ"];
+		process.env["TZ"] = "America/New_York";
+		try {
+			expect(formatArtifactTooltip(Date.UTC(2026, 9, 3, 0, 19))).toBe("Oct 2, 2026, 8:19 PM EDT");
+		} finally {
+			process.env["TZ"] = tz;
+		}
 	});
 });
 
@@ -398,7 +425,7 @@ describe("artifacts route", () => {
 		const card = screen.getByRole("link", {name: "Quarterly plan"}).closest<HTMLElement>("li");
 		if (card === null) throw new Error("no card");
 		const meta = card.querySelector("[data-card-meta]");
-		const pin = within(card).getByRole("button", {name: "Pin Quarterly plan"});
+		const pin = within(card).getByRole("button", {name: "Pin"});
 		const more = within(card).getByRole("button", {name: "More options for Quarterly plan"});
 		const moreWrapper = more.closest<HTMLElement>("[data-card-more]");
 
@@ -432,7 +459,7 @@ describe("artifacts route", () => {
 		const missing = (element: Element | null | undefined, names: string[]) =>
 			names.filter((name) => element?.classList.contains(name) !== true);
 		const pressable = item.querySelector<HTMLElement>("[data-gallery-card]");
-		const pin = within(item).getByRole("button", {name: "Pin Quarterly plan"});
+		const pin = within(item).getByRole("button", {name: "Pin"});
 		const more = within(item).getByRole("button", {name: "More options for Quarterly plan"});
 		const dot = item.querySelector("[data-card-meta] span[aria-hidden=true].rounded-full");
 
@@ -703,6 +730,22 @@ describe("artifacts route", () => {
 		]);
 	});
 
+	it("shows the card's edited time as upstream's RelativeTime with the absolute time in a tooltip", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const card = screen.getByRole("link", {name: "Asap Ladder Queue"}).closest<HTMLElement>("li");
+		const time = card?.querySelector<HTMLElement>("[data-artifact-meta] time");
+		if (time === null || time === undefined) throw new Error("no time");
+
+		fireEvent.pointerEnter(time);
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect({cds: time.dataset["cds"], tooltip: tooltip.textContent}).toStrictEqual({
+			cds: "RelativeTime",
+			tooltip: formatArtifactTooltip(localMs(2026, 8, 26, 15)),
+		});
+	});
+
 	it("expands and focuses the search on ⌘F", async () => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_USER_AGENT);
 		await renderArtifactsPage("/artifacts", true);
@@ -971,9 +1014,18 @@ describe("artifacts route", () => {
 			stored: JSON.parse(storage.getItem(ARTIFACT_PIN_STORAGE_KEY) ?? "null"),
 		};
 
-		fireEvent.click(screen.getByRole("button", {name: "Unpin Quarterly plan"}));
+		const unpin = within(screen.getByRole("link", {name: "Quarterly plan"}).closest<HTMLElement>("li")!).getByRole(
+			"button",
+			{name: "Unpin"},
+		);
+		const unpinIcon = {
+			pin: unpin.querySelector("svg")?.classList.contains("lucide-pin"),
+			fill: unpin.querySelector("svg")?.getAttribute("fill"),
+		};
+		fireEvent.click(unpin);
 
-		expect({pinned, unpinned: groupedTitles()}).toStrictEqual({
+		expect({pinned, unpinIcon, unpinned: groupedTitles()}).toStrictEqual({
+			unpinIcon: {pin: true, fill: "currentColor"},
 			pinned: {
 				groups: [
 					{heading: "Pinned", rows: ["Quarterly plan"]},
