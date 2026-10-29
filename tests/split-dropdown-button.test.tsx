@@ -636,4 +636,62 @@ describe("SplitDropdownButton", () => {
 			});
 		});
 	});
+
+	describe("status slot", () => {
+		function slot() {
+			const next = primary().nextElementSibling;
+			if (!(next instanceof HTMLElement)) throw new Error("no status slot");
+			return next;
+		}
+
+		it("renders no slot without a status", () => {
+			renderSplit();
+
+			expect(primary().nextElementSibling).toBeNull();
+		});
+
+		it("renders the status after the primary in the variant fill", () => {
+			renderSplit({variant: "secondary", status: "3"});
+
+			expect({
+				name: primary().getAttribute("aria-label") ?? primary().textContent,
+				text: slot().textContent,
+				tag: slot().tagName,
+				sameParent: slot().parentElement === primary().parentElement,
+				primary: [...primary().classList].filter((name) => /^(peer\/slot|ps-|pe-|px-|rounded-e)/.test(name)),
+				slot: [...slot().classList],
+			}).toStrictEqual({
+				name: "Always allow",
+				text: "3",
+				tag: "SPAN",
+				sameParent: true,
+				primary: ["ps-2", "pe-1", "rounded-e-none", "peer/slot"],
+				slot: [
+					"flex",
+					"shrink-0",
+					"items-center",
+					"self-stretch",
+					"pe-3",
+					"transition-colors",
+					"duration-[60ms]",
+					"ease-out",
+					"peer-disabled/slot:opacity-40",
+					"bg-fill-secondary",
+					"peer-hover/slot:bg-fill-secondary-hover",
+				],
+			});
+		});
+
+		it("squares the ghost primary's end and rounds the slot's end", () => {
+			renderSplit({variant: "ghost", status: "3"});
+
+			expect({
+				primary: [...primary().classList].filter((name) => /^(peer\/slot|ps-|pe-|rounded-e)/.test(name)),
+				slot: [...slot().classList].filter((name) => /(bg-|rounded)/.test(name)),
+			}).toStrictEqual({
+				primary: ["ps-2", "pe-1", "peer/slot", "rounded-e-none"],
+				slot: ["peer-hover/slot:bg-fill-ghost-hover", "rounded-e-r5"],
+			});
+		});
+	});
 });

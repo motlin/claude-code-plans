@@ -45,6 +45,8 @@ export interface SplitDropdownButtonProps {
 	onOpenChange?: (open: boolean) => void;
 	/** Where focus lands when the menu closes; the caret by default. */
 	finalFocus?: MenuContentProps["finalFocus"];
+	/** A trailing slot inside the primary segment that shares its fill and hover, e.g. a count. */
+	status?: ReactNode;
 	className?: string;
 }
 
@@ -103,6 +105,18 @@ const GHOST_LABELED_PRIMARY_CLASS = "aria-pressed:text-accent-100 h-[var(--split
 const GHOST_LABELED_PRIMARY_PAD_CLASS = "ps-2 pe-[5px]";
 const GHOST_LABELED_CARET_CLASS =
 	"justify-center h-[var(--split-h)] w-auto ps-0 pe-1 after:absolute after:inset-y-0 after:start-0 after:-end-2 after:content-['']";
+/* Upstream's status slot: a trailing span that paints with the primary and follows its hover and disabled state. */
+const STATUS_SLOT_CLASS =
+	"flex shrink-0 items-center self-stretch pe-3 transition-colors duration-[60ms] ease-out peer-disabled/slot:opacity-40";
+const STATUS_SLOT_FILLS: Record<NonNullable<SplitDropdownButtonProps["variant"]>, string> = {
+	primary: "bg-fill-primary peer-hover/slot:bg-fill-primary-hover",
+	secondary: "bg-fill-secondary peer-hover/slot:bg-fill-secondary-hover",
+	danger: "bg-fill-danger peer-hover/slot:bg-fill-danger-hover",
+	ghost: "peer-hover/slot:bg-fill-ghost-hover",
+};
+/* With a status slot the primary keeps its start padding and hands the end padding to the slot. */
+const STATUS_PRIMARY_CLASS = "peer/slot";
+
 type SplitSize = NonNullable<SplitDropdownButtonProps["size"]>;
 
 /* Upstream's control scale: compact 24px, sm 20px, and the coarse-pointer comfortable 28px. */
@@ -193,6 +207,7 @@ export function SplitDropdownButton({
 	open: controlledOpen,
 	onOpenChange,
 	finalFocus,
+	status,
 	className,
 }: SplitDropdownButtonProps) {
 	const [internalOpen, setInternalOpen] = useState(false);
@@ -225,25 +240,38 @@ export function SplitDropdownButton({
 		? joinClasses(rootBase, joined.root, className)
 		: joinClasses(rootBase, GHOST_ROOT_CLASS, !iconOnly && GHOST_LABELED_ROOT_CLASS, className);
 	const ghostButtonClass = joinClasses(GHOST_BUTTON_CLASS, scale.radius);
+	const hasStatus = status !== undefined;
 	const primaryClass = joined
 		? joinClasses(
 				BUTTON_CLASS,
 				"inline-flex items-center",
 				scale.height,
-				scale.padX,
+				hasStatus ? `${scale.padX.replace("px-", "ps-")} pe-1` : scale.padX,
 				scale.text,
 				scale.radius,
 				"rounded-e-none min-w-0 shrink",
 				joined.fill,
 				PAINT_TRANSITION,
+				hasStatus && STATUS_PRIMARY_CLASS,
 			)
 		: joinClasses(
 				BUTTON_CLASS,
 				ghostButtonClass,
 				iconOnly
 					? GHOST_ICON_PRIMARY_CLASS
-					: joinClasses(GHOST_LABELED_PRIMARY_CLASS, scale.text, GHOST_LABELED_PRIMARY_PAD_CLASS),
+					: joinClasses(
+							GHOST_LABELED_PRIMARY_CLASS,
+							scale.text,
+							hasStatus ? "ps-2" : GHOST_LABELED_PRIMARY_PAD_CLASS,
+						),
+				hasStatus && "pe-1",
+				hasStatus && `${STATUS_PRIMARY_CLASS} rounded-e-none`,
 			);
+	const statusClass = joinClasses(
+		STATUS_SLOT_CLASS,
+		STATUS_SLOT_FILLS[variant],
+		!joined && scale.radius.replace("rounded-", "rounded-e-"),
+	);
 	const caretClass = joined
 		? joinClasses(
 				BUTTON_CLASS,
@@ -307,6 +335,7 @@ export function SplitDropdownButton({
 							</span>
 						)}
 					</button>
+					{hasStatus && <span className={statusClass}>{status}</span>}
 				</div>
 			</div>
 			<span aria-hidden="true" className={joined ? joined.seam : SEAM_BASE_CLASS}>
