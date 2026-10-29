@@ -78,7 +78,7 @@ describe("SubagentTreeEntries workflow runs", () => {
 		render(<SubagentTreeEntries entries={entries} presentation={presentation} />);
 
 		const failed = screen.getByText("Failed");
-		expect({text: failed.textContent, danger: failed.classList.contains("text-danger")}).toStrictEqual({
+		expect({text: failed.textContent, danger: failed.classList.contains("text-danger-ink")}).toStrictEqual({
 			text: "Failed",
 			danger: true,
 		});

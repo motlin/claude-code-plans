@@ -237,7 +237,7 @@ describe("WorkflowTaskCard", () => {
 			summary: 'Workflow "upstream-sync-wf-test" failed: script threw',
 		});
 		render(<WorkflowTaskCard task={task({id: "waq2jn20y", status: "failed"})} run={failed} />);
-		expect(screen.getByText("Failed").className).toBe("text-danger");
+		expect(screen.getByText("Failed").className).toBe("text-danger-ink");
 		const region = screen.getByRole("region", {name: "Error"});
 		expect(region.textContent).toBe("Script threw");
 		expect(region.parentElement?.getAttribute("style")).toBe(

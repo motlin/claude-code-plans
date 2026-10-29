@@ -78,7 +78,7 @@ function phaseInk(phase: WorkflowPhase): string {
 		case "running":
 			return phase.counts.stalled > 0 ? "text-warning" : "text-secondary";
 		case "error":
-			return "text-danger";
+			return "text-danger-ink";
 		default:
 			return "text-secondary";
 	}
@@ -137,8 +137,12 @@ function AgentRow({
 			{agent.error ? (
 				<span className={`flex justify-end ${ERROR_SPAN}`}>
 					<Tooltip content={agent.error} multiline>
-						{/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's error is a tab stop that reaches its popover */}
-						<span tabIndex={0} aria-label={agent.error} className={`cursor-default text-danger ${FOCUS}`}>
+						<span
+							// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's error is a tab stop that reaches its popover
+							tabIndex={0}
+							aria-label={agent.error}
+							className={`cursor-default text-danger-ink ${FOCUS}`}
+						>
 							Error
 						</span>
 					</Tooltip>
@@ -284,7 +288,7 @@ function SummaryRegion({status, summary}: {status: "failed" | "stopped"; summary
 			className={`flex flex-col gap-1 ${failed ? "rounded-r5 p-2 pt-[7px]" : "rounded-r5 bg-alpha-1 p-2 pt-[7px]"}`}
 			style={failed ? {background: "color-mix(in srgb, var(--color-fill-danger) 8%, transparent)"} : undefined}
 		>
-			<span className={`text-footnote ${failed ? "text-danger" : "text-ink-muted"}`}>{label}</span>
+			<span className={`text-footnote ${failed ? "text-danger-ink" : "text-ink-muted"}`}>{label}</span>
 			<span
 				role="region"
 				aria-label={label}
@@ -354,7 +358,7 @@ export function WorkflowTaskCard({task, run}: {task: BackgroundTask; run?: Sessi
 						<span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.75">
 							<span className={running ? "text-secondary" : undefined}>Workflow</span>
 							{!running && (
-								<span className={status === "failed" ? "text-danger" : undefined}>
+								<span className={status === "failed" ? "text-danger-ink" : undefined}>
 									{RUN_STATUS_LABELS[status]}
 								</span>
 							)}

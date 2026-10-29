@@ -934,7 +934,7 @@ function CodeAppearanceSection() {
 }
 
 const WRITE_FAILED_ALERT = (
-	<p className="text-footnote text-danger">
+	<p className="text-footnote text-danger-000">
 		<span role="alert">Couldn’t save this setting.</span>
 	</p>
 );

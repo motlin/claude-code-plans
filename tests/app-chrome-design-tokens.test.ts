@@ -17,6 +17,19 @@ describe("app chrome design tokens", () => {
 		expect(violations).toStrictEqual({});
 	});
 
+	it("never uses the bare text-danger utility, which the theme leaves without a --color-danger rule", () => {
+		const violations = Object.fromEntries(
+			globSync("src/**/*.{css,ts,tsx}").flatMap((path) => {
+				const matches = [...readFileSync(path, "utf8").matchAll(/\btext-danger(?![-\w])/g)].map(
+					([utility]) => utility,
+				);
+				return matches.length === 0 ? [] : [[path, matches]];
+			}),
+		);
+
+		expect(violations).toStrictEqual({});
+	});
+
 	it("washes the user bubble and inline-code chip in the cds-era 5% alpha layer", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));

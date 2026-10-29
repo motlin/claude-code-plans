@@ -196,7 +196,7 @@ describe("UsagePanel", () => {
 			screen.getAllByText(/% used$/).map((node) => ({text: node.textContent, className: node.className})),
 		).toStrictEqual([
 			{text: "80% used", className: "min-w-20 whitespace-nowrap text-end text-footnote text-secondary"},
-			{text: "95% used", className: "min-w-20 whitespace-nowrap text-end text-footnote text-danger"},
+			{text: "95% used", className: "min-w-20 whitespace-nowrap text-end text-footnote text-danger-ink"},
 		]);
 	});
 
@@ -242,7 +242,7 @@ describe("UsagePanel", () => {
 		expect(weekMeter?.parentElement?.className).toBe("flex-1");
 		expect(screen.getAllByText(/% used$/).map((node) => node.className)).toStrictEqual([
 			"min-w-20 whitespace-nowrap text-end text-footnote text-secondary",
-			"min-w-20 whitespace-nowrap text-end text-footnote text-danger",
+			"min-w-20 whitespace-nowrap text-end text-footnote text-danger-ink",
 		]);
 	});
 
