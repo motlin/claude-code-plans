@@ -35,7 +35,7 @@ function withStops(db: IndexDb, sessionId: string, agents: DbSubagent[]): Subage
 	const stopped = new Set(parsed.success ? parsed.data : []);
 	return agents.map((agent) => {
 		const client = toClientSubagent(agent);
-		const bareId = agent.id.startsWith("agent-") ? agent.id.slice("agent-".length) : agent.id;
+		const bareId = bareAgentId(agent.id);
 		const isStopped = stopped.has(bareId) || (agent.name != null && stopped.has(agent.name));
 		return isStopped ? {...client, stopped: true} : client;
 	});
@@ -56,11 +56,22 @@ function withWorkflowStatuses(rows: DbSubagent[], agents: Subagent[]): Subagent[
 		if (statuses === undefined) {
 			// `<session>/subagents/workflows/<runId>/agent-<id>.jsonl`
 			const sessionDir = dirname(dirname(dirname(dirname(filePath))));
-			statuses = readWorkflowAgentStatuses(sessionDir, runId);
+			statuses = readWorkflowAgentStatuses(sessionDir, runId, runStartTimes(rows, runId));
 			statusesByRun.set(runId, statuses);
 		}
-		const bareId = agent.id.startsWith("agent-") ? agent.id.slice("agent-".length) : agent.id;
-		const status = statuses.get(bareId);
+		const status = statuses.get(bareAgentId(agent.id));
 		return status === undefined ? agent : {...agent, workflowState: status.state, workflowAttempt: status.attempt};
 	});
+}
+
+function bareAgentId(id: string): string {
+	return id.startsWith("agent-") ? id.slice("agent-".length) : id;
+}
+
+/** Each of run `runId`'s agents' start time, keyed by bare agent id. */
+function runStartTimes(rows: DbSubagent[], runId: string): Map<string, string> {
+	const startedAt = new Map<string, string>();
+	for (const row of rows)
+		if (row.workflowRunId === runId && row.startedAt !== null) startedAt.set(bareAgentId(row.id), row.startedAt);
+	return startedAt;
 }

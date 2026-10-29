@@ -31,10 +31,49 @@ const JOURNAL = jsonl([
 
 describe("workflowAgentStatuses", () => {
 	it("takes each agent's state from its last journal event, and marks agents absent from the run file superseded", () => {
-		expect(Object.fromEntries(workflowAgentStatuses(JOURNAL, new Set(["a1", "a2"])))).toStrictEqual({
+		expect(
+			Object.fromEntries(
+				workflowAgentStatuses(JOURNAL, {
+					agentIds: new Set(["a1", "a2"]),
+					writtenAt: "2026-10-20T11:00:00.000Z",
+				}),
+			),
+		).toStrictEqual({
 			a1: {state: "done", attempt: "final"},
 			a2: {state: "failed", attempt: "final"},
 			a3: {state: "ended", attempt: "superseded"},
+		});
+	});
+
+	it("keeps agents a resumed launch started after the previous launch's run file running and final", () => {
+		const resumed =
+			JOURNAL +
+			jsonl([
+				{type: "started", key: "k3", agentId: "a4", label: "poem-3", phase: "Draft"},
+				{type: "started", key: "k4", agentId: "a5", label: "poem-4", phase: "Draft"},
+				{type: "result", key: "k4", agentId: "a5", result: "violets"},
+			]);
+		const startedAt = new Map([
+			["a1", "2026-10-20T10:00:00.000Z"],
+			["a2", "2026-10-20T10:00:01.000Z"],
+			["a3", "2026-10-20T10:00:02.000Z"],
+			["a4", "2026-10-20T12:00:00.000Z"],
+			["a5", "2026-10-20T12:00:01.000Z"],
+		]);
+		expect(
+			Object.fromEntries(
+				workflowAgentStatuses(
+					resumed,
+					{agentIds: new Set(["a1", "a2"]), writtenAt: "2026-10-20T11:00:00.000Z"},
+					startedAt,
+				),
+			),
+		).toStrictEqual({
+			a1: {state: "done", attempt: "final"},
+			a2: {state: "failed", attempt: "final"},
+			a3: {state: "ended", attempt: "superseded"},
+			a4: {state: "running", attempt: "final"},
+			a5: {state: "done", attempt: "final"},
 		});
 	});
 
@@ -72,7 +111,7 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 		rmSync(testDir, {recursive: true, force: true});
 	});
 
-	function writeAgent(agentId: string): string {
+	function writeAgent(agentId: string, timestamp = "2026-10-20T10:00:00.000Z"): string {
 		const path = join(runDir, `agent-${agentId}.jsonl`);
 		writeFileSync(
 			path,
@@ -83,7 +122,7 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 					isSidechain: true,
 					agentId,
 					sessionId,
-					timestamp: "2026-10-20T10:00:00.000Z",
+					timestamp,
 					message: {role: "user", content: "Write a poem"},
 				},
 			]),
@@ -91,12 +130,13 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 		return path;
 	}
 
-	it("adds each workflow agent's journal state and attempt, leaving other subagents untouched", async () => {
-		writeFileSync(join(runDir, "journal.jsonl"), JOURNAL);
+	/** Launch 1's run file: a1 and a2, written at 11:00. */
+	function writeRunFile(): void {
 		writeFileSync(
 			join(sessionDir, "workflows", `${runId}.json`),
 			JSON.stringify({
 				runId,
+				timestamp: "2026-10-20T11:00:00.000Z",
 				status: "completed",
 				workflowProgress: [
 					{type: "workflow_phase", index: 1, title: "Draft"},
@@ -121,6 +161,11 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 				],
 			}),
 		);
+	}
+
+	it("adds each workflow agent's journal state and attempt, leaving other subagents untouched", async () => {
+		writeFileSync(join(runDir, "journal.jsonl"), JOURNAL);
+		writeRunFile();
 		for (const agentId of ["a1", "a2", "a3"])
 			await indexSubagentFile(db.index, writeAgent(agentId), sessionId, projectId);
 		const plainPath = join(sessionDir, "subagents", "agent-plain.jsonl");
@@ -149,6 +194,28 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 			{id: "agent-a2", workflowState: "failed", workflowAttempt: "final"},
 			{id: "agent-a3", workflowState: "ended", workflowAttempt: "superseded"},
 			{id: "agent-plain", workflowState: undefined, workflowAttempt: undefined},
+		]);
+	});
+
+	it("keeps a resumed launch's agents started after the previous run file running and final", async () => {
+		writeFileSync(
+			join(runDir, "journal.jsonl"),
+			JOURNAL + jsonl([{type: "started", key: "k3", agentId: "a4", label: "poem-3", phase: "Draft"}]),
+		);
+		writeRunFile();
+		for (const agentId of ["a1", "a2", "a3"])
+			await indexSubagentFile(db.index, writeAgent(agentId), sessionId, projectId);
+		await indexSubagentFile(db.index, writeAgent("a4", "2026-10-20T12:00:00.000Z"), sessionId, projectId);
+
+		expect(
+			sessionSubagentsWithStops(db.index, sessionId)
+				.map(({id, workflowState, workflowAttempt}) => ({id, workflowState, workflowAttempt}))
+				.toSorted((a, b) => a.id.localeCompare(b.id)),
+		).toStrictEqual([
+			{id: "agent-a1", workflowState: "done", workflowAttempt: "final"},
+			{id: "agent-a2", workflowState: "failed", workflowAttempt: "final"},
+			{id: "agent-a3", workflowState: "ended", workflowAttempt: "superseded"},
+			{id: "agent-a4", workflowState: "running", workflowAttempt: "final"},
 		]);
 	});
 });
