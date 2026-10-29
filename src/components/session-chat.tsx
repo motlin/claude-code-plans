@@ -1850,7 +1850,10 @@ function toolOnlyBuckets(line: SessionLine, toolResultMap: ReadonlyMap<string, T
 	for (const b of content) {
 		if (b.type === "tool_use") buckets.push(toolBucketOf(b, toolResultMap));
 		else if (
-			!((b.type === "text" && !isAssistantProseBlock(b)) || (b.type === "thinking" && b.thinking.trim() === ""))
+			!(
+				(b.type === "text" && !isAssistantProseBlock(b)) ||
+				(b.type === "thinking" && b.thinking.trim() === "" && line.thinkingOmitted !== true)
+			)
 		)
 			return null;
 	}
@@ -3692,7 +3695,11 @@ function hasAssistantVisibleContent(line: SessionLine, showThinking: boolean, sh
 	const hasText = content.some(isAssistantProseBlock);
 	const hasThinking =
 		showThinking &&
-		content.some((b) => b.type === "thinking" && typeof b.thinking === "string" && b.thinking.trim() !== "");
+		content.some(
+			(b) =>
+				b.type === "thinking" &&
+				((typeof b.thinking === "string" && b.thinking.trim() !== "") || line.thinkingOmitted === true),
+		);
 	const hasMedia = content.some((b) => b.type === "image" || b.type === "document");
 	const hasToolUse = showTools && content.some((b) => b.type === "tool_use");
 
@@ -4735,6 +4742,22 @@ function ThinkingBlock({
 	);
 }
 
+/**
+ * A turn whose thinking the CLI withheld (`thinkingDisplay: "omitted"`): the
+ * same rail and duration label as ThinkingBlock, with a placeholder where the
+ * text would be and nothing to copy.
+ */
+function OmittedThinkingBlock({durationMs}: {durationMs: number | undefined}) {
+	return (
+		<div className="border-l-2 border-t2 pl-3">
+			{durationMs !== undefined && (
+				<div className="text-xs text-t6 mb-1">Thought for {formatThinkingDuration(durationMs)}</div>
+			)}
+			<div className="text-body text-t6 italic">Thinking hidden</div>
+		</div>
+	);
+}
+
 function formatThinkingDuration(ms: number): string {
 	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
 	const mins = Math.floor(ms / 60_000);
@@ -4789,7 +4812,9 @@ function AssistantEntry({
 		content.some(
 			(b) =>
 				isAssistantProseBlock(b) ||
-				(b.type === "thinking" && showThinking && typeof b.thinking === "string" && b.thinking.trim() !== "") ||
+				(b.type === "thinking" &&
+					showThinking &&
+					((typeof b.thinking === "string" && b.thinking.trim() !== "") || line.thinkingOmitted === true)) ||
 				b.type === "image" ||
 				b.type === "document",
 		);
@@ -4955,7 +4980,10 @@ function ContentBlock({
 	}
 
 	if (block.type === "thinking" && typeof block.thinking === "string") {
-		if (!showThinking || !block.thinking.trim()) return null;
+		if (!showThinking) return null;
+		if (!block.thinking.trim()) {
+			return line.thinkingOmitted === true ? <OmittedThinkingBlock durationMs={line.thinkingDurationMs} /> : null;
+		}
 		return (
 			<ThinkingBlock
 				thinking={block.thinking}

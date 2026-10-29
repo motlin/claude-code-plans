@@ -1562,6 +1562,26 @@ describe("message metadata fields", () => {
 		]);
 	});
 
+	it("flags assistant lines whose thinking display is omitted", () => {
+		const records = [
+			assistantRecord([{type: "thinking", thinking: "", signature: "sig"}], {thinkingDisplay: "omitted"}),
+			assistantRecord([{type: "thinking", thinking: "shown", signature: "sig"}], {thinkingDisplay: "updates"}),
+		];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{
+				type: "assistant",
+				lineIndex: 0,
+				thinkingOmitted: true,
+				message: {role: "assistant", content: [{type: "thinking", thinking: "", signature: "sig"}]},
+			},
+			{
+				type: "assistant",
+				lineIndex: 1,
+				message: {role: "assistant", content: [{type: "thinking", thinking: "shown", signature: "sig"}]},
+			},
+		]);
+	});
+
 	it("carries the classifier's live cwd, git branch, and platform on user lines", () => {
 		const records = [
 			userRecord("hello", {

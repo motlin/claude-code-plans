@@ -509,7 +509,7 @@ const pullRequestStateLabels = {
 	closed: "Closed",
 } satisfies Record<z.infer<typeof PullRequestStateSchema>, string>;
 
-/** Not consumed yet — `thinkingDisplay` on assistant JSONL records is only validated. */
+/** `thinkingDisplay` on assistant JSONL records; `omitted` draws the Thinking hidden placeholder (transcript.ts `thinkingOmitted`). */
 const thinkingDisplayChoices = {
 	updates: true,
 	omitted: true,

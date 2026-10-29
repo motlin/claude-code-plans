@@ -116,6 +116,8 @@ const MessageLineSchema = z.object({
 	modelMismatch: z.object({requested: z.string(), actual: z.string()}).optional(),
 	/** Whole milliseconds the model spent thinking on this assistant turn. */
 	thinkingDurationMs: z.number().optional(),
+	/** The CLI withheld this turn's thinking text (`thinkingDisplay: "omitted"`), leaving empty thinking blocks. */
+	thinkingOmitted: z.literal(true).optional(),
 	/** What the server-side permission classifier saw for this user turn. */
 	classifierContext: z
 		.object({
@@ -1184,6 +1186,7 @@ function processRecordBatch(
 				processedLine.modelMismatch = {requested: record.requestedModel, actual: actualModel};
 			}
 			if (record.thinkingDurationMs !== undefined) processedLine.thinkingDurationMs = record.thinkingDurationMs;
+			if (record.thinkingDisplay === "omitted") processedLine.thinkingOmitted = true;
 			// Attribution repeats on every turn of a skill/MCP block; only carry it
 			// onto the first line of each run so the UI shows one pill per block.
 			const attributionKey = JSON.stringify([

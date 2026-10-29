@@ -38,6 +38,8 @@ function renderThinking(
 		showDebug?: boolean;
 		thinkingDurationMs?: number;
 		thinking?: string;
+		thinkingDisplay?: "omitted" | "updates";
+		showThinking?: boolean;
 		toast?: (options: ToastOptions) => void;
 	} = {},
 ): HTMLElement {
@@ -47,6 +49,7 @@ function renderThinking(
 			type: "assistant",
 			uuid: "a1",
 			...(options.thinkingDurationMs === undefined ? {} : {thinkingDurationMs: options.thinkingDurationMs}),
+			...(options.thinkingDisplay === undefined ? {} : {thinkingDisplay: options.thinkingDisplay}),
 			message: {
 				role: "assistant",
 				content: [{type: "thinking", thinking: options.thinking ?? THINKING}],
@@ -60,7 +63,7 @@ function renderThinking(
 			toolResultMap={toolResultMap}
 			showCompactSummaries
 			showTranscriptOnly
-			showThinking
+			showThinking={options.showThinking ?? true}
 		/>
 	);
 	return render(
@@ -226,5 +229,48 @@ describe("thinking block", () => {
 		renderThinking();
 
 		expect(screen.queryAllByText(/^Thought for/).length).toBe(0);
+	});
+
+	it("shows a Thinking hidden placeholder under the duration label when the thinking display is omitted", () => {
+		const container = renderThinking({thinking: "", thinkingDisplay: "omitted", thinkingDurationMs: 871});
+
+		const placeholder = screen.getByText("Thinking hidden");
+		const rail = placeholder.parentElement;
+
+		expect({
+			placeholderClass: placeholder.className,
+			railClass: rail?.className,
+			railText: Array.from(rail?.children ?? []).map((child) => child.textContent),
+			copyButtons: container.querySelectorAll('button[aria-label="Copy as quote"]').length,
+		}).toStrictEqual({
+			placeholderClass: "text-body text-t6 italic",
+			railClass: "border-l-2 border-t2 pl-3",
+			railText: ["Thought for 0.9s", "Thinking hidden"],
+			copyButtons: 0,
+		});
+	});
+
+	it("shows the Thinking hidden placeholder without a duration label when the turn has no thinking duration", () => {
+		renderThinking({thinking: "", thinkingDisplay: "omitted"});
+
+		expect({
+			placeholders: screen.queryAllByText("Thinking hidden").length,
+			durations: screen.queryAllByText(/^Thought for/).length,
+		}).toStrictEqual({placeholders: 1, durations: 0});
+	});
+
+	it("hides the omitted-thinking placeholder when thinking is not shown", () => {
+		renderThinking({thinking: "", thinkingDisplay: "omitted", thinkingDurationMs: 871, showThinking: false});
+
+		expect(screen.queryAllByText("Thinking hidden").length).toBe(0);
+	});
+
+	it("draws nothing for empty thinking whose display was not omitted", () => {
+		renderThinking({thinking: "", thinkingDisplay: "updates", thinkingDurationMs: 871});
+
+		expect({
+			placeholders: screen.queryAllByText("Thinking hidden").length,
+			durations: screen.queryAllByText(/^Thought for/).length,
+		}).toStrictEqual({placeholders: 0, durations: 0});
 	});
 });
