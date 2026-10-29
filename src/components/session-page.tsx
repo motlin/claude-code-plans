@@ -186,7 +186,7 @@ import {extractOutputFiles} from "../lib/session-outputs";
 import {createSessionCommands} from "../lib/session-commands";
 import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {getSessionPromptBehavior} from "./session-prompt-behavior";
-import {sessionAnswerRoute} from "../hooks/use-question-answer-route";
+import {sessionAnswerRoute, sessionLiveness} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
 import {
 	errorRecoveryAvailability,
@@ -650,6 +650,7 @@ function SessionView({
 	}, [chromeHidden, setChromeHidden]);
 
 	const answerRoute = sessionAnswerRoute({sessionId, hookActive: isActive, summary: sessionSummary, herdr});
+	const answerLiveness = sessionLiveness({hookActive: isActive, summary: sessionSummary});
 	const submitAnswer = useCallback(
 		async ({toolUseId, questions, answers}: AnswerSubmission) => {
 			const {submitQuestionAnswer} = await import("../lib/question-answer-submit");
@@ -794,8 +795,8 @@ function SessionView({
 		[sessionId, hookQuestionToolUseId],
 	);
 	const askUserQuestionCtx: AskUserQuestionContextValue = useMemo(
-		() => ({answerRoute, submitAnswer}),
-		[answerRoute, submitAnswer],
+		() => ({answerRoute, sessionLive: answerLiveness, submitAnswer}),
+		[answerRoute, answerLiveness, submitAnswer],
 	);
 	const planApprovalCtx: PlanApprovalContextValue = useMemo(
 		() => ({

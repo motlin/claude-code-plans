@@ -5,6 +5,19 @@ import {questionAnswerRoute, type QuestionAnswerRoute} from "../lib/question-ans
 import {sessionProcessLive, type SessionSummaryState} from "../lib/session-state";
 import {useCachedSessionSummary} from "./use-claude-events";
 
+/** Whether the session's CLI still runs, from its hooks or the session list; null while neither knows. */
+export function sessionLiveness({
+	hookActive,
+	summary,
+}: {
+	hookActive: boolean;
+	summary: {state: SessionSummaryState} | undefined;
+}): boolean | null {
+	return !hookActive && summary === undefined
+		? null
+		: sessionProcessLive({hookActive, summaryState: summary?.state ?? null});
+}
+
 /**
  * Where the session's question cards send an answer, from its herdr pane and
  * whether its CLI still runs (hooks saw it start, or the registry-backed session
@@ -21,12 +34,8 @@ export function sessionAnswerRoute({
 	summary: {state: SessionSummaryState} | undefined;
 	herdr: HerdrPaneIndexData | undefined;
 }): QuestionAnswerRoute {
-	const live =
-		!hookActive && summary === undefined
-			? null
-			: sessionProcessLive({hookActive, summaryState: summary?.state ?? null});
 	return questionAnswerRoute({
-		live,
+		live: sessionLiveness({hookActive, summary}),
 		hasLivePane: herdr === undefined ? null : herdr.panes.some((pane) => pane.sessionId === sessionId),
 		writesEnabled: herdr?.writesEnabled ?? false,
 	});

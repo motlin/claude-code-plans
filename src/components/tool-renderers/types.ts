@@ -50,6 +50,8 @@ export interface ClientToolCall {
 	stopped?: boolean | undefined;
 	/** The user rejected the call with a typed reply; see `ToolResultInfo.denied`. */
 	denied?: boolean | undefined;
+	/** An open question whose CLI died; see `ToolResultInfo.orphaned`. */
+	orphaned?: boolean | undefined;
 	duration?: number | undefined;
 	sourceUuid: string;
 	resultUuid?: string | undefined;
@@ -249,6 +251,7 @@ export function buildClientToolCall(
 		if (resultInfo.isError) call.isError = true;
 		if (resultInfo.stopped === true) call.stopped = true;
 		if (resultInfo.denied === true) call.denied = true;
+		if (resultInfo.orphaned === true) call.orphaned = true;
 		call.resultUuid = resultInfo.resultUuid;
 		if (resultInfo.duration !== undefined) call.duration = resultInfo.duration;
 		if (resultInfo.resultMeta !== undefined) call.resultMeta = resultInfo.resultMeta;

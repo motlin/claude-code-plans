@@ -25,3 +25,12 @@ export function questionAnswerRoute({
 	if (live === false && hasLivePane === false) return "fork";
 	return "read-only";
 }
+
+/**
+ * Whether the session's open questions are orphaned, as upstream marks a question
+ * with no pending request: nothing can answer it (the read-only route) and its
+ * CLI is known to have stopped. Unknown liveness keeps the card.
+ */
+export function orphansOpenQuestions(route: QuestionAnswerRoute, sessionLive: boolean | null | undefined): boolean {
+	return route === "read-only" && sessionLive === false;
+}

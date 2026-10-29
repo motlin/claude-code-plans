@@ -141,6 +141,8 @@ export interface ToolResultInfo {
 	stopped?: boolean | undefined;
 	/** The user rejected the call with a typed reply, so upstream labels it "Denied" rather than "Failed". */
 	denied?: boolean | undefined;
+	/** An open question whose CLI died, drawn stopped with upstream's "Not answered" note; see `withOrphanedQuestions`. */
+	orphaned?: boolean | undefined;
 	resultUuid: string;
 	duration?: number | undefined;
 	/** Label-relevant bits of the record's `toolUseResult`; see `toolResultMetaFrom`. */

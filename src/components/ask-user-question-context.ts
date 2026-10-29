@@ -15,6 +15,8 @@ export interface AskUserQuestionContextValue {
 	 * new fork (only once the session stopped running), or nowhere (read-only).
 	 */
 	answerRoute: QuestionAnswerRoute;
+	/** Whether the session's CLI still runs; null or omitted while unknown. */
+	sessionLive?: boolean | null;
 	/**
 	 * Submit an answer to a pending AskUserQuestion along `answerRoute`. Rejects
 	 * with an error the caller shows; the caller owns any feedback while awaiting.

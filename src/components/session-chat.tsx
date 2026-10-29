@@ -17,7 +17,9 @@ import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {formatModelName} from "../lib/model-name";
-import {isWithdrawnQuestion, questionOutcomeNote, type AskedCall} from "../lib/ask-user-question";
+import {useAskUserQuestionContext} from "./ask-user-question-context";
+import {orphansOpenQuestions} from "../lib/question-answer-route";
+import {isWithdrawnQuestion, OUTCOME_LABEL, questionOutcomeNote, type AskedCall} from "../lib/ask-user-question";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {ErrorCardShell} from "./error-card-shell";
@@ -306,6 +308,27 @@ function asksPendingQuestion(line: SessionLine, toolResultMap: ReadonlyMap<strin
 	);
 }
 
+/**
+ * The result map with every open AskUserQuestion drawn as upstream's orphan: an
+ * interrupted call whose note reads "Not answered".
+ */
+function withOrphanedQuestions(
+	lines: readonly SessionLine[],
+	toolResultMap: Map<string, ToolResultInfo>,
+): Map<string, ToolResultInfo> {
+	let orphaned: Map<string, ToolResultInfo> | null = null;
+	for (const line of lines) {
+		const content = line.type === "assistant" ? line.message?.content : undefined;
+		if (!Array.isArray(content)) continue;
+		for (const block of content) {
+			if (block.type !== "tool_use" || block.name !== "AskUserQuestion" || toolResultMap.has(block.id)) continue;
+			orphaned ??= new Map(toolResultMap);
+			orphaned.set(block.id, {result: "", isError: true, stopped: true, orphaned: true, resultUuid: ""});
+		}
+	}
+	return orphaned ?? toolResultMap;
+}
+
 /** Rendered assistant contributions, not API request/usage boundaries. */
 function collectAssistantDisplaySpans(
 	lines: readonly SessionLine[],
@@ -519,7 +542,7 @@ function UserTurnActions({
 export const SessionChat = React.memo(function SessionChat({
 	sessionId,
 	lines,
-	toolResultMap,
+	toolResultMap: recordedResults,
 	allowedImageRoots = EMPTY_IMAGE_ROOTS,
 	subagents = NO_SUBAGENTS,
 	showThinking = false,
@@ -569,6 +592,13 @@ export const SessionChat = React.memo(function SessionChat({
 		measurementLayout,
 	]);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const questionCtx = useAskUserQuestionContext();
+	const orphansQuestions =
+		questionCtx !== null && orphansOpenQuestions(questionCtx.answerRoute, questionCtx.sessionLive);
+	const toolResultMap = useMemo(
+		() => (orphansQuestions ? withOrphanedQuestions(lines, recordedResults) : recordedResults),
+		[orphansQuestions, lines, recordedResults],
+	);
 	const isSubagentSession = sessionId.startsWith("agent-");
 	const subagentLookup = useMemo(() => buildSubagentLookup(subagents), [subagents]);
 	const launchedAgents = useMemo(() => launchedAgentDescriptions(lines, toolResultMap), [lines, toolResultMap]);
@@ -5372,7 +5402,10 @@ function ToolCallRow({
 	const status =
 		call.isError === true
 			? call.stopped === true
-				? "Stopped"
+				? // Upstream notes an orphaned open question "Not answered" in place of "Stopped".
+					call.orphaned === true
+					? OUTCOME_LABEL.dismissed
+					: "Stopped"
 				: call.denied === true
 					? "Denied"
 					: "Failed"
