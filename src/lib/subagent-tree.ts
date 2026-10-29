@@ -1,4 +1,6 @@
 import type {Subagent} from "./subagents";
+import {phaseStatus, UNPHASED_INDEX} from "./workflow-phase";
+import type {PhaseStatus, WorkflowProgressCounts, WorkflowRunStatus} from "./workflow-progress";
 
 export interface SubagentTreeNode {
 	agent: Subagent;
@@ -11,7 +13,37 @@ export interface ParallelSubagentGroup {
 	wallClockMs: number;
 }
 
-export type SubagentTreeEntry = SubagentTreeNode | ParallelSubagentGroup;
+/** One phase of a workflow run, bucketed by upstream's progress-model rules (c62da1b56 `ge`). */
+export interface WorkflowPhaseGroup {
+	type: "workflow-phase";
+	index: number;
+	title: string;
+	counts: WorkflowProgressCounts;
+	status: PhaseStatus;
+	agents: SubagentTreeNode[];
+}
+
+/** A workflow run's agents, grouped by phase; it sorts among root entries by its earliest agent. */
+export interface WorkflowRunGroup {
+	type: "workflow-run";
+	runId: string;
+	name: string;
+	startedAt: string | null;
+	durationMs: number;
+	agentCount: number;
+	/** The run has ended: its phases default to collapsed (upstream's default). */
+	settled: boolean;
+	phases: WorkflowPhaseGroup[];
+}
+
+export type SubagentTreeEntry = SubagentTreeNode | ParallelSubagentGroup | WorkflowRunGroup;
+
+/** What the tree knows about a session's workflow launches. */
+export interface WorkflowRunInfo {
+	runId: string;
+	workflowName: string;
+	status?: WorkflowRunStatus;
+}
 
 export interface SubagentDateGroup {
 	key: string;
@@ -32,7 +64,81 @@ function durationMs(agent: Subagent): number {
 }
 
 function entryStartedAt(entry: SubagentTreeEntry): string | null {
-	return "type" in entry ? (entry.children[0]?.agent.startedAt ?? null) : entry.agent.startedAt;
+	if (!("type" in entry)) return entry.agent.startedAt;
+	return entry.type === "workflow-run" ? entry.startedAt : (entry.children[0]?.agent.startedAt ?? null);
+}
+
+function compareEntries(left: SubagentTreeEntry, right: SubagentTreeEntry): number {
+	const leftStartedAt = entryStartedAt(left);
+	const rightStartedAt = entryStartedAt(right);
+	if (leftStartedAt === rightStartedAt) return 0;
+	if (leftStartedAt === null) return 1;
+	if (rightStartedAt === null) return -1;
+	return leftStartedAt.localeCompare(rightStartedAt);
+}
+
+const ZERO_COUNTS: WorkflowProgressCounts = {
+	done: 0,
+	running: 0,
+	stalled: 0,
+	error: 0,
+	stopped: 0,
+	pending: 0,
+	total: 0,
+};
+
+function buildWorkflowRun(
+	runId: string,
+	agents: Subagent[],
+	info: WorkflowRunInfo | undefined,
+	toNode: (agent: Subagent) => SubagentTreeNode,
+): WorkflowRunGroup {
+	agents.sort(compareStartedAt);
+	const settled =
+		info?.status === undefined ? agents.every((agent) => agent.finishedAt !== null) : info.status !== "running";
+	const byIndex = new Map<number, WorkflowPhaseGroup>();
+	for (const agent of agents) {
+		const index = agent.workflowPhaseIndex ?? UNPHASED_INDEX;
+		let phase = byIndex.get(index);
+		if (phase === undefined) {
+			phase = {
+				type: "workflow-phase",
+				index,
+				title: agent.workflowPhase ?? `Phase ${index}`,
+				counts: {...ZERO_COUNTS},
+				status: "pending",
+				agents: [],
+			};
+			byIndex.set(index, phase);
+		} else if (agent.workflowPhase && phase.title === `Phase ${index}`) {
+			phase.title = agent.workflowPhase;
+		}
+		phase.agents.push(toNode(agent));
+		phase.counts.total += 1;
+		if (agent.finishedAt === null) phase.counts.running += 1;
+		else phase.counts.done += 1;
+	}
+	const unphased = byIndex.get(UNPHASED_INDEX);
+	if (unphased) unphased.title = byIndex.size > 1 ? "Other agents" : "Agents";
+	const phases = [...byIndex.values()].toSorted((left, right) => left.index - right.index);
+	for (const phase of phases) phase.status = phaseStatus(phase.counts, settled);
+
+	const starts = agents.flatMap((agent) => (agent.startedAt === null ? [] : [new Date(agent.startedAt).getTime()]));
+	const finishes = agents.flatMap((agent) =>
+		agent.finishedAt === null ? [] : [new Date(agent.finishedAt).getTime()],
+	);
+	const durationMs =
+		starts.length === 0 || finishes.length === 0 ? 0 : Math.max(0, Math.max(...finishes) - Math.min(...starts));
+	return {
+		type: "workflow-run",
+		runId,
+		name: info?.workflowName ?? runId,
+		startedAt: agents[0]?.startedAt ?? null,
+		durationMs,
+		agentCount: agents.length,
+		settled,
+		phases,
+	};
 }
 
 function localDateKey(date: Date): string {
@@ -80,9 +186,19 @@ export function groupSubagentTreeByDate(entries: SubagentTreeEntry[], now = new 
 	return groups;
 }
 
-export function buildSubagentTree(agents: Subagent[]): SubagentTreeEntry[] {
+export function buildSubagentTree(
+	agents: Subagent[],
+	options?: {workflowRuns?: readonly WorkflowRunInfo[]},
+): SubagentTreeEntry[] {
 	const agentsByParent = new Map<string | null, Subagent[]>();
+	const agentsByRun = new Map<string, Subagent[]>();
 	for (const agent of agents) {
+		if (agent.workflowRunId) {
+			const runAgents = agentsByRun.get(agent.workflowRunId) ?? [];
+			runAgents.push(agent);
+			agentsByRun.set(agent.workflowRunId, runAgents);
+			continue;
+		}
 		const siblings = agentsByParent.get(agent.parentAgentId) ?? [];
 		siblings.push(agent);
 		agentsByParent.set(agent.parentAgentId, siblings);
@@ -134,5 +250,11 @@ export function buildSubagentTree(agents: Subagent[]): SubagentTreeEntry[] {
 		return entries;
 	}
 
-	return buildChildren(null);
+	const roots = buildChildren(null);
+	if (agentsByRun.size === 0) return roots;
+	const runInfo = new Map(options?.workflowRuns?.map((run) => [run.runId, run]));
+	const runs = [...agentsByRun].map(([runId, runAgents]) =>
+		buildWorkflowRun(runId, runAgents, runInfo.get(runId), (agent) => ({agent, children: buildChildren(agent.id)})),
+	);
+	return [...roots, ...runs].toSorted(compareEntries);
 }

@@ -61,11 +61,11 @@
 		"raisedAt": "2026-10-27"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 626645,
+		"ceiling": 633227,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Bundle trim (2026-10-27): the SSE event names and pending AskUserQuestion/ExitPlanMode schemas moved out of hook-events.ts, JsonValueSchema and SkillOverrideValueSchema out of schemas.ts, and the server-only halves of composer-state, session-cost and api-request-log into their own modules; type-only imports written as `import {type X}` became `import type`. The client no longer downloads the hook event schemas, and home no longer downloads the strict transcript schemas. Home went from 419761 gzip / 1275032 raw to 404545 / 1220653, session from 631660 / 1897962 to 626645 / 1877453. Ceilings lowered to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-27"
+		"reason": "Workflow run grouping (2026-10-29): the Subagents Tree, reached from the session page through the tool-renderer subagent lookup, groups workflow agents as run -> phase -> agent with upstream's phase titles, counts and aria-label (src/lib/workflow-phase.ts, kept zod-free so the progress schemas stay out). Session went from 632235 gzip (already within the 1% tolerance of 626645) to 633227. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.raw": {
 		"ceiling": 1877453,

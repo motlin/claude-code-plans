@@ -3,9 +3,9 @@ import {createFileRoute, Link, useRouter} from "@tanstack/react-router";
 import {Suspense, useEffect} from "react";
 import {SessionRouteIdentity} from "../components/session-route-identity";
 import {sessionIdentityFailure, sessionIdentityQueryOptions} from "../lib/api/session-identity";
-import {noop, useSuspenseQuery} from "@tanstack/react-query";
+import {noop, useQuery, useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowLeft, GitFork} from "lucide-react";
-import {sessionSubagentsQueryOptions} from "../lib/api/sessions";
+import {sessionSubagentsQueryOptions, sessionWorkflowRunsQueryOptions} from "../lib/api/sessions";
 import {SubagentGantt} from "../components/subagent-gantt";
 import {SubagentSequence} from "../components/subagent-sequence";
 import {SubagentTree} from "../components/subagent-tree";
@@ -61,6 +61,9 @@ function SubagentsPage() {
 
 function ResolvedSubagentsPage({sessionId}: {sessionId: string}) {
 	const {data: agents} = useSuspenseQuery(sessionSubagentsQueryOptions(sessionId));
+	// Run names come from the session's launches; only fetched when a workflow agent is listed.
+	const hasWorkflowAgents = agents.some((agent) => agent.workflowRunId);
+	const workflowRuns = useQuery({...sessionWorkflowRunsQueryOptions(sessionId), enabled: hasWorkflowAgents}).data;
 	const router = useRouter();
 	const loaderData = Route.useLoaderData();
 	const title = subagentsTitle(sessionId);
@@ -91,7 +94,7 @@ function ResolvedSubagentsPage({sessionId}: {sessionId: string}) {
 
 			{subagentView === "tree" ? (
 				<div className="mt-3">
-					<SubagentTree agents={agents} sessionId={sessionId} />
+					<SubagentTree agents={agents} sessionId={sessionId} workflowRuns={workflowRuns} />
 				</div>
 			) : agents.length === 0 ? (
 				<p className="mt-4 text-sm text-t6">No subagents for this session.</p>

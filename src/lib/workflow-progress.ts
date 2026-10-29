@@ -7,6 +7,9 @@
  */
 import {z} from "zod";
 import {toLenient} from "./lenient-schema";
+import {phaseStatus, UNPHASED_INDEX} from "./workflow-phase";
+
+export {phaseAriaLabel, phaseStatus, UNPHASED_INDEX} from "./workflow-phase";
 
 export const WorkflowAgentEntryStateSchema = z.enum(["start", "progress", "done", "error"]);
 
@@ -95,9 +98,6 @@ export interface WorkflowProgress {
 /** Upstream `le`: a running agent with no progress for longer than this is stalled. */
 const DEFAULT_STALL_MS = 90_000;
 
-/** Upstream `x`: the synthetic phase index for agents without a phase. */
-export const UNPHASED_INDEX = 2 ** 53 - 1;
-
 const ZERO_COUNTS: WorkflowProgressCounts = {
 	done: 0,
 	running: 0,
@@ -149,14 +149,6 @@ function tally(counts: WorkflowProgressCounts, entry: WorkflowAgentEntry, option
 	} else {
 		counts[state] += 1;
 	}
-}
-
-/** Upstream `he`. */
-export function phaseStatus(counts: WorkflowProgressCounts, settled: boolean): PhaseStatus {
-	if (counts.error > 0) return "error";
-	if (counts.running > 0) return settled ? "done" : "running";
-	if (counts.total === 0 || counts.pending === counts.total) return settled ? "notRun" : "pending";
-	return counts.done === counts.total || settled ? "done" : "running";
 }
 
 /** Upstream `ge`: group entries into phases in index order. */

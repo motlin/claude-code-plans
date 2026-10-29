@@ -7,6 +7,7 @@ import {getSubagentsForSession} from "../src/lib/db/queries";
 import * as schema from "../src/lib/db/schema";
 import {buildSubagentTree, groupSubagentTreeByDate, type SubagentTreeEntry} from "../src/lib/subagent-tree";
 import {extractPendingSubagents, toClientSubagent, type Subagent} from "../src/lib/subagents";
+import {phaseAriaLabel} from "../src/lib/workflow-progress";
 
 function makeAgent(overrides: Partial<Subagent> & {id: string}): Subagent {
 	return {
@@ -26,10 +27,19 @@ function makeAgent(overrides: Partial<Subagent> & {id: string}): Subagent {
 
 type TreeSummary =
 	| {kind: "agent"; id: string; children: TreeSummary[]}
-	| {kind: "parallel"; wallClockMs: number; children: TreeSummary[]};
+	| {kind: "parallel"; wallClockMs: number; children: TreeSummary[]}
+	| {kind: "run"; runId: string; name: string; phases: {title: string; agents: TreeSummary[]}[]};
 
 function summarizeTree(entries: SubagentTreeEntry[]): TreeSummary[] {
-	return entries.map((entry) => {
+	return entries.map((entry): TreeSummary => {
+		if ("type" in entry && entry.type === "workflow-run") {
+			return {
+				kind: "run",
+				runId: entry.runId,
+				name: entry.name,
+				phases: entry.phases.map((phase) => ({title: phase.title, agents: summarizeTree(phase.agents)})),
+			};
+		}
 		if ("type" in entry) {
 			return {
 				kind: "parallel",
@@ -219,6 +229,172 @@ describe("buildSubagentTree", () => {
 
 	it("returns no entries for no agents", () => {
 		expect(buildSubagentTree([])).toStrictEqual([]);
+	});
+});
+
+function workflowAgent(
+	id: string,
+	runId: string,
+	phase: {title?: string; index?: number},
+	startedAt: string,
+	finishedAt: string | null = null,
+): Subagent {
+	return makeAgent({
+		id,
+		agentType: "workflow-subagent",
+		workflowRunId: runId,
+		workflowPhase: phase.title ?? null,
+		workflowPhaseIndex: phase.index ?? null,
+		startedAt,
+		finishedAt,
+	});
+}
+
+describe("buildSubagentTree workflow runs", () => {
+	it("groups workflow agents by run and phase, outside the parallel heuristic", () => {
+		const agents = [
+			workflowAgent("agent-b2", "wf_b", {title: "Review", index: 2}, "1999-12-31T00:01:01.000Z"),
+			workflowAgent("agent-a1", "wf_a", {title: "Draft", index: 1}, "1999-12-31T00:00:01.000Z"),
+			workflowAgent("agent-a2", "wf_a", {title: "Draft", index: 1}, "1999-12-31T00:00:01.500Z"),
+			workflowAgent("agent-a3", "wf_a", {title: "Review", index: 2}, "1999-12-31T00:00:30.000Z"),
+			workflowAgent("agent-b1", "wf_b", {title: "Draft", index: 1}, "1999-12-31T00:01:00.000Z"),
+			makeAgent({id: "agent-tool", startedAt: "1999-12-31T00:00:00.500Z"}),
+		];
+
+		expect(
+			summarizeTree(buildSubagentTree(agents, {workflowRuns: [{runId: "wf_a", workflowName: "poems"}]})),
+		).toStrictEqual([
+			{kind: "agent", id: "agent-tool", children: []},
+			{
+				kind: "run",
+				runId: "wf_a",
+				name: "poems",
+				phases: [
+					{
+						title: "Draft",
+						agents: [
+							{kind: "agent", id: "agent-a1", children: []},
+							{kind: "agent", id: "agent-a2", children: []},
+						],
+					},
+					{title: "Review", agents: [{kind: "agent", id: "agent-a3", children: []}]},
+				],
+			},
+			{
+				kind: "run",
+				runId: "wf_b",
+				name: "wf_b",
+				phases: [
+					{title: "Draft", agents: [{kind: "agent", id: "agent-b1", children: []}]},
+					{title: "Review", agents: [{kind: "agent", id: "agent-b2", children: []}]},
+				],
+			},
+		]);
+	});
+
+	it('titles the unphased bucket "Agents" when alone and "Other agents" beside phases', () => {
+		const alone = buildSubagentTree([workflowAgent("agent-x", "wf_a", {}, "1999-12-31T00:00:00.000Z")]);
+		const mixed = buildSubagentTree([
+			workflowAgent("agent-x", "wf_a", {}, "1999-12-31T00:00:00.000Z"),
+			workflowAgent("agent-y", "wf_a", {title: "Draft", index: 1}, "1999-12-31T00:00:05.000Z"),
+		]);
+
+		expect(summarizeTree(alone)).toStrictEqual([
+			{
+				kind: "run",
+				runId: "wf_a",
+				name: "wf_a",
+				phases: [{title: "Agents", agents: [{kind: "agent", id: "agent-x", children: []}]}],
+			},
+		]);
+		expect(summarizeTree(mixed)).toStrictEqual([
+			{
+				kind: "run",
+				runId: "wf_a",
+				name: "wf_a",
+				phases: [
+					{title: "Draft", agents: [{kind: "agent", id: "agent-y", children: []}]},
+					{title: "Other agents", agents: [{kind: "agent", id: "agent-x", children: []}]},
+				],
+			},
+		]);
+	});
+
+	it('names an untitled phase by its index, "Phase 3"', () => {
+		const tree = buildSubagentTree([workflowAgent("agent-x", "wf_a", {index: 3}, "1999-12-31T00:00:00.000Z")]);
+
+		expect(summarizeTree(tree)).toStrictEqual([
+			{
+				kind: "run",
+				runId: "wf_a",
+				name: "wf_a",
+				phases: [{title: "Phase 3", agents: [{kind: "agent", id: "agent-x", children: []}]}],
+			},
+		]);
+	});
+
+	it("counts each phase's agents, settles a finished run, and spans its duration", () => {
+		const [run] = buildSubagentTree(
+			[
+				workflowAgent(
+					"agent-a1",
+					"wf_a",
+					{title: "Draft", index: 1},
+					"1999-12-31T00:00:00.000Z",
+					"1999-12-31T00:00:10.000Z",
+				),
+				workflowAgent(
+					"agent-a2",
+					"wf_a",
+					{title: "Draft", index: 1},
+					"1999-12-31T00:00:01.000Z",
+					"1999-12-31T00:00:40.000Z",
+				),
+			],
+			{workflowRuns: [{runId: "wf_a", workflowName: "poems", status: "completed"}]},
+		);
+
+		expect(
+			run !== undefined && "type" in run && run.type === "workflow-run"
+				? {
+						startedAt: run.startedAt,
+						durationMs: run.durationMs,
+						agentCount: run.agentCount,
+						settled: run.settled,
+						phases: run.phases.map(({index, title, counts, status}) => ({index, title, counts, status})),
+					}
+				: run,
+		).toStrictEqual({
+			startedAt: "1999-12-31T00:00:00.000Z",
+			durationMs: 40_000,
+			agentCount: 2,
+			settled: true,
+			phases: [
+				{
+					index: 1,
+					title: "Draft",
+					counts: {done: 2, running: 0, stalled: 0, error: 0, stopped: 0, pending: 0, total: 2},
+					status: "done",
+				},
+			],
+		});
+	});
+});
+
+describe("phaseAriaLabel", () => {
+	it("reads upstream's phase row label", () => {
+		const counts = {done: 1, running: 1, stalled: 0, error: 0, stopped: 0, pending: 0, total: 2};
+		expect(phaseAriaLabel({index: 1, title: "Draft", counts, status: "running"})).toBe(
+			"Phase: Draft, Running, 1 of 2 agents done",
+		);
+		expect(
+			phaseAriaLabel({
+				index: 2,
+				title: "Review",
+				counts: {...counts, done: 1, running: 0, total: 1},
+				status: "done",
+			}),
+		).toBe("Phase: Review, Done, 1 of 1 agent done");
 	});
 });
 

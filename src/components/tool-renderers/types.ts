@@ -97,7 +97,7 @@ export interface ToolRendererProps {
 const AGENT_ID_RE = /agentId:\s*(\S+)/;
 
 function isParallelGroup(entry: SubagentTreeEntry): entry is ParallelSubagentGroup {
-	return "type" in entry;
+	return "type" in entry && entry.type === "parallel";
 }
 
 function statusForAgent(agent: {finishedAt: string | null}): "running" | "done" | "error" {
@@ -156,6 +156,8 @@ export function buildSubagentLookup(agents: Subagent[]): SubagentLookup {
 				for (const child of entry.children) {
 					addNode(child, key, size);
 				}
+			} else if ("type" in entry) {
+				for (const phase of entry.phases) walk(phase.agents);
 			} else {
 				addNode(entry);
 			}

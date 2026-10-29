@@ -11,8 +11,7 @@ import {
 	agentCells,
 	buildWorkflowProgress,
 	endUnfinishedAgents,
-	type PhaseStatus,
-	UNPHASED_INDEX,
+	phaseAriaLabel,
 	type WorkflowAgentEntry,
 	type WorkflowPhase,
 	type WorkflowRunStatus,
@@ -25,15 +24,6 @@ import {WorkflowAgentCells} from "../workflow-agent-cells";
 
 /** Upstream `mf.leading.body`. */
 const BODY_LEADING = {lineHeight: "var(--text-body--line-height)"};
-
-/** Upstream `q$`: a phase's status. */
-const PHASE_STATUS_LABELS: Record<PhaseStatus, string> = {
-	pending: "Pending",
-	running: "Running",
-	done: "Done",
-	error: "Error",
-	notRun: "Not run",
-};
 
 /** Upstream `y1`. */
 const RUN_STATUS_LABELS: Record<WorkflowRunStatus, string> = {
@@ -92,18 +82,6 @@ function phaseInk(phase: WorkflowPhase): string {
 		default:
 			return "text-secondary";
 	}
-}
-
-function agentsDone(done: number, total: number): string {
-	return `${done} of ${total} ${total === 1 ? "agent" : "agents"} done`;
-}
-
-/** Upstream `$me`'s aria-label: "Phase: {title}, {status}, {done} of {total} agent(s) done". */
-function phaseLabel(phase: WorkflowPhase): string {
-	const status = phase.status === "done" && phase.counts.stopped > 0 ? "Stopped" : PHASE_STATUS_LABELS[phase.status];
-	const {done, total} = phase.counts;
-	if (phase.index === UNPHASED_INDEX) return `${phase.title}, ${status}, ${agentsDone(done, total)}`;
-	return `Phase: ${phase.title}, ${status}${total === 0 ? "" : `, ${agentsDone(done, total)}`}`;
 }
 
 /** Upstream `G$`: a live elapsed clock from `startedAt`. */
@@ -251,7 +229,7 @@ function PhaseRow({
 					setChosen(!open);
 				}}
 				aria-expanded={open}
-				aria-label={phaseLabel(phase)}
+				aria-label={phaseAriaLabel(phase)}
 				className={`text-start ${FOCUS} w-full rounded-r3 px-2 pt-1 ${open ? "bg-alpha-1" : "hover:bg-fill-ghost-hover"} ${hasAgents ? "pb-2" : "pb-1.5"}`}
 			>
 				<span className="flex w-full flex-col gap-g5 text-footnote">
