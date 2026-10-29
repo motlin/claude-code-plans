@@ -23,6 +23,7 @@ import {SplitDropdownButton} from "./ui/split-dropdown-button";
  * primary split button ("Always allow" / "Allow for this session") whose menu holds Allow once.
  * Upstream's keys (Esc deny, ⌘⏎ allow once, ⇧⌘⏎ the persistent option) and no digits, which are dock-only.
  * A decision hides the card at once, with no busy state; a failed answer brings it back with the error.
+ * With `hideOnDecision` false the card stays, disabled, until its parent drops it.
  * A live arrival fades in over 160ms; a remount or reload of the same prompt (`enterKey`) does not.
  */
 export function PermissionCard({
@@ -36,6 +37,7 @@ export function PermissionCard({
 	onDecision,
 	footer,
 	enterKey,
+	hideOnDecision = true,
 }: {
 	title: PermissionTitle;
 	detail: string | null;
@@ -54,6 +56,11 @@ export function PermissionCard({
 	footer?: ReactNode;
 	/** The prompt's notification id: it fades in only the first time this tab draws it. */
 	enterKey?: string | undefined;
+	/**
+	 * False keeps the card up, disabled, after a decision: an elicitation's card
+	 * is cleared by its `ElicitationResult`, since the CLI can refuse an early Enter.
+	 */
+	hideOnDecision?: boolean;
 }) {
 	const isMac = useIsMac();
 	const [enter] = useState(() => enterKey === undefined || !approvalEnterSeen(enterKey));
@@ -81,7 +88,7 @@ export function PermissionCard({
 	const cardRootRef = useRef<HTMLDivElement>(null);
 	usePermissionHotkeys(cardRootRef, {enabled, persistent: persistentAllow !== null, decide});
 
-	if (decided) return null;
+	if (decided && hideOnDecision) return null;
 
 	return (
 		<ApprovalCardShell
@@ -115,7 +122,7 @@ export function PermissionCard({
 						<ApprovalActionButton
 							variant="secondary"
 							aria-keyshortcuts="Escape"
-							disabled={!canAnswer}
+							disabled={!enabled}
 							onClick={() => void decide("deny")}
 						>
 							<span data-approval-digit="1">Deny</span>
@@ -127,7 +134,7 @@ export function PermissionCard({
 								variant="primary"
 								data-approval-primary=""
 								aria-keyshortcuts={toAriaKeyShortcuts("cmd+enter", isMac)}
-								disabled={!canAnswer}
+								disabled={!enabled}
 								onClick={() => void decide("allow")}
 							>
 								<span data-approval-digit="2">Allow once</span>
@@ -148,7 +155,7 @@ export function PermissionCard({
 								items={[
 									{label: "Allow once", shortcut: "cmd+enter", onSelect: () => void decide("allow")},
 								]}
-								disabled={!canAnswer}
+								disabled={!enabled}
 								onPrimaryClick={() => void decide("always")}
 							/>
 						)}

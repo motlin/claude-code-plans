@@ -8,7 +8,13 @@ import {
 	getPendingElicitations,
 } from "../src/lib/pending-elicitations";
 import {SessionElicitationChangedPayloadSchema} from "../src/lib/domain-event-payload-schemas";
-import {elicitationFormFixture, elicitationResultFixture, elicitationUrlFixture} from "./fixtures/elicitation";
+import {findPendingElicitationPermission} from "../src/lib/permission-card";
+import {
+	elicitationFormFixture,
+	elicitationResultFixture,
+	elicitationUrlFixture,
+	elicitationVerdictFixture,
+} from "./fixtures/elicitation";
 
 vi.mock("../src/lib/herdr/report-state", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../src/lib/herdr/report-state")>()),
@@ -106,6 +112,19 @@ describe("pending elicitations", () => {
 				data: {sessionId: "abc-123", pendingElicitations: []},
 			},
 		]);
+	});
+
+	it("drops the verdict permission card when the ElicitationResult for its Decline arrives", async () => {
+		await dispatchAll([elicitationVerdictFixture]);
+		const shown = findPendingElicitationPermission(getPendingElicitations("abc-123"))?.notificationId;
+
+		const {content: _, ...result} = elicitationResultFixture;
+		await dispatchAll([{...result, elicitation_id: elicitationVerdictFixture.elicitation_id, action: "decline"}]);
+
+		expect({
+			shown,
+			after: findPendingElicitationPermission(getPendingElicitations("abc-123")),
+		}).toStrictEqual({shown: "elicitation:elicit-verdict-1", after: null});
 	});
 
 	it("keeps a url elicitation's url", async () => {

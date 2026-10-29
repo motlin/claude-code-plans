@@ -135,6 +135,7 @@ import {
 	sendHerdrInterrupt,
 	sendHerdrRewind,
 	sendHerdrLiveOption,
+	sendHerdrElicitationDecision,
 	sendHerdrPermissionDecision,
 	sendHerdrPlanDecision,
 	fetchHerdrPlanDialog,
@@ -780,9 +781,14 @@ function SessionView({
 		}),
 		[answerRoute, sessionId],
 	);
+	// A verdict elicitation answers through the CLI's elicitation dialog; Deny takes its Decline stop.
+	const answersElicitation = elicitationPermission !== null;
 	const answerPermission = useCallback(
-		async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
-		[sessionId],
+		async (decision: PermissionDecision) =>
+			answersElicitation
+				? sendHerdrElicitationDecision(sessionId, decision)
+				: sendHerdrPermissionDecision(sessionId, decision),
+		[answersElicitation, sessionId],
 	);
 	const stopResponse = useStopResponse({
 		sessionId,
@@ -1468,12 +1474,9 @@ function SessionView({
 											detailNote={pendingPermission.detailNote ?? null}
 											description={pendingPermission.description ?? null}
 											tokenWarning={pendingPermission.tokenWarning === true}
-											canAnswer={
-												// The CLI's elicitation dialog has no herdr key map yet, so the terminal answers it.
-												elicitationPermission === null &&
-												promptBehavior.hasLivePane &&
-												herdr.writesEnabled
-											}
+											canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+											// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
+											hideOnDecision={!answersElicitation}
 											persistentAllow={pendingPermission.persistentAllow ?? null}
 											onDecision={answerPermission}
 											footer={

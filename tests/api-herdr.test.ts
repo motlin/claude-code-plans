@@ -2,6 +2,7 @@ import {describe, expect, it, vi} from "vite-plus/test";
 import {
 	HerdrPaneIndexResponse,
 	herdrPanesQueryOptions,
+	sendHerdrElicitationDecision,
 	sendHerdrPrompt,
 	sendHerdrQuestionAnswer,
 } from "../src/lib/api/herdr";
@@ -142,5 +143,37 @@ describe("herdr panes API contract", () => {
 		await expect(
 			sendHerdrQuestionAnswer("session-test-100", "toolu_test_100", [{selected: [0]}], fetcher),
 		).rejects.toThrow("That question is no longer pending");
+	});
+});
+
+describe("sendHerdrElicitationDecision", () => {
+	it("posts the card's decision to the elicitation endpoint", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(Response.json({ok: true}));
+
+		await sendHerdrElicitationDecision("session-test-100", "deny", fetcher);
+
+		expect(fetcher.mock.calls).toStrictEqual([
+			[
+				"/api/herdr/elicitation",
+				{
+					method: "POST",
+					credentials: "same-origin",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({sessionId: "session-test-100", decision: "deny"}),
+				},
+			],
+		]);
+	});
+
+	it("throws the endpoint's error on a 409", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(
+			Response.json({error: "The terminal is not showing this elicitation"}, {status: 409}),
+		);
+
+		await expect(sendHerdrElicitationDecision("session-test-100", "allow", fetcher)).rejects.toThrow(
+			"The terminal is not showing this elicitation",
+		);
 	});
 });

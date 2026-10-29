@@ -757,6 +757,81 @@ describe("PermissionCard", () => {
 		});
 	});
 
+	it("keeps an elicitation card up, disabled, after a decision until its ElicitationResult unmounts it", async () => {
+		const answer = deferredAnswer();
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => answer.promise);
+		const {container} = render(
+			<PermissionCard
+				title={{action: "use my-mcp-server", meta: null}}
+				detail={null}
+				canAnswer
+				hideOnDecision={false}
+				onDecision={onDecision}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Deny"}));
+		const buttonStates = () =>
+			screen.getAllByRole("button").map((button) => [button.textContent, button.hasAttribute("disabled")]);
+		const sending = {shown: container.querySelector("[data-approval-card-root]") !== null, buttons: buttonStates()};
+		await actAndSettle(() => {
+			answer.resolve();
+		});
+		expect({
+			sending,
+			answered: {shown: container.querySelector("[data-approval-card-root]") !== null, buttons: buttonStates()},
+			calls: onDecision.mock.calls,
+		}).toStrictEqual({
+			sending: {
+				shown: true,
+				buttons: [
+					["Deny", true],
+					["Allow onceCtrl⏎Enter", true],
+				],
+			},
+			answered: {
+				shown: true,
+				buttons: [
+					["Deny", true],
+					["Allow onceCtrl⏎Enter", true],
+				],
+			},
+			calls: [["deny"]],
+		});
+	});
+
+	it("keeps an elicitation card up with the error when the terminal refuses the answer", async () => {
+		const answer = deferredAnswer();
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => answer.promise);
+		const {container} = render(
+			<PermissionCard
+				title={{action: "use my-mcp-server", meta: null}}
+				detail={null}
+				canAnswer
+				hideOnDecision={false}
+				onDecision={onDecision}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Deny"}));
+		await actAndSettle(() => {
+			answer.reject(new Error("The terminal is not showing this elicitation"));
+		});
+		const card = container.querySelector("[data-approval-card-root]");
+		expect({
+			shown: card !== null,
+			error: card?.querySelector(".text-extended-pink")?.textContent,
+			buttons: screen
+				.getAllByRole("button")
+				.map((button) => [button.textContent, button.hasAttribute("disabled")]),
+		}).toStrictEqual({
+			shown: true,
+			error: "The terminal is not showing this elicitation",
+			buttons: [
+				["Deny", false],
+				["Allow onceCtrl⏎Enter", false],
+			],
+		});
+	});
+
 	it("buttons send their decisions", () => {
 		const {onDecision} = renderCard();
 		fireEvent.click(screen.getByRole("button", {name: /^Allow once/}));

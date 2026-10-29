@@ -148,6 +148,30 @@ export async function sendHerdrPermissionDecision(
 	HerdrPromptSuccessResponse.parse(json);
 }
 
+/**
+ * Answer the CLI's MCP verdict elicitation in the session's live herdr pane:
+ * allow and always pick the verdict and Accept, deny takes Decline as upstream does.
+ */
+export async function sendHerdrElicitationDecision(
+	sessionId: string,
+	decision: PermissionDialogDecision,
+	fetcher: typeof fetch = fetch,
+): Promise<void> {
+	const response = await fetcher("/api/herdr/elicitation", {
+		method: "POST",
+		credentials: "same-origin",
+		headers: {"Content-Type": "application/json"},
+		body: JSON.stringify({sessionId, decision}),
+	});
+	const json: unknown = await response.json();
+
+	if (!response.ok) {
+		throw new Error(HerdrPromptErrorResponse.parse(json).error);
+	}
+
+	HerdrPromptSuccessResponse.parse(json);
+}
+
 /** Answer the session's pending AskUserQuestion by typing it into its live herdr pane; null skips a question. */
 export async function sendHerdrQuestionAnswer(
 	sessionId: string,
