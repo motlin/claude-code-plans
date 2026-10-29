@@ -263,44 +263,143 @@ describe("Environment card", () => {
 		});
 	}
 
-	function remoteControlLinks() {
-		const card = screen.getByRole("region", {name: /^Environment/});
-		return within(card)
-			.queryAllByRole("link", {name: /Remote Control/})
-			.map((link) => [
-				link.textContent,
-				link.getAttribute("href"),
-				link.getAttribute("target"),
-				link.getAttribute("title"),
-			]);
+	function noBridge(client: QueryClient) {
+		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
+			cwd: BASE.cwd,
+			bridgeSessionId: null,
+			githubUrl: null,
+		});
+	}
+
+	function remoteControl() {
+		const row = document.querySelector<HTMLElement>("[data-rail-remote-control]");
+		if (row === null) return null;
+		const label = row.querySelector("label");
+		const control = label === null ? null : document.getElementById(label.htmlFor);
+		const options = within(row).queryByRole("button", {name: "Remote Control options"});
+		return {
+			label: label?.textContent ?? null,
+			switch: control === null ? null : [control.getAttribute("role"), control.getAttribute("aria-checked")],
+			options: options === null ? null : {hidden: options.closest(".opacity-0") !== null},
+		};
 	}
 
 	it("labels a session no terminal host owns Local, with its branch, model and a missing herdr pane", async () => {
-		await renderCards(BASE);
+		await renderCards(BASE, noBridge);
 
-		expect({rows: rows("Environment"), remoteControl: remoteControlLinks()}).toStrictEqual({
+		expect({rows: rows("Environment"), remoteControl: remoteControl()}).toStrictEqual({
 			rows: [
 				["~/projects/avalonlogs", "Local"],
 				["alice/sync-upstream", null],
 				["Opus 4.7", null],
 				["herdr", "No pane"],
 			],
-			remoteControl: [],
+			remoteControl: null,
 		});
 	});
 
-	it("adds an offline Remote Control line linking to claude.ai under a bridged Local session", async () => {
-		await renderCards({...BASE, gitBranch: null, model: null, live: false}, bridge);
+	it("holds the Remote Control row's place after the branch with a 28px skeleton while a live session's bridge loads", async () => {
+		await renderCards(BASE);
+		const pending = document.querySelector("[data-rail-remote-control-pending]");
 
-		expect({rows: rows("Environment"), remoteControl: remoteControlLinks()}).toStrictEqual({
+		expect({
+			rows: rows("Environment"),
+			remoteControl: remoteControl(),
+			skeleton: pending?.querySelector("[data-cds=Skeleton]")?.className.includes("w-7") ?? null,
+		}).toStrictEqual({
 			rows: [
 				["~/projects/avalonlogs", "Local"],
-				["Remote Control · Offline", null],
+				["alice/sync-upstream", null],
+				["Remote Control", null],
+				["Opus 4.7", null],
 				["herdr", "No pane"],
 			],
-			remoteControl: [
-				["Remote Control · Offline", "https://claude.ai/code/session_bridge", "_blank", "Open in claude.ai"],
+			remoteControl: null,
+			skeleton: true,
+		});
+	});
+
+	it("shows a switched-off Remote Control row with no options under a bridged session whose process ended", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null, live: false}, bridge);
+		const row = document.querySelector("[data-rail-remote-control]");
+		const allowed = row === null ? null : fireEvent.contextMenu(row);
+
+		expect({rows: rows("Environment"), remoteControl: remoteControl(), contextMenuAllowed: allowed}).toStrictEqual({
+			rows: [
+				["~/projects/avalonlogs", "Local"],
+				["Remote Control", null],
+				["herdr", "No pane"],
 			],
+			remoteControl: {label: "Remote Control", switch: ["switch", "false"], options: null},
+			contextMenuAllowed: true,
+		});
+	});
+
+	it("places the Remote Control row after the folder and branch rows", async () => {
+		await renderCards({...BASE, model: null}, bridge);
+
+		expect(rows("Environment")).toStrictEqual([
+			["~/projects/avalonlogs", "Local"],
+			["alice/sync-upstream", null],
+			["Remote Control", null],
+			["herdr", "No pane"],
+		]);
+	});
+
+	it("opens the Remote Control options menu at the trigger on right-click", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null}, bridge);
+		const row = document.querySelector("[data-rail-remote-control]");
+		const allowed = row === null ? null : fireEvent.contextMenu(row);
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			contextMenuAllowed: allowed,
+			items: within(menu)
+				.getAllByRole("menuitem")
+				.map((item) => item.textContent),
+		}).toStrictEqual({contextMenuAllowed: false, items: ["Open in claude.ai", "Copy link"]});
+	});
+
+	it("opens the bridged session in claude.ai from the options menu", async () => {
+		const open = vi.fn<typeof window.open>(() => null);
+		vi.stubGlobal("open", open);
+		await renderCards({...BASE, gitBranch: null, model: null}, bridge);
+		fireEvent.click(screen.getByRole("button", {name: "Remote Control options"}));
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Open in claude.ai"}));
+
+		expect(open.mock.calls).toStrictEqual([
+			["https://claude.ai/code/session_bridge", "_blank", "noopener,noreferrer"],
+		]);
+	});
+
+	it("toasts Link copied when Copy link copies the bridged session's link, and stays silent when it fails", async () => {
+		const seen: Record<string, unknown> = {};
+		for (const [name, succeeds] of [
+			["copied", true],
+			["failed", false],
+		] as const) {
+			const writeText = vi.fn<(text: string) => Promise<void>>(async () =>
+				succeeds ? Promise.resolve() : Promise.reject(new Error("denied")),
+			);
+			Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
+			await renderCards({...BASE, gitBranch: null, model: null}, bridge);
+			fireEvent.click(screen.getByRole("button", {name: "Remote Control options"}));
+			fireEvent.click(await screen.findByRole("menuitem", {name: "Copy link"}));
+			await act(async () => {
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
+			});
+			seen[name] = {
+				copied: writeText.mock.calls,
+				toast: document.querySelector("[data-toast-message]")?.textContent ?? null,
+			};
+			cleanup();
+		}
+
+		expect(seen).toStrictEqual({
+			copied: {copied: [["https://claude.ai/code/session_bridge"]], toast: "Link copied"},
+			failed: {copied: [["https://claude.ai/code/session_bridge"]], toast: null},
 		});
 	});
 
@@ -335,41 +434,39 @@ describe("Environment card", () => {
 	});
 
 	it("labels a herdr session herdr and links its live pane's agent status to its terminal", async () => {
-		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE});
+		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE}, noBridge);
 		const card = screen.getByRole("region", {name: /^Environment/});
 
 		expect({
 			rows: rows("Environment"),
 			href: within(card).getByRole("link", {name: /herdr/}).getAttribute("href"),
-			remoteControl: remoteControlLinks(),
+			remoteControl: remoteControl(),
 		}).toStrictEqual({
 			rows: [
 				["~/projects/avalonlogs", "herdr"],
 				["herdr", "working"],
 			],
 			href: `/terminals/${SESSION_ID}`,
-			remoteControl: [],
+			remoteControl: null,
 		});
 	});
 
-	it("shows Remote Control as a connected secondary line under a bridged herdr session", async () => {
+	it("shows a switched-on Remote Control row with hover-revealed options under a bridged herdr session", async () => {
 		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE}, bridge);
 
-		expect({rows: rows("Environment"), remoteControl: remoteControlLinks()}).toStrictEqual({
+		expect({rows: rows("Environment"), remoteControl: remoteControl()}).toStrictEqual({
 			rows: [
 				["~/projects/avalonlogs", "herdr"],
-				["Remote Control · Connected", null],
+				["Remote Control", null],
 				["herdr", "working"],
 			],
-			remoteControl: [
-				["Remote Control · Connected", "https://claude.ai/code/session_bridge", "_blank", "Open in claude.ai"],
-			],
+			remoteControl: {label: "Remote Control", switch: ["switch", "true"], options: {hidden: true}},
 		});
 	});
 
 	it("names a herdr named session beside herdr, bridged or not", async () => {
 		const named = {...PANE, paneId: "wM:p1@later", workspaceId: "wM@later"};
-		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: named});
+		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: named}, noBridge);
 		const plain = rows("Environment");
 		cleanup();
 		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: named}, bridge);
@@ -381,7 +478,7 @@ describe("Environment card", () => {
 			],
 			bridged: [
 				["~/projects/avalonlogs", "herdr · later"],
-				["Remote Control · Connected", null],
+				["Remote Control", null],
 				["herdr", "working"],
 			],
 		});
@@ -401,7 +498,7 @@ describe("Environment card", () => {
 				via: "process",
 			},
 		};
-		await renderCards(tmux);
+		await renderCards(tmux, noBridge);
 		const card = screen.getByRole("region", {name: /^Environment/});
 		const plain = {rows: rows("Environment"), links: within(card).queryAllByRole("link")};
 		cleanup();
@@ -417,7 +514,7 @@ describe("Environment card", () => {
 			},
 			bridged: [
 				["~/projects/avalonlogs", "tmux · work"],
-				["Remote Control · Connected", null],
+				["Remote Control", null],
 				["tmux", "%7"],
 			],
 		});

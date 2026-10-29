@@ -49,6 +49,7 @@ import {ContextBreakdownBody} from "./context-breakdown";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
+import {RemoteControlRow, RemoteControlRowPending} from "./remote-control-row";
 import {SessionRail, type RailCard} from "./session-rail";
 
 /** What the session page knows that the rail's cards show. */
@@ -146,14 +147,16 @@ function EnvironmentMenuRow({
 
 /**
  * Upstream's Environment card: where the session runs. Locally, its folder
- * hinted with its terminal host (herdr, tmux or Local), a Remote Control line
- * linking to claude.ai when bridged, then its branch, model and herdr pane.
+ * hinted with its terminal host (herdr, tmux or Local), its branch, the Remote
+ * Control setting row when bridged, then its model and herdr pane.
  */
 function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const toast = useToast();
 	const copy = useCopyToClipboard();
 	const {cwd, gitBranch, model, herdrPane} = inputs;
-	const openIn = useQuery(sessionOpenInQueryOptions(inputs.sessionId)).data;
+	const openInQuery = useQuery(sessionOpenInQueryOptions(inputs.sessionId));
+	const openIn = openInQuery.data;
+	const openInPending = openInQuery.isPending;
 	const bridgeSessionId = openIn?.bridgeSessionId ?? null;
 	const githubUrl = openIn?.githubUrl ?? null;
 	const environment = sessionEnvironment({
@@ -195,20 +198,6 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 					</MenuItem>
 				</EnvironmentMenuRow>
 			)}
-			{cwd !== null && bridgeSessionId !== null && environment.remoteControl !== null && (
-				<a
-					href={claudeAiSessionUrl(bridgeSessionId)}
-					target="_blank"
-					rel="noopener noreferrer"
-					title="Open in claude.ai"
-					className={RAIL_ROW_ACTION_CLASS}
-				>
-					<span aria-hidden className="size-5 shrink-0" />
-					<span data-rail-row-label="" className="min-w-0 flex-1 truncate text-[13px] text-secondary">
-						{environment.remoteControl}
-					</span>
-				</a>
-			)}
 			{gitBranch !== null && (
 				<EnvironmentMenuRow icon={GitBranch} label={gitBranch} title={gitBranch}>
 					<MenuItem
@@ -235,6 +224,17 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 					)}
 				</EnvironmentMenuRow>
 			)}
+			{cwd !== null &&
+				(openInPending && inputs.live ? (
+					<RemoteControlRowPending />
+				) : (
+					bridgeSessionId !== null && (
+						<RemoteControlRow
+							state={inputs.live ? "on" : "off"}
+							url={claudeAiSessionUrl(bridgeSessionId)}
+						/>
+					)
+				))}
 			{model !== null && <RailRow icon={<Icon icon={Cpu} />} label={model} />}
 			{herdrPane === null ? (
 				<RailRow icon={<Icon icon={SquareTerminal} />} label="herdr" hint="No pane" />
