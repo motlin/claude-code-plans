@@ -95,3 +95,27 @@ describe("permissionDecisionTitle", () => {
 		]);
 	});
 });
+
+describe("permissionDecisionTitle rule source", () => {
+	it("names the settings layer a rule-based decision came from", () => {
+		expect([
+			permissionDecisionTitle({
+				decision: "accept",
+				source: "config",
+				reasonType: "rule",
+				ruleSource: "userSettings",
+			}),
+			permissionDecisionTitle({
+				decision: "reject",
+				source: "config",
+				reasonType: "rule",
+				ruleSource: "policySettings",
+			}),
+			permissionDecisionTitle({decision: "accept", source: "config", reasonType: "rule"}),
+		]).toStrictEqual([
+			"Permission: Accepted · Configuration · Permission rule (User settings)",
+			"Permission: Rejected · Configuration · Permission rule (Managed policy)",
+			"Permission: Accepted · Configuration · Permission rule",
+		]);
+	});
+});

@@ -209,7 +209,7 @@ export const permissionDecisionReasonTypeLabels = {
 	workingDir: "Working directories",
 } satisfies Record<z.infer<typeof PermissionDecisionReasonTypeSchema>, string>;
 
-const permissionDecisionRuleSourceLabels = {
+export const permissionDecisionRuleSourceLabels = {
 	userSettings: "User settings",
 	projectSettings: "Project settings",
 	localSettings: "Local settings",

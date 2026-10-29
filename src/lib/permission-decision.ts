@@ -4,6 +4,7 @@ import type {PermissionDecisionReasonTypeSchema, UserRecordSchema} from "./schem
 import {
 	permissionDecisionDecisionLabels,
 	permissionDecisionReasonTypeLabels,
+	permissionDecisionRuleSourceLabels,
 	permissionDecisionSourceLabels,
 } from "./schema-choices";
 
@@ -52,12 +53,23 @@ export function permissionDecisionLabel(permission: PermissionDecision): string 
 	}
 }
 
+/** The reason label, with the settings layer a rule came from, e.g. "Permission rule (User settings)". */
+function reasonTitle(permission: PermissionDecision): string | undefined {
+	if (permission.reasonType === undefined) {
+		return undefined;
+	}
+	const reason = permissionDecisionReasonTypeLabels[permission.reasonType];
+	return permission.ruleSource === undefined
+		? reason
+		: `${reason} (${permissionDecisionRuleSourceLabels[permission.ruleSource]})`;
+}
+
 /** The raw decision, source and reason spelled out, for a tooltip. */
 export function permissionDecisionTitle(permission: PermissionDecision): string {
 	const parts = [
 		permissionDecisionDecisionLabels[permission.decision],
 		permissionDecisionSourceLabels[permission.source],
-		permission.reasonType === undefined ? undefined : permissionDecisionReasonTypeLabels[permission.reasonType],
+		reasonTitle(permission),
 	].filter((part) => part !== undefined);
 	return `Permission: ${parts.join(" · ")}`;
 }
