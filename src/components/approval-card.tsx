@@ -137,9 +137,11 @@ export function ApprovalCardShell({
 	digits,
 	body,
 	actions,
+	note,
 	footer,
 	presentation = "dock",
 	enter = false,
+	onKeyDown,
 }: {
 	rootRef?: Ref<HTMLDivElement>;
 	/** The card's accessible group label; omitted cards are a plain focusable box. */
@@ -148,12 +150,16 @@ export function ApprovalCardShell({
 	digits?: number;
 	body: ReactNode;
 	actions: ReactNode;
+	/** A line between the scrolling body and the actions, such as the elicitation form's caution. */
+	note?: ReactNode;
 	/** A line under the actions, such as the tool-approval notify tip. */
 	footer?: ReactNode;
 	/** Upstream's inline "card" in the transcript, or the composer "dock". */
 	presentation?: "card" | "dock";
 	/** Upstream's 160ms enter fade for a live arrival; false marks the card `data-skip-approval-enter`. */
 	enter?: boolean;
+	/** Runs before the root's own keys; a handler that calls preventDefault keeps that key from them. */
+	onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }) {
 	// Inline, upstream's card is at most 480px wide with 24px gaps; the dock keeps its 12px rhythm.
 	const look =
@@ -174,7 +180,13 @@ export function ApprovalCardShell({
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
 				tabIndex={0}
-				onKeyDown={onApprovalRootKeyDown}
+				onKeyDown={(event) => {
+					if (onKeyDown !== undefined) {
+						onKeyDown(event);
+						if (event.defaultPrevented) return;
+					}
+					onApprovalRootKeyDown(event);
+				}}
 				onDragEnter={swallowFileDrag}
 				onDragOver={swallowFileDrag}
 				onDragLeave={swallowFileDrag}
@@ -190,6 +202,7 @@ export function ApprovalCardShell({
 				>
 					{body}
 				</div>
+				{note}
 				<div
 					data-approval-card-actions
 					className={`flex flex-wrap items-start justify-end gap-x-3 gap-y-2 ${STACK_ACTIONS}`}
