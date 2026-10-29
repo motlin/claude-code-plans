@@ -1078,6 +1078,55 @@ describe("artifacts route", () => {
 		});
 	});
 
+	it("splits the grid into upstream's Pinned / Other artifacts sections only while something is pinned", async () => {
+		storage.setItem(ARTIFACTS_LAYOUT_STORAGE_KEY, "grid");
+		const gridSections = () => ({
+			wrapper: document.querySelector("section")?.parentElement?.className ?? null,
+			sections: Array.from(document.querySelectorAll("section")).map((section) => ({
+				className: section.className,
+				heading: section.querySelector("h2")?.className,
+				label: section.querySelector("h2")?.textContent,
+				cards: Array.from(section.querySelectorAll("[data-gallery-card]")).map((card) =>
+					within(card as HTMLElement)
+						.getAllByRole("link")[0]
+						?.getAttribute("aria-label"),
+				),
+			})),
+		});
+
+		await renderArtifactsPage("/artifacts", true);
+		const unpinned = {
+			sections: gridSections(),
+			headings: screen.queryAllByRole("heading", {level: 2}).length,
+		};
+		cleanup();
+
+		storage.setItem(ARTIFACT_PIN_STORAGE_KEY, JSON.stringify([DOCS_URL]));
+		await renderArtifactsPage("/artifacts", true);
+
+		const headingClass = "px-0 py-1 text-caption font-medium text-ink-muted";
+		expect({unpinned, pinned: gridSections()}).toStrictEqual({
+			unpinned: {sections: {wrapper: null, sections: []}, headings: 0},
+			pinned: {
+				wrapper: "flex flex-col gap-9",
+				sections: [
+					{
+						className: "flex flex-col gap-2",
+						heading: headingClass,
+						label: "Pinned",
+						cards: ["Quarterly plan"],
+					},
+					{
+						className: "flex flex-col gap-2",
+						heading: headingClass,
+						label: "Other artifacts",
+						cards: ["Asap Ladder Queue", "household-cash.html"],
+					},
+				],
+			},
+		});
+	});
+
 	it("copies the claude.ai artifact URL and toasts", async () => {
 		const writeText = vi.fn<(text: string) => Promise<void>>(async (_text: string) => {});
 		Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText}});

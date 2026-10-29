@@ -290,7 +290,7 @@ function ArtifactsPage() {
 								: "No artifacts of this type here yet"}
 					</div>
 				) : layout === "grid" ? (
-					<ArtifactGrid artifacts={[...pinned, ...unpinned]} now={now} isPinned={isPinned} />
+					<ArtifactGrid pinned={pinned} artifacts={unpinned} now={now} />
 				) : (
 					<ArtifactList pinned={pinned} artifacts={unpinned} now={now} />
 				)}
@@ -684,19 +684,51 @@ function ArtifactList({pinned, artifacts, now}: {pinned: ArtifactSummary[]; arti
 	);
 }
 
-function ArtifactGrid({
+/** Upstream's grid (bundle `kt`): once anything is pinned it splits into "Pinned" and "Other artifacts" sections. */
+function ArtifactGrid({pinned, artifacts, now}: {pinned: ArtifactSummary[]; artifacts: ArtifactSummary[]; now: Date}) {
+	const idPrefix = useId();
+	if (pinned.length === 0) return <ArtifactCardList artifacts={artifacts} now={now} pinned={false} />;
+	const sections = [
+		{label: "Pinned", items: pinned, pinned: true},
+		...(artifacts.length > 0 ? [{label: "Other artifacts", items: artifacts, pinned: false}] : []),
+	];
+	return (
+		<div className="flex flex-col gap-9">
+			{sections.map((section, index) => {
+				const headingId = `${idPrefix}-section-${index}`;
+				return (
+					<section key={section.label} className="flex flex-col gap-2">
+						<h2 id={headingId} className="px-0 py-1 text-caption font-medium text-ink-muted">
+							{section.label}
+						</h2>
+						<ArtifactCardList
+							artifacts={section.items}
+							now={now}
+							pinned={section.pinned}
+							labelledBy={headingId}
+						/>
+					</section>
+				);
+			})}
+		</div>
+	);
+}
+
+function ArtifactCardList({
 	artifacts,
 	now,
-	isPinned,
+	pinned,
+	labelledBy,
 }: {
 	artifacts: ArtifactSummary[];
 	now: Date;
-	isPinned: (url: string) => boolean;
+	pinned: boolean;
+	labelledBy?: string;
 }) {
 	return (
-		<ul role="list" className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
+		<ul role="list" aria-labelledby={labelledBy} className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
 			{artifacts.map((artifact) => (
-				<ArtifactCard key={artifact.url} artifact={artifact} now={now} pinned={isPinned(artifact.url)} />
+				<ArtifactCard key={artifact.url} artifact={artifact} now={now} pinned={pinned} />
 			))}
 		</ul>
 	);
