@@ -10,7 +10,7 @@ import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
 import type {SessionDiffResponse} from "../src/lib/api/session-diff";
 import {registerComposer, takeContextChips} from "../src/lib/context-attach";
-import {clearDiffComments, getDiffComments, openDiffCommentDraft} from "../src/lib/diff-comments";
+import {clearDiffComments, getDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
 import {installLocalStorage} from "./fake-storage";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 
@@ -477,5 +477,37 @@ describe("Changes pane gutter add-comment button", () => {
 				"-left-0.5 flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover",
 			top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)",
 		});
+	});
+});
+
+describe("Changes pane outdated comments", () => {
+	it("labels a comment whose line left the diff Outdated and anchors it to the last line", () => {
+		const id = openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 40});
+		saveDiffComment(SESSION, id, "Was here");
+		const {container} = renderPane();
+		const saved = container.querySelector<HTMLElement>('[slot="annotation-additions-5"] [data-saved-comment]');
+		if (saved === null) throw new Error("no saved card");
+		const badge = within(saved).getByText("Outdated");
+		const label = badge.parentElement;
+
+		expect({
+			label: label?.className,
+			labelText: label?.textContent,
+			badge: badge.className,
+		}).toStrictEqual({
+			label: "flex items-center gap-1.5",
+			labelText: "Line 40Outdated",
+			badge: "inline-flex h-[18px] shrink-0 items-center whitespace-nowrap rounded-[4.5px] bg-fill-ghost-hover px-1.5 font-sans text-[11px] leading-[14px] font-medium text-secondary",
+		});
+	});
+
+	it("shows no Outdated badge on a comment whose line is in the diff", () => {
+		const id = openDiffCommentDraft(SESSION, {path: "src/greet.ts", side: "additions", line: 5});
+		saveDiffComment(SESSION, id, "Still here");
+		const {container} = renderPane();
+		const saved = container.querySelector<HTMLElement>('[slot="annotation-additions-5"] [data-saved-comment]');
+		if (saved === null) throw new Error("no saved card");
+
+		expect(within(saved).queryByText("Outdated")).toBeNull();
 	});
 });

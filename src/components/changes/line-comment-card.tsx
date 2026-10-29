@@ -41,6 +41,10 @@ function lineLabel({line, endLine}: {line: number; endLine?: number | undefined}
 	return endLine === undefined || endLine === line ? `Line ${line}` : `Lines ${line}–${endLine}`;
 }
 
+/** Upstream's cds `Badge variant="neutral" size="xs"`: 18px tall, 11/14 medium, 6px inset, 4.5px radius. */
+const NEUTRAL_XS_BADGE_CLASS =
+	"inline-flex h-[18px] shrink-0 items-center whitespace-nowrap rounded-[4.5px] bg-fill-ghost-hover px-1.5 font-sans text-[11px] leading-[14px] font-medium text-secondary";
+
 /** Upstream's input label: "Comment on line 3", or "Comment on lines 2–5". */
 function inputLabel({line, endLine}: {line: number; endLine?: number | undefined}) {
 	return endLine === undefined || endLine === line
@@ -96,7 +100,16 @@ export function LineCommentCard({sessionId, draft}: {sessionId: string; draft: D
  * revealed Edit and Delete. Clicking the body or Edit opens it for editing; Enter saves (and focuses the
  * composer, ⌘Enter sends), Escape reverts to the saved text. The composer sends it with the next prompt.
  */
-export function SavedCommentCard({sessionId, comment}: {sessionId: string; comment: QueuedDiffComment}) {
+export function SavedCommentCard({
+	sessionId,
+	comment,
+	outdated = false,
+}: {
+	sessionId: string;
+	comment: QueuedDiffComment;
+	/** The commented line is gone from the diff: the label gains upstream's neutral "Outdated" badge. */
+	outdated?: boolean;
+}) {
 	const {editBodies, activeId} = useDiffCommentEditing(sessionId);
 	const isEditing = activeId === comment.id;
 	return (
@@ -105,7 +118,16 @@ export function SavedCommentCard({sessionId, comment}: {sessionId: string; comme
 				isEditing={isEditing}
 				isActive={isEditing}
 				autoFocus={isEditing}
-				label={lineLabel(comment)}
+				label={
+					outdated ? (
+						<span className="flex items-center gap-1.5">
+							{lineLabel(comment)}
+							<span className={NEUTRAL_XS_BADGE_CLASS}>Outdated</span>
+						</span>
+					) : (
+						lineLabel(comment)
+					)
+				}
 				inputLabel={inputLabel(comment)}
 				placeholder="Tell Claude what to change"
 				value={isEditing ? (editBodies[comment.id] ?? comment.text) : comment.text}

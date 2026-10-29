@@ -46,7 +46,7 @@ import {openDiffCommentDraft, useDiffComments} from "../../lib/diff-comments";
 import {DiffContextMenu} from "./diff-context-menu";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, type DiffLineRange} from "./diff-file";
 import {GoToFile} from "./go-to-file";
-import {commentAnnotations, findingAnnotations} from "./diff-annotations";
+import {commentAnnotations, diffLineRanges, findingAnnotations} from "./diff-annotations";
 import {isLargeDiff} from "./large-diff";
 
 /** Upstream offers "Side by side" only when the pane is at least this wide. */
@@ -768,7 +768,13 @@ export function ChangesPaneView({
 								}),
 								...(sessionId === undefined
 									? []
-									: commentAnnotations(sessionId, comments.drafts, comments.queued, file.path)),
+									: commentAnnotations(
+											sessionId,
+											comments.drafts,
+											comments.queued,
+											file.path,
+											file.patch === null || file.binary ? undefined : diffLineRanges(file.patch),
+										)),
 							];
 							const changesFile = (
 								<ChangesFile
