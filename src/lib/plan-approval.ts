@@ -37,6 +37,14 @@ export const PLAN_REVISE_LABEL = "Revise";
 export const PLAN_BACK_LABEL = "Back";
 export const PLAN_FEEDBACK_LABEL = "Plan feedback";
 export const PLAN_FEEDBACK_PLACEHOLDER = "What should change? (optional)";
+/** The feedback placeholder while Plan pane comments will be sent along. */
+export const PLAN_FEEDBACK_WITH_COMMENTS_PLACEHOLDER = "Anything else to add?";
+export const PLAN_DELETE_COMMENT_LABEL = "Delete comment";
+
+/** Upstream's screen-reader note under the card's comment list. */
+export function planCommentCountLabel(count: number): string {
+	return `${count} inline comment${count === 1 ? "" : "s"} will be sent`;
+}
 
 /** The card's primary accept target: the dialog's forward mode, else manual approval, else none. */
 export function planPrimaryAccept(dialog: PlanDialog): PlanAcceptMode | null {

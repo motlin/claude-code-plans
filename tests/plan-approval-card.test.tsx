@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type {ReactNode} from "react";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {STACK_ACTIONS} from "../src/components/approval-card";
@@ -8,12 +9,16 @@ import {PlanApprovalCard} from "../src/components/plan-approval-card";
 import type {PlanApprovalContextValue} from "../src/components/plan-approval-context";
 import type {PlanDecision, PlanDialog} from "../src/lib/plan-approval";
 import {planKeyAction} from "../src/lib/plan-approval";
+import {addPlanComment, clearPlanComments, getPlanComments} from "../src/lib/plan-comments";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
+
+const SESSION = "sess_plan_card";
 
 afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
+	clearPlanComments(SESSION);
 });
 
 const AUTO_DIALOG: PlanDialog = {forwardMode: "auto", manual: true};
@@ -21,6 +26,7 @@ const AUTO_DIALOG: PlanDialog = {forwardMode: "auto", manual: true};
 function context(overrides: Partial<PlanApprovalContextValue> = {}) {
 	const decide = vi.fn<(decision: PlanDecision) => Promise<void>>(async () => Promise.resolve());
 	const value: PlanApprovalContextValue = {
+		sessionId: SESSION,
 		answerRoute: "live-pane",
 		loadDialog: async () => Promise.resolve(AUTO_DIALOG),
 		decide,
@@ -172,6 +178,161 @@ describe("PlanApprovalCard", () => {
 		expect(view.container.querySelector("[data-plan-actions]")?.className).toStrictEqual(
 			`flex flex-wrap justify-between gap-x-1 gap-y-2 [&>span]:grow ${STACK_ACTIONS} @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch @max-[420px]:[&_button]:w-full`,
 		);
+	});
+});
+
+function hostOpening(openPane: PaneHostApi["openPane"]): PaneHostApi {
+	return {
+		layout: defaultPaneLayout(),
+		openKinds: [],
+		isOpen: () => false,
+		openPane,
+		closePane: () => {},
+		togglePane: () => {},
+	};
+}
+
+function withPaneHost(host: PaneHostApi, node: ReactNode) {
+	return <PaneHostContext.Provider value={host}>{node}</PaneHostContext.Provider>;
+}
+
+describe("PlanApprovalCard with plan comments", () => {
+	function seedComments() {
+		addPlanComment(SESSION, {selectedText: "about 95°C.", startOffset: 40, endOffset: 51, comment: "Hotter"});
+		addPlanComment(SESSION, {selectedText: "Green", startOffset: 5, endOffset: 10, comment: "Add oolong"});
+	}
+
+	function rowShape(view: ReturnType<typeof render>) {
+		const list = view.container.querySelector("ul");
+		return {
+			listClass: list?.className,
+			rows: [...(list?.querySelectorAll("li") ?? [])].map((li) => ({
+				className: li.className,
+				text: li.textContent,
+			})),
+		};
+	}
+
+	it("forces Revise open without moving focus: upstream's comment list, sr count, placeholder, and no Back", async () => {
+		seedComments();
+		const {value} = context();
+		const view = await renderCard(value);
+		const box = screen.getByRole("textbox", {name: "Plan feedback"});
+		expect({
+			...rowShape(view),
+			placeholder: box.getAttribute("placeholder"),
+			focused: document.activeElement === box,
+			buttons: buttonNames(),
+			spacer: view.container.querySelector("[data-plan-actions] > span")?.className,
+		}).toStrictEqual({
+			listClass: "-m-2 flex max-h-[176px] scroll-p-2 flex-col gap-1 overflow-y-auto p-2",
+			rows: [
+				{
+					className: "flex items-center gap-0.5 rounded-r4 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
+					text: "about 95°C.Hotter",
+				},
+				{
+					className: "flex items-center gap-0.5 rounded-r4 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
+					text: "GreenAdd oolong",
+				},
+				{className: "sr-only", text: "2 inline comments will be sent"},
+			],
+			placeholder: "Anything else to add?",
+			focused: false,
+			buttons: ["about 95°C.Hotter", "", "GreenAdd oolong", "", "Revise"],
+			spacer: "@max-[420px]:hidden",
+		});
+	});
+
+	it("words the sr count for one comment", async () => {
+		addPlanComment(SESSION, {selectedText: "Green", startOffset: 5, endOffset: 10, comment: "Add oolong"});
+		const {value} = context();
+		const view = await renderCard(value);
+		expect(view.container.querySelector("li.sr-only")?.textContent).toStrictEqual("1 inline comment will be sent");
+	});
+
+	it("returns to the idle actions once every comment is deleted", async () => {
+		seedComments();
+		const {value} = context();
+		await renderCard(value);
+		for (const del of screen.getAllByRole("button", {name: "Delete comment"})) fireEvent.click(del);
+		expect({buttons: buttonNames(), store: getPlanComments(SESSION)}).toStrictEqual({
+			buttons: ["Reject", "Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and auto modeCtrl⏎Enter"],
+			store: [],
+		});
+	});
+
+	it("keeps Revise open after deleting the last comment when the user opened it", async () => {
+		addPlanComment(SESSION, {selectedText: "Green", startOffset: 5, endOffset: 10, comment: "Add oolong"});
+		const {value} = context();
+		await renderCard(value);
+		fireEvent.click(screen.getByRole("button", {name: "Delete comment"}));
+		fireEvent.click(button("Revise…Esc"));
+		addPlanComment(SESSION, {selectedText: "Green", startOffset: 5, endOffset: 10, comment: "Again"});
+		await act(async () => Promise.resolve());
+		fireEvent.click(screen.getByRole("button", {name: "Delete comment"}));
+		expect(buttonNames()).toStrictEqual(["Back", "Revise"]);
+	});
+
+	it("opens the Plan pane from a comment row", async () => {
+		seedComments();
+		const openPane = vi.fn<PaneHostApi["openPane"]>();
+		const {value} = context();
+		render(withPaneHost(hostOpening(openPane), <PlanApprovalCard toolUseId="toolu_plan_1" plan={value} />));
+		await act(async () => Promise.resolve());
+		openPane.mockClear();
+		fireEvent.click(button("GreenAdd oolong"));
+		expect(openPane.mock.calls).toStrictEqual([["plan"]]);
+	});
+
+	it("keeps Revise open on Esc while comments exist", async () => {
+		seedComments();
+		const {value} = context();
+		await renderCard(value);
+		const box = screen.getByRole("textbox", {name: "Plan feedback"});
+		fireEvent.keyDown(box, {key: "Escape"});
+		fireEvent.keyDown(document.body, {key: "Escape"});
+		expect(screen.queryByRole("textbox", {name: "Plan feedback"})).not.toBeNull();
+	});
+
+	it("sends upstream's formatted feedback on Revise and clears the session's comments", async () => {
+		seedComments();
+		const {value, decide} = context();
+		await renderCard(value);
+		fireEvent.change(screen.getByRole("textbox", {name: "Plan feedback"}), {target: {value: "Also iced."}});
+		await act(async () => {
+			fireEvent.click(button("Revise"));
+			return Promise.resolve();
+		});
+		expect({calls: decide.mock.calls, store: getPlanComments(SESSION)}).toStrictEqual({
+			calls: [
+				[
+					{
+						kind: "reject",
+						feedback:
+							"On selected text:\n> Green\nAdd oolong\n\nOn selected text:\n> about 95°C.\nHotter\n\n\nAlso iced.",
+					},
+				],
+			],
+			store: [],
+		});
+	});
+
+	it("restores the comments and keeps the typed text when the send fails", async () => {
+		seedComments();
+		const before = getPlanComments(SESSION);
+		const {value} = context({decide: async () => Promise.reject(new Error("No plan approval is pending"))});
+		const view = await renderCard(value);
+		fireEvent.change(screen.getByRole("textbox", {name: "Plan feedback"}), {target: {value: "Also iced."}});
+		await act(async () => {
+			fireEvent.click(button("Revise"));
+			return Promise.resolve();
+		});
+		expect({
+			store: getPlanComments(SESSION),
+			typed: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Plan feedback"}).value,
+			error: view.container.querySelector("[data-plan-error]")?.textContent,
+		}).toStrictEqual({store: before, typed: "Also iced.", error: "No plan approval is pending"});
 	});
 });
 

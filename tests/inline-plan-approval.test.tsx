@@ -12,6 +12,7 @@ import {CHAT_COLUMN_CLASS} from "../src/lib/transcript-width";
 afterEach(cleanup);
 
 const PLAN: PlanApprovalContextValue = {
+	sessionId: "sess_1",
 	answerRoute: "live-pane",
 	loadDialog: async () => Promise.resolve({forwardMode: "auto", manual: true}),
 	decide: async () => Promise.resolve(),

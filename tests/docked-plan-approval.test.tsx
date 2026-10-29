@@ -57,6 +57,7 @@ describe("dockedHookPlan", () => {
 describe("DockedPlanApproval", () => {
 	it("marks its root as a waiting card for the palette's Jump to question", () => {
 		const plan: PlanApprovalContextValue = {
+			sessionId: "sess_1",
 			answerRoute: "live-pane",
 			loadDialog: async () => Promise.resolve({forwardMode: null, manual: true}),
 			decide: async () => Promise.resolve(),
@@ -74,6 +75,7 @@ describe("DockedPlanApproval", () => {
 	it("leads with 'Claude proposed a plan' and answers through the plan approval context", async () => {
 		const decide = vi.fn<(decision: PlanDecision) => Promise<void>>(async () => Promise.resolve());
 		const plan: PlanApprovalContextValue = {
+			sessionId: "sess_1",
 			answerRoute: "live-pane",
 			loadDialog: async () => Promise.resolve({forwardMode: null, manual: true}),
 			decide,
@@ -97,6 +99,7 @@ describe("DockedPlanApproval", () => {
 
 	it("is read-only with the terminal hint when no live pane can answer", () => {
 		const plan: PlanApprovalContextValue = {
+			sessionId: "sess_1",
 			answerRoute: "read-only",
 			loadDialog: async () => Promise.reject(new Error("no pane")),
 			decide: async () => Promise.resolve(),
@@ -108,6 +111,7 @@ describe("DockedPlanApproval", () => {
 
 	it("leaves the plan text to the Plan pane, as upstream's card shows only the title and Open plan", () => {
 		const plan: PlanApprovalContextValue = {
+			sessionId: "sess_1",
 			answerRoute: "read-only",
 			loadDialog: async () => Promise.reject(new Error("no pane")),
 			decide: async () => Promise.resolve(),
@@ -122,6 +126,7 @@ describe("DockedPlanApproval", () => {
 
 	it("is a size container, so the actions stack at upstream's ≤420px card width", () => {
 		const plan: PlanApprovalContextValue = {
+			sessionId: "sess_1",
 			answerRoute: "read-only",
 			loadDialog: async () => Promise.reject(new Error("no pane")),
 			decide: async () => Promise.resolve(),

@@ -786,6 +786,7 @@ function SessionView({
 	);
 	const planApprovalCtx: PlanApprovalContextValue = useMemo(
 		() => ({
+			sessionId,
 			answerRoute,
 			loadDialog: async () => fetchHerdrPlanDialog(sessionId),
 			decide: async (decision) => sendHerdrPlanDecision(sessionId, decision),
