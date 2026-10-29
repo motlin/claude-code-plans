@@ -6,7 +6,13 @@ import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
 import {defaultHerdrPermissionDependencies} from "./permission";
-import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
+import {
+	BRACKETED_PASTE_END,
+	BRACKETED_PASTE_START,
+	herdrWritesEnabled,
+	resolveHerdrPromptTarget,
+	type HerdrPromptTarget,
+} from "./prompt";
 import type {QuestionAnswerStep} from "./question";
 import {asRecord} from "../narrow";
 
@@ -69,9 +75,10 @@ function planDialogShape(rows: PlanDialogRows): PlanDialog {
 
 /**
  * The keys that answer the plan dialog. A row's digit picks it at once; the
- * feedback row's digit only focuses its field, so feedback is typed there (on
- * one line, since a typed newline would submit) and Enter sends it, or sends
- * an empty field as a plain rejection. Null when the dialog lacks the choice.
+ * feedback row's digit only focuses its field, so feedback is typed there and
+ * Enter sends it, or sends an empty field as a plain rejection. A typed newline
+ * would submit, so multi-line feedback goes in as a bracketed paste, which the
+ * field keeps line for line (CLI 2.1.312). Null when the dialog lacks the choice.
  */
 export function planDecisionSteps(rows: PlanDialogRows, decision: PlanDecision): QuestionAnswerStep[] | null {
 	if (decision.kind === "accept") {
@@ -79,9 +86,13 @@ export function planDecisionSteps(rows: PlanDialogRows, decision: PlanDecision):
 			decision.mode === "default" ? rows.manual : rows.forward?.mode === decision.mode ? rows.forward.row : null;
 		return row === null ? null : [{key: String(row)}];
 	}
-	const feedback = decision.feedback.replace(/\s+/g, " ").trim();
+	const feedback = decision.feedback.trim();
 	const focus = {key: String(rows.feedback)};
-	return feedback === "" ? [focus, {key: "enter"}] : [focus, {text: feedback}, {key: "enter"}];
+	if (feedback === "") return [focus, {key: "enter"}];
+	const text = feedback.includes("\n")
+		? `${BRACKETED_PASTE_START}${feedback}${BRACKETED_PASTE_END}`
+		: feedback.replace(/\s+/g, " ");
+	return [focus, {text}, {key: "enter"}];
 }
 
 const HerdrPlanSchema = z.strictObject({

@@ -96,9 +96,15 @@ describe("planDecisionSteps", () => {
 			steps: [{key: "3"}, {key: "enter"}],
 		},
 		{
-			name: "revise with feedback, typed into the dialog's own field on one line",
-			decision: {kind: "reject", feedback: "use bye\ninstead "},
+			name: "revise with one-line feedback, typed into the dialog's own field",
+			decision: {kind: "reject", feedback: " use  bye\tinstead "},
 			steps: [{key: "3"}, {text: "use bye instead"}, {key: "enter"}],
+		},
+		{
+			// A bracketed paste keeps the newlines in the field without submitting (verified on CLI 2.1.312).
+			name: "revise with multi-line feedback, pasted so its newlines are kept",
+			decision: {kind: "reject", feedback: "On selected text:\n> x\ny\n"},
+			steps: [{key: "3"}, {text: "\u001b[200~On selected text:\n> x\ny\u001b[201~"}, {key: "enter"}],
 		},
 	] as const)("$name", ({decision, steps}) => {
 		expect(planDecisionSteps(dialog, decision)).toStrictEqual(steps);
