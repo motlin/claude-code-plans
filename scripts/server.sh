@@ -7,9 +7,18 @@
 # plus whatever holds the port) before launching a new one, so running it
 # twice can never leave two processes behind.
 #
-# Environment overrides (used by tests/server-lifecycle.test.ts):
+# The server never runs from the worktree's .output: `just precommit` rebuilds
+# it in place, and a running server's lazy import()s then hit deleted chunks.
+# `start` copies .output into SNAPSHOT_ROOT/<id>/.output and runs from there;
+# `restart` reuses the last snapshot. Older snapshots are pruned once the
+# server that used them has stopped.
+#
+# Environment overrides (used by tests/server-lifecycle.test.ts and
+# tests/server-snapshot.test.ts):
 #   PORT          port to serve on (default 7526)
-#   SERVER_CMD    command that launches the server (default: node .output/server/index.mjs)
+#   SERVER_CMD    command that launches the server; when set, no snapshot is taken
+#                 (default: node SNAPSHOT_ROOT/<id>/.output/server/index.mjs)
+#   SNAPSHOT_ROOT where build snapshots live (default: $XDG_CACHE_HOME/claude-code-plans/server-build)
 #   SERVER_TITLE  process.title the server sets (src/lib/server-process-title.ts)
 #   SERVER_MATCH  pgrep -f pattern identifying server processes
 #   PROJECT_DIR   only matched processes with this cwd are managed
@@ -21,13 +30,15 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_DIR=${PROJECT_DIR:-$(dirname "$SCRIPT_DIR")}
 PORT=${PORT:-7526}
-SERVER_CMD=${SERVER_CMD:-"node .output/server/index.mjs"}
+SERVER_CMD=${SERVER_CMD:-}
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-code-plans"
+SNAPSHOT_ROOT=${SNAPSHOT_ROOT:-"$CACHE_DIR/server-build"}
 SERVER_TITLE=${SERVER_TITLE:-claude-code-browser-server}
 # The server renames itself to SERVER_TITLE once its Nitro plugins run; the
 # command-line alternative catches it before then. macOS pgrep -f sees
 # environment data after a rewritten title, hence ( |$) instead of $.
 SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|\\.output/server/index\\.mjs"}
-LOG_FILE=${LOG_FILE:-"${XDG_CACHE_HOME:-$HOME/.cache}/claude-code-plans/server.log"}
+LOG_FILE=${LOG_FILE:-"$CACHE_DIR/server.log"}
 STOP_GRACE_SECONDS=${STOP_GRACE_SECONDS:-10}
 START_TIMEOUT_SECONDS=${START_TIMEOUT_SECONDS:-20}
 
@@ -121,14 +132,68 @@ stop_server() {
     fi
 }
 
+# Copy the worktree's .output into a new snapshot and make it current. The
+# copy lands under a temporary name and is renamed into place, so a snapshot
+# directory is always complete. APFS clones (cp -c) make the copy near-free.
+take_snapshot() {
+    local build="$PROJECT_DIR/.output" id tmp
+    if [ ! -f "$build/server/index.mjs" ]; then
+        echo "No build at $build; run 'just build' first" >&2
+        return 1
+    fi
+    id="$(date +%Y%m%dT%H%M%S)-$$"
+    tmp="$SNAPSHOT_ROOT/$id.tmp"
+    mkdir -p "$tmp"
+    if ! cp -cR "$build" "$tmp/" 2>/dev/null; then
+        rm -rf "$tmp"
+        mkdir -p "$tmp"
+        cp -R "$build" "$tmp/"
+    fi
+    mv "$tmp" "$SNAPSHOT_ROOT/$id"
+    printf '%s\n' "$id" >"$SNAPSHOT_ROOT/current.tmp"
+    mv -f "$SNAPSHOT_ROOT/current.tmp" "$SNAPSHOT_ROOT/current"
+}
+
+current_snapshot() {
+    local id
+    id=$(cat "$SNAPSHOT_ROOT/current" 2>/dev/null || true)
+    if [ -n "$id" ] && [ -f "$SNAPSHOT_ROOT/$id/.output/server/index.mjs" ]; then
+        echo "$id"
+    fi
+}
+
+# Remove every snapshot except the current one. Only called once the server is
+# stopped, so no live process still imports from a pruned snapshot.
+prune_snapshots() {
+    local keep=$1 entry
+    for entry in "$SNAPSHOT_ROOT"/*; do
+        if [ -d "$entry" ] && [ "$(basename "$entry")" != "$keep" ]; then
+            rm -rf "$entry"
+        fi
+    done
+}
+
+# `start_server fresh` snapshots the current build first; otherwise the last
+# snapshot is reused, and one is taken only if none exists yet.
 start_server() {
+    local cmd=$SERVER_CMD id=""
+    if [ -z "$cmd" ]; then
+        if [ "${1:-}" = "fresh" ] || [ -z "$(current_snapshot)" ]; then
+            take_snapshot
+        fi
+        id=$(current_snapshot)
+        cmd="node $SNAPSHOT_ROOT/$id/.output/server/index.mjs"
+    fi
     stop_server
+    if [ -n "$id" ]; then
+        prune_snapshots "$id"
+    fi
     mkdir -p "$(dirname "$LOG_FILE")"
     (
         cd "$PROJECT_DIR"
         # `exec` so the launched process IS the server, not a wrapper shell
         # that would leave an orphan when killed.
-        PORT="$PORT" nohup bash -c "exec $SERVER_CMD" >>"$LOG_FILE" 2>&1 &
+        PORT="$PORT" nohup bash -c "exec $cmd" >>"$LOG_FILE" 2>&1 &
     )
     # A wall-clock deadline rather than an iteration count: on a loaded machine
     # each port check and curl can take seconds of their own.
@@ -163,7 +228,7 @@ dev)
     dev_server "$@"
     ;;
 start)
-    start_server
+    start_server fresh
     ;;
 stop)
     stop_server
