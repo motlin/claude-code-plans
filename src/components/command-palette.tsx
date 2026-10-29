@@ -1697,10 +1697,13 @@ function PalettePopup({
 		filtered: type !== "all" || hasFilterTokens,
 		failed: serverActive && serverSearch.isError,
 	});
+	// Local-only: the Files tab searches file contents, so before typing it asks for a query.
 	const emptyMessage =
 		emptyKind === "failed"
 			? "Something went wrong"
-			: paletteEmptyMessage(tokens.text, type === "all" ? null : paletteTypeLabels[type]);
+			: type === "files" && tokens.text.trim() === ""
+				? "Type to search file contents"
+				: paletteEmptyMessage(tokens.text, type === "all" ? null : paletteTypeLabels[type]);
 	// Upstream's live region: the empty copy ("silent" speaks the bare No results found), else the ICU count.
 	const liveMessage =
 		emptyKind === "silent"

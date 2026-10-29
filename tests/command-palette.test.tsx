@@ -2431,14 +2431,14 @@ describe("CommandPalette Plans, Memories and Files tabs with an empty query", ()
 		}).toStrictEqual({value: "start:new-session", activedescendant: true});
 	});
 
-	it("shows upstream's empty state with Search all on the Files tab", async () => {
+	it("prompts to type on the empty-query Files tab, keeping upstream's Search all", async () => {
 		const dialog = await openPalette(undefined, "/", seedDocs);
 
 		fireEvent.click(within(dialog).getByRole("tab", {name: "Files"}));
 
 		expect({
 			rows: resultRows(dialog),
-			empty: within(dialog).getByText("No results in Files", {selector: "p"}).className,
+			empty: within(dialog).getByText("Type to search file contents", {selector: "p"}).className,
 			button: within(dialog).getByRole("button", {name: "Search all"}).textContent,
 		}).toStrictEqual({
 			rows: [],
