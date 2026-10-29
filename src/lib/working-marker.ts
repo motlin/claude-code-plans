@@ -205,6 +205,9 @@ export function workingLineWaitsOnUser({
 /** Upstream's settle (`TTe`) before one phase word swaps for the next. */
 export const PHASE_SETTLE_MS = 150;
 
+/** Upstream's `l8` "connecting" word, standing in for a waiting phase while the event stream is down. */
+export const CONNECTING_PHASE_LABEL = "Connecting…";
+
 /**
  * Upstream's pre-stream phase word (`l8`): "Sending…" while a live-pane
  * prompt is on its way to the transcript, then "Waiting for Claude…" from the

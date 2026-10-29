@@ -540,6 +540,13 @@ export function useEventStreamStatus(): StreamDrop {
 	return useSyncExternalStore(store.subscribe, store.get, () => null);
 }
 
+/** Whether the stream is down, read only while `active`: an inactive reader never re-renders on a status change. */
+export function useEventStreamConnecting(active: boolean): boolean {
+	const store = useContext(EventStreamStatusContext);
+	const connecting = () => active && store.get() !== null;
+	return useSyncExternalStore(store.subscribe, connecting, () => false);
+}
+
 export function useClaudeEvents(): ClaudeEventsState {
 	const ctx = useContext(ClaudeEventsContext);
 	if (!ctx) {

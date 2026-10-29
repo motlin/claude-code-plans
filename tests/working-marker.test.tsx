@@ -4,6 +4,7 @@ import {act, cleanup, render, renderHook} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {WorkingMarker} from "../src/components/working-marker";
+import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
 import {type WorkingMarkerSignals} from "../src/components/use-working-marker-state";
 import {useWorkingMarkerState} from "../src/components/use-working-marker-state";
 import {
@@ -954,6 +955,53 @@ describe("WorkingMarker pre-stream phases", () => {
 			before: "Sending…",
 			after: "Waiting for Claude…",
 		});
+	});
+
+	it.each(["reconnecting", "connecting"] as const)(
+		"says Connecting… in place of a phase word while the event stream is %s, as upstream's isConnecting",
+		(drop) => {
+			stubReducedMotion(false);
+			const store = createStreamDropStore(drop);
+			const sending = render(
+				<EventStreamStatusContext.Provider value={store}>
+					<WorkingMarker state={{status: "idle"}} sending />
+				</EventStreamStatusContext.Provider>,
+			);
+			const sendingView = phaseView(sending.container);
+			cleanup();
+			const waiting = render(
+				<EventStreamStatusContext.Provider value={store}>
+					<WorkingMarker state={UNREPLIED} />
+				</EventStreamStatusContext.Provider>,
+			);
+			expect({sending: sendingView, waiting: phaseView(waiting.container)}).toStrictEqual({
+				sending: {
+					turnWorking: "true",
+					state: "busy",
+					activity: "default",
+					visible: "Connecting…",
+					announcer: "Working…",
+				},
+				waiting: {
+					turnWorking: "true",
+					state: "busy",
+					activity: "default",
+					visible: "Connecting…",
+					announcer: "Working…",
+				},
+			});
+		},
+	);
+
+	it("leaves the line alone during a stream drop once the turn is past its waiting phase", () => {
+		stubReducedMotion(false);
+		const store = createStreamDropStore("reconnecting");
+		const {container} = render(
+			<EventStreamStatusContext.Provider value={store}>
+				<WorkingMarker state={{...UNREPLIED, replied: true}} />
+			</EventStreamStatusContext.Provider>,
+		);
+		expect(visibleLineText(container)).toBe("5s");
 	});
 
 	it("drops the phase word as soon as the first reply lands", () => {

@@ -1,6 +1,8 @@
 import {Fragment, useEffect, useState, useSyncExternalStore} from "react";
+import {useEventStreamConnecting} from "../hooks/use-claude-events";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {
+	CONNECTING_PHASE_LABEL,
 	PHASE_SETTLE_MS,
 	phaseLabel,
 	workingLineAnnouncement,
@@ -88,10 +90,17 @@ function useSettledPhase(target: string | null): string | null {
 	return immediate ? target : shown;
 }
 
-function linePhase(state: WorkingMarkerState, sending: boolean): string | null {
+function waitingPhase(state: WorkingMarkerState, sending: boolean): string | null {
 	if (state.status === "working") return phaseLabel({sending, promptSeen: true, firstAssistantSeen: state.replied});
 	if (state.status === "idle") return phaseLabel({sending, promptSeen: false, firstAssistantSeen: false});
 	return null;
+}
+
+/** Upstream's `le`: while the stream is (re)connecting, an active waiting phase reads "Connecting…". */
+function useLinePhase(state: WorkingMarkerState, sending: boolean, waitingOnUser: boolean): string | null {
+	const phase = waitingOnUser ? null : waitingPhase(state, sending);
+	const streamConnecting = useEventStreamConnecting(phase !== null);
+	return streamConnecting ? CONNECTING_PHASE_LABEL : phase;
 }
 
 function StatDot() {
@@ -130,7 +139,7 @@ export function WorkingMarker({
 	sending?: boolean;
 }>) {
 	const reduceMotion = usePrefersReducedMotion();
-	const phase = useSettledPhase(waitingOnUser ? null : linePhase(state, sending));
+	const phase = useSettledPhase(useLinePhase(state, sending, waitingOnUser));
 	// Upstream draws no mark while the turn waits on the user.
 	const turnWorking = !waitingOnUser && (phase !== null || (state.status !== "idle" && state.status !== "waiting"));
 	const busy = turnWorking && !quiet;
