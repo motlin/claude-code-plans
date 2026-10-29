@@ -22,7 +22,7 @@ const EMPTY: SessionPlanModel = {content: null, todos: [], editsPlanFile: false}
 describe("SessionPlanPane", () => {
 	it("shows a hook-only pending plan, which the docked approval card no longer repeats", () => {
 		const model = withPendingPlan(EMPTY, {toolUseId: "", plan: "# P\n\nDo it.", planFilePath: "/tmp/plans/p.md"});
-		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} />));
+		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} commentsEnabled={false} />));
 		const pane = screen.getByTestId("session-plan-pane");
 
 		expect(
@@ -33,14 +33,16 @@ describe("SessionPlanPane", () => {
 	});
 
 	it("shows upstream's empty state when the session has no plan and no todos", () => {
-		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={EMPTY} />));
+		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={EMPTY} commentsEnabled={false} />));
 		const pane = screen.getByTestId("session-plan-pane");
 
 		expect({
 			paragraphs: Array.from(pane.querySelectorAll("p"), (p) => [p.className, p.textContent]),
 			icon: pane.querySelector("svg")?.getAttribute("class"),
 			className: pane.className,
+			hint: pane.querySelector("[data-plan-hint]"),
 		}).toStrictEqual({
+			hint: null,
 			paragraphs: [
 				["max-w-[36ch] text-pretty break-words text-body text-primary", "No plan yet"],
 				[
@@ -63,14 +65,17 @@ describe("SessionPlanPane", () => {
 			],
 			editsPlanFile: false,
 		};
-		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} />));
+		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} commentsEnabled={false} />));
 		const pane = screen.getByTestId("session-plan-pane");
 		const column = pane.firstElementChild;
+		const hint = pane.querySelector("[data-plan-hint]");
 		const section = within(pane).getByRole("heading", {name: "Tasks"}).parentElement;
 
 		expect({
 			className: pane.className,
+			scrollRoot: pane.getAttribute("data-plan-scroll"),
 			column: column?.className,
+			hint: [hint?.parentElement === column, hint === column?.firstElementChild],
 			heading: within(pane).getByRole("heading", {level: 1}).textContent,
 			body: within(pane).getByText("Rebase the fabricated fork.").tagName,
 			section: [section?.tagName, section?.className, section?.parentElement === column],
@@ -79,8 +84,10 @@ describe("SessionPlanPane", () => {
 				.getAllByRole("listitem")
 				.map((item) => [item.textContent, item.getAttribute("data-todo-status")]),
 		}).toStrictEqual({
-			className: "h-full select-text overflow-y-auto [contain:strict] [scrollbar-gutter:stable_both-edges] p-4",
+			className: "h-full select-text overflow-y-auto [contain:strict] [scrollbar-gutter:stable_both-edges] p-3",
+			scrollRoot: "",
 			column: "mx-auto max-w-[68ch]",
+			hint: [true, true],
 			heading: "Fabricated plan",
 			body: "P",
 			section: ["SECTION", "mt-4", true],
@@ -99,7 +106,7 @@ describe("SessionPlanPane", () => {
 			todos: [{content: "Rebase", status: "pending"}],
 			editsPlanFile: false,
 		};
-		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} />));
+		render(withQueryClient(<SessionPlanPane planFilename={undefined} model={model} commentsEnabled={false} />));
 		const pane = screen.getByTestId("session-plan-pane");
 
 		expect({
@@ -110,6 +117,32 @@ describe("SessionPlanPane", () => {
 				.getAllByRole("listitem")
 				.map((item) => item.textContent),
 			empty: within(pane).queryByText("No plan yet"),
-		}).toStrictEqual({headings: ["Tasks"], todos: ["Rebase"], empty: null});
+			hint: pane.querySelector("[data-plan-hint]"),
+		}).toStrictEqual({headings: ["Tasks"], todos: ["Rebase"], empty: null, hint: null});
+	});
+
+	it.each([
+		[true, "Select any text to leave a comment for Claude"],
+		[false, "You can comment on the plan in plan mode, or when Claude asks you to approve it."],
+	])("shows upstream's comment hint row above the plan when comments enabled is %s", (commentsEnabled, text) => {
+		const model: SessionPlanModel = {content: "# Tea plan\n\nBrew it.", todos: [], editsPlanFile: false};
+		render(
+			withQueryClient(
+				<SessionPlanPane planFilename={undefined} model={model} commentsEnabled={commentsEnabled} />,
+			),
+		);
+		const hint = screen.getByTestId("session-plan-pane").querySelector("[data-plan-hint]");
+
+		expect({
+			className: hint?.className,
+			text: hint?.textContent,
+			icon: hint?.querySelector("svg")?.getAttribute("class"),
+			iconHidden: hint?.querySelector("svg")?.getAttribute("aria-hidden"),
+		}).toStrictEqual({
+			className: "mb-[var(--chat-item-gap)] flex items-center gap-1 text-caption text-ink-muted",
+			text,
+			icon: "lucide lucide-message-circle size-3 shrink-0",
+			iconHidden: "true",
+		});
 	});
 });

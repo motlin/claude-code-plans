@@ -13,6 +13,13 @@ import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
 import {registerPane, type PaneDefinition} from "./pane-registry";
 import {SessionPlanPane} from "./plan-pane";
 
+/** What the Plan pane needs from the session page beyond the plan itself. */
+export interface PlanPaneOptions {
+	sessionId: string;
+	/** Upstream's flag: the session is in plan mode or has a plan waiting for approval. */
+	commentsEnabled: boolean;
+}
+
 /** How long upstream's Copy plan button shows "Copied" with a check. */
 const COPIED_MS = 1500;
 
@@ -94,10 +101,21 @@ function LinkedPlanHeaderActions({planFilename, model}: {planFilename: string; m
  * for the shown plan text, led by a local "Open plan file" link to the plan's page when the
  * session links a `~/.claude/plans` file (where upstream puts its "Open in" menu).
  */
-export function planPaneDefinition(planFilename: string | undefined, model: SessionPlanModel): PaneDefinition {
+export function planPaneDefinition(
+	planFilename: string | undefined,
+	model: SessionPlanModel,
+	{sessionId, commentsEnabled}: PlanPaneOptions,
+): PaneDefinition {
 	const definition: PaneDefinition = {
 		title: "Plan",
-		render: () => <SessionPlanPane key={planFilename ?? ""} planFilename={planFilename} model={model} />,
+		render: () => (
+			<SessionPlanPane
+				key={`${sessionId}:${planFilename ?? ""}`}
+				planFilename={planFilename}
+				model={model}
+				commentsEnabled={commentsEnabled}
+			/>
+		),
 	};
 	if (planFilename !== undefined) {
 		definition.headerActions = <LinkedPlanHeaderActions planFilename={planFilename} model={model} />;
@@ -112,6 +130,13 @@ export function planPaneDefinition(planFilename: string | undefined, model: Sess
  * when the session has one (or the pane is already open), and an open pane without a plan shows
  * "No plan yet".
  */
-export function useRegisterPlanPane(planFilename: string | undefined, model: SessionPlanModel): void {
-	useEffect(() => registerPane("plan", planPaneDefinition(planFilename, model)), [planFilename, model]);
+export function useRegisterPlanPane(
+	planFilename: string | undefined,
+	model: SessionPlanModel,
+	{sessionId, commentsEnabled}: PlanPaneOptions,
+): void {
+	useEffect(
+		() => registerPane("plan", planPaneDefinition(planFilename, model, {sessionId, commentsEnabled})),
+		[planFilename, model, sessionId, commentsEnabled],
+	);
 }

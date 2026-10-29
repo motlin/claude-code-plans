@@ -13,6 +13,7 @@ import type {SessionPlanModel} from "../src/lib/session-plan-model";
 afterEach(cleanup);
 
 const MODEL: SessionPlanModel = {content: "Do it.", todos: [], editsPlanFile: false};
+const PANE_OPTIONS = {sessionId: "session-fabricated", commentsEnabled: false};
 
 async function renderInRouter(node: React.ReactNode, queryClient = new QueryClient()) {
 	const router = createRouter({
@@ -52,12 +53,12 @@ function headerActionLabels(container: HTMLElement) {
 describe("planPaneDefinition", () => {
 	it("has no header action without plan text or a plan file", () => {
 		expect(
-			planPaneDefinition(undefined, {content: null, todos: [], editsPlanFile: false}).headerActions,
+			planPaneDefinition(undefined, {content: null, todos: [], editsPlanFile: false}, PANE_OPTIONS).headerActions,
 		).toStrictEqual(undefined);
 	});
 
 	it("adds upstream's ghost 'Copy plan' icon button for a plan without a file", async () => {
-		const view = await renderInRouter(planPaneDefinition(undefined, MODEL).headerActions);
+		const view = await renderInRouter(planPaneDefinition(undefined, MODEL, PANE_OPTIONS).headerActions);
 		const button = screen.getByRole("button", {name: "Copy plan"});
 
 		expect({
@@ -74,7 +75,7 @@ describe("planPaneDefinition", () => {
 	it("copies the plan markdown exactly and flips to 'Copied' with a check", async () => {
 		const writeText = stubClipboard();
 		await renderInRouter(
-			planPaneDefinition(undefined, {...MODEL, content: "# Plan\n\n- step one\n"}).headerActions,
+			planPaneDefinition(undefined, {...MODEL, content: "# Plan\n\n- step one\n"}, PANE_OPTIONS).headerActions,
 		);
 
 		fireEvent.click(screen.getByRole("button", {name: "Copy plan"}));
@@ -91,7 +92,7 @@ describe("planPaneDefinition", () => {
 
 	it("puts the local 'Open plan file' link in upstream's 'Open in' slot, before Copy plan", async () => {
 		const view = await renderInRouter(
-			planPaneDefinition("switch-git-pager.md", MODEL).headerActions,
+			planPaneDefinition("switch-git-pager.md", MODEL, PANE_OPTIONS).headerActions,
 			linkedPlanClient(),
 		);
 		const link = screen.getByRole("link", {name: "Open plan file"});
@@ -111,11 +112,24 @@ describe("planPaneDefinition", () => {
 
 	it("copies the linked plan file's markdown, which the pane shows, over the transcript text", async () => {
 		const writeText = stubClipboard();
-		await renderInRouter(planPaneDefinition("switch-git-pager.md", MODEL).headerActions, linkedPlanClient());
+		await renderInRouter(
+			planPaneDefinition("switch-git-pager.md", MODEL, PANE_OPTIONS).headerActions,
+			linkedPlanClient(),
+		);
 
 		fireEvent.click(screen.getByRole("button", {name: "Copy plan"}));
 		await screen.findByRole("button", {name: "Copied"});
 
 		expect(writeText.mock.calls).toStrictEqual([["# From the file\n"]]);
+	});
+
+	it.each([
+		[true, "Select any text to leave a comment for Claude"],
+		[false, "You can comment on the plan in plan mode, or when Claude asks you to approve it."],
+	])("renders the pane body with the comments-enabled flag %s", async (commentsEnabled, text) => {
+		const definition = planPaneDefinition(undefined, MODEL, {sessionId: "session-fabricated", commentsEnabled});
+		const view = await renderInRouter(definition.render({moveHandle: null, controls: null}));
+
+		expect(view.container.querySelector("[data-plan-hint]")?.textContent).toStrictEqual(text);
 	});
 });

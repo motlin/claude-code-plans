@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {ListChecks, Loader2} from "lucide-react";
+import {ListChecks, Loader2, MessageCircle} from "lucide-react";
 import type {ReactNode} from "react";
 
 import {planQueryOptions} from "../../lib/api/plans";
@@ -11,18 +11,35 @@ import {TodoChecklist} from "../tool-renderers/task-checklist-renderer";
 /**
  * Upstream's Plan pane: the session's plan (its linked plan file, else its latest ExitPlanMode or
  * plan-file Write text) as prose, then its checklist from TodoWrite or TaskCreate / TaskUpdate under
- * "Tasks"; with neither, upstream's "No plan yet" empty state.
+ * "Tasks"; with neither, upstream's "No plan yet" empty state. Plan text is headed by upstream's
+ * comment hint, whose wording follows `commentsEnabled` (plan mode, or a plan waiting for approval).
  */
-export function SessionPlanPane({planFilename, model}: {planFilename: string | undefined; model: SessionPlanModel}) {
+export function SessionPlanPane({
+	planFilename,
+	model,
+	commentsEnabled,
+}: {
+	planFilename: string | undefined;
+	model: SessionPlanModel;
+	commentsEnabled: boolean;
+}) {
 	return planFilename === undefined ? (
-		<PlanBody content={model.content} todos={model.todos} />
+		<PlanBody content={model.content} todos={model.todos} commentsEnabled={commentsEnabled} />
 	) : (
-		<LinkedPlanBody planFilename={planFilename} model={model} />
+		<LinkedPlanBody planFilename={planFilename} model={model} commentsEnabled={commentsEnabled} />
 	);
 }
 
 /** The linked plan file's markdown, falling back to the transcript's plan text when the file is gone. */
-function LinkedPlanBody({planFilename, model}: {planFilename: string; model: SessionPlanModel}) {
+function LinkedPlanBody({
+	planFilename,
+	model,
+	commentsEnabled,
+}: {
+	planFilename: string;
+	model: SessionPlanModel;
+	commentsEnabled: boolean;
+}) {
 	const {data: plan, isPending} = useQuery(planQueryOptions(toMdSlug(planFilename)));
 	if (isPending) {
 		return (
@@ -34,10 +51,18 @@ function LinkedPlanBody({planFilename, model}: {planFilename: string; model: Ses
 			</div>
 		);
 	}
-	return <PlanBody content={plan?.markdown ?? model.content} todos={model.todos} />;
+	return <PlanBody content={plan?.markdown ?? model.content} todos={model.todos} commentsEnabled={commentsEnabled} />;
 }
 
-function PlanBody({content, todos}: {content: string | null; todos: readonly PlanTodo[]}) {
+function PlanBody({
+	content,
+	todos,
+	commentsEnabled,
+}: {
+	content: string | null;
+	todos: readonly PlanTodo[];
+	commentsEnabled: boolean;
+}) {
 	if (content === null && todos.length === 0) {
 		return (
 			<PlanEmptyState
@@ -50,12 +75,26 @@ function PlanBody({content, todos}: {content: string | null; todos: readonly Pla
 	return (
 		<div
 			data-testid="session-plan-pane"
-			className="h-full select-text overflow-y-auto [contain:strict] [scrollbar-gutter:stable_both-edges] p-4"
+			data-plan-scroll=""
+			className="h-full select-text overflow-y-auto [contain:strict] [scrollbar-gutter:stable_both-edges] p-3"
 		>
 			<div className="mx-auto max-w-[68ch]">
+				{content !== null && <PlanCommentHint commentsEnabled={commentsEnabled} />}
 				{content !== null && <MarkdownView markdown={content} />}
 				{todos.length > 0 && <PlanTasks todos={todos} />}
 			</div>
+		</div>
+	);
+}
+
+/** Upstream's caption row above the plan, telling the user whether they can comment on it right now. */
+function PlanCommentHint({commentsEnabled}: {commentsEnabled: boolean}) {
+	return (
+		<div data-plan-hint className="mb-[var(--chat-item-gap)] flex items-center gap-1 text-caption text-ink-muted">
+			<MessageCircle aria-hidden="true" className="size-3 shrink-0" />
+			{commentsEnabled
+				? "Select any text to leave a comment for Claude"
+				: "You can comment on the plan in plan mode, or when Claude asks you to approve it."}
 		</div>
 	);
 }

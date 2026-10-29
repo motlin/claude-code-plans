@@ -550,7 +550,6 @@ function SessionView({
 		() => withPendingPlan(sessionPlanModel(processed.lines), dockedPlan),
 		[processed.lines, dockedPlan],
 	);
-	useRegisterPlanPane(data.planFilename, planModel);
 	const workingMarkerState = useWorkingMarkerState({
 		records: transcript.records,
 		sessionState: sessionSummaryState,
@@ -620,6 +619,12 @@ function SessionView({
 			}),
 		[hookContext?.permissionMode, transcript.records, composerServerState],
 	);
+	// Upstream lets the user comment on the plan in plan mode or while a plan waits for approval.
+	useRegisterPlanPane(data.planFilename, planModel, {
+		sessionId,
+		commentsEnabled:
+			composerChin.mode?.id === "plan" || dockedPlan !== null || pendingCall?.name === "ExitPlanMode",
+	});
 	const slashMenu = useSlashCommands(sessionDirectory ?? undefined, Boolean(sessionDirectory), true);
 	const {slashCommands} = slashMenu;
 	const {data: promptHistory} = useQuery({
