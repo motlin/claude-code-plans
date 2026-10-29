@@ -139,3 +139,34 @@ describe("permissionDecisionTitle rule source", () => {
 		]);
 	});
 });
+
+describe("permissionDecisionTitle classifier and safety-check details", () => {
+	it("says which classifier category or safety check decided the call", () => {
+		expect([
+			permissionDecisionTitle({
+				decision: "reject",
+				source: "config",
+				reasonType: "classifier",
+				classifierCategory: "git_destructive",
+			}),
+			permissionDecisionTitle({
+				decision: "reject",
+				source: "classifier",
+				reasonType: "classifier",
+				classifierCategory: "unrequested_commit_in_a_connected_app",
+			}),
+			permissionDecisionTitle({
+				decision: "reject",
+				source: "config",
+				reasonType: "safetyCheck",
+				circuitBreaker: "dangerousRemoval",
+			}),
+			permissionDecisionTitle({decision: "reject", source: "config", reasonType: "safetyCheck"}),
+		]).toStrictEqual([
+			"Permission: Rejected · Configuration · Classifier (Git destructive)",
+			"Permission: Rejected · Classifier · Classifier (Unrequested commit in a connected app)",
+			"Permission: Rejected · Configuration · Safety check (Dangerous removal)",
+			"Permission: Rejected · Configuration · Safety check",
+		]);
+	});
+});

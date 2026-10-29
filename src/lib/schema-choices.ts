@@ -228,7 +228,7 @@ const permissionDecisionGrantScopeLabels = {
 	session: "Rest of session",
 } satisfies Record<z.infer<typeof PermissionDecisionGrantScopeSchema>, string>;
 
-const permissionDecisionCircuitBreakerLabels = {
+export const permissionDecisionCircuitBreakerLabels = {
 	dangerousRemoval: "Dangerous removal",
 	backgroundOperator: "Background operator",
 	suspiciousWindowsPath: "Suspicious Windows path",

@@ -2,6 +2,7 @@ import type {z} from "zod";
 import {assertNever} from "./assert-never";
 import type {PermissionDecisionReasonTypeSchema, UserRecordSchema} from "./schemas";
 import {
+	permissionDecisionCircuitBreakerLabels,
 	permissionDecisionDecisionLabels,
 	permissionDecisionReasonTypeLabels,
 	permissionDecisionRuleSourceLabels,
@@ -55,15 +56,32 @@ export function permissionDecisionLabel(permission: PermissionDecision): string 
 	}
 }
 
-/** The reason label, with the settings layer a rule came from, e.g. "Permission rule (User settings)". */
+/** A classifier category id spelled as words, e.g. "git_destructive" → "Git destructive". */
+function classifierCategoryLabel(category: string): string {
+	const words = category.replaceAll("_", " ");
+	return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * The reason label, with what backed it: the settings layer a rule came from, the
+ * auto-mode classifier's category, or the safety check that tripped, e.g.
+ * "Permission rule (User settings)" or "Safety check (Dangerous removal)".
+ */
 function reasonTitle(permission: PermissionDecision): string | undefined {
 	if (permission.reasonType === undefined) {
 		return undefined;
 	}
 	const reason = permissionDecisionReasonTypeLabels[permission.reasonType];
-	return permission.ruleSource === undefined
-		? reason
-		: `${reason} (${permissionDecisionRuleSourceLabels[permission.ruleSource]})`;
+	const details = [
+		permission.ruleSource === undefined ? undefined : permissionDecisionRuleSourceLabels[permission.ruleSource],
+		permission.classifierCategory === undefined
+			? undefined
+			: classifierCategoryLabel(permission.classifierCategory),
+		permission.circuitBreaker === undefined
+			? undefined
+			: permissionDecisionCircuitBreakerLabels[permission.circuitBreaker],
+	].filter((detail) => detail !== undefined);
+	return details.length === 0 ? reason : `${reason} (${details.join(", ")})`;
 }
 
 /** The raw decision, source and reason spelled out, for a tooltip. */
