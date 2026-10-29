@@ -325,7 +325,7 @@ export function FilesTree({
 						}}
 						onKeyDown={handleInputKeyDown}
 						placeholder="Search files…"
-						className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-6 text-pane text-primary outline-none placeholder:text-t6 focus:shadow-[0_0_0_1px_rgb(42,120,214),0_0_6px_1px_rgb(205,226,251)]"
+						className="h-6 w-full rounded-md border border-strong bg-surface-1 pl-7 pr-6 text-pane text-primary outline-none placeholder:text-t6 focus:shadow-[0_0_0_1px_rgb(37,125,224),0_0_6px_1px_rgb(205,226,251)]"
 						style={{textOverflow: "ellipsis"}}
 					/>
 					{query !== "" && (

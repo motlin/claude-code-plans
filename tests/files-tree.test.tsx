@@ -401,7 +401,7 @@ describe("FilesTree density", () => {
 			placeholder: input.placeholder,
 			inputText: inputClasses.includes("text-pane"),
 			inputFocusRing: inputClasses.includes(
-				"focus:shadow-[0_0_0_1px_rgb(42,120,214),0_0_6px_1px_rgb(205,226,251)]",
+				"focus:shadow-[0_0_0_1px_rgb(37,125,224),0_0_6px_1px_rgb(205,226,251)]",
 			),
 			clearSize: screen.getByRole("button", {name: "Clear filter"}).className.split(" ").includes("size-[18px]"),
 		}).toStrictEqual({

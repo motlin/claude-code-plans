@@ -102,7 +102,7 @@ describe("transcript link styles", () => {
 			icon: ruleDeclarations(markdownCss, ".markdown a:global(.pr-chip) svg"),
 		}).toStrictEqual({
 			chip: {
-				"background-color": "rgb(42 120 214 / 0.1)",
+				"background-color": "rgb(37 125 224 / 0.1)",
 				"border-radius": "4px",
 				padding: "0 6px",
 				"-webkit-box-decoration-break": "clone",
@@ -110,8 +110,8 @@ describe("transcript link styles", () => {
 				"text-decoration-line": "none",
 			},
 			hover: {"background-color": "rgb(205 226 251)"},
-			darkChip: {"background-color": "rgb(42 120 214 / 0.2)"},
-			darkHover: {"background-color": "rgb(42 120 214 / 0.32)"},
+			darkChip: {"background-color": "rgb(37 125 224 / 0.2)"},
+			darkHover: {"background-color": "rgb(37 125 224 / 0.32)"},
 			icon: {
 				display: "inline-block",
 				"vertical-align": "-1px",

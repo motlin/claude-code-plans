@@ -237,14 +237,14 @@ describe("Switch", () => {
 		}).toStrictEqual({checked: "false", disabled: "true", tabIndex: -1});
 	});
 
-	it("fills upstream's fill-accent #2a78d6 when on, fill-accent-hover #3987e5 on hover, and dims to opacity-disabled .4", () => {
+	it("fills upstream's fill-accent #257de0 when on, fill-accent-hover #2171ca on hover, and dims to opacity-disabled .4", () => {
 		render(<Switch checked onCheckedChange={() => {}} aria-label="Accent" />);
 		const classes = screen.getByRole("switch", {name: "Accent"}).className.split(" ");
 
 		expect({
-			checked: classes.includes("data-[checked]:bg-[#2a78d6]"),
-			checkedHover: classes.includes("data-[checked]:hover:bg-[#3987e5]"),
-			disabledCheckedHover: classes.includes("data-[checked]:data-[disabled]:hover:bg-[#2a78d6]"),
+			checked: classes.includes("data-[checked]:bg-[#257de0]"),
+			checkedHover: classes.includes("data-[checked]:hover:bg-[#2171ca]"),
+			disabledCheckedHover: classes.includes("data-[checked]:data-[disabled]:hover:bg-[#257de0]"),
 			disabled: classes.includes("data-[disabled]:opacity-40"),
 			legacyAccent: classes.includes("data-[checked]:bg-accent-100"),
 			legacyDisabled: classes.includes("data-[disabled]:opacity-50"),

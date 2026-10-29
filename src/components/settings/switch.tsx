@@ -4,7 +4,7 @@ import {useSettingsRowIds} from "./settings-row-context";
 
 /*
  * The claude.ai/code Switch: a 36×20 track with 2px padding and a 16px knob,
- * upstream fill-accent #2a78d6 when on (hover #3987e5, same in both themes).
+ * upstream fill-accent #257de0 when on (hover #2171ca, same in both themes).
  * A focusable span with role=switch; Space and Enter toggle it. Inside a SettingsRow it is labelled by the row title.
  */
 
@@ -49,7 +49,7 @@ export function Switch({
 			data-disabled={disabled ? "" : undefined}
 			onClick={toggle}
 			onKeyDown={handleKeyDown}
-			className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full p-[2px] outline-none transition-colors bg-[var(--settings-switch-track)] hover:bg-[var(--settings-switch-track-hover)] data-[checked]:bg-[#2a78d6] data-[checked]:hover:bg-[#3987e5] data-[checked]:data-[disabled]:hover:bg-[#2a78d6] data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+			className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full p-[2px] outline-none transition-colors bg-[var(--settings-switch-track)] hover:bg-[var(--settings-switch-track-hover)] data-[checked]:bg-[#257de0] data-[checked]:hover:bg-[#2171ca] data-[checked]:data-[disabled]:hover:bg-[#257de0] data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 		>
 			<span
 				aria-hidden="true"

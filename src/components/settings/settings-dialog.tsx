@@ -404,7 +404,7 @@ export function SettingsDialog() {
 																	onClick={() => {
 																		selectItem(item);
 																	}}
-																	className={`flex h-8 w-full shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#2a78d6,0_0_6px_1px_#cde2fb] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(42_120_214),0_0_6px_1px_rgb(24_79_149/0.6)] ${
+																	className={`flex h-8 w-full shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)] ${
 																		selected
 																			? "bg-fill-control font-medium text-primary"
 																			: "font-normal text-secondary hover:bg-fill-ghost-hover hover:text-primary"

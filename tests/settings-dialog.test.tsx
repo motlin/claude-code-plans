@@ -314,8 +314,8 @@ describe("SettingsDialog", () => {
 				.filter((token) => /hover:|focus-visible:/.test(token));
 		const expected = [
 			"focus-visible:outline-hidden",
-			"not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#2a78d6,0_0_6px_1px_#cde2fb]",
-			"dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(42_120_214),0_0_6px_1px_rgb(24_79_149/0.6)]",
+			"not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb]",
+			"dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)]",
 		];
 		expect({selected: classes("General"), rest: classes("Usage")}).toStrictEqual({
 			selected: expected,

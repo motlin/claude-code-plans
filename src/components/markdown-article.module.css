@@ -269,7 +269,7 @@
 /* A GitHub pull request link reads as upstream's compact `owner/repo#n` chip on
    an accent-muted fill; `clone` keeps the fill rounded where the chip wraps. */
 .markdown a:global(.pr-chip) {
-	background-color: rgb(42 120 214 / 0.1);
+	background-color: rgb(37 125 224 / 0.1);
 	border-radius: 4px;
 	padding: 0 6px;
 	-webkit-box-decoration-break: clone;
@@ -282,11 +282,11 @@
 }
 
 :global(.dark) .markdown a:global(.pr-chip) {
-	background-color: rgb(42 120 214 / 0.2);
+	background-color: rgb(37 125 224 / 0.2);
 }
 
 :global(.dark) .markdown a:global(.pr-chip):hover {
-	background-color: rgb(42 120 214 / 0.32);
+	background-color: rgb(37 125 224 / 0.32);
 }
 
 .markdown a:global(.pr-chip) svg {
@@ -305,7 +305,7 @@
 	gap: 3px;
 	padding: 0 6px 0 4px;
 	border-radius: 4px;
-	background-color: rgb(42 120 214 / 0.1);
+	background-color: rgb(37 125 224 / 0.1);
 	line-height: 1.25;
 	vertical-align: baseline;
 	text-decoration-line: none;
@@ -316,11 +316,11 @@
 }
 
 :global(.dark) .markdown a:global(.artifact-link-chip) {
-	background-color: rgb(42 120 214 / 0.2);
+	background-color: rgb(37 125 224 / 0.2);
 }
 
 :global(.dark) .markdown a:global(.artifact-link-chip):hover {
-	background-color: rgb(42 120 214 / 0.32);
+	background-color: rgb(37 125 224 / 0.32);
 }
 
 .markdown :global(.artifact-link-chip-icon) {

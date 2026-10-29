@@ -309,8 +309,8 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code accent ink: transcript links, file refs, PR chips,
 	   and pressed toggles. */
 	--upstream-accent: rgb(24 79 149);
-	/* Upstream `--cds-fill-accent` (checks and accent fills), the same in both modes. */
-	--upstream-fill-accent: #2a78d6;
+	/* Upstream `--cds-fill-accent` (checks and accent fills; read live from .cds-root 2026-10-29), the same in both modes. */
+	--upstream-fill-accent: #257de0;
 	/* Upstream `--cds-fill-accent-hover` / `--cds-on-accent` (read live from .cds-root 2026-10-29), the same in both modes. */
 	--upstream-fill-accent-hover: #2171ca;
 	--upstream-on-accent: #fff;
@@ -322,7 +322,7 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream pressed-toggle paint behind the accent ink (titlebar trail). */
 	--upstream-accent-pressed: rgb(205 226 251);
 	/* Upstream bg-accent-muted: the slash-command chip's hover highlight. */
-	--upstream-accent-muted: rgb(42 120 214 / 0.1);
+	--upstream-accent-muted: rgb(37 125 224 / 0.1);
 	/* Upstream bg-tint-blue: the ⌘K palette's committed filter chips. */
 	--upstream-tint-blue: rgb(118 178 251 / 0.35);
 	--accent-100: hsl(210 70.9% 51.6%);
@@ -385,7 +385,7 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — cds-input field ring (10% ink, 20% on hover) and focus ring */
 	--field-ring-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.1);
 	--field-hover-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.2);
-	--focus-shadow: inset 0 0 0 1px #fcfcfb, 0 0 0 1px #2a78d6, 0 0 6px 1px #cde2fb;
+	--focus-shadow: inset 0 0 0 1px #fcfcfb, 0 0 0 1px #257de0, 0 0 6px 1px #cde2fb;
 	/* Upstream --cds-btn-spring: the overshoot curve a squished button springs back on. */
 	--btn-spring: linear(
 		0,
@@ -433,7 +433,7 @@ html[data-interface-font="dyslexic"] {
 	--git-conflicting: #c5621b;
 	--git-queued: #98801f;
 	--status-dot-awaiting: #fab219;
-	--status-dot-ready: #2a78d6;
+	--status-dot-ready: #257de0;
 
 	/* Upstream claude.ai/code — Settings controls (Switch, SegmentedControl, text field) */
 	--settings-muted: #898781;
@@ -576,7 +576,7 @@ html[data-interface-font="dyslexic"] {
 	--text-pro: #a89af0;
 	--accent-000: hsl(210 65.5% 67.1%);
 	--upstream-accent: #6da7ec;
-	--upstream-fill-accent: #2a78d6;
+	--upstream-fill-accent: #257de0;
 	/* Upstream `--cds-fill-accent-hover` / `--cds-on-accent` (read live from .cds-root 2026-10-29), the same in both modes. */
 	--upstream-fill-accent-hover: #2171ca;
 	--upstream-on-accent: #fff;
@@ -585,7 +585,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-fill-brand-hover: #d97757;
 	--upstream-warning: rgb(219 147 0);
 	--upstream-accent-pressed: #032042;
-	--upstream-accent-muted: rgb(42 120 214 / 0.2);
+	--upstream-accent-muted: rgb(37 125 224 / 0.2);
 	--upstream-tint-blue: rgb(0 36 81 / 0.75);
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
@@ -630,7 +630,7 @@ html[data-interface-font="dyslexic"] {
 	--field-ring-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.1);
 	--field-hover-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.2);
 	/* Upstream dark glow is hsl(from --cds-role-accent-600 / --cds-role-danger-600 h s l / 60%). */
-	--focus-shadow: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #2a78d6, 0 0 6px 1px rgb(24 79 149 / 0.6);
+	--focus-shadow: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(24 79 149 / 0.6);
 	--focus-shadow-danger: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #d03b3b, 0 0 6px 1px rgb(142 38 38 / 0.6);
 	/* Upstream --accent-100 = --_blue-350 (dark). */
 	--focus-outline-color: hsl(212.466 75.2577% 61.9608%);
@@ -1962,8 +1962,8 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 
 .df-search-field:focus-visible {
 	box-shadow:
-		inset 0 0 0 1px var(--color-accent-100, #2a78d6),
-		0 0 6px 0 color-mix(in srgb, #2a78d6 20%, transparent);
+		inset 0 0 0 1px var(--color-accent-100, #257de0),
+		0 0 6px 0 color-mix(in srgb, #257de0 20%, transparent);
 }
 
 .df-search-field-keys {
