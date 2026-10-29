@@ -1,6 +1,8 @@
-import {Fragment, useSyncExternalStore} from "react";
+import {Fragment, useEffect, useState, useSyncExternalStore} from "react";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {
+	PHASE_SETTLE_MS,
+	phaseLabel,
 	workingLineAnnouncement,
 	workingLineParts,
 	workingMarkerText,
@@ -69,6 +71,29 @@ function BlockedStatus({reduceMotion}: Readonly<{reduceMotion: boolean}>) {
 	);
 }
 
+/** Upstream's `g8`: a phase word appears or clears at once, but swapping for another waits out the settle. */
+function useSettledPhase(target: string | null): string | null {
+	const [shown, setShown] = useState(target);
+	const immediate = target === null || shown === null;
+	if (immediate && shown !== target) setShown(target);
+	useEffect(() => {
+		if (target === shown || target === null || shown === null) return undefined;
+		const timer = setTimeout(() => {
+			setShown(target);
+		}, PHASE_SETTLE_MS);
+		return () => {
+			clearTimeout(timer);
+		};
+	}, [target, shown]);
+	return immediate ? target : shown;
+}
+
+function linePhase(state: WorkingMarkerState, sending: boolean): string | null {
+	if (state.status === "working") return phaseLabel({sending, promptSeen: true, firstAssistantSeen: state.replied});
+	if (state.status === "idle") return phaseLabel({sending, promptSeen: false, firstAssistantSeen: false});
+	return null;
+}
+
 function StatDot() {
 	return (
 		<span aria-hidden className="shrink-0 select-none text-ink-muted tabular-nums">
@@ -84,6 +109,8 @@ function StatDot() {
  * is in flight) or done, so the transcript bottom never jumps; a polite
  * sr-only status announces "Working…" instead of the ticking clock. While a
  * prompt waits on the user with no inline card, it says "Needs your input".
+ * Before Claude replies, a phase word ("Sending…", "Waiting for Claude…")
+ * stands in for the stats.
  */
 export function WorkingMarker({
 	state,
@@ -91,6 +118,7 @@ export function WorkingMarker({
 	quiet = false,
 	waitingOnUser = false,
 	inline = false,
+	sending = false,
 }: Readonly<{
 	state: WorkingMarkerState;
 	runningTasks?: number;
@@ -98,12 +126,17 @@ export function WorkingMarker({
 	waitingOnUser?: boolean;
 	/** Nested under the last assistant reply, as upstream's `ps-[inset] -mt-pad-xs` wrapper, not in its own column. */
 	inline?: boolean;
+	/** A prompt sent to the live pane has not reached the transcript yet. */
+	sending?: boolean;
 }>) {
 	const reduceMotion = usePrefersReducedMotion();
+	const phase = useSettledPhase(waitingOnUser ? null : linePhase(state, sending));
 	// Upstream draws no mark while the turn waits on the user.
-	const turnWorking = !waitingOnUser && state.status !== "idle" && state.status !== "waiting";
+	const turnWorking = !waitingOnUser && (phase !== null || (state.status !== "idle" && state.status !== "waiting"));
 	const busy = turnWorking && !quiet;
-	const {label, stats} = workingLineParts(state);
+	const parts = workingLineParts(state);
+	const label = phase ?? parts.label;
+	const stats = phase === null ? parts.stats : [];
 	const tasks = runningTasks > 0;
 	const line = (
 		<div
@@ -129,7 +162,7 @@ export function WorkingMarker({
 						<span className="inline-flex min-w-0 items-center text-secondary">
 							{label !== "" && (
 								<span
-									title={workingMarkerText(state)}
+									title={phase ?? workingMarkerText(state)}
 									className={`truncate whitespace-nowrap${
 										state.status === "stopping" ? ` ${STOPPING_MORPH_CLASS}` : ""
 									}`}
@@ -151,7 +184,11 @@ export function WorkingMarker({
 				</div>
 			)}
 			<span role="status" aria-live="polite" className="sr-only">
-				{waitingOnUser ? NEEDS_INPUT_LABEL : workingLineAnnouncement(state)}
+				{waitingOnUser
+					? NEEDS_INPUT_LABEL
+					: state.status === "idle" && phase !== null
+						? "Working…"
+						: workingLineAnnouncement(state)}
 			</span>
 		</div>
 	);

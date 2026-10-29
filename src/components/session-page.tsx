@@ -1091,6 +1091,8 @@ function SessionView({
 		(promptBehavior.usesHerdr && steeredPrompts(queuedPrompts).length > 0);
 	const workingLineQuiet = tailMarkerQuiet(workingMarkerState, inFlightRow);
 	const runningTaskCount = backgroundTasks.running.length;
+	// Upstream's "sending" phase lasts until the prompt reaches the transcript.
+	const promptSending = liveHerdrPrompt.state.phase === "sending" || liveHerdrPrompt.state.phase === "sent";
 	const workingLine = useCallback(
 		(inline: boolean) => (
 			<WorkingMarker
@@ -1099,9 +1101,10 @@ function SessionView({
 				waitingOnUser={workingLineWaits}
 				runningTasks={runningTaskCount}
 				inline={inline}
+				sending={promptSending}
 			/>
 		),
-		[workingMarkerState, workingLineQuiet, workingLineWaits, runningTaskCount],
+		[workingMarkerState, workingLineQuiet, workingLineWaits, runningTaskCount, promptSending],
 	);
 	const transcriptTail = useMemo(
 		() => (workingLineFollowsTranscript ? null : workingLine(true)),

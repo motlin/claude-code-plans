@@ -24,7 +24,15 @@ export type WorkingMarkerState =
 	| {status: "stopping"}
 	/** Blocked on a tool permission prompt: a still spark with no status text. */
 	| {status: "waiting"}
-	| {status: "working"; label: string; thinking: boolean; turnStartedAt: number; elapsedSeconds: number}
+	| {
+			status: "working";
+			label: string;
+			thinking: boolean;
+			/** Any response has landed since the turn's prompt; until then upstream says "Waiting for Claude…". */
+			replied: boolean;
+			turnStartedAt: number;
+			elapsedSeconds: number;
+	  }
 	| {
 			status: "retrying";
 			error: string;
@@ -42,25 +50,33 @@ interface Turn {
 	retry: {attempt: number; maxRetries: number; error: string} | null;
 	stopping: boolean;
 	thinking: boolean;
+	replied: boolean;
 }
 
 export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: number): WorkingMarkerState {
 	let turn: Turn | null = null;
 	for (const event of events) {
 		if (event.kind === "prompt") {
-			turn = {startedAt: event.at, label: WORKING_LABEL, retry: null, stopping: false, thinking: false};
+			turn = {
+				startedAt: event.at,
+				label: WORKING_LABEL,
+				retry: null,
+				stopping: false,
+				thinking: false,
+				replied: false,
+			};
 			continue;
 		}
 		if (turn === null) continue;
 		switch (event.kind) {
 			case "tool":
-				turn = {...turn, label: event.label, retry: null, thinking: false};
+				turn = {...turn, label: event.label, retry: null, thinking: false, replied: true};
 				break;
 			case "progress":
-				turn = {...turn, label: WORKING_LABEL, retry: null, thinking: false};
+				turn = {...turn, label: WORKING_LABEL, retry: null, thinking: false, replied: true};
 				break;
 			case "thinking":
-				turn = {...turn, label: WORKING_LABEL, retry: null, thinking: true};
+				turn = {...turn, label: WORKING_LABEL, retry: null, thinking: true, replied: true};
 				break;
 			case "retry":
 				turn = {
@@ -92,6 +108,7 @@ export function workingMarkerState(events: readonly WorkingMarkerEvent[], now: n
 		status: "working",
 		label: turn.label,
 		thinking: turn.thinking,
+		replied: turn.replied,
 		turnStartedAt: turn.startedAt,
 		elapsedSeconds,
 	};
@@ -183,6 +200,23 @@ export function workingLineWaitsOnUser({
 	cardShown,
 }: Readonly<{awaitingPermission: boolean; sessionState: SessionSummaryState | null; cardShown: boolean}>): boolean {
 	return (awaitingPermission || sessionState === "waiting") && !cardShown;
+}
+
+/** Upstream's settle (`TTe`) before one phase word swaps for the next. */
+export const PHASE_SETTLE_MS = 150;
+
+/**
+ * Upstream's pre-stream phase word (`l8`): "Sending…" while a live-pane
+ * prompt is on its way to the transcript, then "Waiting for Claude…" from the
+ * turn's prompt until its first response. Null once Claude has replied.
+ */
+export function phaseLabel({
+	sending,
+	promptSeen,
+	firstAssistantSeen,
+}: Readonly<{sending: boolean; promptSeen: boolean; firstAssistantSeen: boolean}>): string | null {
+	if (promptSeen) return firstAssistantSeen ? null : "Waiting for Claude…";
+	return sending ? "Sending…" : null;
 }
 
 /** The working line's visible pieces: an optional label, then "·"-joined stats. */

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render, renderHook} from "@testing-library/react";
+import {act, cleanup, render, renderHook} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {WorkingMarker} from "../src/components/working-marker";
@@ -9,6 +9,8 @@ import {useWorkingMarkerState} from "../src/components/use-working-marker-state"
 import {
 	formatElapsed,
 	formatPaddedElapsed,
+	PHASE_SETTLE_MS,
+	phaseLabel,
 	markerEventsFromRecords,
 	tailMarkerQuiet,
 	toolActivityLabel,
@@ -53,6 +55,7 @@ describe("workingMarkerState", () => {
 			status: "working",
 			label: "Working…",
 			thinking: false,
+			replied: false,
 			turnStartedAt: at(0),
 			elapsedSeconds: 65,
 		});
@@ -67,6 +70,7 @@ describe("workingMarkerState", () => {
 			status: "working",
 			label: "Reading app.ts",
 			thinking: false,
+			replied: true,
 			turnStartedAt: at(0),
 			elapsedSeconds: 3,
 		});
@@ -74,6 +78,7 @@ describe("workingMarkerState", () => {
 			status: "working",
 			label: "Working…",
 			thinking: false,
+			replied: true,
 			turnStartedAt: at(0),
 			elapsedSeconds: 5,
 		});
@@ -96,6 +101,7 @@ describe("workingMarkerState", () => {
 			status: "working",
 			label: "Working…",
 			thinking: false,
+			replied: true,
 			turnStartedAt: at(0),
 			elapsedSeconds: 21,
 		});
@@ -123,6 +129,7 @@ describe("workingMarkerState", () => {
 			status: "working",
 			label: "Working…",
 			thinking: false,
+			replied: false,
 			turnStartedAt: at(40),
 			elapsedSeconds: 5,
 		});
@@ -147,9 +154,30 @@ describe("workingMarkerState", () => {
 			after: workingMarkerState([...thinking, {kind: "progress", at: at(10)}], at(11)),
 			tool: workingMarkerState([...thinking, {kind: "tool", at: at(10), label: "Reading a.ts"}], at(11)),
 		}).toStrictEqual({
-			thinking: {status: "working", label: "Working…", thinking: true, turnStartedAt: at(0), elapsedSeconds: 9},
-			after: {status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 11},
-			tool: {status: "working", label: "Reading a.ts", thinking: false, turnStartedAt: at(0), elapsedSeconds: 11},
+			thinking: {
+				status: "working",
+				label: "Working…",
+				thinking: true,
+				replied: true,
+				turnStartedAt: at(0),
+				elapsedSeconds: 9,
+			},
+			after: {
+				status: "working",
+				label: "Working…",
+				thinking: false,
+				replied: true,
+				turnStartedAt: at(0),
+				elapsedSeconds: 11,
+			},
+			tool: {
+				status: "working",
+				label: "Reading a.ts",
+				thinking: false,
+				replied: true,
+				turnStartedAt: at(0),
+				elapsedSeconds: 11,
+			},
 		});
 	});
 
@@ -158,6 +186,7 @@ describe("workingMarkerState", () => {
 			status: "working",
 			label: "Working…",
 			thinking: false,
+			replied: false,
 			turnStartedAt: at(10),
 			elapsedSeconds: 0,
 		});
@@ -169,6 +198,7 @@ describe("tailMarkerQuiet", () => {
 		status: "working",
 		label: "Recheck SSH auth",
 		thinking: false,
+		replied: true,
 		turnStartedAt: 0,
 		elapsedSeconds: 24,
 	} as const;
@@ -222,6 +252,7 @@ describe("workingMarkerText", () => {
 				status: "working",
 				label: "Working…",
 				thinking: false,
+				replied: true,
 				turnStartedAt: at(0),
 				elapsedSeconds: 65,
 			}),
@@ -243,6 +274,7 @@ describe("workingMarkerText", () => {
 				status: "working",
 				label: "Working…",
 				thinking: false,
+				replied: true,
 				turnStartedAt: at(0),
 				elapsedSeconds,
 			});
@@ -269,6 +301,7 @@ describe("workingMarkerText thinking", () => {
 				status: "working",
 				label: "Working…",
 				thinking: true,
+				replied: true,
 				turnStartedAt: at(0),
 				elapsedSeconds,
 			});
@@ -285,6 +318,7 @@ describe("workingLineAnnouncement", () => {
 				status: "working",
 				label: "Reading a.ts",
 				thinking: false,
+				replied: true,
 				turnStartedAt: at(0),
 				elapsedSeconds: 9,
 			}),
@@ -497,6 +531,7 @@ describe("WorkingMarker", () => {
 					status: "working",
 					label: "Reading app.ts",
 					thinking: false,
+					replied: true,
 					turnStartedAt: at(0),
 					elapsedSeconds: 7,
 				}}
@@ -542,7 +577,14 @@ describe("WorkingMarker", () => {
 		stubReducedMotion(false);
 		const {container} = render(
 			<WorkingMarker
-				state={{status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 3}}
+				state={{
+					status: "working",
+					label: "Working…",
+					thinking: false,
+					replied: true,
+					turnStartedAt: at(0),
+					elapsedSeconds: 3,
+				}}
 				quiet
 			/>,
 		);
@@ -566,7 +608,14 @@ describe("WorkingMarker", () => {
 		stubReducedMotion(false);
 		const {container} = render(
 			<WorkingMarker
-				state={{status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 3}}
+				state={{
+					status: "working",
+					label: "Working…",
+					thinking: false,
+					replied: true,
+					turnStartedAt: at(0),
+					elapsedSeconds: 3,
+				}}
 				runningTasks={4}
 			/>,
 		);
@@ -608,7 +657,14 @@ describe("WorkingMarker", () => {
 		stubReducedMotion(false);
 		const {container} = render(
 			<WorkingMarker
-				state={{status: "working", label: "Working…", thinking: true, turnStartedAt: at(0), elapsedSeconds: 9}}
+				state={{
+					status: "working",
+					label: "Working…",
+					thinking: true,
+					replied: true,
+					turnStartedAt: at(0),
+					elapsedSeconds: 9,
+				}}
 			/>,
 		);
 		const status = container.querySelector('[data-cds="TurnStatus"]');
@@ -623,7 +679,14 @@ describe("WorkingMarker", () => {
 		stubReducedMotion(true);
 		const {container} = render(
 			<WorkingMarker
-				state={{status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 1}}
+				state={{
+					status: "working",
+					label: "Working…",
+					thinking: false,
+					replied: true,
+					turnStartedAt: at(0),
+					elapsedSeconds: 1,
+				}}
 			/>,
 		);
 		expect(container.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-animated")).toStrictEqual(
@@ -702,7 +765,7 @@ describe("useWorkingMarkerState", () => {
 				isActive: false,
 				pendingToolName: undefined,
 			}),
-		]).toStrictEqual(["3s", "3s", "", "", "", "3s", ""]);
+		]).toStrictEqual(["Waiting for Claude…", "3s", "", "", "", "Waiting for Claude…", ""]);
 	});
 
 	it("shows no mark while an inline card holds the mark for a waiting prompt, as upstream does", () => {
@@ -773,7 +836,14 @@ describe("useWorkingMarkerState", () => {
 		}).toStrictEqual({
 			idle: {status: "idle"},
 			idleKept: true,
-			working: {status: "working", label: "Working…", thinking: false, turnStartedAt: at(0), elapsedSeconds: 3},
+			working: {
+				status: "working",
+				label: "Working…",
+				thinking: false,
+				replied: false,
+				turnStartedAt: at(0),
+				elapsedSeconds: 3,
+			},
 			workingKept: true,
 		});
 	});
@@ -799,5 +869,97 @@ describe("workingLineWaitsOnUser", () => {
 			false,
 			false,
 		]);
+	});
+});
+
+describe("phaseLabel", () => {
+	it("says Sending… until the prompt lands, then Waiting for Claude… until the first reply, as upstream's pre-stream phases", () => {
+		expect(
+			[
+				{sending: false, promptSeen: false, firstAssistantSeen: false},
+				{sending: true, promptSeen: false, firstAssistantSeen: false},
+				{sending: true, promptSeen: true, firstAssistantSeen: false},
+				{sending: false, promptSeen: true, firstAssistantSeen: false},
+				{sending: false, promptSeen: true, firstAssistantSeen: true},
+				{sending: true, promptSeen: true, firstAssistantSeen: true},
+			].map((input) => phaseLabel(input)),
+		).toStrictEqual([null, "Sending…", "Waiting for Claude…", "Waiting for Claude…", null, null]);
+	});
+
+	it("settles label swaps for upstream's 150ms", () => {
+		expect(PHASE_SETTLE_MS).toBe(150);
+	});
+});
+
+describe("WorkingMarker pre-stream phases", () => {
+	const UNREPLIED = {
+		status: "working",
+		label: "Working…",
+		thinking: false,
+		replied: false,
+		turnStartedAt: at(0),
+		elapsedSeconds: 5,
+	} as const;
+
+	function phaseView(container: HTMLElement) {
+		const line = container.querySelector('[data-testid="code-working-line"]');
+		return {
+			turnWorking: line?.getAttribute("data-turn-working"),
+			state: container.querySelector('[data-cds="TurnStatus"]')?.getAttribute("data-state"),
+			activity: container.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-activity"),
+			visible: visibleLineText(container),
+			announcer: container.querySelector("[role=status]")?.textContent,
+		};
+	}
+
+	it("draws a busy Sending… line while a live-pane prompt is in flight with no open turn", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={{status: "idle"}} sending />);
+		expect(phaseView(container)).toStrictEqual({
+			turnWorking: "true",
+			state: "busy",
+			activity: "default",
+			visible: "Sending…",
+			announcer: "Working…",
+		});
+	});
+
+	it("says Waiting for Claude… in place of the stats until the turn's first reply", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={UNREPLIED} />);
+		expect(phaseView(container)).toStrictEqual({
+			turnWorking: "true",
+			state: "busy",
+			activity: "default",
+			visible: "Waiting for Claude…",
+			announcer: "Working…",
+		});
+	});
+
+	it("holds the earlier phase word for 150ms before swapping to the next, so fast transitions don't flash", () => {
+		vi.useFakeTimers();
+		stubReducedMotion(false);
+		const view = render(<WorkingMarker state={{status: "idle"}} sending />);
+		view.rerender(<WorkingMarker state={UNREPLIED} />);
+		const held = visibleLineText(view.container);
+		act(() => {
+			vi.advanceTimersByTime(149);
+		});
+		const before = visibleLineText(view.container);
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+		expect({held, before, after: visibleLineText(view.container)}).toStrictEqual({
+			held: "Sending…",
+			before: "Sending…",
+			after: "Waiting for Claude…",
+		});
+	});
+
+	it("drops the phase word as soon as the first reply lands", () => {
+		stubReducedMotion(false);
+		const view = render(<WorkingMarker state={UNREPLIED} />);
+		view.rerender(<WorkingMarker state={{...UNREPLIED, replied: true}} />);
+		expect(visibleLineText(view.container)).toBe("5s");
 	});
 });
