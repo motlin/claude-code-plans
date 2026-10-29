@@ -54,10 +54,10 @@
 		"raisedAt": "2026-10-28"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1245529,
+		"ceiling": 1258308,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Verdict elicitation card (2026-10-29): the events provider now patches the pending-elicitations query from session:elicitation-changed (its response schema and cache patcher ship with the provider on every page), on top of the growth since the 2026-10-27 Next steps raise. Raw went from 1233094 to 1245529, about 100 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Custom command detail (2026-10-29): Customize › Skills command rows now open a /customize/skills/command/$source/$filename detail, so the client entry carries one more route-tree entry and the shared customize chunk the new command navigation target. Raw went from 1256924 to 1258308 (+1384), about 320 bytes past the 1% tolerance over the 2026-10-29 elicitation ceiling. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.gzip": {

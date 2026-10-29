@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {queryOptions} from "@tanstack/react-query";
 import {formatMarketplaceName, isOfficialMarketplace} from "../marketplace-labels";
+import {toMdSlug} from "../md-slug";
 import {apiFetch} from "./client";
 
 export const PluginFileSchema = z.object({
@@ -74,6 +75,7 @@ export const UserCommandFileResponse = z
 		sourceName: z.string(),
 	})
 	.nullable();
+export type UserCommandFile = NonNullable<z.infer<typeof UserCommandFileResponse>>;
 
 export type PluginMarketplaceGroup = {
 	marketplace: {id: string; displayName: string};
@@ -124,3 +126,15 @@ export const userCommandsQueryOptions = queryOptions({
 	queryFn: async () => apiFetch("/api/plugins/user-commands", UserCommandListResponse),
 	staleTime: PLUGINS_STALE_TIME_MS,
 });
+
+/** One custom command's markdown, by its source (`global` or a project id) and on-disk `.md` filename. */
+export const userCommandFileQueryOptions = (source: string, filename: string) =>
+	queryOptions({
+		queryKey: ["plugins", "user-commands", source, filename] as const,
+		queryFn: async () =>
+			apiFetch(
+				`/api/plugins/user-commands/${encodeURIComponent(source)}/${encodeURIComponent(toMdSlug(filename))}`,
+				UserCommandFileResponse,
+			),
+		staleTime: PLUGINS_STALE_TIME_MS,
+	});

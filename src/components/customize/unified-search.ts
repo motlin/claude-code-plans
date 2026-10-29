@@ -107,7 +107,7 @@ export function buildUnifiedSearch(sources: UnifiedSearchSources, q: string): Un
 		description: row.description,
 		verified: false,
 		match: matchRange(row.invocation, term),
-		open: null,
+		open: {kind: "command", source: row.source, filename: row.filename},
 		actions: null,
 	}));
 

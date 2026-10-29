@@ -1,4 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
+import {SquareSlash} from "lucide-react";
 import type {ReactElement, ReactNode} from "react";
 import {
 	customizeMcpServerDetailQueryOptions,
@@ -12,6 +13,9 @@ import {CustomizeNotice} from "./customize-empty";
 import {CustomizeBackLink} from "./customize-nav";
 import {PluginDetailHeader} from "./plugin-detail";
 import {SkillDetailHeader} from "./skill-detail";
+import {IconTile} from "./icon-tile";
+import {MarkdownView} from "../markdown-view";
+import {userCommandFileQueryOptions} from "../../lib/api/plugins";
 
 /** Where a detail renders: a /customize page, or the Settings dialog's fixed-header pane. */
 export type DetailLayout = "page" | "dialog";
@@ -179,6 +183,52 @@ export function ConnectorDetailFrame({
 	return (
 		<DetailShell layout={layout} header={<ConnectorDetailHeader detail={data} />} pageClassName="flex flex-col">
 			<ToolPermissions detail={data} detailQueryKey={query.queryKey} />
+		</DetailShell>
+	);
+}
+
+/** Custom command detail: back link and `/name` header over the command file's rendered markdown. */
+export function CommandDetailFrame({
+	source,
+	filename,
+	layout = "page",
+}: {
+	source: string;
+	filename: string;
+	layout?: DetailLayout;
+}): ReactElement {
+	const {data, isPending, isError} = useQuery(userCommandFileQueryOptions(source, filename));
+	if (isPending || isError || data === null) {
+		return pendingOrMissing({
+			layout,
+			isPending,
+			loading: "Loading command…",
+			back: <CustomizeBackLink section="skills">Your skills</CustomizeBackLink>,
+			notFound: (
+				<CustomizeNotice
+					title="Command not found"
+					body="It may have been removed or renamed since the list was loaded."
+				/>
+			),
+		});
+	}
+	const header = (
+		<header className="flex flex-col gap-4">
+			<CustomizeBackLink section="skills">Your skills</CustomizeBackLink>
+			<div className="flex min-w-0 items-start gap-4">
+				<IconTile icon={SquareSlash} size="lg" />
+				<div className="flex min-w-0 flex-col gap-0.5">
+					<h2 className="m-0 min-w-0 truncate text-[15px]/[20px] font-[580] text-primary">
+						/{filename.replace(/\.md$/, "")}
+					</h2>
+					<p className="m-0 break-words text-footnote text-muted-as-secondary">from {data.sourceName}</p>
+				</div>
+			</div>
+		</header>
+	);
+	return (
+		<DetailShell layout={layout} header={header} pageClassName="flex flex-col gap-6">
+			<MarkdownView markdown={data.markdown} />
 		</DetailShell>
 	);
 }

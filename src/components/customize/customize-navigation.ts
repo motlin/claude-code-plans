@@ -3,13 +3,16 @@ import {createContext, useContext} from "react";
 import type {PluginTabId} from "./plugin-view";
 import type {CustomizeSearch, CustomizeSectionId} from "./sections";
 import {assertNever} from "../../lib/assert-never";
+import {toMdSlug} from "../../lib/md-slug";
 
-/** A place inside Customize: a section list, or a skill, plugin or connector detail tab. */
+/** A place inside Customize: a section list, or a skill, plugin, connector or custom command detail. */
 export type CustomizeTarget =
 	| {kind: "list"; section: CustomizeSectionId; search?: CustomizeSearch}
 	| {kind: "skill"; id: string; tab: "overview" | "contents"}
 	| {kind: "plugin"; id: string; tab: PluginTabId; file?: string}
-	| {kind: "connector"; slug: string};
+	| {kind: "connector"; slug: string}
+	/** A custom (legacy) command, by source (`global` or a project id) and on-disk `.md` filename. */
+	| {kind: "command"; source: string; filename: string};
 
 /**
  * How Customize links move. Without a provider they go to the /customize
@@ -61,6 +64,11 @@ export function routeOptions(target: CustomizeTarget) {
 				: linkOptions({to: PLUGIN_TAB_ROUTES[target.tab], params: {pluginId: target.id}});
 		case "connector":
 			return linkOptions({to: "/customize/connectors/id/$serverId", params: {serverId: target.slug}});
+		case "command":
+			return linkOptions({
+				to: "/customize/skills/command/$source/$filename",
+				params: {source: target.source, filename: toMdSlug(target.filename)},
+			});
 		default:
 			return assertNever(target);
 	}

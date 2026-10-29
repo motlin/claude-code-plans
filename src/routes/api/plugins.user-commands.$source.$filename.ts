@@ -7,7 +7,7 @@ export const Route = createFileRoute("/api/plugins/user-commands/$source/$filena
 	server: {
 		handlers: withMethodNotAllowed({
 			GET: async ({params}: {params: {source: string; filename: string}}) => {
-				const {readUserCommandContent} = await import("../../lib/plugins");
+				const {parseFrontmatter, readUserCommandContent} = await import("../../lib/plugins");
 				const {getDb} = await import("../../lib/db");
 				const {listProjectCommandSourcesFromDb} = await import("../../lib/db/queries");
 				const {extractTitleFromContent} = await import("../../lib/markdown-utils");
@@ -27,13 +27,14 @@ export const Route = createFileRoute("/api/plugins/user-commands/$source/$filena
 					});
 				}
 
-				const title = extractTitleFromContent(content, filename);
+				const {body} = parseFrontmatter(content);
+				const title = extractTitleFromContent(body, filename);
 				const sourceName =
 					params.source === "global" ? "Global" : decodeProjectDir(params.source, projectPath ?? undefined);
 
 				return Response.json(
 					UserCommandFileResponse.parse({
-						markdown: content,
+						markdown: body,
 						title,
 						sourceName,
 					}),

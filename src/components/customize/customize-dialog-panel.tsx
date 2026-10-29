@@ -4,11 +4,12 @@ import {type CustomizeLocation, type CustomizeSection, customizeHash} from "../.
 import {ContentsViewer} from "./contents-viewer";
 import {CustomizeHeader} from "./customize-header";
 import {CustomizeNavContext, type CustomizeNavigator, type CustomizeTarget} from "./customize-navigation";
-import {ConnectorDetailFrame, PluginDetailFrame, SkillDetailFrame} from "./detail-frames";
+import {CommandDetailFrame, ConnectorDetailFrame, PluginDetailFrame, SkillDetailFrame} from "./detail-frames";
 import {PluginConnectors, PluginFiles, PluginHooks, PluginOverview, PluginSkills} from "./plugin-detail";
 import {ConnectorsSection, PluginsSection, SkillsSection} from "./section-views";
 import {CUSTOMIZE_SECTIONS, type CustomizeSearch, dropEmpty} from "./sections";
 import {SkillOverview} from "./skill-detail";
+import {commandDetailId, parseCommandDetailId} from "./skills-view";
 import {CustomizeUnifiedSearch} from "./customize-unified-search";
 import type {UnifiedHit} from "./unified-search";
 import type {UnifiedSectionId} from "./unified-search-results";
@@ -37,6 +38,8 @@ function targetHash(target: CustomizeTarget, withFile = true): string {
 			});
 		case "connector":
 			return customizeHash({section: "connectors", id: target.slug});
+		case "command":
+			return customizeHash({section: "skills", id: commandDetailId(target.source, target.filename)});
 		default:
 			return assertNever(target);
 	}
@@ -65,6 +68,8 @@ function openedDetail(target: CustomizeTarget): {section: CustomizeSection; id: 
 			return {section: "plugins", id: target.id};
 		case "connector":
 			return {section: "connectors", id: target.slug};
+		case "command":
+			return {section: "skills", id: commandDetailId(target.source, target.filename)};
 		default:
 			return assertNever(target);
 	}
@@ -232,7 +237,11 @@ function SectionBody({location, search}: {location: CustomizeLocation; search: C
 
 function DetailBody({location, id}: {location: CustomizeLocation; id: string}) {
 	switch (location.section) {
-		case "skills":
+		case "skills": {
+			const command = parseCommandDetailId(id);
+			if (command !== null) {
+				return <CommandDetailFrame source={command.source} filename={command.filename} layout="dialog" />;
+			}
 			return (
 				<SkillDetailFrame skillId={id} layout="dialog">
 					{(detail) =>
@@ -248,6 +257,7 @@ function DetailBody({location, id}: {location: CustomizeLocation; id: string}) {
 					}
 				</SkillDetailFrame>
 			);
+		}
 		case "connectors":
 			return <ConnectorDetailFrame serverId={id} layout="dialog" />;
 		case "plugins":

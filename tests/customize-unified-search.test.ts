@@ -185,7 +185,7 @@ describe("buildUnifiedSearch", () => {
 					description: "Check servers",
 					verified: false,
 					match: [1, 4],
-					open: null,
+					open: {kind: "command", source: "personal", filename: "mcp-check.md"},
 					actions: null,
 				},
 				{

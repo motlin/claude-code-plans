@@ -52,6 +52,9 @@ export function SkillsSection({search}: SectionProps) {
 			source: `from ${row.sourceName}`,
 			subtitle: row.description,
 			meta: <ScopeBadge>Custom command</ScopeBadge>,
+			onView: () => {
+				go({kind: "command", source: row.source, filename: row.filename});
+			},
 		})),
 	};
 	const showOnboarding =

@@ -346,6 +346,10 @@ function legacyRouter(initialEntry: string) {
 		getParentRoute: () => rootRoute,
 		path: "/customize/skills",
 	});
+	const commandDetail = createRoute({
+		getParentRoute: () => rootRoute,
+		path: "/customize/skills/command/$source/$filename",
+	});
 	return createRouter({
 		routeTree: rootRoute.addChildren([
 			pluginsRoute,
@@ -355,6 +359,7 @@ function legacyRouter(initialEntry: string) {
 			pluginDetail,
 			pluginContents,
 			customizeSkills,
+			commandDetail,
 		]),
 		history: createMemoryHistory({initialEntries: [initialEntry]}),
 	});
@@ -368,7 +373,7 @@ async function landing(initialEntry: string) {
 }
 
 describe("legacy route redirects", () => {
-	it("send /plugins, /plugin/$id/$type/$ and /command/$source/$filename into Customize", async () => {
+	it("send /plugins, /plugin/$id/$type/$ and /command/$source/$filename into their Customize details", async () => {
 		expect([
 			await landing("/plugins"),
 			await landing("/plugins#tools@market"),
@@ -388,7 +393,7 @@ describe("legacy route redirects", () => {
 				search: "?file=agents%2Freviewer.md",
 				hash: "",
 			},
-			{pathname: "/customize/skills", search: "?filter=command", hash: ""},
+			{pathname: "/customize/skills/command/global/ship", search: "", hash: ""},
 		]);
 	});
 });
@@ -426,12 +431,16 @@ describe("commandRows", () => {
 			[
 				{
 					key: "global:audit.md",
+					source: "global",
+					filename: "audit.md",
 					invocation: "/audit",
 					sourceName: "Global",
 					description: "Audits deps",
 				},
 				{
 					key: "global:ship.md",
+					source: "global",
+					filename: "ship.md",
 					invocation: "/ship",
 					sourceName: "Global",
 					description: "Ships it",
@@ -440,6 +449,8 @@ describe("commandRows", () => {
 			[
 				{
 					key: "global:ship.md",
+					source: "global",
+					filename: "ship.md",
 					invocation: "/ship",
 					sourceName: "Global",
 					description: "Ships it",

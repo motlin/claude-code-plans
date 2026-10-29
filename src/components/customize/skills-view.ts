@@ -71,6 +71,8 @@ export function skillInvocation(skill: SkillSummary): string {
 
 export interface CommandRow {
 	key: string;
+	source: string;
+	filename: string;
 	invocation: string;
 	sourceName: string;
 	description: string;
@@ -91,6 +93,8 @@ export function commandRows(
 		.flatMap((group) =>
 			group.commands.map((command) => ({
 				key: `${group.source}:${command.filename}`,
+				source: group.source,
+				filename: command.filename,
 				invocation: `/${command.filename.replace(/\.md$/, "")}`,
 				sourceName: group.sourceName,
 				description: command.description,
@@ -98,4 +102,23 @@ export function commandRows(
 		)
 		.filter((row) => matchesQuery(q, row.invocation, row.description, row.sourceName))
 		.toSorted((a, b) => a.invocation.localeCompare(b.invocation) || a.key.localeCompare(b.key));
+}
+
+const COMMAND_ID_PREFIX = "command:";
+
+/**
+ * The Settings dialog's detail id for a custom command (`#customize/skills/yours/id/<id>`).
+ * Skill ids start with their source (`personal:`, `project:`, `plugin:`), so the prefix can't collide.
+ */
+export function commandDetailId(source: string, filename: string): string {
+	return `${COMMAND_ID_PREFIX}${source}:${filename}`;
+}
+
+/** The command a `commandDetailId` names, or null for a skill id. */
+export function parseCommandDetailId(id: string): {source: string; filename: string} | null {
+	if (!id.startsWith(COMMAND_ID_PREFIX)) return null;
+	const rest = id.slice(COMMAND_ID_PREFIX.length);
+	const colon = rest.lastIndexOf(":");
+	if (colon <= 0 || colon === rest.length - 1) return null;
+	return {source: rest.slice(0, colon), filename: rest.slice(colon + 1)};
 }

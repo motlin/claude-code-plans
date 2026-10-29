@@ -32,7 +32,14 @@ import {
 	type SkillDetail,
 	type SkillSummary,
 } from "../src/lib/api/customize";
-import {pluginsQueryOptions, userCommandsQueryOptions} from "../src/lib/api/plugins";
+import {
+	pluginsQueryOptions,
+	type UserCommandFile,
+	type UserCommandGroupData,
+	userCommandFileQueryOptions,
+	userCommandsQueryOptions,
+} from "../src/lib/api/plugins";
+import {routeOptions} from "../src/components/customize/customize-navigation";
 import {PHONE_SHEET_QUERY, SETTINGS_WIDE_QUERY} from "../src/lib/use-phone-sheet";
 import {parseCustomizeHash} from "../src/lib/settings-hash";
 import {Route as CustomizeLayoutRoute} from "../src/routes/customize";
@@ -1483,7 +1490,14 @@ async function renderDialogPanel(
 	{
 		skills = [...SKILLS, ...EXTRA_SKILLS],
 		catalog = DISCOVER,
-	}: {skills?: SkillSummary[]; catalog?: DiscoverCatalog} = {},
+		commands = [],
+		seed = () => undefined,
+	}: {
+		skills?: SkillSummary[];
+		catalog?: DiscoverCatalog;
+		commands?: UserCommandGroupData[];
+		seed?: (queryClient: QueryClient) => void;
+	} = {},
 ) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(customizeSkillsQueryOptions.queryKey, skills);
@@ -1491,11 +1505,12 @@ async function renderDialogPanel(
 		const detail: SkillDetail = {skill, userInvocable: true, modelInvocable: true, allowedTools: [], tree: []};
 		queryClient.setQueryData(customizeSkillDetailQueryOptions(skill.id).queryKey, detail);
 	}
-	queryClient.setQueryData(userCommandsQueryOptions.queryKey, []);
+	queryClient.setQueryData(userCommandsQueryOptions.queryKey, commands);
 	queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, MCP_SERVERS);
 	queryClient.setQueryData(customizeClaudeAiConnectorsQueryOptions.queryKey, []);
 	queryClient.setQueryData(customizeDiscoverQueryOptions.queryKey, catalog);
 	queryClient.setQueryData(pluginsQueryOptions.queryKey, []);
+	seed(queryClient);
 	const hashes: string[] = [initialHash];
 
 	function Harness() {
@@ -2080,5 +2095,56 @@ describe("customize first-run card in the dialog", () => {
 		fireEvent.click(within(card).getByRole("button", {name: "Discover plugins"}));
 		await flush();
 		expect(hashes).toStrictEqual(["customize/plugins/yours", "customize/plugins"]);
+	});
+});
+
+const DEPLOY_COMMANDS: UserCommandGroupData[] = [
+	{
+		source: "global",
+		sourceName: "Global",
+		commands: [
+			{filename: "deploy.md", name: "deploy", description: "Ship the web app.", type: "command", frontmatter: {}},
+		],
+	},
+];
+
+const DEPLOY_FILE: UserCommandFile = {
+	markdown: "# Deploy\n\nRun **just deploy** from the repo root.",
+	title: "Deploy",
+	sourceName: "Global",
+};
+
+describe("custom command rows", () => {
+	it("opens a command row's detail with its rendered markdown body", async () => {
+		const hashes = await renderDialogPanel("customize/skills/yours", {
+			commands: DEPLOY_COMMANDS,
+			seed: (queryClient) => {
+				queryClient.setQueryData(userCommandFileQueryOptions("global", "deploy.md").queryKey, DEPLOY_FILE);
+			},
+		});
+
+		fireEvent.click(screen.getByRole("button", {name: "View /deploy"}));
+		const body = await screen.findByText("just deploy");
+
+		expect({
+			hashes,
+			title: screen.getByRole("heading", {level: 2}).textContent,
+			byline: screen.getByText("from Global").textContent,
+			heading: screen.getByRole("heading", {level: 1}).textContent,
+			bold: body.tagName,
+		}).toStrictEqual({
+			hashes: ["customize/skills/yours", "customize/skills/yours/id/command%3Aglobal%3Adeploy.md"],
+			title: "/deploy",
+			byline: "from Global",
+			heading: "Deploy",
+			bold: "STRONG",
+		});
+	});
+
+	it("routes a command target to its /customize/skills/command page with the .md dropped", () => {
+		expect(routeOptions({kind: "command", source: "global", filename: "deploy.md"})).toStrictEqual({
+			to: "/customize/skills/command/$source/$filename",
+			params: {source: "global", filename: "deploy"},
+		});
 	});
 });
