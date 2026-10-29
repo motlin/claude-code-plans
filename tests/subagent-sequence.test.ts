@@ -1,4 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
+import {createElement} from "react";
+import {renderToStaticMarkup} from "react-dom/server";
+import {SubagentSequence} from "../src/components/subagent-sequence";
 import {layoutSequence, type SequenceLayout} from "../src/components/subagent-sequence-layout";
 import type {DbSubagent} from "../src/lib/db/queries";
 
@@ -278,5 +281,58 @@ describe("layoutSequence", () => {
 		];
 		const layout = layoutSequence(agents);
 		expect(layout.lifelines.map((l) => l.agent.id)).toStrictEqual(["parent", "p1", "p2"]);
+	});
+});
+
+describe("layoutSequence workflow runs", () => {
+	const at = (seconds: number) => `1999-12-31T00:00:${String(seconds).padStart(2, "0")}.000Z`;
+	const workflowAgents = [
+		makeAgent({id: "b1", workflowRunId: "wf_b", startedAt: at(30), finishedAt: at(40)}),
+		makeAgent({id: "a3", workflowRunId: "wf_a", workflowPhaseIndex: 1, startedAt: at(20), finishedAt: at(25)}),
+		makeAgent({id: "x", startedAt: at(15), finishedAt: at(18)}),
+		makeAgent({
+			id: "a2",
+			workflowRunId: "wf_a",
+			workflowPhaseIndex: 2,
+			workflowPhase: "Diff",
+			startedAt: at(12),
+			finishedAt: at(14),
+		}),
+		makeAgent({id: "a1", workflowRunId: "wf_a", workflowPhaseIndex: 1, startedAt: at(10), finishedAt: at(11)}),
+	];
+
+	it("puts each run's agents in adjacent columns under a run header instead of interleaving", () => {
+		const layout = layoutSequence(workflowAgents, {workflowRuns: [{runId: "wf_a", workflowName: "poems"}]});
+		expect(layout.lifelines.map((lane) => [lane.agent.id, lane.column])).toStrictEqual([
+			["a1", 0],
+			["a3", 1],
+			["a2", 2],
+			["x", 3],
+			["b1", 4],
+		]);
+		expect(layout.groups).toStrictEqual([
+			{runId: "wf_a", name: "poems", phaseTitle: "Phase 1", firstColumn: 0, columnCount: 2},
+			{runId: "wf_a", name: "poems", phaseTitle: "Diff", firstColumn: 2, columnCount: 1},
+			{runId: "wf_b", name: "wf_b", phaseTitle: "Agents", firstColumn: 4, columnCount: 1},
+		]);
+	});
+
+	it("labels a run once above its columns and each phase above its own", () => {
+		const html = renderToStaticMarkup(
+			createElement(SubagentSequence, {
+				agents: workflowAgents,
+				workflowRuns: [{runId: "wf_a", workflowName: "poems"}],
+			}),
+		);
+		expect(html.match(/>poems</g)).toStrictEqual([">poems<"]);
+		expect(html).toContain(">Phase 1<");
+		expect(html).toContain(">Diff<");
+		expect(html).toContain(">wf_b<");
+		expect(html).toContain(">Agents<");
+	});
+
+	it("has no groups without workflow agents", () => {
+		const layout = layoutSequence([makeAgent({id: "a", startedAt: at(1), finishedAt: at(2)})]);
+		expect(layout.groups).toStrictEqual([]);
 	});
 });

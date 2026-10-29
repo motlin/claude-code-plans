@@ -1,11 +1,16 @@
+import type {WorkflowRunInfo} from "../lib/subagent-tree";
 import type {Subagent} from "../lib/subagents";
+import {orderByWorkflowRun} from "../lib/workflow-lane-groups";
 
-export function layoutSwimlanes(agents: Subagent[]): SwimlaneLayout {
+export function layoutSwimlanes(
+	agents: Subagent[],
+	options?: {workflowRuns?: readonly WorkflowRunInfo[] | undefined},
+): SwimlaneLayout {
 	const spans = timedSpans(agents);
 	const timed = spans.map((span) => span.agent);
 
 	if (timed.length === 0) {
-		return {lanes: [], startMs: 0, endMs: 0, totalMs: 0, ticks: []};
+		return {lanes: [], groups: [], startMs: 0, endMs: 0, totalMs: 0, ticks: []};
 	}
 
 	const depthOf = computeDepths(timed);
@@ -18,7 +23,7 @@ export function layoutSwimlanes(agents: Subagent[]): SwimlaneLayout {
 		childrenByParent.set(key, list);
 	}
 
-	const lanes: Swimlane[] = spans.map(({agent, startMs, endMs}) => {
+	const unordered: Swimlane[] = spans.map(({agent, startMs, endMs}) => {
 		const childRanges: TimeRange[] = (childrenByParent.get(agent.id) ?? [])
 			.map((c) => ({startMs: c.startMs, endMs: c.endMs}))
 			.filter((r) => r.endMs > r.startMs);
@@ -31,11 +36,15 @@ export function layoutSwimlanes(agents: Subagent[]): SwimlaneLayout {
 		};
 	});
 
-	lanes.sort((a, b) => {
-		if (a.startMs !== b.startMs) return a.startMs - b.startMs;
-		if (a.depth !== b.depth) return a.depth - b.depth;
-		return a.agent.id.localeCompare(b.agent.id);
-	});
+	const {ordered: lanes, groups} = orderByWorkflowRun(
+		unordered,
+		(a, b) => {
+			if (a.startMs !== b.startMs) return a.startMs - b.startMs;
+			if (a.depth !== b.depth) return a.depth - b.depth;
+			return a.agent.id.localeCompare(b.agent.id);
+		},
+		options?.workflowRuns,
+	);
 
 	const startMs = Math.min(...lanes.map((l) => l.startMs));
 	const endMs = Math.max(...lanes.map((l) => l.endMs));
@@ -43,6 +52,13 @@ export function layoutSwimlanes(agents: Subagent[]): SwimlaneLayout {
 
 	return {
 		lanes,
+		groups: groups.map(({runId, name, phaseTitle, first, count}) => ({
+			runId,
+			name,
+			phaseTitle,
+			firstLane: first,
+			laneCount: count,
+		})),
 		startMs,
 		endMs,
 		totalMs,
@@ -63,8 +79,18 @@ interface Swimlane {
 	waiting: TimeRange[];
 }
 
+/** The lanes `[firstLane, firstLane + laneCount)` of one phase of a workflow run. */
+interface SwimlaneGroup {
+	runId: string;
+	name: string;
+	phaseTitle: string;
+	firstLane: number;
+	laneCount: number;
+}
+
 export interface SwimlaneLayout {
 	lanes: Swimlane[];
+	groups: SwimlaneGroup[];
 	startMs: number;
 	endMs: number;
 	totalMs: number;

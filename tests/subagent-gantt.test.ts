@@ -282,3 +282,38 @@ describe("SubagentGantt", () => {
 		expect(html).not.toContain("synthetic");
 	});
 });
+
+describe("layoutSwimlanes workflow runs", () => {
+	const at = (seconds: number) => `1999-12-31T00:00:${String(seconds).padStart(2, "0")}.000Z`;
+	const workflowAgents = [
+		makeAgent({id: "b1", workflowRunId: "wf_b", startedAt: at(30), finishedAt: at(40)}),
+		makeAgent({id: "a3", workflowRunId: "wf_a", workflowPhaseIndex: 1, startedAt: at(20), finishedAt: at(25)}),
+		makeAgent({id: "x", startedAt: at(15), finishedAt: at(18)}),
+		makeAgent({id: "a2", workflowRunId: "wf_a", workflowPhaseIndex: 2, startedAt: at(12), finishedAt: at(14)}),
+		makeAgent({id: "a1", workflowRunId: "wf_a", workflowPhaseIndex: 1, startedAt: at(10), finishedAt: at(11)}),
+	];
+
+	it("groups lanes by run, then phase, sorting runs among other agents by their earliest start", () => {
+		const layout = layoutSwimlanes(workflowAgents, {workflowRuns: [{runId: "wf_a", workflowName: "poems"}]});
+		expect(layout.lanes.map((lane) => lane.agent.id)).toStrictEqual(["a1", "a3", "a2", "x", "b1"]);
+		expect(layout.groups).toStrictEqual([
+			{runId: "wf_a", name: "poems", phaseTitle: "Phase 1", firstLane: 0, laneCount: 2},
+			{runId: "wf_a", name: "poems", phaseTitle: "Phase 2", firstLane: 2, laneCount: 1},
+			{runId: "wf_b", name: "wf_b", phaseTitle: "Agents", firstLane: 4, laneCount: 1},
+		]);
+	});
+
+	it("labels a run once and each of its phases in the chart", () => {
+		const html = renderToStaticMarkup(
+			createElement(SubagentGantt, {
+				agents: workflowAgents,
+				workflowRuns: [{runId: "wf_a", workflowName: "poems"}],
+			}),
+		);
+		expect(html.match(/>poems</g)).toStrictEqual([">poems<"]);
+		expect(html).toContain(">Phase 1<");
+		expect(html).toContain(">Phase 2<");
+		expect(html).toContain(">wf_b<");
+		expect(html).toContain(">Agents<");
+	});
+});

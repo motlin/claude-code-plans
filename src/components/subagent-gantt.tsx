@@ -1,9 +1,10 @@
 import {useMemo, useState} from "react";
 import {Activity} from "lucide-react";
+import type {WorkflowRunInfo} from "../lib/subagent-tree";
 import type {Subagent} from "../lib/subagents";
 import {formatDuration} from "../lib/format-duration";
 import {formatModelName} from "../lib/model-name";
-import {layoutSwimlanes} from "./subagent-gantt-layout";
+import {layoutSwimlanes, type SwimlaneLayout} from "./subagent-gantt-layout";
 
 const AGENT_BAR_COLORS: Record<string, string> = {
 	Explore: "#3b82f6",
@@ -43,8 +44,52 @@ function timeAt(offsetMs: number, totalMs: number, plotWidth: number): number {
 	return (offsetMs / totalMs) * plotWidth;
 }
 
-export function SubagentGantt({agents}: {agents: Subagent[]}) {
-	const layout = useMemo(() => layoutSwimlanes(agents), [agents]);
+interface GanttHeaderRow {
+	key: string;
+	row: number;
+	label: string;
+	kind: "run" | "phase";
+}
+
+/** Places each lane on a row, inserting a run header row and a phase sub-header row before each workflow group. */
+function layoutRows(layout: SwimlaneLayout): {
+	laneRows: number[];
+	laneIndents: number[];
+	headers: GanttHeaderRow[];
+	rowCount: number;
+} {
+	const groupAt = new Map(layout.groups.map((group) => [group.firstLane, group]));
+	const laneRows: number[] = [];
+	const laneIndents: number[] = [];
+	const headers: GanttHeaderRow[] = [];
+	let row = 0;
+	let previousRunId: string | null = null;
+	let groupEnd = 0;
+	for (let lane = 0; lane < layout.lanes.length; lane++) {
+		const group = groupAt.get(lane);
+		if (group !== undefined) {
+			if (group.runId !== previousRunId) {
+				headers.push({key: `run-${group.runId}`, row: row++, label: group.name, kind: "run"});
+				previousRunId = group.runId;
+			}
+			headers.push({key: `phase-${group.runId}-${lane}`, row: row++, label: group.phaseTitle, kind: "phase"});
+			groupEnd = lane + group.laneCount;
+		}
+		laneIndents.push(lane < groupEnd ? 2 : 0);
+		laneRows.push(row++);
+	}
+	return {laneRows, laneIndents, headers, rowCount: row};
+}
+
+export function SubagentGantt({
+	agents,
+	workflowRuns,
+}: {
+	agents: Subagent[];
+	workflowRuns?: readonly WorkflowRunInfo[] | undefined;
+}) {
+	const layout = useMemo(() => layoutSwimlanes(agents, {workflowRuns}), [agents, workflowRuns]);
+	const rows = useMemo(() => layoutRows(layout), [layout]);
 	const [zoom, setZoom] = useState<ZoomLevel>(1);
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -55,7 +100,7 @@ export function SubagentGantt({agents}: {agents: Subagent[]}) {
 	const basePlotWidth = 720;
 	const plotWidth = basePlotWidth * zoom;
 	const totalWidth = LABEL_COL_W + plotWidth + PADDING_X * 2;
-	const totalHeight = HEADER_HEIGHT + layout.lanes.length * (LANE_HEIGHT + LANE_GAP) + PADDING_Y * 2;
+	const totalHeight = HEADER_HEIGHT + rows.rowCount * (LANE_HEIGHT + LANE_GAP) + PADDING_Y * 2;
 
 	return (
 		<div className="mt-3">
@@ -120,7 +165,7 @@ export function SubagentGantt({agents}: {agents: Subagent[]}) {
 										x1={x}
 										y1={HEADER_HEIGHT - 4}
 										x2={x}
-										y2={HEADER_HEIGHT + layout.lanes.length * (LANE_HEIGHT + LANE_GAP)}
+										y2={HEADER_HEIGHT + rows.rowCount * (LANE_HEIGHT + LANE_GAP)}
 										stroke="currentColor"
 										strokeOpacity={0.1}
 										strokeWidth={1}
@@ -142,8 +187,22 @@ export function SubagentGantt({agents}: {agents: Subagent[]}) {
 					</g>
 
 					<g transform={`translate(0, ${PADDING_Y + HEADER_HEIGHT})`}>
+						{rows.headers.map((header) => (
+							<text
+								key={header.key}
+								x={PADDING_X + (header.kind === "phase" ? 10 : 0)}
+								y={header.row * (LANE_HEIGHT + LANE_GAP) + LANE_HEIGHT / 2 + 4}
+								fontSize={header.kind === "run" ? 11 : 10}
+								fontWeight={header.kind === "run" ? 600 : undefined}
+								fill="currentColor"
+								className={header.kind === "run" ? "text-primary" : "text-t6"}
+							>
+								{header.label}
+							</text>
+						))}
 						{layout.lanes.map((lane, i) => {
-							const y = i * (LANE_HEIGHT + LANE_GAP);
+							const y = (rows.laneRows[i] ?? i) * (LANE_HEIGHT + LANE_GAP);
+							const indent = lane.depth + (rows.laneIndents[i] ?? 0);
 							const xStart = timeAt(lane.startMs - layout.startMs, layout.totalMs, plotWidth);
 							const widthRaw = timeAt(lane.endMs - lane.startMs, layout.totalMs, plotWidth);
 							const width = Math.max(widthRaw, MIN_BAR_WIDTH);
@@ -165,7 +224,7 @@ export function SubagentGantt({agents}: {agents: Subagent[]}) {
 									}}
 								>
 									<text
-										x={PADDING_X + lane.depth * 10}
+										x={PADDING_X + indent * 10}
 										y={y + LANE_HEIGHT / 2 + 4}
 										fontSize={11}
 										fill="currentColor"
@@ -174,7 +233,7 @@ export function SubagentGantt({agents}: {agents: Subagent[]}) {
 										{truncate(getShortType(lane.agent.agentType), 12)}
 									</text>
 									<text
-										x={PADDING_X + lane.depth * 10 + 70}
+										x={PADDING_X + indent * 10 + 70}
 										y={y + LANE_HEIGHT / 2 + 4}
 										fontSize={10}
 										fill="currentColor"

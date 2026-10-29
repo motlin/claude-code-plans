@@ -101,9 +101,9 @@ function ResolvedSubagentsPage({sessionId}: {sessionId: string}) {
 			) : (
 				<div className="mt-3">
 					{subagentView === "sequence" ? (
-						<SubagentSequence agents={agents} />
+						<SubagentSequence agents={agents} workflowRuns={workflowRuns} />
 					) : (
-						<SubagentGantt agents={agents} />
+						<SubagentGantt agents={agents} workflowRuns={workflowRuns} />
 					)}
 				</div>
 			)}

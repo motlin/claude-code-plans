@@ -1,12 +1,18 @@
+import type {WorkflowRunInfo} from "../lib/subagent-tree";
 import type {Subagent} from "../lib/subagents";
+import {orderByWorkflowRun} from "../lib/workflow-lane-groups";
 
-export function layoutSequence(agents: Subagent[]): SequenceLayout {
+export function layoutSequence(
+	agents: Subagent[],
+	options?: {workflowRuns?: readonly WorkflowRunInfo[] | undefined},
+): SequenceLayout {
 	const spans = timedSpans(agents);
 	const timed = spans.map((span) => span.agent);
 
 	if (timed.length === 0) {
 		return {
 			lifelines: [],
+			groups: [],
 			spawns: [],
 			returns: [],
 			startMs: 0,
@@ -26,13 +32,17 @@ export function layoutSequence(agents: Subagent[]): SequenceLayout {
 		childrenByParent.set(key, list);
 	}
 
-	const ordered = spans.toSorted((a, b) => {
-		if (a.startMs !== b.startMs) return a.startMs - b.startMs;
-		const aDepth = depthOf.get(a.agent.id) ?? 0;
-		const bDepth = depthOf.get(b.agent.id) ?? 0;
-		if (aDepth !== bDepth) return aDepth - bDepth;
-		return a.agent.id.localeCompare(b.agent.id);
-	});
+	const {ordered, groups} = orderByWorkflowRun(
+		spans,
+		(a, b) => {
+			if (a.startMs !== b.startMs) return a.startMs - b.startMs;
+			const aDepth = depthOf.get(a.agent.id) ?? 0;
+			const bDepth = depthOf.get(b.agent.id) ?? 0;
+			if (aDepth !== bDepth) return aDepth - bDepth;
+			return a.agent.id.localeCompare(b.agent.id);
+		},
+		options?.workflowRuns,
+	);
 
 	const columnOf = new Map<string, number>();
 	ordered.forEach((span, i) => columnOf.set(span.agent.id, i));
@@ -80,6 +90,13 @@ export function layoutSequence(agents: Subagent[]): SequenceLayout {
 
 	return {
 		lifelines,
+		groups: groups.map(({runId, name, phaseTitle, first, count}) => ({
+			runId,
+			name,
+			phaseTitle,
+			firstColumn: first,
+			columnCount: count,
+		})),
 		spawns,
 		returns,
 		startMs,
@@ -119,8 +136,18 @@ interface SequenceReturnArrow {
 	atMs: number;
 }
 
+/** The columns `[firstColumn, firstColumn + columnCount)` of one phase of a workflow run. */
+interface SequenceGroup {
+	runId: string;
+	name: string;
+	phaseTitle: string;
+	firstColumn: number;
+	columnCount: number;
+}
+
 export interface SequenceLayout {
 	lifelines: SequenceLifeline[];
+	groups: SequenceGroup[];
 	spawns: SequenceSpawnArrow[];
 	returns: SequenceReturnArrow[];
 	startMs: number;

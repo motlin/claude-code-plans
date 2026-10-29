@@ -1,8 +1,9 @@
 import {useMemo, useState} from "react";
 import {Workflow} from "lucide-react";
+import type {WorkflowRunInfo} from "../lib/subagent-tree";
 import type {Subagent} from "../lib/subagents";
 import {formatDuration} from "../lib/format-duration";
-import {layoutSequence} from "./subagent-sequence-layout";
+import {layoutSequence, type SequenceLayout} from "./subagent-sequence-layout";
 
 const AGENT_BAR_COLORS: Record<string, string> = {
 	Explore: "#3b82f6",
@@ -30,6 +31,8 @@ const TIME_AXIS_WIDTH = 56;
 const PADDING_X = 12;
 const PADDING_Y = 12;
 const BAR_WIDTH = 12;
+/** Height of the run / phase label band above the lifeline headers, when the session has workflow runs. */
+const GROUP_BAND_HEIGHT = 36;
 const MIN_BAR_HEIGHT = 2;
 
 const ZOOM_LEVELS = [1, 2, 4, 8, 16] as const;
@@ -45,8 +48,41 @@ function truncate(text: string, max: number): string {
 	return text.slice(0, max - 1) + "\u2026";
 }
 
-export function SubagentSequence({agents}: {agents: Subagent[]}) {
-	const layout = useMemo(() => layoutSequence(agents), [agents]);
+interface RunSpan {
+	runId: string;
+	name: string;
+	firstColumn: number;
+	columnCount: number;
+}
+
+/** Each run's column range: its phases are adjacent, so it spans from its first phase to its last. */
+function runSpans(layout: SequenceLayout): RunSpan[] {
+	const spans: RunSpan[] = [];
+	for (const group of layout.groups) {
+		const last = spans.at(-1);
+		if (last?.runId === group.runId) {
+			last.columnCount = group.firstColumn + group.columnCount - last.firstColumn;
+		} else {
+			spans.push({
+				runId: group.runId,
+				name: group.name,
+				firstColumn: group.firstColumn,
+				columnCount: group.columnCount,
+			});
+		}
+	}
+	return spans;
+}
+
+export function SubagentSequence({
+	agents,
+	workflowRuns,
+}: {
+	agents: Subagent[];
+	workflowRuns?: readonly WorkflowRunInfo[] | undefined;
+}) {
+	const layout = useMemo(() => layoutSequence(agents, {workflowRuns}), [agents, workflowRuns]);
+	const runs = useMemo(() => runSpans(layout), [layout]);
 	const [zoom, setZoom] = useState<ZoomLevel>(1);
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -57,9 +93,12 @@ export function SubagentSequence({agents}: {agents: Subagent[]}) {
 	const basePlotHeight = 360;
 	const plotHeight = basePlotHeight * zoom;
 	const totalWidth = TIME_AXIS_WIDTH + layout.lifelines.length * COLUMN_WIDTH + PADDING_X * 2;
-	const totalHeight = HEADER_HEIGHT + plotHeight + PADDING_Y * 2;
+	const bandHeight = layout.groups.length === 0 ? 0 : GROUP_BAND_HEIGHT;
+	const totalHeight = bandHeight + HEADER_HEIGHT + plotHeight + PADDING_Y * 2;
 
 	const columnX = (column: number) => TIME_AXIS_WIDTH + PADDING_X + column * COLUMN_WIDTH + COLUMN_WIDTH / 2;
+	const spanCenter = (firstColumn: number, columnCount: number) =>
+		TIME_AXIS_WIDTH + PADDING_X + (firstColumn + columnCount / 2) * COLUMN_WIDTH;
 
 	return (
 		<div className="mt-3">
@@ -137,7 +176,52 @@ export function SubagentSequence({agents}: {agents: Subagent[]}) {
 						</marker>
 					</defs>
 
-					<g transform={`translate(0, ${PADDING_Y})`} className="text-t6">
+					{bandHeight > 0 && (
+						<g transform={`translate(0, ${PADDING_Y})`} className="text-t6">
+							{runs.map((run) => (
+								<g key={`run-${run.runId}`}>
+									<text
+										x={spanCenter(run.firstColumn, run.columnCount)}
+										y={11}
+										fontSize={11}
+										fontWeight={600}
+										textAnchor="middle"
+										fill="currentColor"
+										className="text-primary"
+									>
+										{run.name}
+									</text>
+									<line
+										x1={TIME_AXIS_WIDTH + PADDING_X + run.firstColumn * COLUMN_WIDTH + 6}
+										y1={16}
+										x2={
+											TIME_AXIS_WIDTH +
+											PADDING_X +
+											(run.firstColumn + run.columnCount) * COLUMN_WIDTH -
+											6
+										}
+										y2={16}
+										stroke="currentColor"
+										strokeOpacity={0.4}
+									/>
+								</g>
+							))}
+							{layout.groups.map((group) => (
+								<text
+									key={`phase-${group.runId}-${group.firstColumn}`}
+									x={spanCenter(group.firstColumn, group.columnCount)}
+									y={30}
+									fontSize={10}
+									textAnchor="middle"
+									fill="currentColor"
+								>
+									{group.phaseTitle}
+								</text>
+							))}
+						</g>
+					)}
+
+					<g transform={`translate(0, ${PADDING_Y + bandHeight})`} className="text-t6">
 						{layout.lifelines.map((lane) => {
 							const x = columnX(lane.column);
 							const dimmed = hoveredId !== null && hoveredId !== lane.agent.id;
@@ -212,7 +296,7 @@ export function SubagentSequence({agents}: {agents: Subagent[]}) {
 						})}
 					</g>
 
-					<g transform={`translate(0, ${PADDING_Y + HEADER_HEIGHT})`} className="text-t6">
+					<g transform={`translate(0, ${PADDING_Y + bandHeight + HEADER_HEIGHT})`} className="text-t6">
 						{layout.ticks.map((tick, i) => {
 							const y = timeAt(tick.offsetMs, layout.totalMs, plotHeight);
 							return (
