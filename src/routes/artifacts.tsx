@@ -458,7 +458,7 @@ function PrivacyAndDate({
 							<Lock aria-hidden="true" className={lockClass} />
 						</span>
 					</Tooltip>
-					<span aria-hidden="true" className="inline-block size-[3px] shrink-0 rounded-full bg-ink-muted" />
+					<span aria-hidden="true" className="inline-block size-[3px] shrink-0 rounded-full bg-alpha-3" />
 				</>
 			)}
 			<span data-artifact-meta="">
@@ -500,7 +500,7 @@ function PrimaryLink({artifact, className}: {artifact: ArtifactSummary; classNam
 }
 
 const ROW_ACTION_CLASS =
-	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/cdsrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
+	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/cdsrow:opacity-100 group-has-[:focus-visible]/cdsrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
 
 function useCopyArtifactLink() {
 	const toast = useToast();
@@ -570,10 +570,14 @@ function ArtifactPinButton({
 	);
 }
 
+/** Upstream's grid-card More button: r6, surface-1, surface-3 on hover or open; its wrapper does the reveal. */
+const CARD_MORE_CLASS =
+	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r5 bg-surface-1 text-ink-muted hover:bg-surface-3 hover:text-primary aria-expanded:bg-surface-3 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+
 function ArtifactMoreMenu({
 	artifact,
 	pinned,
-	className = "",
+	className = ROW_ACTION_CLASS,
 }: {
 	artifact: ArtifactSummary;
 	pinned: boolean;
@@ -581,10 +585,7 @@ function ArtifactMoreMenu({
 }) {
 	return (
 		<Menu>
-			<MenuTrigger
-				aria-label={`More options for ${artifact.title}`}
-				className={`${ROW_ACTION_CLASS} ${className}`}
-			>
+			<MenuTrigger aria-label={`More options for ${artifact.title}`} className={className}>
 				<EllipsisVertical aria-hidden="true" className="size-4" />
 			</MenuTrigger>
 			<MenuContent align="end">
@@ -693,43 +694,52 @@ function ArtifactGrid({
 
 function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: Date; pinned: boolean}) {
 	return (
-		<li data-gallery-card="" className="group group/cdsrow relative h-full">
+		<li className="group group/cdsrow relative h-full">
 			<ArtifactContextMenu artifact={artifact} pinned={pinned}>
-				<PrimaryLink artifact={artifact} className="rounded-r7" />
+				{/* Upstream's pressable: shrinks to 98% over duration-snap (120ms) while pressed. */}
 				<div
-					data-card-frame=""
-					className="group/card pointer-events-none relative flex h-full flex-col overflow-hidden rounded-r7 bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-border group-hover:bg-surface-1"
+					data-gallery-card=""
+					className="relative block w-full group group/card transition-transform duration-[120ms] active:scale-[0.98] rounded-r7 h-full"
 				>
-					<div data-card-preview="" className="relative h-[160px] shrink-0 select-none overflow-hidden">
-						<TypeMedia artifact={artifact} />
-					</div>
-					<div className="mx-px border-t border-alpha-1" />
-					<div data-card-body="" className="relative flex flex-1 flex-col gap-1.5 p-3.5">
-						{/* Upstream's 28px type tile straddles the divider, 12px in from the card's edge; sr-only beside type-media */}
-						<div
-							data-card-badge=""
-							className="absolute start-3 top-0 size-7 -translate-y-2/3 rounded-r6 bg-surface-2 p-0.5 group-has-[[data-gallery-type-media]]/card:pointer-events-none group-has-[[data-gallery-type-media]]/card:sr-only"
-						>
-							<TypeTile kind={artifact.kind} size="badge" />
+					<PrimaryLink artifact={artifact} className="rounded-r7" />
+					<div
+						data-card-frame=""
+						className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-r7 bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-border group-hover:bg-surface-1"
+					>
+						<div data-card-preview="" className="relative h-[160px] shrink-0 select-none overflow-hidden">
+							<TypeMedia artifact={artifact} />
 						</div>
-						<div
-							aria-hidden="true"
-							data-card-title=""
-							className="line-clamp-2 min-w-0 text-left text-[13px]/[20px] font-medium text-primary"
-						>
-							{artifact.title}
-						</div>
-						<div
-							data-card-meta=""
-							className="mt-auto flex items-center gap-1 text-[11px]/[17px] text-ink-muted"
-						>
-							<PrivacyAndDate artifact={artifact} now={now} lockClass="size-4" />
-							<ArtifactPinButton artifact={artifact} pinned={pinned} className="-my-1 p-1" />
+						<div className="mx-px border-t border-alpha-1" />
+						<div data-card-body="" className="relative flex flex-1 flex-col gap-1.5 p-3.5">
+							{/* Upstream's 28px type tile straddles the divider, 12px in from the card's edge; sr-only beside type-media */}
+							<div
+								data-card-badge=""
+								className="absolute start-3 top-0 size-7 -translate-y-2/3 rounded-r6 bg-surface-2 p-0.5 group-hover:bg-surface-1 group-has-[[data-gallery-type-media]]/card:pointer-events-none group-has-[[data-gallery-type-media]]/card:sr-only"
+							>
+								<TypeTile kind={artifact.kind} size="badge" />
+							</div>
+							<div
+								aria-hidden="true"
+								data-card-title=""
+								className="line-clamp-2 min-w-0 text-left text-[13px]/[20px] font-medium text-primary"
+							>
+								{artifact.title}
+							</div>
+							<div
+								data-card-meta=""
+								className="mt-auto flex items-center gap-1 text-[11px]/[17px] text-ink-muted"
+							>
+								<PrivacyAndDate artifact={artifact} now={now} lockClass="size-4" />
+								<ArtifactPinButton artifact={artifact} pinned={pinned} className="-my-1 p-1" />
+							</div>
 						</div>
 					</div>
 				</div>
-				<div data-card-more="" className="absolute end-3 top-3 z-10">
-					<ArtifactMoreMenu artifact={artifact} pinned={pinned} className="bg-page" />
+				<div
+					data-card-more=""
+					className="absolute end-3 top-3 z-10 opacity-0 transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 has-[[data-popup-open]]:opacity-100 pointer-coarse:opacity-100"
+				>
+					<ArtifactMoreMenu artifact={artifact} pinned={pinned} className={CARD_MORE_CLASS} />
 				</div>
 			</ArtifactContextMenu>
 		</li>

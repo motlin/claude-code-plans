@@ -395,7 +395,7 @@ describe("artifacts route", () => {
 	it("puts the card's Pin after the time in the meta row and its More options top-right over the preview, as upstream", async () => {
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);
-		const card = screen.getByRole("link", {name: "Quarterly plan"}).closest<HTMLElement>("[data-gallery-card]");
+		const card = screen.getByRole("link", {name: "Quarterly plan"}).closest<HTMLElement>("li");
 		if (card === null) throw new Error("no card");
 		const meta = card.querySelector("[data-card-meta]");
 		const pin = within(card).getByRole("button", {name: "Pin Quarterly plan"});
@@ -414,14 +414,89 @@ describe("artifacts route", () => {
 			moreWrapper: ["absolute", "z-10", "end-3", "top-3"].filter(
 				(name) => !moreWrapper?.classList.contains(name),
 			),
-			moreBg: more.classList.contains("bg-page"),
 		}).toStrictEqual({
 			metaChildren: ["time", "pin"],
 			pinInMeta: true,
 			pinClasses: [],
 			moreInMeta: false,
 			moreWrapper: [],
-			moreBg: true,
+		});
+	});
+
+	it("gives grid cards upstream's interaction states: pressed scale, badge hover fill, focus ring, focus-revealed Pin and More", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const link = screen.getByRole("link", {name: "Quarterly plan"});
+		const item = link.closest<HTMLElement>("li");
+		if (item === null) throw new Error("no card");
+		const missing = (element: Element | null | undefined, names: string[]) =>
+			names.filter((name) => element?.classList.contains(name) !== true);
+		const pressable = item.querySelector<HTMLElement>("[data-gallery-card]");
+		const pin = within(item).getByRole("button", {name: "Pin Quarterly plan"});
+		const more = within(item).getByRole("button", {name: "More options for Quarterly plan"});
+		const dot = item.querySelector("[data-card-meta] span[aria-hidden=true].rounded-full");
+
+		expect({
+			item: missing(item, ["group", "relative", "h-full"]),
+			pressableTag: pressable?.tagName,
+			pressable: missing(pressable, [
+				"relative",
+				"block",
+				"w-full",
+				"group",
+				"group/card",
+				"transition-transform",
+				"duration-[120ms]",
+				"active:scale-[0.98]",
+				"rounded-r7",
+				"h-full",
+			]),
+			pressableHoldsLinkAndFrame: [
+				pressable?.contains(link),
+				pressable?.contains(item.querySelector("[data-card-frame]")),
+				pressable?.contains(more),
+			],
+			badge: missing(item.querySelector("[data-card-badge]"), ["bg-surface-2", "group-hover:bg-surface-1"]),
+			link: {
+				missing: missing(link, ["focus-visible:shadow-focus", "rounded-r7"]),
+				ring: [...link.classList].filter((name) => /(^|:)ring-/.test(name)),
+			},
+			pin: missing(pin, ["opacity-0", "group-has-[:focus-visible]/cdsrow:opacity-100"]),
+			moreWrapper: missing(more.closest("[data-card-more]"), [
+				"absolute",
+				"end-3",
+				"top-3",
+				"z-10",
+				"opacity-0",
+				"transition-opacity",
+				"group-hover:opacity-100",
+				"group-has-[:focus-visible]:opacity-100",
+				"has-[[data-popup-open]]:opacity-100",
+				"pointer-coarse:opacity-100",
+			]),
+			more: {
+				missing: missing(more, [
+					"rounded-r5",
+					"bg-surface-1",
+					"hover:bg-surface-3",
+					"aria-expanded:bg-surface-3",
+				]),
+				stray: ["bg-page", "opacity-0", "rounded-r6", "hover:bg-fill-ghost-hover"].filter((name) =>
+					more.classList.contains(name),
+				),
+			},
+			dot: missing(dot, ["bg-alpha-3"]),
+		}).toStrictEqual({
+			item: [],
+			pressableTag: "DIV",
+			pressable: [],
+			pressableHoldsLinkAndFrame: [true, true, false],
+			badge: [],
+			link: {missing: [], ring: []},
+			pin: [],
+			moreWrapper: [],
+			more: {missing: [], stray: []},
+			dot: [],
 		});
 	});
 
@@ -429,7 +504,7 @@ describe("artifacts route", () => {
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);
 		const cardFor = (name: string) => {
-			const card = screen.getByRole("link", {name}).closest<HTMLElement>("[data-gallery-card]");
+			const card = screen.getByRole("link", {name}).closest<HTMLElement>("li");
 			if (card === null) throw new Error(`no card for ${name}`);
 			return card;
 		};
@@ -440,7 +515,7 @@ describe("artifacts route", () => {
 				media: media?.className,
 				icon: glyph?.getAttribute("data-icon"),
 				glyph: ["lucide", "size-6"].filter((name) => !glyph?.classList.contains(name)),
-				frameGroup: card.querySelector("[data-card-frame]")?.classList.contains("group/card"),
+				frameGroup: card.querySelector("[data-gallery-card]")?.classList.contains("group/card"),
 				badge: [
 					"group-has-[[data-gallery-type-media]]/card:sr-only",
 					"group-has-[[data-gallery-type-media]]/card:pointer-events-none",
