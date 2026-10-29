@@ -1897,6 +1897,40 @@ function invalidateBridgedTitlesOnce(db: IndexDb): void {
 
 type ReadDirectory = (path: string) => Promise<string[]>;
 
+const isAgentTranscript = (name: string) => name.startsWith("agent-") && name.endsWith(".jsonl");
+
+/**
+ * The agent transcripts under a session's `subagents` dir: its own `agent-*.jsonl`
+ * files, then each workflow run's under `workflows/<runId>/`. A session without
+ * workflows simply has no `workflows` dir.
+ */
+async function listSubagentTranscripts(
+	subagentsDir: string,
+	subFiles: readonly string[],
+	readDirectory: ReadDirectory,
+): Promise<string[]> {
+	const paths = subFiles.filter(isAgentTranscript).map((name) => join(subagentsDir, name));
+	if (!subFiles.includes("workflows")) return paths;
+	const workflowsDir = join(subagentsDir, "workflows");
+	let runDirs: string[];
+	try {
+		runDirs = await readDirectory(workflowsDir);
+	} catch {
+		return paths;
+	}
+	for (const runId of runDirs) {
+		const runDir = join(workflowsDir, runId);
+		let runFiles: string[];
+		try {
+			runFiles = await readDirectory(runDir);
+		} catch {
+			continue;
+		}
+		paths.push(...runFiles.filter(isAgentTranscript).map((name) => join(runDir, name)));
+	}
+	return paths;
+}
+
 export async function fullScan(
 	indexDb: IndexDb,
 	summariesDb: IndexDb,
@@ -2015,9 +2049,7 @@ export async function fullScan(
 
 				let changed = knownMtimes.get(sessionJsonlPath) !== sessionMtime;
 				const subagentJsonlPaths: string[] = [];
-				for (const sf of subFiles) {
-					if (!sf.startsWith("agent-") || !sf.endsWith(".jsonl")) continue;
-					const sfPath = join(subagentsDir, sf);
+				for (const sfPath of await listSubagentTranscripts(subagentsDir, subFiles, readDirectory)) {
 					let sfMtime = 0;
 					try {
 						sfMtime = (await stat(sfPath)).mtimeMs;

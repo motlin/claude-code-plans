@@ -1445,6 +1445,48 @@ describe("indexer", () => {
 		});
 	});
 
+	it("fullScan indexes workflow agent transcripts once per mtime", async () => {
+		const project = "-tmp-alice-project";
+		const projectDir = join(testDir, project);
+		const runDir = join(projectDir, "sess-1", "subagents", "workflows", "wf_x-1");
+		const agentPath = join(runDir, "agent-aw1.jsonl");
+		mkdirSync(runDir, {recursive: true});
+		writeFileSync(join(projectDir, "sess-1.jsonl"), jsonl({type: "user", message: {content: "Run the workflow"}}));
+		writeFileSync(
+			agentPath,
+			jsonl({
+				type: "assistant",
+				agentId: "aw1",
+				isSidechain: true,
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message: {content: "Inventory the sidebar"},
+			}),
+		);
+		writeFileSync(
+			join(runDir, "agent-aw1.meta.json"),
+			JSON.stringify({agentType: "workflow-subagent", description: "ours:shell-sidebar", spawnDepth: 1}),
+		);
+		writeFileSync(join(runDir, "journal.jsonl"), jsonl({type: "launched"}));
+
+		await fullScan(db.index, db.summaries, testDir);
+		db.index.update(schema.indexedFiles).set({indexedAt: 0}).where(eq(schema.indexedFiles.path, agentPath)).run();
+		await fullScan(db.index, db.summaries, testDir);
+
+		const subagents = db.index
+			.select({id: schema.subagents.id, sessionId: schema.subagents.sessionId})
+			.from(schema.subagents)
+			.all();
+		const agentFile = db.index
+			.select({indexedAt: schema.indexedFiles.indexedAt})
+			.from(schema.indexedFiles)
+			.where(eq(schema.indexedFiles.path, agentPath))
+			.all();
+		expect({subagents, agentFile}).toStrictEqual({
+			subagents: [{id: "agent-aw1", sessionId: "sess-1"}],
+			agentFile: [{indexedAt: 0}],
+		});
+	});
+
 	it("does not prune when a project directory cannot be enumerated", async () => {
 		const project = "-tmp-alice-project";
 		const projectDir = join(testDir, project);
