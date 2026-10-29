@@ -9,6 +9,7 @@ import {
 	listSessions,
 	readSession,
 	readSessionRawWindow,
+	resolveSessionFilePath,
 	readNewJsonlLines,
 	parseCommandBlock,
 	readSessionTitleSources,
@@ -2053,6 +2054,21 @@ describe("readSession", () => {
 		expect(detail.title).toBe("Start subagent work");
 		expect(detail.projectId).toBe("-Users-craig-projects-app");
 		expect(detail.messages.map((m) => m.role)).toStrictEqual(["user", "assistant"]);
+	});
+
+	it("resolves a workflow agent transcript under subagents/workflows/<runId>/", async () => {
+		const projDir = join(testDir, "-Users-craig-projects-app");
+		const runDir = join(projDir, "sess-1", "subagents", "workflows", "wf_x-1");
+		mkdirSync(runDir, {recursive: true});
+		const filePath = join(runDir, "agent-aw1.jsonl");
+		writeFileSync(filePath, jsonl(userMessage("Workflow agent work")));
+
+		expect(await resolveSessionFilePath(testDir, "agent-aw1")).toStrictEqual({
+			filePath,
+			project: "-Users-craig-projects-app",
+		});
+		expect(await resolveSessionFilePath(testDir, "agent-../wf_x-1/agent-aw1")).toBeNull();
+		expect(await resolveSessionFilePath(testDir, "agent-missing")).toBeNull();
 	});
 });
 

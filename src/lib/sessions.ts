@@ -721,6 +721,34 @@ export async function listSessions(projectsDir: string): Promise<SessionProjectG
 
 const SESSION_ID_RE = /^[a-z0-9-]+$/;
 
+async function fileExists(path: string): Promise<boolean> {
+	try {
+		await stat(path);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** Agent-tool transcripts sit directly in `subagents/`; workflow agents sit in `subagents/workflows/<runId>/`. */
+async function findSubagentFile(subagentsDir: string, filename: string): Promise<string | null> {
+	const direct = join(subagentsDir, filename);
+	if (await fileExists(direct)) return direct;
+
+	const workflowsDir = join(subagentsDir, "workflows");
+	let runDirs: string[];
+	try {
+		runDirs = await readdir(workflowsDir);
+	} catch {
+		return null;
+	}
+	for (const runDir of runDirs) {
+		const candidate = join(workflowsDir, runDir, filename);
+		if (await fileExists(candidate)) return candidate;
+	}
+	return null;
+}
+
 export async function resolveSessionFilePath(
 	projectsDir: string,
 	sessionId: string,
@@ -758,13 +786,8 @@ export async function resolveSessionFilePath(
 			}
 
 			for (const sessionDir of sessionDirs) {
-				const candidate = join(projectsDir, dir, sessionDir, "subagents", filename);
-				try {
-					await stat(candidate);
-					return {filePath: candidate, project: dir};
-				} catch {
-					// not in this subagent dir
-				}
+				const found = await findSubagentFile(join(projectsDir, dir, sessionDir, "subagents"), filename);
+				if (found !== null) return {filePath: found, project: dir};
 			}
 		}
 	}
