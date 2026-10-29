@@ -154,6 +154,27 @@ const VIEW_TABS: ReadonlyArray<{view: ArtifactView; label: string}> = [
 	{view: "shared", label: "Shared with you"},
 ];
 
+/** Upstream's EmptyState copy per tab (bundle `Rr` for Shared, `Lr` for Yours; Lr's "New artifact" CTA is cloud-only). */
+const EMPTY_STATE_COPY: Record<ArtifactView, {headline: string; description: string}> = {
+	all: {headline: "No artifacts yet", description: "Artifacts that Claude publishes in your sessions appear here."},
+	yours: {headline: "Create your first artifact", description: "Artifacts you build with Claude appear here."},
+	shared: {
+		headline: "No shared artifacts yet",
+		description: "When someone shares an artifact with you, it appears here.",
+	},
+};
+
+/** Upstream's left-aligned cds EmptyState (`hideIllustration`, align start). */
+function ArtifactsEmptyState({view}: {view: ArtifactView}) {
+	const {headline, description} = EMPTY_STATE_COPY[view];
+	return (
+		<div className="flex flex-col items-start gap-3 pb-12 text-start text-body">
+			<h3 className="max-w-xs font-medium text-secondary">{headline}</h3>
+			<p className="max-w-xs text-footnote text-secondary">{description}</p>
+		</div>
+	);
+}
+
 /** Upstream's cds Page content box (`mx-auto w-full px-md md:px-8 max-w-5xl`), shared by the sticky header and the list. */
 const ARTIFACTS_BOX_CLASS = "mx-auto w-full max-w-5xl px-2 md:px-8";
 
@@ -272,22 +293,11 @@ function ArtifactsPage() {
 			</CodePageHeader>
 
 			<div className={`${ARTIFACTS_BOX_CLASS} flex flex-col pb-12 pt-1`}>
-				{artifacts.length === 0 ? (
-					<div className="flex flex-col items-start gap-3 pb-12 text-body">
-						<h3 className="max-w-xs font-medium text-secondary">No artifacts yet</h3>
-						<p className="max-w-xs text-footnote text-secondary">
-							Artifacts that Claude publishes in your sessions appear here.
-						</p>
-					</div>
+				{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
+					<ArtifactsEmptyState view={view} />
 				) : visible.length === 0 ? (
 					<div role="status" className="mt-10 text-center text-body text-ink-muted">
-						{searching
-							? `No artifacts matching “${search}”`
-							: inView.length === 0
-								? view === "yours"
-									? "No artifacts of yours"
-									: "No artifacts shared with you"
-								: "No artifacts of this type here yet"}
+						{searching ? `No artifacts matching “${search}”` : "No artifacts of this type here yet"}
 					</div>
 				) : layout === "grid" ? (
 					<ArtifactGrid pinned={pinned} artifacts={unpinned} now={now} />

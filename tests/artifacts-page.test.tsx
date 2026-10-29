@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {eq, ne} from "drizzle-orm";
 import {
 	createMemoryHistory,
 	createRootRoute,
@@ -679,6 +680,54 @@ describe("artifacts route", () => {
 			heading: screen.getByRole("heading", {level: 3}).textContent,
 			body: screen.getByText("Artifacts that Claude publishes in your sessions appear here.").tagName,
 		}).toStrictEqual({heading: "No artifacts yet", body: "P"});
+	});
+
+	function emptyStateSummary() {
+		const heading = screen.getByRole("heading", {level: 3});
+		const body = heading.nextElementSibling;
+		return {
+			container: heading.parentElement?.className,
+			heading: {text: heading.textContent, className: heading.className},
+			body: {tag: body?.tagName, text: body?.textContent, className: body?.className},
+		};
+	}
+
+	it("shows upstream's left-aligned shared-tab EmptyState when nothing is shared with you", async () => {
+		await renderArtifactsPage("/artifacts?tab=shared", (db) => {
+			seedMixedGallery(db);
+			db.index.delete(schema.artifacts).where(ne(schema.artifacts.audience, "owner")).run();
+		});
+
+		expect(emptyStateSummary()).toStrictEqual({
+			container: "flex flex-col items-start gap-3 pb-12 text-start text-body",
+			heading: {text: "No shared artifacts yet", className: "max-w-xs font-medium text-secondary"},
+			body: {
+				tag: "P",
+				text: "When someone shares an artifact with you, it appears here.",
+				className: "max-w-xs text-footnote text-secondary",
+			},
+		});
+	});
+
+	it("shows upstream's Yours-tab EmptyState (no CTA locally) when you have published nothing", async () => {
+		await renderArtifactsPage("/artifacts?tab=mine", (db) => {
+			seedMixedGallery(db);
+			db.index.delete(schema.artifacts).where(eq(schema.artifacts.audience, "owner")).run();
+		});
+
+		expect({
+			...emptyStateSummary(),
+			buttons: screen.queryAllByRole("button", {name: "New artifact"}),
+		}).toStrictEqual({
+			container: "flex flex-col items-start gap-3 pb-12 text-start text-body",
+			heading: {text: "Create your first artifact", className: "max-w-xs font-medium text-secondary"},
+			body: {
+				tag: "P",
+				text: "Artifacts you build with Claude appear here.",
+				className: "max-w-xs text-footnote text-secondary",
+			},
+			buttons: [],
+		});
 	});
 
 	it("opens search from ?search= and announces the match count", async () => {
