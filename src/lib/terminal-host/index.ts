@@ -20,6 +20,7 @@ import {
 	stopAllTmuxTerminalStreams,
 	type TmuxTerminalStreamIo,
 } from "../tmux/terminal-stream";
+import {defaultHerdrElicitationDependencies, handleHerdrElicitation} from "../herdr/elicitation";
 import {defaultHerdrInterruptDependencies, handleHerdrInterrupt} from "../herdr/interrupt";
 import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch";
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
@@ -83,6 +84,8 @@ export interface TerminalHost {
 	readPlanDialog: (request: Request) => Promise<Response>;
 	/** Send the keys and feedback text that answer a plan approval dialog. */
 	answerPlan: (request: Request) => Promise<Response>;
+	/** Send the keys that answer an MCP elicitation dialog, re-reading the screen before its final Enter. */
+	answerElicitation: (request: Request) => Promise<Response>;
 	/** Rewind the conversation to a prompt through the CLI's own message selector. */
 	rewind: (request: Request) => Promise<Response>;
 	/** Send the keys that change model, effort or mode in the live session. */
@@ -123,6 +126,7 @@ const herdrTerminalHost: TerminalHost = {
 	answerPermission: async (request) => handleHerdrPermission(request),
 	readPlanDialog: async (request) => handleHerdrPlanDialog(request),
 	answerPlan: async (request) => handleHerdrPlan(request),
+	answerElicitation: async (request) => handleHerdrElicitation(request),
 	rewind: async (request) => handleHerdrRewind(request),
 	applyLiveOption: async (request) => handleHerdrLiveOption(request),
 	launch: async (request) => handleHerdrLaunch(request),
@@ -159,6 +163,7 @@ const noTerminalHost: TerminalHost = {
 	answerPermission: noHostWrite,
 	readPlanDialog: noHostWrite,
 	answerPlan: noHostWrite,
+	answerElicitation: noHostWrite,
 	rewind: noHostWrite,
 	applyLiveOption: noHostWrite,
 	launch: noHostWrite,
@@ -250,6 +255,13 @@ export function createTmuxTerminalHost(
 			}),
 		readPlanDialog: async (request) => handleHerdrPlanDialog(request, planDependencies()),
 		answerPlan: async (request) => handleHerdrPlan(request, planDependencies()),
+		answerElicitation: async (request) =>
+			handleHerdrElicitation(request, {
+				...defaultHerdrElicitationDependencies,
+				...writes,
+				readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
+				...tmuxWriteDependencies("elicitation", sources, io),
+			}),
 		rewind: async (request) =>
 			handleHerdrRewind(request, {
 				...defaultHerdrRewindDependencies,

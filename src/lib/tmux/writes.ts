@@ -38,6 +38,7 @@ export type TmuxWriteKind =
 	| "question"
 	| "permission"
 	| "plan"
+	| "elicitation"
 	| "live-option"
 	| "rewind";
 
@@ -46,8 +47,9 @@ export type TmuxWriteKind =
  * (sent right after a skipped question) goes into a working one with no
  * permission dialog open; an interrupt needs a turn to stop; a question dialog
  * shows while waiting. A permission dialog opens after PreToolUse already said
- * working, so it takes either, as does the plan approval dialog. A rewind
- * opens the CLI's message selector, which only an idle session shows.
+ * working, so it takes either, as do the plan approval and MCP elicitation
+ * dialogs. A rewind opens the CLI's message selector, which only an idle
+ * session shows.
  */
 const READY_STATES = {
 	prompt: ["idle"],
@@ -56,6 +58,7 @@ const READY_STATES = {
 	question: ["waiting"],
 	permission: ["working", "waiting"],
 	plan: ["working", "waiting"],
+	elicitation: ["working", "waiting"],
 	"live-option": ["idle"],
 	rewind: ["idle"],
 } as const satisfies Record<TmuxWriteKind, readonly ActivityState[]>;
