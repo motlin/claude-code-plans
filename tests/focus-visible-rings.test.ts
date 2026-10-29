@@ -201,7 +201,7 @@ describe("upstream focus shadow tokens", () => {
 		}).toStrictEqual({
 			focus: [
 				"inset 0 0 0 1px #fcfcfb, 0 0 0 1px #257de0, 0 0 6px 1px #cde2fb",
-				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(24 79 149 / 0.6)",
+				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(23 87 172 / 0.6)",
 			],
 			danger: [
 				"inset 0 0 0 1px #fcfcfb, 0 0 0 1px #d03b3b, 0 0 6px 1px #fad6d6",
