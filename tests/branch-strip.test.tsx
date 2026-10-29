@@ -50,6 +50,7 @@ function renderStrip(
 	queryClient.setQueryData(sessionOpenInQueryOptions(sessionId).queryKey, {
 		cwd: session.cwd,
 		bridgeSessionId: null,
+		remoteControl: null,
 		githubUrl: null,
 	});
 	return render(

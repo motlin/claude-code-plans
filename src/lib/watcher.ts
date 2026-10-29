@@ -221,6 +221,7 @@ function sessionSummariesEqual(a: SessionSummaryPayload, b: SessionSummaryPayloa
 		a.projectName === b.projectName &&
 		a.archived === b.archived &&
 		a.remoteControl === b.remoteControl &&
+		a.remoteControlState === b.remoteControlState &&
 		a.terminalHost === b.terminalHost &&
 		a.state === b.state &&
 		a.unseen === b.unseen &&

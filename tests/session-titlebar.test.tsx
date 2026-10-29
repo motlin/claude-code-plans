@@ -198,6 +198,7 @@ async function renderTitlebar(
 	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 		cwd: data.cwd,
 		bridgeSessionId: null,
+		remoteControl: null,
 		githubUrl: null,
 	});
 	const content: ReactNode = (

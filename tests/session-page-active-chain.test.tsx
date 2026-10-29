@@ -105,6 +105,7 @@ function newQueryClient(): QueryClient {
 	queryClient.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 		cwd: PROJECT_PATH,
 		bridgeSessionId: null,
+		remoteControl: null,
 		githubUrl: null,
 	});
 	return queryClient;

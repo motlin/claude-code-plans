@@ -1,6 +1,11 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {sessionEnvironment, sessionEnvironmentText, terminalHostLabel} from "../src/lib/session-environment";
+import {
+	registryRemoteControl,
+	sessionEnvironment,
+	sessionEnvironmentText,
+	terminalHostLabel,
+} from "../src/lib/session-environment";
 
 const HERDR = {host: "herdr", paneId: "wE:p2", workspaceId: "wE"} as const;
 const HERDR_NAMED = {host: "herdr", paneId: "wM:p1@later", workspaceId: "wM@later"} as const;
@@ -16,43 +21,62 @@ describe("terminalHostLabel", () => {
 	});
 });
 
+describe("registryRemoteControl", () => {
+	it("reads the bridge from the live registry entry: on with its claude.ai url, off once torn down, null without a live process", () => {
+		expect({
+			bridged: registryRemoteControl({bridgeSessionId: "session_x"}),
+			cse: registryRemoteControl({bridgeSessionId: "cse_y"}),
+			tornDown: registryRemoteControl({bridgeSessionId: null}),
+			olderCli: registryRemoteControl({}),
+			noEntry: registryRemoteControl(null),
+		}).toStrictEqual({
+			bridged: {state: "on", url: "https://claude.ai/code/session_x"},
+			cse: {state: "on", url: "https://claude.ai/code/session_y"},
+			tornDown: {state: "off", url: null},
+			olderCli: null,
+			noEntry: null,
+		});
+	});
+});
+
 describe("sessionEnvironment", () => {
-	it("labels a session by its terminal host, adding Remote Control only when bridged", () => {
+	it("labels a session by its terminal host, carrying its Remote Control state", () => {
 		const hosts = {herdr: "herdr", tmux: "tmux · work", local: null};
 		const table = Object.fromEntries(
 			Object.entries(hosts).map(([name, terminalHost]) => [
 				name,
 				{
-					plain: sessionEnvironment({terminalHost, bridged: false, live: true}),
-					connected: sessionEnvironment({terminalHost, bridged: true, live: true}),
-					offline: sessionEnvironment({terminalHost, bridged: true, live: false}),
+					ended: sessionEnvironment({terminalHost, remoteControl: null}),
+					on: sessionEnvironment({terminalHost, remoteControl: "on"}),
+					off: sessionEnvironment({terminalHost, remoteControl: "off"}),
 				},
 			]),
 		);
 
 		expect(table).toStrictEqual({
 			herdr: {
-				plain: {label: "herdr", remoteControl: null},
-				connected: {label: "herdr", remoteControl: "Remote Control · Connected"},
-				offline: {label: "herdr", remoteControl: "Remote Control · Offline"},
+				ended: {label: "herdr", remoteControl: null},
+				on: {label: "herdr", remoteControl: "on"},
+				off: {label: "herdr", remoteControl: "off"},
 			},
 			tmux: {
-				plain: {label: "tmux · work", remoteControl: null},
-				connected: {label: "tmux · work", remoteControl: "Remote Control · Connected"},
-				offline: {label: "tmux · work", remoteControl: "Remote Control · Offline"},
+				ended: {label: "tmux · work", remoteControl: null},
+				on: {label: "tmux · work", remoteControl: "on"},
+				off: {label: "tmux · work", remoteControl: "off"},
 			},
 			local: {
-				plain: {label: "Local", remoteControl: null},
-				connected: {label: "Local", remoteControl: "Remote Control · Connected"},
-				offline: {label: "Local", remoteControl: "Remote Control · Offline"},
+				ended: {label: "Local", remoteControl: null},
+				on: {label: "Local", remoteControl: "on"},
+				off: {label: "Local", remoteControl: "off"},
 			},
 		});
 	});
 
-	it("joins the label and Remote Control status into one line", () => {
+	it("joins the label and Remote Control on or off into one line", () => {
 		expect([
-			sessionEnvironmentText(sessionEnvironment({terminalHost: "herdr · later", bridged: true, live: true})),
-			sessionEnvironmentText(sessionEnvironment({terminalHost: null, bridged: false, live: false})),
-		]).toStrictEqual(["herdr · later · Remote Control · Connected", "Local"]);
+			sessionEnvironmentText(sessionEnvironment({terminalHost: "herdr · later", remoteControl: "on"})),
+			sessionEnvironmentText(sessionEnvironment({terminalHost: "tmux · work", remoteControl: "off"})),
+			sessionEnvironmentText(sessionEnvironment({terminalHost: null, remoteControl: null})),
+		]).toStrictEqual(["herdr · later · Remote Control on", "tmux · work · Remote Control off", "Local"]);
 	});
 });

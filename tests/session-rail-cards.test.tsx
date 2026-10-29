@@ -260,6 +260,27 @@ describe("Environment card", () => {
 			cwd: BASE.cwd,
 			bridgeSessionId: "cse_bridge",
 			githubUrl: null,
+			remoteControl: {state: "on", url: "https://claude.ai/code/session_bridge"},
+		});
+	}
+
+	/** The CLI still runs, but its registry entry says the bridge was torn down. */
+	function bridgeTornDown(client: QueryClient) {
+		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
+			cwd: BASE.cwd,
+			bridgeSessionId: "cse_bridge",
+			githubUrl: null,
+			remoteControl: {state: "off", url: null},
+		});
+	}
+
+	/** Bridged once (the JSONL records it), but no live registry entry: the process ended. */
+	function bridgeProcessEnded(client: QueryClient) {
+		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
+			cwd: BASE.cwd,
+			bridgeSessionId: "cse_bridge",
+			githubUrl: null,
+			remoteControl: null,
 		});
 	}
 
@@ -268,6 +289,7 @@ describe("Environment card", () => {
 			cwd: BASE.cwd,
 			bridgeSessionId: null,
 			githubUrl: null,
+			remoteControl: null,
 		});
 	}
 
@@ -319,8 +341,8 @@ describe("Environment card", () => {
 		});
 	});
 
-	it("shows a switched-off Remote Control row with no options under a bridged session whose process ended", async () => {
-		await renderCards({...BASE, gitBranch: null, model: null, live: false}, bridge);
+	it("shows a switched-off Remote Control row with no options while the CLI runs with its bridge torn down", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null}, bridgeTornDown);
 		const row = document.querySelector("[data-rail-remote-control]");
 		const allowed = row === null ? null : fireEvent.contextMenu(row);
 
@@ -332,6 +354,18 @@ describe("Environment card", () => {
 			],
 			remoteControl: {label: "Remote Control", switch: ["switch", "false"], options: null},
 			contextMenuAllowed: true,
+		});
+	});
+
+	it("hides the Remote Control row once a bridged session's process ended", async () => {
+		await renderCards({...BASE, gitBranch: null, model: null, live: false}, bridgeProcessEnded);
+
+		expect({rows: rows("Environment"), remoteControl: remoteControl()}).toStrictEqual({
+			rows: [
+				["~/projects/avalonlogs", "Local"],
+				["herdr", "No pane"],
+			],
+			remoteControl: null,
 		});
 	});
 
@@ -524,6 +558,7 @@ describe("Environment card", () => {
 		client.setQueryData(sessionOpenInQueryOptions(SESSION_ID).queryKey, {
 			cwd: BASE.cwd,
 			bridgeSessionId: null,
+			remoteControl: null,
 			githubUrl: "https://github.com/alice/avalonlogs",
 		});
 	}

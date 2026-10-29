@@ -69,13 +69,12 @@ const SR_ROW_ERROR_LABEL = ` ${sessionStateKindLabels.error}`;
 
 /**
  * Upstream's sr-only environment text: where the session runs (its terminal
- * host, or Local), its Remote Control status when bridged, then the PR state.
+ * host, or Local), its live CLI's Remote Control on or off, then the PR state.
  */
 function rowEnvironmentText(session: SessionListItem): string {
 	const environment = sessionEnvironment({
 		terminalHost: session.terminalHost ?? null,
-		bridged: session.remoteControl === true,
-		live: isLiveSessionState(session.state),
+		remoteControl: session.remoteControlState ?? null,
 	});
 	const parts = [sessionEnvironmentText(environment)];
 	if (session.prStatus !== undefined) parts.push(GIT_PR_STATE_LABELS[prGlyph(session.prStatus).state]);

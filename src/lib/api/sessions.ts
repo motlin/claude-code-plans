@@ -4,7 +4,7 @@ import {apiFetch} from "./client";
 import {JsonValueSchema} from "../json-value-schema";
 import {SlowCommandSchema} from "../slow-commands";
 import {SessionViewedStateSchema} from "./viewed-state";
-import {SessionBucketSchema} from "../session-state";
+import {RemoteControlStateSchema, SessionBucketSchema} from "../session-state";
 import {PrStatusSchema} from "../pr-status";
 import {SessionCostStateSchema} from "../session-cost";
 import {ApiRequestLogSchema} from "../api-request-log";
@@ -36,6 +36,8 @@ const SessionListItemSchema = z.object({
 	archived: z.boolean(),
 	/** Bridged to claude.ai/code by Remote Control. */
 	remoteControl: z.literal(true).optional(),
+	/** The live CLI's Remote Control bridge, from its registry entry; absent without a live process. */
+	remoteControlState: RemoteControlStateSchema.optional(),
 	/** The terminal host the session runs in (`herdr`, `herdr · <session>`, `tmux · <session>`); absent for Local. */
 	terminalHost: z.string().optional(),
 	state: SessionSummaryStateSchema,
@@ -133,7 +135,10 @@ export const SessionDetailResponse = z
 export const SessionOpenInResponse = z
 	.object({
 		cwd: z.string().nullable(),
+		/** The JSONL's last `bridge-session` id, for the Open in claude.ai menu items. */
 		bridgeSessionId: z.string().nullable(),
+		/** The live registry entry's Remote Control bridge for the rail's row; null without a live process. */
+		remoteControl: z.strictObject({state: RemoteControlStateSchema, url: z.string().nullable()}).nullable(),
 		/** The web URL of the session checkout's GitHub `origin`, or null when it has none. */
 		githubUrl: z.string().nullable(),
 	})

@@ -17,6 +17,8 @@ export interface RegistrySessionState {
 	status: SessionRegistryEntry["status"];
 	waitingFor?: string;
 	statusUpdatedAt: number;
+	/** The Remote Control bridge session, `null` once torn down; absent from CLIs that do not write it. */
+	bridgeSessionId?: string | null;
 }
 
 const live = hmrPersist("sessionRegistryLive", () => new Map<string, RegistrySessionState>());
@@ -47,6 +49,7 @@ function toState(entry: SessionRegistryEntry): RegistrySessionState {
 		status: entry.status,
 		...(entry.waitingFor === undefined ? {} : {waitingFor: entry.waitingFor}),
 		statusUpdatedAt: entry.statusUpdatedAt,
+		...(entry.bridgeSessionId === undefined ? {} : {bridgeSessionId: entry.bridgeSessionId}),
 	};
 }
 
@@ -55,11 +58,12 @@ function sameState(a: RegistrySessionState, b: RegistrySessionState): boolean {
 		a.pid === b.pid &&
 		a.status === b.status &&
 		a.waitingFor === b.waitingFor &&
-		a.statusUpdatedAt === b.statusUpdatedAt
+		a.statusUpdatedAt === b.statusUpdatedAt &&
+		a.bridgeSessionId === b.bridgeSessionId
 	);
 }
 
-/** Replace the live map, returning the ids of sessions that appeared, vanished or changed status. */
+/** Replace the live map, returning the ids of sessions that appeared, vanished, or changed status or bridge. */
 function applyEntries(entries: readonly SessionRegistryEntry[]): Set<string> {
 	const next = new Map<string, RegistrySessionState>();
 	for (const entry of entries) {

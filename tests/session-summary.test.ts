@@ -285,7 +285,11 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 			},
 		}) + "\n";
 
-	async function registerProcess(status: "idle" | "busy" | "waiting", statusUpdatedAt: number): Promise<void> {
+	async function registerProcess(
+		status: "idle" | "busy" | "waiting",
+		statusUpdatedAt: number,
+		extra: Record<string, unknown> = {},
+	): Promise<void> {
 		const dir = join(testDir, "sessions");
 		mkdirSync(dir, {recursive: true});
 		writeFileSync(
@@ -304,6 +308,7 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 				...(status === "waiting" ? {waitingFor: "input needed"} : {}),
 				updatedAt: statusUpdatedAt,
 				statusUpdatedAt,
+				...extra,
 			}),
 		);
 		await refreshSessionRegistry(dir, {isAlive: () => true, readStartTimes: async () => Promise.resolve(null)});
@@ -343,6 +348,18 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 			{state: "working", bucket: "working", blockedSince: null},
 			{state: "idle", bucket: "done", blockedSince: null},
 		]);
+	});
+
+	it("carries the live process's Remote Control state from its registry bridge id, and none once it ends", async () => {
+		await indexSession();
+		const remoteControlState = () =>
+			buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.remoteControlState;
+		const ended = remoteControlState();
+		await registerProcess("idle", 946_598_402_000, {bridgeSessionId: "session_bridge"});
+		const on = remoteControlState();
+		await registerProcess("idle", 946_598_403_000, {bridgeSessionId: null});
+
+		expect([ended, on, remoteControlState()]).toStrictEqual([undefined, "on", "off"]);
 	});
 
 	it("ignores an orphaned transcript question while the registry says the process is idle", async () => {

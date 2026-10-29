@@ -13,7 +13,7 @@ import type {
 import type {LiveSubagentNode} from "./live-subagent-store";
 import {JsonValueSchema} from "./json-value-schema";
 import {PrStatusSchema} from "./pr-status";
-import {SessionBucketSchema} from "./session-state";
+import {RemoteControlStateSchema, SessionBucketSchema} from "./session-state";
 
 /*
  * Client-side validators for the SSE domain-event payloads the server builds from the
@@ -37,6 +37,7 @@ export const SessionSummaryPayloadSchema: z.ZodType<SessionSummaryPayload> = z
 		forkedFromSessionId: z.string().exactOptional(),
 		archived: z.boolean(),
 		remoteControl: z.literal(true).exactOptional(),
+		remoteControlState: RemoteControlStateSchema.exactOptional(),
 		terminalHost: z.string().exactOptional(),
 		state: SessionSummaryStateSchema,
 		awaitingPermission: z.literal(true).exactOptional(),

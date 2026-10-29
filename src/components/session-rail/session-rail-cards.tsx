@@ -40,7 +40,6 @@ import type {OutputFile} from "../../lib/session-outputs";
 import {useEventStreamStatus} from "../../hooks/use-claude-events";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {streamDropHint} from "../../lib/stream-drop";
-import {claudeAiSessionUrl} from "../../lib/session-open-in";
 import {type BackgroundTasksFocus, useBackgroundTasksOpener} from "../background-tasks-opener-context";
 import {useCopyToClipboard} from "../files/file-actions-menu";
 import {FileTypeIcon} from "../file-type-icon";
@@ -148,7 +147,8 @@ function EnvironmentMenuRow({
 /**
  * Upstream's Environment card: where the session runs. Locally, its folder
  * hinted with its terminal host (herdr, tmux or Local), its branch, the Remote
- * Control setting row when bridged, then its model and herdr pane.
+ * Control setting row while its CLI runs (on or off from its registry entry),
+ * then its model and herdr pane.
  */
 function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const toast = useToast();
@@ -157,12 +157,11 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 	const openInQuery = useQuery(sessionOpenInQueryOptions(inputs.sessionId));
 	const openIn = openInQuery.data;
 	const openInPending = openInQuery.isPending;
-	const bridgeSessionId = openIn?.bridgeSessionId ?? null;
+	const remoteControl = openIn?.remoteControl ?? null;
 	const githubUrl = openIn?.githubUrl ?? null;
 	const environment = sessionEnvironment({
 		terminalHost: herdrPane === null ? null : terminalHostLabel(herdrPane),
-		bridged: bridgeSessionId !== null,
-		live: inputs.live,
+		remoteControl: remoteControl?.state ?? null,
 	});
 	const streamDrop = useEventStreamStatus();
 	return (
@@ -228,12 +227,7 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 				(openInPending && inputs.live ? (
 					<RemoteControlRowPending />
 				) : (
-					bridgeSessionId !== null && (
-						<RemoteControlRow
-							state={inputs.live ? "on" : "off"}
-							url={claudeAiSessionUrl(bridgeSessionId)}
-						/>
-					)
+					remoteControl !== null && <RemoteControlRow state={remoteControl.state} url={remoteControl.url} />
 				))}
 			{model !== null && <RailRow icon={<Icon icon={Cpu} />} label={model} />}
 			{herdrPane === null ? (

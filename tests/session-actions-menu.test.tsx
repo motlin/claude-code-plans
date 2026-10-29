@@ -96,6 +96,7 @@ async function renderRow(
 		queryClient.setQueryData(sessionOpenInQueryOptions(session.id).queryKey, {
 			cwd,
 			bridgeSessionId: null,
+			remoteControl: null,
 			githubUrl: null,
 		});
 	}

@@ -13,6 +13,7 @@ import {getLiveSubagentNodes} from "./live-subagent-store";
 import {hasPermissionPromptForSession} from "./notifications-store";
 import type {PrStatus} from "./pr-status";
 import {lookupSessionPrStatus} from "./pr-status-service";
+import {registryRemoteControl} from "./session-environment";
 import {getRegistrySessionState, type RegistrySessionState} from "./session-registry-store";
 import {resolveMainState, resolveSessionBucket} from "./session-state";
 import {ownRepositoryPr, readOriginRepoName} from "./session-own-pr";
@@ -107,6 +108,7 @@ export function toSessionSummaryPayload(
 		now,
 	});
 	const aiTitle = secondaryAiTitle(entry.title, entry.aiTitle);
+	const remoteControl = registryRemoteControl(registrySession);
 	return {
 		id: entry.id,
 		title: entry.title,
@@ -123,6 +125,7 @@ export function toSessionSummaryPayload(
 		...(entry.forkedFromSessionId === undefined ? {} : {forkedFromSessionId: entry.forkedFromSessionId}),
 		archived,
 		...(entry.remoteControl === true ? {remoteControl: true} : {}),
+		...(remoteControl === null ? {} : {remoteControlState: remoteControl.state}),
 		...(terminalHost === null ? {} : {terminalHost}),
 		state: pendingInput || awaitingPermission ? "waiting" : main.state,
 		...(awaitingPermission ? {awaitingPermission: true} : {}),

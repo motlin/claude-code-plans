@@ -589,6 +589,38 @@ describe("applySessionUpdated", () => {
 			transcriptInvalidated: false,
 		});
 	});
+
+	it("refetches the open-in data only when the summary's Remote Control state disagrees with it", () => {
+		const queryClient = new QueryClient();
+		const openIn = (state: "on" | "off" | null) => ({
+			cwd: "/tmp/test/alice-project",
+			bridgeSessionId: null,
+			githubUrl: null,
+			remoteControl:
+				state === null ? null : {state, url: state === "on" ? "https://claude.ai/code/session_x" : null},
+		});
+		const invalidatedAfter = (cached: "on" | "off" | null, summary: "on" | "off" | undefined) => {
+			const key = sessionQueryKeys.openIn("a1");
+			queryClient.setQueryData(key, openIn(cached));
+			applySessionUpdated(
+				queryClient,
+				makeSession({
+					id: "a1",
+					project: "proj-a",
+					...(summary === undefined ? {} : {remoteControlState: summary}),
+				}),
+			);
+			return queryClient.getQueryState(key)?.isInvalidated;
+		};
+
+		expect({
+			same: invalidatedAfter("on", "on"),
+			tornDown: invalidatedAfter("on", "off"),
+			bridged: invalidatedAfter("off", "on"),
+			ended: invalidatedAfter("off", undefined),
+			stillEnded: invalidatedAfter(null, undefined),
+		}).toStrictEqual({same: false, tornDown: true, bridged: true, ended: true, stillEnded: false});
+	});
 });
 
 describe("applyPlanChanged", () => {

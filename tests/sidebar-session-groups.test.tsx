@@ -752,17 +752,18 @@ describe("sidebar SessionGroups", () => {
 		const terminalHosts: Record<string, string> = {b1: "herdr", w1: "herdr · later", r1: "tmux · work"};
 		const withHost = (row: (typeof FIXTURE)[number]) =>
 			row.id in terminalHosts ? {...row, terminalHost: terminalHosts[row.id]} : row;
-		const bridged = new Set(["b1", "r1", "d1"]);
+		const remoteControlStates: Record<string, "on" | "off"> = {b1: "on", r1: "off"};
 		await renderGroups(
 			FIXTURE.map((row) => ({
 				...withHost(row),
-				...(bridged.has(row.id) ? {remoteControl: true} : {}),
-				...(row.id === "d1" ? {state: "ended"} : {}),
+				...(row.id in remoteControlStates ? {remoteControlState: remoteControlStates[row.id]} : {}),
+				// Bridged once, but its process ended: no registry entry, so no Remote Control state.
+				...(row.id === "d1" ? {remoteControl: true, state: "ended"} : {}),
 			})),
 		);
 		const first = {
 			href: screen
-				.getByRole("link", {name: /^Blocked one\s*Awaiting input\s*herdr · Remote Control · Connected$/})
+				.getByRole("link", {name: /^Blocked one\s*Awaiting input\s*herdr · Remote Control on$/})
 				.getAttribute("href"),
 			awaiting: srOnlyOf("Blocked one"),
 			idle: srOnlyOf("Completed older"),
@@ -770,7 +771,9 @@ describe("sidebar SessionGroups", () => {
 		};
 		cleanup();
 		await renderGroups(
-			FIXTURE.map((row) => (row.id === "w1" ? {...withHost(row), remoteControl: true} : withHost(row))),
+			FIXTURE.map((row) =>
+				row.id === "w1" ? {...withHost(row), remoteControlState: "on" as const} : withHost(row),
+			),
 		);
 
 		expect({first, second: environments()}).toStrictEqual({
@@ -778,23 +781,23 @@ describe("sidebar SessionGroups", () => {
 				href: "/session/b1",
 				awaiting: [
 					["status", " Awaiting input"],
-					[null, " herdr · Remote Control · Connected"],
+					[null, " herdr · Remote Control on"],
 				],
 				idle: [
 					["status", ""],
 					[null, " Local"],
 				],
 				env: {
-					d1: " Local · Remote Control · Offline",
+					d1: " Local",
 					w1: " herdr · later",
-					r1: " tmux · work · Remote Control · Connected",
-					b1: " herdr · Remote Control · Connected",
+					r1: " tmux · work · Remote Control off",
+					b1: " herdr · Remote Control on",
 					d2: " Local",
 				},
 			},
 			second: {
 				d1: " Local",
-				w1: " herdr · later · Remote Control · Connected",
+				w1: " herdr · later · Remote Control on",
 				r1: " tmux · work",
 				b1: " herdr",
 				d2: " Local",

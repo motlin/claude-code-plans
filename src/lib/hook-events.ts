@@ -1,6 +1,6 @@
 import type {PersistentAllowKind} from "./permission-suggestions";
 import {z} from "zod";
-import type {SessionBucket, SessionSummaryState} from "./session-state";
+import type {RemoteControlState, SessionBucket, SessionSummaryState} from "./session-state";
 import {toolInputSchemas} from "./tool-input-schemas";
 import {JsonValueSchema} from "./json-value-schema";
 import {defined} from "./defined";
@@ -72,6 +72,8 @@ export interface SessionSummaryPayload {
 	archived: boolean;
 	/** Bridged to claude.ai/code by Remote Control; absent otherwise. */
 	remoteControl?: true;
+	/** The live CLI's Remote Control bridge, from its registry entry; absent without one. */
+	remoteControlState?: RemoteControlState;
 	/** The terminal host the session runs in (`herdr`, `herdr · <session>`, `tmux · <session>`); absent for Local. */
 	terminalHost?: string;
 	state: SessionSummaryState;

@@ -146,6 +146,10 @@ export function sessionProcessLive({
 	return hookActive || (summaryState !== null && isLiveSessionState(summaryState));
 }
 
+/** A live CLI's Remote Control bridge: `on` while its registry entry carries a bridge session, `off` once torn down. */
+export const RemoteControlStateSchema = z.enum(["on", "off"]);
+export type RemoteControlState = z.infer<typeof RemoteControlStateSchema>;
+
 export const SessionBucketSchema = z.enum(["blocked", "review", "working", "done"]);
 export type SessionBucket = z.infer<typeof SessionBucketSchema>;
 

@@ -95,6 +95,21 @@ describe("session registry store", () => {
 		expect(getRegistrySessionState("session-test-200")).toBeNull();
 	});
 
+	it("reports a session whose Remote Control bridge was torn down, keeping its bridge id", async () => {
+		write(registryFixture({bridgeSessionId: "session_bridge"}));
+		await refreshSessionRegistry(dir, everyoneAlive);
+		const bridged = getRegistrySessionState("session-test-100")?.bridgeSessionId;
+
+		write(registryFixture({bridgeSessionId: null}));
+		const changed = await refreshSessionRegistry(dir, everyoneAlive);
+
+		expect({
+			bridged,
+			changed: [...changed],
+			tornDown: getRegistrySessionState("session-test-100")?.bridgeSessionId,
+		}).toStrictEqual({bridged: "session_bridge", changed: ["session-test-100"], tornDown: null});
+	});
+
 	it("keeps the freshest status when two processes run the same session", async () => {
 		write(registryFixture({status: "idle", statusUpdatedAt: 946_598_405_000}));
 		write(registryFixture({pid: 4343, status: "busy", statusUpdatedAt: 946_598_401_000}));

@@ -23,6 +23,13 @@ import type {FileRefStatusSchema} from "./api/file-refs";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
 import type {UnifiedSearchDateSchema, UnifiedSearchKindSchema, UnifiedSearchTypeSchema} from "./api/search";
 import type {SessionSummaryStateSchema} from "./api/sessions";
+import type {
+	RemoteControlState,
+	PullRequestStateSchema,
+	SessionBucketReasonSchema,
+	SessionBucketSchema,
+	SessionStateKindSchema,
+} from "./session-state";
 import type {SourceFileResponse} from "./api/source";
 import type {GroupColorSchema, GroupIconSchema} from "./group-appearance";
 import type {EffortLevel, LaunchPermissionMode, LiveOptionChange} from "./launch-options";
@@ -84,12 +91,6 @@ import type {
 } from "./session-groups";
 import type {GhCheckRunConclusionSchema, GhStatusContextStateSchema} from "./pr-details";
 import type {GhPrReviewDecisionSchema, GhPrStateSchema, GhPrStatusCacheStateSchema} from "./pr-status";
-import type {
-	PullRequestStateSchema,
-	SessionBucketReasonSchema,
-	SessionBucketSchema,
-	SessionStateKindSchema,
-} from "./session-state";
 import type {SessionMenuItemIdSchema} from "./session-menu-items";
 import type {CustomizeDetailTab, CustomizeSection, CustomizeView, SettingsTab} from "./settings-hash";
 import type {MessageProcessedLine, ProcessedLine} from "./transcript";
@@ -388,6 +389,12 @@ export const gitPrActionLabels = {
 	merged: "Merged PR",
 	closed: "Closed PR",
 } satisfies Record<z.infer<typeof GitPrActionSchema>, string>;
+
+/** A live CLI's Remote Control bridge state (src/lib/session-environment.ts), as the sidebar row's sr-only text says it. */
+export const remoteControlStateLabels = {
+	on: "Remote Control on",
+	off: "Remote Control off",
+} satisfies Record<RemoteControlState, string>;
 
 const sessionSummaryStateLabels = {
 	idle: "Idle",
@@ -1524,6 +1531,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	PaletteTypeSchema: paletteTypeLabels,
 	PaletteFilterSchema: paletteFilterLabels,
 	SessionSummaryStateSchema: sessionSummaryStateLabels,
+	RemoteControlStateSchema: remoteControlStateLabels,
 	SessionBucketSchema: sessionBucketLabels,
 	SessionBucketReasonSchema: sessionBucketReasonLabels,
 	SessionStateKindSchema: sessionStateKindLabels,

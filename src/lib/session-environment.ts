@@ -1,5 +1,28 @@
 import {splitHerdrId} from "./herdr/herdr-id";
+import {remoteControlStateLabels} from "./schema-choices";
+import {claudeAiSessionUrl} from "./session-open-in";
+import type {RemoteControlState} from "./session-state";
 import type {TerminalPaneHost} from "./terminal-host-capabilities";
+
+/** What the rail's Remote Control row shows: the bridge state and, while on, its claude.ai session url. */
+export interface RemoteControl {
+	state: RemoteControlState;
+	url: string | null;
+}
+
+/**
+ * The Remote Control bridge of a session's live registry entry
+ * (`~/.claude/sessions/<pid>.json`): on with its claude.ai url while
+ * `bridgeSessionId` is set, off once it is `null`. Null without a live entry,
+ * or from an older CLI that does not write the field, so the row stays hidden
+ * where no toggle is possible.
+ */
+export function registryRemoteControl(entry: {bridgeSessionId?: string | null} | null): RemoteControl | null {
+	if (entry?.bridgeSessionId === undefined) return null;
+	return entry.bridgeSessionId === null
+		? {state: "off", url: null}
+		: {state: "on", url: claudeAiSessionUrl(entry.bridgeSessionId)};
+}
 
 /** The fields of a terminal-host pane link that say where a session runs. */
 export interface EnvironmentPane {
@@ -12,8 +35,8 @@ export interface EnvironmentPane {
 export interface SessionEnvironment {
 	/** Where the session runs: `herdr`, `herdr · <named session>`, `tmux · <session>`, or `Local`. */
 	label: string;
-	/** `Remote Control · Connected` (or `· Offline`) when bridged to claude.ai; null otherwise. */
-	remoteControl: string | null;
+	/** The live CLI's Remote Control bridge state; null when no live process reports one. */
+	remoteControl: RemoteControlState | null;
 }
 
 /**
@@ -25,17 +48,12 @@ export interface SessionEnvironment {
  */
 export function sessionEnvironment({
 	terminalHost,
-	bridged,
-	live,
+	remoteControl,
 }: {
 	terminalHost: string | null;
-	bridged: boolean;
-	live: boolean;
+	remoteControl: RemoteControlState | null;
 }): SessionEnvironment {
-	return {
-		label: terminalHost ?? "Local",
-		remoteControl: bridged ? `Remote Control · ${live ? "Connected" : "Offline"}` : null,
-	};
+	return {label: terminalHost ?? "Local", remoteControl};
 }
 
 /** Where a pane runs: `herdr`, `herdr · <named session>`, or `tmux · <session>`. */
@@ -46,5 +64,5 @@ export function terminalHostLabel(pane: EnvironmentPane): string {
 }
 
 export function sessionEnvironmentText({label, remoteControl}: SessionEnvironment): string {
-	return remoteControl === null ? label : `${label} · ${remoteControl}`;
+	return remoteControl === null ? label : `${label} · ${remoteControlStateLabels[remoteControl]}`;
 }

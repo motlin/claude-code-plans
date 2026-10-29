@@ -30,6 +30,7 @@ import {
 	type ProjectSessionGroup,
 	type SessionListItem,
 	recentSessionsInfiniteQueryOptions,
+	sessionOpenInQueryOptions,
 	sessionQueryKeys,
 	transcriptEndIndex,
 	type TranscriptData,
@@ -692,6 +693,13 @@ export function applySessionUpdated(queryClient: QueryClient, session: SessionSu
 		queryKey: sessionQueryKeys.detail(session.id),
 		exact: true,
 	});
+	// The rail's Remote Control row reads the open-in data; refetch it only when
+	// the registry's bridge state moved (a `/remote-control` typed in the terminal).
+	const {queryKey: openInKey} = sessionOpenInQueryOptions(session.id);
+	const openIn = queryClient.getQueryData(openInKey);
+	if (openIn !== undefined && openIn.remoteControl?.state !== session.remoteControlState) {
+		void queryClient.invalidateQueries({queryKey: openInKey, exact: true});
+	}
 }
 
 export function applyPlanChanged(queryClient: QueryClient, plan: PlanSummaryPayload): void {

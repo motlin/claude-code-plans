@@ -11,6 +11,13 @@ import {
 	UnifiedSearchTypeSchema,
 } from "../src/lib/api/search";
 import {SessionSummaryStateSchema} from "../src/lib/api/sessions";
+import {
+	RemoteControlStateSchema,
+	PullRequestStateSchema,
+	SessionBucketReasonSchema,
+	SessionBucketSchema,
+	SessionStateKindSchema,
+} from "../src/lib/session-state";
 import {SourceFileResponse} from "../src/lib/api/source";
 import {
 	ArtifactActionSchema,
@@ -58,12 +65,6 @@ import {
 	notificationTypePresentations,
 	schemaChoiceRegistry,
 } from "../src/lib/schema-choices";
-import {
-	PullRequestStateSchema,
-	SessionBucketReasonSchema,
-	SessionBucketSchema,
-	SessionStateKindSchema,
-} from "../src/lib/session-state";
 import {SessionListPrefsSchema} from "../src/lib/session-groups";
 import {SessionMenuItemIdSchema} from "../src/lib/session-menu-items";
 import {
@@ -131,6 +132,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["PaletteTypeSchema", PaletteTypeSchema],
 	["PaletteFilterSchema", PaletteFilterSchema],
 	["SessionSummaryStateSchema", SessionSummaryStateSchema],
+	["RemoteControlStateSchema", RemoteControlStateSchema],
 	["SessionBucketSchema", SessionBucketSchema],
 	["SessionBucketReasonSchema", SessionBucketReasonSchema],
 	["SessionStateKindSchema", SessionStateKindSchema],
