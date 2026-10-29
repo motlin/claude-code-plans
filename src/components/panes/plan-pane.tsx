@@ -102,7 +102,7 @@ function PlanBody({
 				{content !== null && <PlanCommentHint commentsEnabled={commentsEnabled} />}
 				{content !== null && (
 					<div ref={commentsRef}>
-						<MarkdownView markdown={content} />
+						<MarkdownView markdown={content} document />
 					</div>
 				)}
 				{todos.length > 0 && <PlanTasks todos={todos} />}

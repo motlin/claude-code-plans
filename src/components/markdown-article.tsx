@@ -44,6 +44,11 @@ interface FileRefProps {
 	smartQuotes?: boolean | undefined;
 	/** Underline zoned clock times with the reader's local time, as upstream does for assistant text. */
 	zonedTimes?: boolean | undefined;
+	/**
+	 * Upstream's "document" markdown mode (the Plan pane), which skips
+	 * remark-breaks: soft line breaks wrap as spaces instead of breaking lines.
+	 */
+	document?: boolean | undefined;
 }
 
 type MarkdownArticleProps = FileRefProps &
@@ -239,6 +244,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 			<article
 				ref={missingFocus.article}
 				className={styles["markdown"]}
+				{...(props.document === true ? {"data-document": ""} : {})}
 				onClick={handleClick}
 				{...(onFileRef === undefined ? {} : {onKeyDown: handleKeyDown, ...reasonTooltip.handlers})}
 				dangerouslySetInnerHTML={{__html: rendered}}

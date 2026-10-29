@@ -73,6 +73,33 @@ describe("SessionPlanPane", () => {
 		});
 	});
 
+	it("renders the plan as an upstream markdown document, so soft line breaks wrap as spaces", () => {
+		const model: SessionPlanModel = {
+			content: "That command drives live\nedits through the fork.",
+			todos: [],
+			editsPlanFile: false,
+		};
+		render(
+			withQueryClient(
+				<SessionPlanPane
+					sessionId="fabricated-session"
+					planFilename={undefined}
+					model={model}
+					commentsEnabled={false}
+				/>,
+			),
+		);
+		const article = screen.getByTestId("session-plan-pane").querySelector("article");
+
+		expect({
+			document: article?.getAttribute("data-document"),
+			paragraphs: Array.from(article?.querySelectorAll("p") ?? [], (p) => p.innerHTML),
+		}).toStrictEqual({
+			document: "",
+			paragraphs: ["That command drives live\nedits through the fork."],
+		});
+	});
+
 	it("renders the plan as prose in a 68ch column with the todos under a Tasks heading", () => {
 		const model: SessionPlanModel = {
 			content: "# Fabricated plan\n\nRebase the fabricated fork.",

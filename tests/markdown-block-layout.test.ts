@@ -5,6 +5,16 @@ import {markdownCss, ruleDeclarations} from "./markdown-css";
 const TABLE_MARKDOWN = "| Tool | Calls |\n| --- | --- |\n| Read | 3 |\n";
 
 describe("markdown block layout", () => {
+	it("collapses soft line breaks in document articles, as upstream's document mode skips remark-breaks", () => {
+		expect({
+			chat: ruleDeclarations(markdownCss, ".markdown p"),
+			document: ruleDeclarations(markdownCss, ".markdown[data-document] p"),
+		}).toStrictEqual({
+			chat: {margin: "4px 0", "white-space": "pre-wrap"},
+			document: {"white-space": "normal"},
+		});
+	});
+
 	it("lays the article out as a column spaced by upstream's 7px prose paragraph gap", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown")).toStrictEqual({
 			display: "flex",
