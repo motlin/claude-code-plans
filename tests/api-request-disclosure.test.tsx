@@ -25,6 +25,55 @@ const LOG: ApiRequestLog = {
 			permissionMode: "auto",
 			toolChanges: {added: ["Write"], removed: ["Bash"]},
 		},
+		withArtifacts: {
+			id: "withArtifacts",
+			timestamp: "2000-01-01T00:00:00.000Z",
+			querySource: "repl_main_thread",
+			shapeHash: "missing",
+			model: "claude-opus-5-5",
+			betas: [],
+			maxTokens: 100,
+			thinking: {type: "adaptive", display: "updates"},
+			effort: "high",
+			artifacts: [
+				{
+					id: "artifact-alice-1",
+					paths: [],
+					lastPublish: false,
+					share: {
+						mode: "owner",
+						role: "owner",
+						isSharedLive: true,
+						probed: true,
+						probeFailed: false,
+						probeCurrentAccount: true,
+						typeLock: true,
+						livePaths: ["index.html"],
+						capabilities: ["db", "user"],
+						grantObserved: true,
+					},
+				},
+				{
+					id: "artifact-alice-2",
+					paths: ["/tmp/alice/review.html"],
+					lastPublish: true,
+					publishedEnv: "prod",
+					share: {
+						mode: "owner",
+						isSharedLive: false,
+						probed: true,
+						probeFailed: true,
+						probeCurrentAccount: false,
+						typeLock: false,
+						livePaths: [],
+						capabilities: [],
+						grantObserved: false,
+					},
+				},
+				{id: "artifact-alice-3", paths: [], lastPublish: false, attested: "first_party_type"},
+				{id: "artifact-alice-4", paths: ["/tmp/alice/other.html"], lastPublish: false},
+			],
+		},
 		orphan: {
 			id: "orphan",
 			timestamp: "2000-01-01T00:00:00.000Z",
@@ -86,6 +135,28 @@ describe("ApiRequestDisclosure", () => {
 				"Opus 5.5 · high effort · adaptive thinking (updates)",
 				"Max tokens100",
 				"Query sourcerepl_main_thread",
+				"No tool list or system prompt logged for this request",
+			].join(""),
+		);
+	});
+
+	it("lists the classifier's artifact share state", () => {
+		renderDisclosure("withArtifacts");
+		fireEvent.click(screen.getByRole("button", {name: "Request"}));
+		expect(screen.getByTestId("api-request-body").textContent).toBe(
+			[
+				"Opus 5.5 · high effort · adaptive thinking (updates)",
+				"Max tokens100",
+				"Query sourcerepl_main_thread",
+				"Artifacts (4)",
+				"artifact-alice-1",
+				"Owner share · role Owner · shared live · type-locked · live paths: index.html · capabilities: db, user · grant observed",
+				"artifact-alice-2",
+				"Owner share · not shared live · share probe failed · probed as another account · published to Production · last publish · from /tmp/alice/review.html",
+				"artifact-alice-3",
+				"First-party type, not probed",
+				"artifact-alice-4",
+				"from /tmp/alice/other.html",
 				"No tool list or system prompt logged for this request",
 			].join(""),
 		);

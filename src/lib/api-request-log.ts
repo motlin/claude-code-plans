@@ -15,6 +15,36 @@ const ToolChangesSchema = z
 	})
 	.strict();
 
+const ClassifierArtifactShareSummarySchema = z
+	.object({
+		mode: z.string(),
+		role: z.string().optional(),
+		isSharedLive: z.boolean(),
+		probed: z.boolean(),
+		probeFailed: z.boolean(),
+		probeCurrentAccount: z.boolean(),
+		typeLock: z.boolean(),
+		livePaths: z.array(z.string()),
+		/** Names of the runtime capabilities the page declares. */
+		capabilities: z.array(z.string()),
+		grantObserved: z.boolean(),
+	})
+	.strict();
+
+/** One artifact the dangerous-tool-use classifier was told about. */
+const ClassifierArtifactSummarySchema = z
+	.object({
+		id: z.string(),
+		/** Local files published to this artifact. */
+		paths: z.array(z.string()),
+		/** Whether this was the session's most recent publish. */
+		lastPublish: z.boolean(),
+		publishedEnv: z.string().optional(),
+		attested: z.string().optional(),
+		share: ClassifierArtifactShareSummarySchema.optional(),
+	})
+	.strict();
+
 const ApiRequestSummarySchema = z
 	.object({
 		id: z.string(),
@@ -28,6 +58,8 @@ const ApiRequestSummarySchema = z
 		effort: z.string(),
 		/** The permission mode the dangerous-tool-use safeguard was told about. */
 		permissionMode: z.string().optional(),
+		/** Artifacts the classifier was told about, with their share state; absent when there were none. */
+		artifacts: z.array(ClassifierArtifactSummarySchema).optional(),
 		/** Tools gained and lost since this query source's previous request, when its shape changed. */
 		toolChanges: ToolChangesSchema.optional(),
 	})
@@ -51,6 +83,7 @@ export const ApiRequestLogSchema = z
 	.strict();
 
 export type ApiRequestSummary = z.infer<typeof ApiRequestSummarySchema>;
+export type ClassifierArtifactSummary = z.infer<typeof ClassifierArtifactSummarySchema>;
 export type ApiRequestShapeSummary = z.infer<typeof ApiRequestShapeSummarySchema>;
 export type ApiRequestLog = z.infer<typeof ApiRequestLogSchema>;
 

@@ -61,17 +61,17 @@
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 640011,
+		"ceiling": 646601,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Plan pane comment marks (2026-10-29): saved plan comments render as upstream's underlined marks that light up together on hover and open the comment for editing (wrap/unwrap/re-anchor in src/lib/plan-comment-offsets.ts plus the edit mode of the Comment on selection popover), on top of the plan comment store, hint row and selection popover since the last raise (633227, within tolerance). Session went to 640011 gzip, about 450 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Classifier artifact share state (2026-10-29): the api-request Request disclosure lists each artifact the classifier was told about (share mode/role, live sharing, probe outcome, capabilities, grant observed, publish env, last publish, local paths) with labels from src/lib/schema-choices.ts, on top of the growth since the 2026-10-29 plan comment marks raise (640011 to 645949, within tolerance). Session went to 646601 gzip, about 190 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1915839,
+		"ceiling": 1935847,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Persisted diff comments (2026-10-29): the Changes pane's saved comments hydrate from and write to localStorage[\"diff-annotations\"] with a hand-written validator (no zod), on top of the growth since the 2026-10-29 elicitation raise (diff comment editor cards, gutter button, plan comment marks; 1896452 to about 1914300, within the 1% tolerance). Raw went to 1915839, about 423 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Classifier artifact share state (2026-10-29): the api-request Request disclosure lists each artifact the classifier was told about with its share state, publish and local paths (about 1.8 KB raw), on top of the growth since the 2026-10-29 persisted diff comments raise (1915839 to 1934025, within tolerance). Raw went to 1935847, about 850 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-29"
 	},
 	"client.coldHome.default.commitsToRows": {

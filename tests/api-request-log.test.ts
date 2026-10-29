@@ -72,6 +72,105 @@ describe("buildApiRequestLog", () => {
 		expect(log.requests["r3"]?.toolChanges).toStrictEqual({added: ["Write"], removed: ["Bash"]});
 	});
 
+	it("summarizes the classifier's artifact share state, local paths and last publish", () => {
+		const [safeguard] = baseRequest.params.safeguards;
+		const classifierContext = safeguard!.classifier_context;
+		const record = {
+			...request("r1", "s1"),
+			params: {
+				...request("r1", "s1").params,
+				safeguards: [
+					{
+						...safeguard!,
+						classifier_context: {
+							...classifierContext,
+							artifacts: {
+								...classifierContext.artifacts,
+								by_slug: {
+									"artifact-alice-1": {
+										share: {
+											mode: "owner",
+											is_shared_live: true,
+											role: "owner",
+											probed: true,
+											probe_current_account: true,
+											type_lock: true,
+											live_paths: ["index.html"],
+											capabilities: {db: {}, user: {scopes: ["profile"]}},
+											grant_observed: true,
+										},
+									},
+									"artifact-alice-2": {
+										share: {
+											mode: "owner",
+											is_shared_live: false,
+											probe_failed: true,
+											probed: true,
+											probe_current_account: false,
+											live_paths: [],
+											grant_observed: false,
+										},
+										published_env: "prod",
+									},
+									"artifact-alice-3": {attested: "first_party_type"},
+								},
+								by_path: {
+									"/tmp/alice/review.html": {slug: "artifact-alice-2"},
+									"/tmp/alice/other.html": {slug: "artifact-alice-4"},
+								},
+								last_publish: {slug: "artifact-alice-2", env: "prod"},
+							},
+						},
+					},
+				],
+			},
+		};
+		const log = buildApiRequestLog([record]);
+		expect(log.requests["r1"]?.artifacts).toStrictEqual([
+			{
+				id: "artifact-alice-1",
+				paths: [],
+				lastPublish: false,
+				share: {
+					mode: "owner",
+					role: "owner",
+					isSharedLive: true,
+					probed: true,
+					probeFailed: false,
+					probeCurrentAccount: true,
+					typeLock: true,
+					livePaths: ["index.html"],
+					capabilities: ["db", "user"],
+					grantObserved: true,
+				},
+			},
+			{
+				id: "artifact-alice-2",
+				paths: ["/tmp/alice/review.html"],
+				lastPublish: true,
+				publishedEnv: "prod",
+				share: {
+					mode: "owner",
+					isSharedLive: false,
+					probed: true,
+					probeFailed: true,
+					probeCurrentAccount: false,
+					typeLock: false,
+					livePaths: [],
+					capabilities: [],
+					grantObserved: false,
+				},
+			},
+			{id: "artifact-alice-3", paths: [], lastPublish: false, attested: "first_party_type"},
+			{id: "artifact-alice-4", paths: ["/tmp/alice/other.html"], lastPublish: false},
+		]);
+	});
+
+	it("omits artifacts when the classifier saw none", () => {
+		const log = buildApiRequestLog([request("r1", "s1")]);
+		expect(log.requests["r1"]?.artifacts).toBeUndefined();
+	});
+
 	it("keeps a record carrying keys newer than the schema", () => {
 		const log = buildApiRequestLog([{...request("newer", "s1"), unexpected: true}]);
 		expect(log).toStrictEqual(buildApiRequestLog([request("newer", "s1")]));

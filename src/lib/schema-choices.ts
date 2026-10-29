@@ -1447,22 +1447,22 @@ const artifactUserScopeLabels = {
 } satisfies Record<z.infer<typeof ArtifactUserScopeSchema>, string>;
 
 /** Classifier context `artifacts.by_slug{}.share.mode` (src/lib/schemas.ts). */
-const classifierArtifactShareModeLabels = {
+export const classifierArtifactShareModeLabels = {
 	owner: "Owner",
 } satisfies Record<z.infer<typeof ClassifierArtifactShareModeSchema>, string>;
 
 /** Classifier context `artifacts.by_slug{}.share.role` (src/lib/schemas.ts). */
-const classifierArtifactShareRoleLabels = {
+export const classifierArtifactShareRoleLabels = {
 	owner: "Owner",
 } satisfies Record<z.infer<typeof ClassifierArtifactShareRoleSchema>, string>;
 
 /** Classifier context `artifacts.by_slug{}.published_env` and `artifacts.last_publish.env` (src/lib/schemas.ts). */
-const classifierArtifactPublishEnvLabels = {
+export const classifierArtifactPublishEnvLabels = {
 	prod: "Production",
 } satisfies Record<z.infer<typeof ClassifierArtifactPublishEnvSchema>, string>;
 
 /** Classifier context `artifacts.by_slug{}.attested` (src/lib/schemas.ts). */
-const classifierArtifactAttestationLabels = {
+export const classifierArtifactAttestationLabels = {
 	first_party_type: "First-party type",
 } satisfies Record<z.infer<typeof ClassifierArtifactAttestationSchema>, string>;
 

@@ -2,8 +2,19 @@ import {useQuery} from "@tanstack/react-query";
 import {useId, useState, type ReactNode} from "react";
 
 import {sessionApiRequestsQueryOptions} from "../lib/api/sessions";
-import {resolveApiRequest, type ApiRequestSummary, type ApiRequestShapeSummary} from "../lib/api-request-log";
+import {
+	resolveApiRequest,
+	type ApiRequestSummary,
+	type ApiRequestShapeSummary,
+	type ClassifierArtifactSummary,
+} from "../lib/api-request-log";
 import {formatModelName} from "../lib/model-name";
+import {
+	classifierArtifactAttestationLabels,
+	classifierArtifactPublishEnvLabels,
+	classifierArtifactShareModeLabels,
+	classifierArtifactShareRoleLabels,
+} from "../lib/schema-choices";
 import {ChevronIcon, CollapsibleSection} from "./tool-renderers/shared";
 
 const NUMBER = new Intl.NumberFormat("en-US");
@@ -13,6 +24,52 @@ function Fact({label, children}: {label: string; children: ReactNode}) {
 		<div className="flex gap-2 min-w-0">
 			<span className="shrink-0 text-t6">{label}</span>
 			<span className="min-w-0 break-words text-secondary">{children}</span>
+		</div>
+	);
+}
+
+/** A label from a schema-choice map, falling back to the raw value the lenient runtime schemas let through. */
+function choiceLabel(labels: Record<string, string>, value: string): string {
+	return labels[value] ?? value;
+}
+
+/** One line describing what the classifier knew about an artifact: its share probe, publish and local files. */
+function describeClassifierArtifact(artifact: ClassifierArtifactSummary): string {
+	const parts: string[] = [];
+	if (artifact.attested !== undefined) {
+		parts.push(`${choiceLabel(classifierArtifactAttestationLabels, artifact.attested)}, not probed`);
+	}
+	const {share} = artifact;
+	if (share !== undefined) {
+		parts.push(`${choiceLabel(classifierArtifactShareModeLabels, share.mode)} share`);
+		if (share.role !== undefined) parts.push(`role ${choiceLabel(classifierArtifactShareRoleLabels, share.role)}`);
+		parts.push(share.isSharedLive ? "shared live" : "not shared live");
+		if (share.probeFailed) parts.push("share probe failed");
+		else if (!share.probed) parts.push("not probed");
+		if (share.probed && !share.probeCurrentAccount) parts.push("probed as another account");
+		if (share.typeLock) parts.push("type-locked");
+		if (share.livePaths.length > 0) parts.push(`live paths: ${share.livePaths.join(", ")}`);
+		if (share.capabilities.length > 0) parts.push(`capabilities: ${share.capabilities.join(", ")}`);
+		if (share.grantObserved) parts.push("grant observed");
+	}
+	if (artifact.publishedEnv !== undefined) {
+		parts.push(`published to ${choiceLabel(classifierArtifactPublishEnvLabels, artifact.publishedEnv)}`);
+	}
+	if (artifact.lastPublish) parts.push("last publish");
+	if (artifact.paths.length > 0) parts.push(`from ${artifact.paths.join(", ")}`);
+	return parts.join(" · ");
+}
+
+function ArtifactFacts({artifacts}: {artifacts: readonly ClassifierArtifactSummary[]}) {
+	return (
+		<div className="flex flex-col gap-1 min-w-0">
+			<span className="text-t6">{`Artifacts (${artifacts.length})`}</span>
+			{artifacts.map((artifact) => (
+				<div key={artifact.id} className="flex flex-col pl-4 min-w-0">
+					<span className="break-all font-mono text-[11px] text-secondary">{artifact.id}</span>
+					<span className="break-words text-t6">{describeClassifierArtifact(artifact)}</span>
+				</div>
+			))}
 		</div>
 	);
 }
@@ -28,6 +85,7 @@ function RequestFacts({request}: {request: ApiRequestSummary}) {
 			{request.permissionMode !== undefined && <Fact label="Permission mode">{request.permissionMode}</Fact>}
 			<Fact label="Query source">{request.querySource}</Fact>
 			{request.betas.length > 0 && <Fact label="Betas">{request.betas.join(", ")}</Fact>}
+			{request.artifacts !== undefined && <ArtifactFacts artifacts={request.artifacts} />}
 		</>
 	);
 }
