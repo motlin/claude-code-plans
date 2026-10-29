@@ -660,23 +660,38 @@ const instructionsLoadReasonLabels = {
 	compact: "Compact",
 } satisfies Record<NonNullable<HookEventOf<"InstructionsLoaded">["load_reason"]>, string>;
 
-/** Not consumed yet — `reason` on instructions / session_context attachments is only validated. */
-const contextRefreshReasonChoices = {
-	session_start: true,
-	compaction: true,
-	policy_refresh: true,
-	managed_folder_check: true,
-	directory_added: true,
-	settings_sync: true,
-	account_change: true,
-	hooks_invalidate: true,
-	policy_verdict: true,
-	project_reread: true,
-	memory_paused: true,
-	memory_resumed: true,
-	auto_memory_off: true,
-	auto_memory_back_on: true,
-} satisfies Record<z.infer<typeof ContextRefreshReasonSchema>, true>;
+/** Why the CLI re-announced instructions / session context, phrased to follow "Instructions re-read". */
+const contextRefreshReasonLabels = {
+	session_start: "at session start",
+	compaction: "after the conversation was compacted",
+	policy_refresh: "after a policy refresh",
+	managed_folder_check: "after a managed folder check",
+	directory_added: "after a directory was added",
+	settings_sync: "after settings synced",
+	account_change: "after the account changed",
+	hooks_invalidate: "after hooks were invalidated",
+	policy_verdict: "after a policy verdict",
+	project_reread: "after the project was re-read",
+	memory_paused: "after memory was paused",
+	memory_resumed: "after memory resumed",
+	auto_memory_off: "after auto memory was turned off",
+	auto_memory_back_on: "after auto memory was turned back on",
+} satisfies Record<z.infer<typeof ContextRefreshReasonSchema>, string>;
+
+/** How the transcript's context-refresh meta line opens, by the attachment it announces. */
+export const contextRefreshSubjectLabels = {
+	instructions: "Instructions re-read",
+	session_context: "Session context refreshed",
+} as const satisfies Record<
+	NonNullable<Extract<ProcessedLine, {type: "attachment"}>["contextRefresh"]>["subject"],
+	string
+>;
+
+/** A context refresh reason's phrase, or undefined for a reason newer than the schema. */
+export function contextRefreshReasonLabel(reason: string): string | undefined {
+	const labels: Readonly<Record<string, string>> = contextRefreshReasonLabels;
+	return Object.hasOwn(labels, reason) ? labels[reason] : undefined;
+}
 
 const configChangeSourceLabels = {
 	user_settings: "User settings",
@@ -1579,7 +1594,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"RenderedLineSchema.<assistant|user>.stopReason": messageLineStopReasonLabels,
 	"RenderedLineSchema.<system>.subtype": systemSubtypeLabels,
 	"JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
-	"AttachmentPayloadSchema.<instructions>.reason": contextRefreshReasonChoices,
+	"AttachmentPayloadSchema.<instructions>.reason": contextRefreshReasonLabels,
+	"RenderedLineSchema.<attachment>.contextRefresh.subject": contextRefreshSubjectLabels,
 	"JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
 	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
 	"JsonlRecordSchema.<assistant>.streamCutCause": streamCutCauseChoices,

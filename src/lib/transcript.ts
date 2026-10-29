@@ -198,6 +198,10 @@ const AttachmentLineSchema = z.object({
 	// Descriptions of deferred tools a deferred_tools_delta surfaced only by a
 	// `sameAs` pointer, resolved from the earlier record that carried the definition.
 	sameAsDescriptions: z.record(z.string(), z.string()).optional(),
+	// An instructions or session_context attachment the CLI re-announced (`changed`), with its `reason`.
+	contextRefresh: z
+		.object({subject: z.enum(["instructions", "session_context"]), reason: z.string().optional()})
+		.optional(),
 	uuid: z.string().optional(),
 	timestamp: z.string().optional(),
 	sessionId: z.string().optional(),
@@ -413,7 +417,10 @@ function parseWithInvalidToolInputs(
 	const renamed = content.map((block: unknown, index) =>
 		invalid.has(index) && isRecord(block) ? {...block, name: INVALID_INPUT_TOOL_NAME} : block,
 	);
-	const reparsed = JsonlRecordSchema.safeParse({...raw, message: {...message, content: renamed}});
+	const reparsed = JsonlRecordSchema.safeParse({
+		...raw,
+		message: {...message, content: renamed},
+	});
 	if (!reparsed.success || reparsed.data.type !== "assistant") return undefined;
 	const parsedContent = reparsed.data.message.content;
 	for (const [index, {name}] of invalid) {
@@ -1016,6 +1023,16 @@ function processRecordBatch(
 				}
 				if (uuid !== undefined) surfacedDescriptions.set(uuid, descriptions);
 				if (Object.keys(sameAsDescriptions).length > 0) attachmentLine.sameAsDescriptions = sameAsDescriptions;
+			}
+			const refreshed = record.attachment;
+			if (
+				(refreshed.type === "instructions" || refreshed.type === "session_context") &&
+				refreshed.changed === true
+			) {
+				attachmentLine.contextRefresh =
+					refreshed.reason === undefined
+						? {subject: refreshed.type}
+						: {subject: refreshed.type, reason: refreshed.reason};
 			}
 			if (uuid !== undefined) attachmentLine.uuid = uuid;
 			if (record.timestamp !== undefined) attachmentLine.timestamp = record.timestamp;

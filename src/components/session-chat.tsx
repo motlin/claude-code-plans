@@ -17,6 +17,7 @@ import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {formatModelName} from "../lib/model-name";
+import {contextRefreshReasonLabel, contextRefreshSubjectLabels} from "../lib/schema-choices";
 import {useAskUserQuestionContext} from "./ask-user-question-context";
 import {orphansOpenQuestions} from "../lib/question-answer-route";
 import {isWithdrawnQuestion, OUTCOME_LABEL, questionOutcomeNote, type AskedCall} from "../lib/ask-user-question";
@@ -1630,6 +1631,42 @@ function ArtifactWatchEndedRow({
 	);
 }
 
+type ContextRefresh = NonNullable<Extract<SessionLine, {type: "attachment"}>["contextRefresh"]>;
+
+/** "Instructions re-read after the conversation was compacted", or without the reason when it is unknown. */
+function contextRefreshText({subject, reason}: ContextRefresh): string {
+	const lead = contextRefreshSubjectLabels[subject];
+	const phrase = reason === undefined ? undefined : contextRefreshReasonLabel(reason);
+	return phrase === undefined ? lead : `${lead} ${phrase}`;
+}
+
+/** The muted meta line a re-announced instructions / session_context attachment draws outside Verbose. */
+function ContextRefreshRow({
+	refresh,
+	footer,
+	recordIndex,
+}: {
+	refresh: ContextRefresh;
+	footer: React.ReactNode;
+	recordIndex: number;
+}) {
+	return (
+		<div
+			data-record-index={recordIndex}
+			className="group/msg flex flex-col w-full pb-4 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+		>
+			<TurnStatusFrame leading={false}>
+				<div data-turn-status="" className={TURN_STATUS_CLASS}>
+					<span data-context-refresh="" className="text-body text-secondary min-w-0 truncate">
+						{contextRefreshText(refresh)}
+					</span>
+				</div>
+			</TurnStatusFrame>
+			{footer}
+		</div>
+	);
+}
+
 function TaskEventRunStatus({events}: {events: readonly TaskEvent[]}) {
 	return (
 		<TurnStatusFrame leading={false}>
@@ -2857,6 +2894,23 @@ function buildSessionListEntries(
 			continue;
 		}
 
+		const contextRefresh = verbose || line.type !== "attachment" ? undefined : line.contextRefresh;
+		if (contextRefresh !== undefined) {
+			entries.push({
+				key: `line-${line.lineIndex}`,
+				startRecordIndex: line.lineIndex,
+				isPrompt: false,
+				kind: "assistant_tool",
+				assistantSpan: displaySpans?.get(line.lineIndex),
+				opensWithStatus: "marker",
+				element: (
+					<ContextRefreshRow refresh={contextRefresh} footer={footerFor(line)} recordIndex={line.lineIndex} />
+				),
+			});
+			i++;
+			continue;
+		}
+
 		const stoppedAgent = verbose ? null : stoppedAgentNoticeOf(line);
 		if (stoppedAgent !== null) {
 			const statusIndex = stoppedStatusIndex(line);
@@ -3830,6 +3884,7 @@ function isLineVisible(
 		return showSystemBanners;
 	}
 	if (line.type === "attachment") {
+		if (line.contextRefresh !== undefined) return true;
 		const head = getAttachmentHead(line.attachmentJson);
 		if (isVerboseOnlyAttachment(head)) return verbose;
 		const subtype = head.type;
