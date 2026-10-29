@@ -54,49 +54,53 @@ function placement(range: Range, bounds: DOMRect, height: number): {x: number; y
 	return {x, y: Math.min(Math.max(y, MARGIN), window.innerHeight - height - MARGIN)};
 }
 
-/** The pane's commentable selection: the live range, the text it covers and its flattened offsets. */
-export interface PlanSelection {
-	range: Range;
-	text: string;
-	start: number;
-	end: number;
-}
-
 /**
  * Upstream's "Comment on selection" popover: a fixed 320px card portalled to the body, holding the
- * shared comment editor in its floating variant. It clears the window selection on open but keeps
- * the range painted, follows scroll and resize, closes on an outside press only while the draft is
- * blank, and keeps Tab inside itself.
+ * shared comment editor in its floating variant, for a new comment on a selection or an edit of a
+ * saved one. It clears the window selection on open but keeps a new comment's range painted,
+ * follows scroll and resize, closes on an outside press only while the draft is blank or
+ * unchanged, and keeps Tab inside itself.
  */
 export function PlanCommentPopover({
-	selection,
+	range,
+	selectedText,
 	boundary,
+	initialValue = "",
 	value,
 	onChange,
 	onSave,
+	onDelete,
 	onClose,
 }: {
-	selection: PlanSelection;
+	/** What the popover sits under: the selection, or the mark being edited. */
+	range: Range;
+	/** The plan text the comment is on, copied by a copy with a bare caret. */
+	selectedText: string;
 	/** The pane root, whose rect clamps the popover horizontally. */
 	boundary: HTMLElement;
+	/** The comment's text when opened; an outside press closes the popover while the draft still matches it. */
+	initialValue?: string;
 	value: string;
 	onChange: (value: string) => void;
 	onSave: (comment: string) => void;
+	/** Editing an existing comment: shows Delete, and leaves the range unpainted as upstream does. */
+	onDelete?: (() => void) | undefined;
 	onClose: () => void;
 }) {
 	const dialogRef = useRef<HTMLDivElement>(null);
 	// Unplaced, it stays focusable but invisible (not `visibility: hidden`, which would drop the autofocus).
 	const [position, setPosition] = useState<{x: number; y: number} | null>(null);
 
+	const editing = onDelete !== undefined;
 	useLayoutEffect(() => {
 		document.getSelection()?.removeAllRanges();
-		return paintSelection(selection.range);
-	}, [selection.range]);
+		return editing ? undefined : paintSelection(range);
+	}, [range, editing]);
 
 	const reposition = useCallback(() => {
 		const height = dialogRef.current?.offsetHeight ?? 0;
-		setPosition(placement(selection.range, boundary.getBoundingClientRect(), height));
-	}, [selection.range, boundary]);
+		setPosition(placement(range, boundary.getBoundingClientRect(), height));
+	}, [range, boundary]);
 
 	useLayoutEffect(() => {
 		reposition();
@@ -118,17 +122,17 @@ export function PlanCommentPopover({
 		};
 	}, [reposition, boundary]);
 
-	const blank = value.trim() === "";
+	const unchanged = value.trim() === "" || value === initialValue;
 	useEffect(() => {
 		const onPointerDown = (event: PointerEvent) => {
 			if (event.target instanceof Node && dialogRef.current?.contains(event.target) === true) return;
-			if (blank) onClose();
+			if (unchanged) onClose();
 		};
 		document.addEventListener("pointerdown", onPointerDown, true);
 		return () => {
 			document.removeEventListener("pointerdown", onPointerDown, true);
 		};
-	}, [blank, onClose]);
+	}, [unchanged, onClose]);
 
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
 		if (event.key !== "Tab") return;
@@ -147,7 +151,7 @@ export function PlanCommentPopover({
 		const target = event.target;
 		if (!(target instanceof HTMLTextAreaElement) || target.selectionStart !== target.selectionEnd) return;
 		event.preventDefault();
-		event.clipboardData.setData("text/plain", selection.text);
+		event.clipboardData.setData("text/plain", selectedText);
 	};
 
 	return createPortal(
@@ -178,6 +182,7 @@ export function PlanCommentPopover({
 					onSave(text);
 				}}
 				onCancel={onClose}
+				onDelete={onDelete}
 			/>
 		</div>,
 		document.body,

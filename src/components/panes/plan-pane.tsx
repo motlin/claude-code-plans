@@ -107,7 +107,12 @@ function PlanBody({
 				)}
 				{todos.length > 0 && <PlanTasks todos={todos} />}
 			</div>
-			<PlanCommentsLayer rootRef={commentsRef} sessionId={sessionId} commentsEnabled={commentsEnabled} />
+			<PlanCommentsLayer
+				rootRef={commentsRef}
+				content={content}
+				sessionId={sessionId}
+				commentsEnabled={commentsEnabled}
+			/>
 		</div>
 	);
 }

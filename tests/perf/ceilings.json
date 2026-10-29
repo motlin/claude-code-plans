@@ -61,10 +61,10 @@
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 633227,
+		"ceiling": 640011,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Workflow run grouping (2026-10-29): the Subagents Tree, reached from the session page through the tool-renderer subagent lookup, groups workflow agents as run -> phase -> agent with upstream's phase titles, counts and aria-label (src/lib/workflow-phase.ts, kept zod-free so the progress schemas stay out). Session went from 632235 gzip (already within the 1% tolerance of 626645) to 633227. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Plan pane comment marks (2026-10-29): saved plan comments render as upstream's underlined marks that light up together on hover and open the comment for editing (wrap/unwrap/re-anchor in src/lib/plan-comment-offsets.ts plus the edit mode of the Comment on selection popover), on top of the plan comment store, hint row and selection popover since the last raise (633227, within tolerance). Session went to 640011 gzip, about 450 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.raw": {

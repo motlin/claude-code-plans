@@ -62,6 +62,14 @@ describe("flattenOffsets", () => {
 		expect(flattenOffsets(root, range)).toStrictEqual({start: 1, end: 3, text: "bc"});
 	});
 
+	it("skips the whitespace between table rows, as upstream's marks do", () => {
+		const root = mount("<table>\n<tbody>\n<tr>\n<td>a</td>\n</tr>\n</tbody>\n</table><p id='b'>b</p>");
+		const range = document.createRange();
+		range.selectNodeContents(textNode(root, "#b"));
+
+		expect(flattenOffsets(root, range)).toStrictEqual({start: 1, end: 2, text: "b"});
+	});
+
 	it("returns null for a blank selection", () => {
 		const root = mount("<p>a  b</p>");
 		const range = document.createRange();

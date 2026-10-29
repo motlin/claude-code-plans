@@ -45,12 +45,12 @@ function textOf(root: HTMLElement, text: string): Text {
 	throw new Error(`no text node with ${text}`);
 }
 
-/** Drag-select `[from, to)` of `node`'s text: mousedown inside, the selection moves, then mouseup. */
-function dragSelect(node: Text, from: number, to: number, detail = 1) {
+/** Drag-select from `from` in `node` to `to` in `endNode` (default `node`): mousedown inside, the selection moves, then mouseup. */
+function dragSelect(node: Text, from: number, to: number, detail = 1, endNode: Text = node) {
 	fireEvent.mouseDown(node.parentElement as Element);
 	const range = document.createRange();
 	range.setStart(node, from);
-	range.setEnd(node, to);
+	range.setEnd(endNode, to);
 	const selection = document.getSelection();
 	selection?.removeAllRanges();
 	selection?.addRange(range);
@@ -115,9 +115,10 @@ describe("plan selection comment popover", () => {
 	it("opens nothing for a selection overlapping an existing comment", () => {
 		addPlanComment(SESSION, {selectedText: "cup", startOffset: 18, endOffset: 21, comment: "x"});
 		const pane = renderPane();
-		dragSelect(textOf(pane, "Brew one cup"), 5, 10);
+		// The comment's mark splits the paragraph into "Brew one ", "cup" and " of tea.".
+		dragSelect(textOf(pane, "Brew one"), 5, 2, 1, textOf(pane, "cup"));
 		const overlapping = dialog();
-		dragSelect(textOf(pane, "Brew one cup"), 0, 8);
+		dragSelect(textOf(pane, "Brew one"), 0, 9);
 
 		expect({overlapping, adjacent: dialog() !== null}).toStrictEqual({overlapping: null, adjacent: true});
 	});
