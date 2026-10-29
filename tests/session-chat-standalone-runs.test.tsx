@@ -7,10 +7,16 @@ import {processTranscript} from "../src/lib/transcript";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 
 vi.mock("../src/components/settings-context", () => ({
-	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
+	useSettings: () => ({
+		settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"},
+	}),
 }));
-vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
-vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => ({failedTools: new Map()})}));
+vi.mock("../src/lib/hmr-persist", () => ({
+	hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize(),
+}));
+vi.mock("../src/hooks/use-claude-events", () => ({
+	useClaudeEvents: () => ({failedTools: new Map()}),
+}));
 
 class FakeResizeObserver {
 	observe() {}
@@ -34,7 +40,11 @@ const PLAN_FILE = "/fabricated/plans/fabricated-plan.md";
 const REJECTED =
 	"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.";
 
-const prompt = {type: "user", uuid: "u-prompt", message: {role: "user", content: "Fabricated request"}};
+const prompt = {
+	type: "user",
+	uuid: "u-prompt",
+	message: {role: "user", content: "Fabricated request"},
+};
 
 interface Call {
 	id: string;
@@ -49,7 +59,11 @@ function call({id, name, input, result, isError, rejected}: Call): unknown[] {
 	const assistant = {
 		type: "assistant",
 		uuid: `a-${id}`,
-		message: {id: `msg-${id}`, role: "assistant", content: [{type: "tool_use", id, name, input}]},
+		message: {
+			id: `msg-${id}`,
+			role: "assistant",
+			content: [{type: "tool_use", id, name, input}],
+		},
 	};
 	if (result === undefined) return [assistant];
 	return [
@@ -86,7 +100,7 @@ const exitPlan = (id: string, result?: string): Call => ({
 	...(result === undefined ? {} : {result, isError: true, rejected: true}),
 });
 
-function rows(records: unknown[], mode: TranscriptMode = "normal") {
+function rows(records: unknown[], mode: TranscriptMode = "normal", showThinking = false) {
 	const {lines, toolResultMap} = processTranscript(records);
 	const {container} = render(
 		<SessionChat
@@ -95,6 +109,7 @@ function rows(records: unknown[], mode: TranscriptMode = "normal") {
 			toolResultMap={toolResultMap}
 			transcriptMode={mode}
 			showTools
+			showThinking={showThinking}
 			shouldScrollToEnd={false}
 		/>,
 	);
@@ -105,6 +120,7 @@ function rows(records: unknown[], mode: TranscriptMode = "normal") {
 				row.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button'),
 				(element) => element.textContent,
 			),
+			...(row.textContent.includes("Thinking hidden") ? {thinkingHidden: true} : {}),
 		}),
 	);
 	cleanup();
@@ -143,7 +159,12 @@ describe("standalone calls end a tool run", () => {
 	it("splits a non-file tool from the ExitPlanMode after it", () => {
 		const records = [
 			prompt,
-			...call({id: "search", name: "ToolSearch", input: {query: "select:Fabricated"}, result: "loaded"}),
+			...call({
+				id: "search",
+				name: "ToolSearch",
+				input: {query: "select:Fabricated"},
+				result: "loaded",
+			}),
 			...call(exitPlan("plan", REJECTED)),
 		];
 		const expected = [human, tool(["Loaded tools"]), tool(["Proposed planStopped"])];
@@ -173,7 +194,12 @@ describe("standalone calls end a tool run", () => {
 	it("rolls an Artifact read_db up with its neighbours", () => {
 		const records = [
 			prompt,
-			...call({id: "read", name: "Read", input: {file_path: "/fabricated/a.ts"}, result: "1\tconst a = 1;"}),
+			...call({
+				id: "read",
+				name: "Read",
+				input: {file_path: "/fabricated/a.ts"},
+				result: "1\tconst a = 1;",
+			}),
 			...call({
 				id: "db",
 				name: "Artifact",
@@ -299,5 +325,32 @@ describe("notices next to a standalone", () => {
 	it("keeps a task notification as its own row when the span has no default run", () => {
 		const records = [prompt, taskNotice, ...call(exitPlan("plan", REJECTED))];
 		expect(rows(records)).toStrictEqual([human, tool([]), tool(["Proposed planStopped"])]);
+	});
+});
+
+describe("omitted-thinking lines in a tool run", () => {
+	// A turn whose thinking the CLI withheld, holding the thinking stub beside its tool call.
+	const [two, twoResult] = call(bash("two")) as [{message: {content: unknown[]}} & Record<string, unknown>, unknown];
+	const omittedTwo = {
+		...two,
+		thinkingDisplay: "omitted",
+		message: {
+			...two.message,
+			content: [{type: "thinking", thinking: ""}, ...two.message.content],
+		},
+	};
+	const records = [prompt, ...call(bash("one")), omittedTwo, twoResult, ...call(bash("three"))];
+
+	it("keeps the run in one group when thinking is hidden", () => {
+		expect(rows(records)).toStrictEqual([human, tool(["Ran 3 commands"])]);
+	});
+
+	it("splits the run around the Thinking hidden placeholder when thinking is shown", () => {
+		expect(rows(records, "normal", true)).toStrictEqual([
+			human,
+			tool(["Fabricated one"]),
+			{perfRow: "assistant_tool", tools: ["Fabricated two"], thinkingHidden: true},
+			tool(["Fabricated three"]),
+		]);
 	});
 });

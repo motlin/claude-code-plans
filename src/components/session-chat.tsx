@@ -196,7 +196,10 @@ interface SendNowHandlers {
 	sendNow: (() => Promise<void> | void) | undefined;
 	focusComposer: (() => void) | undefined;
 }
-const SendNowContext = createContext<SendNowHandlers>({sendNow: undefined, focusComposer: undefined});
+const SendNowContext = createContext<SendNowHandlers>({
+	sendNow: undefined,
+	focusComposer: undefined,
+});
 
 /** A prompt waiting in the CLI's queue, whose head row's Send now interrupts the running turn. */
 function QueuedWaitingTurn({entryId, text, head}: {entryId: string; text: string; head: boolean}) {
@@ -323,7 +326,13 @@ function withOrphanedQuestions(
 		for (const block of content) {
 			if (block.type !== "tool_use" || block.name !== "AskUserQuestion" || toolResultMap.has(block.id)) continue;
 			orphaned ??= new Map(toolResultMap);
-			orphaned.set(block.id, {result: "", isError: true, stopped: true, orphaned: true, resultUuid: ""});
+			orphaned.set(block.id, {
+				result: "",
+				isError: true,
+				stopped: true,
+				orphaned: true,
+				resultUuid: "",
+			});
 		}
 	}
 	return orphaned ?? toolResultMap;
@@ -1670,7 +1679,12 @@ function noticeSegments(notices: readonly FoldedNotice[]): NoticeSegment[] {
 		const last = segments.at(-1);
 		if (notice.kind !== "task") segments.push({kind: "notice", lineIndex: notice.lineIndex, notice});
 		else if (last?.kind === "run") last.events.push(taskEvent(notice.notification));
-		else segments.push({kind: "run", lineIndex: notice.lineIndex, events: [taskEvent(notice.notification)]});
+		else
+			segments.push({
+				kind: "run",
+				lineIndex: notice.lineIndex,
+				events: [taskEvent(notice.notification)],
+			});
 	}
 	return segments;
 }
@@ -1828,8 +1842,9 @@ function toolBucketOf(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, To
 function isGroupableToolOnlyAssistantLine(
 	line: SessionLine,
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+	showThinking: boolean,
 ): boolean {
-	const buckets = toolOnlyBuckets(line, toolResultMap);
+	const buckets = toolOnlyBuckets(line, toolResultMap, showThinking);
 	return buckets?.every((bucket) => bucket === "default") === true;
 }
 
@@ -1837,12 +1852,20 @@ function isGroupableToolOnlyAssistantLine(
 function isStandaloneToolOnlyAssistantLine(
 	line: SessionLine,
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+	showThinking: boolean,
 ): boolean {
-	return toolOnlyBuckets(line, toolResultMap)?.includes("standalone") === true;
+	return toolOnlyBuckets(line, toolResultMap, showThinking)?.includes("standalone") === true;
 }
 
-/** The bucket of each call on a line of only tool calls and hidden blocks, else null. */
-function toolOnlyBuckets(line: SessionLine, toolResultMap: ReadonlyMap<string, ToolResultInfo>): ToolBucket[] | null {
+/**
+ * The bucket of each call on a line of only tool calls and hidden blocks, else null. Withheld
+ * thinking counts as hidden unless thinking is shown, where its placeholder must draw.
+ */
+function toolOnlyBuckets(
+	line: SessionLine,
+	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+	showThinking: boolean,
+): ToolBucket[] | null {
 	if (line.type !== "assistant" || line.stopReason === "refusal") return null;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return null;
@@ -1852,7 +1875,7 @@ function toolOnlyBuckets(line: SessionLine, toolResultMap: ReadonlyMap<string, T
 		else if (
 			!(
 				(b.type === "text" && !isAssistantProseBlock(b)) ||
-				(b.type === "thinking" && b.thinking.trim() === "" && line.thinkingOmitted !== true)
+				(b.type === "thinking" && b.thinking.trim() === "" && !(showThinking && line.thinkingOmitted === true))
 			)
 		)
 			return null;
@@ -2357,7 +2380,7 @@ function buildSessionListEntries(
 		if (line.type !== "user" || classifyUserContent(line) !== "stop-hook" || !renderProps.showTools) return false;
 		for (let next = index + 1; next < lines.length; next++) {
 			if (skipSet.has(next) || !isLineVisible(lineAt(next), renderProps, verbose)) continue;
-			return isGroupableToolOnlyAssistantLine(lineAt(next), renderProps.toolResultMap);
+			return isGroupableToolOnlyAssistantLine(lineAt(next), renderProps.toolResultMap, renderProps.showThinking);
 		}
 		return false;
 	};
@@ -2475,11 +2498,14 @@ function buildSessionListEntries(
 			)
 				continue;
 			if (!sameSpan(line, nextLine) || crossesHeldEntry(line.lineIndex, nextLine.lineIndex)) return false;
-			if (isStandaloneToolOnlyAssistantLine(nextLine, renderProps.toolResultMap)) {
+			if (isStandaloneToolOnlyAssistantLine(nextLine, renderProps.toolResultMap, renderProps.showThinking)) {
 				passedStandalone = true;
 				continue;
 			}
-			return passedStandalone && isGroupableToolOnlyAssistantLine(nextLine, renderProps.toolResultMap);
+			return (
+				passedStandalone &&
+				isGroupableToolOnlyAssistantLine(nextLine, renderProps.toolResultMap, renderProps.showThinking)
+			);
 		}
 		return false;
 	};
@@ -2568,7 +2594,7 @@ function buildSessionListEntries(
 			const following = lines[j];
 			const leadsRun =
 				following !== undefined &&
-				isGroupableToolOnlyAssistantLine(following, renderProps.toolResultMap) &&
+				isGroupableToolOnlyAssistantLine(following, renderProps.toolResultMap, renderProps.showThinking) &&
 				renderProps.showTools &&
 				// Stop-hook feedback belongs to no assistant span; it leads whichever run it re-prompted.
 				(notice.kind === "hook" || sameSpan(line, following)) &&
@@ -2577,7 +2603,7 @@ function buildSessionListEntries(
 				!leadsRun &&
 				following !== undefined &&
 				renderProps.showTools &&
-				isStandaloneToolOnlyAssistantLine(following, renderProps.toolResultMap);
+				isStandaloneToolOnlyAssistantLine(following, renderProps.toolResultMap, renderProps.showThinking);
 			const previousRun = besideStandalone ? reachableDefaultRun(line) : null;
 			const deferred = besideStandalone && previousRun === null && nextDefaultRunAfterStandalone(j, line);
 			// A task notification opening a run gathers the idle slow commands into it instead.
@@ -2607,7 +2633,10 @@ function buildSessionListEntries(
 		pushIdleCommands(i);
 
 		// Group consecutive tool-only assistant lines
-		if (isGroupableToolOnlyAssistantLine(line, renderProps.toolResultMap) && renderProps.showTools) {
+		if (
+			isGroupableToolOnlyAssistantLine(line, renderProps.toolResultMap, renderProps.showThinking) &&
+			renderProps.showTools
+		) {
 			const groupStart = i;
 			const groupIndices: number[] = [i];
 			const notices = leadingNotices;
@@ -2636,7 +2665,7 @@ function buildSessionListEntries(
 					continue;
 				}
 				if (
-					isGroupableToolOnlyAssistantLine(nextLine, renderProps.toolResultMap) &&
+					isGroupableToolOnlyAssistantLine(nextLine, renderProps.toolResultMap, renderProps.showThinking) &&
 					sameSpan(line, nextLine) &&
 					!hoistedCompletions.has(j)
 				) {
@@ -2733,7 +2762,13 @@ function buildSessionListEntries(
 					};
 				}
 			};
-			lastDefaultRun = {entryIndex: entries.length, rebuild: buildRun, line, notices, standalonesAfter: 0};
+			lastDefaultRun = {
+				entryIndex: entries.length,
+				rebuild: buildRun,
+				line,
+				notices,
+				standalonesAfter: 0,
+			};
 			entries.push(buildRun(notices));
 			i = j;
 			continue;
@@ -2833,11 +2868,16 @@ function buildSessionListEntries(
 			...(compactionStatuses.has(line.lineIndex) ? {opensWithStatus: "marker"} : {}),
 			...(!verbose && isOrdinaryPromptLine(line, renderProps) ? {prompt: {line, render: renderLine}} : {}),
 			...(!verbose && (isProseOnlyAssistantLine(line) || isHookSystemMessageLine(line))
-				? {prose: {render: (precedesStatus: OpeningStatus) => renderLine(false, precedesStatus)}}
+				? {
+						prose: {render: (precedesStatus: OpeningStatus) => renderLine(false, precedesStatus)},
+					}
 				: {}),
 			element: renderLine(false),
 		});
-		if (lastDefaultRun !== null && isStandaloneToolOnlyAssistantLine(line, renderProps.toolResultMap))
+		if (
+			lastDefaultRun !== null &&
+			isStandaloneToolOnlyAssistantLine(line, renderProps.toolResultMap, renderProps.showThinking)
+		)
 			lastDefaultRun.standalonesAfter++;
 		i++;
 	}
@@ -3422,7 +3462,10 @@ function VirtualizedSessionEntries({
 			return;
 		}
 		pendingFocusIndexRef.current = target;
-		setRange({startIndex: Math.max(0, target - 1), endIndex: Math.min(entries.length, target + 2)});
+		setRange({
+			startIndex: Math.max(0, target - 1),
+			endIndex: Math.min(entries.length, target + 2),
+		});
 	};
 
 	const startIndex = Math.min(range.startIndex, entries.length);
@@ -4113,7 +4156,10 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
  * that prompt has no full card. It carries the live session's recovery
  * handlers for that card.
  */
-const LastErrorLineContext = createContext<{line: SessionLine | null; recovery: ApiErrorRecovery | undefined}>({
+const LastErrorLineContext = createContext<{
+	line: SessionLine | null;
+	recovery: ApiErrorRecovery | undefined;
+}>({
 	line: null,
 	recovery: undefined,
 });
@@ -5843,7 +5889,11 @@ function ToolCallSummary({
 				calls,
 				[...taskNotices.map((notice) => notice.notification), ...stopCompletions(calls, backgroundOutcomes)],
 				failedLaunchIds(backgroundOutcomes),
-				{leading: leadingPeers.length, trailing: trailingPeers.length, reprompted: hooks.length > 0},
+				{
+					leading: leadingPeers.length,
+					trailing: trailingPeers.length,
+					reprompted: hooks.length > 0,
+				},
 			),
 		[calls, taskNotices, leadingPeers, trailingPeers, hooks, backgroundOutcomes],
 	);
