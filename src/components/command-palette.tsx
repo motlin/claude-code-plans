@@ -161,6 +161,7 @@ import {HighlightRuns} from "./highlight-runs";
 import {
 	isAltEnter,
 	type PaletteCardSession,
+	PaletteRenameDialog,
 	PaletteRowActionsButton,
 	PaletteRowActionsCard,
 	type RowActionsCloseOptions,
@@ -813,6 +814,8 @@ function PalettePopup({
 		session: PaletteCardSession;
 		anchorRect: ReturnType<typeof rowActionsAnchorRect>;
 	} | null>(null);
+	// The row card's Rename dialog, kept mounted through its close animation.
+	const [renaming, setRenaming] = useState<{session: PaletteCardSession; open: boolean} | null>(null);
 	// Upstream keeps separate Search and Compose drafts; `query` is the active view's.
 	const [buffers, setBuffers] = useState<PaletteBuffers>({search: "", compose: ""});
 	const [tab, setTab] = useState<PaletteType>("all");
@@ -2263,13 +2266,25 @@ function PalettePopup({
 							openSession(id);
 						});
 					}}
-					onRename={(id) => {
-						select(() => {
-							openSession(id);
-							requestSessionRename(id);
-						});
+					onRename={(session) => {
+						closeRowActions({refocus: false});
+						setRenaming({session, open: true});
 					}}
 					onClose={closeRowActions}
+				/>
+			)}
+			{renaming !== null && (
+				<PaletteRenameDialog
+					key={renaming.session.id}
+					session={renaming.session}
+					open={renaming.open}
+					finalFocus={inputRef}
+					onClose={() => {
+						setRenaming((current) => (current === null ? null : {...current, open: false}));
+					}}
+					onClosed={() => {
+						setRenaming(null);
+					}}
 				/>
 			)}
 		</Dialog.Popup>

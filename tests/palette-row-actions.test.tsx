@@ -331,18 +331,128 @@ describe("palette row actions card", () => {
 		});
 	});
 
-	it("Rename closes the palette and starts the session's inline rename", async () => {
-		const {card} = await openCard();
+	it("Rename opens upstream's Rename session dialog over the palette", async () => {
+		const {dialog: palette, card} = await openCard();
 
 		fireEvent.click(within(card).getByRole("menuitem", {name: /^Rename/}));
 
+		const rename = await screen.findByRole("dialog", {name: "Rename session"});
+		const field = within(rename).getByRole("textbox", {name: "Rename session"});
 		await waitFor(() => {
-			expect(screen.queryByRole("dialog")).toBeNull();
+			expect(document.activeElement).toBe(field);
+		});
+		expect({
+			card: screen.queryByRole("menu", {name: "Actions"}),
+			paletteOpen: palette.isConnected,
+			value: (field as HTMLInputElement).value,
+			testId: field.getAttribute("data-testid"),
+			buttons: within(rename)
+				.getAllByRole("button")
+				.map((button) => [button.textContent, (button as HTMLButtonElement).disabled]),
+			location: document.querySelector('output[aria-label="Location"]')?.textContent,
+			inlineRenames: renameRequests,
+		}).toStrictEqual({
+			card: null,
+			paletteOpen: true,
+			value: "Refactor auth module",
+			testId: "name-session",
+			buttons: [
+				["Cancel", false],
+				["Save", false],
+			],
+			location: "/",
+			inlineRenames: [],
+		});
+	});
+
+	it("disables Save while the rename field is blank", async () => {
+		const {card} = await openCard();
+		fireEvent.click(within(card).getByRole("menuitem", {name: /^Rename/}));
+		const rename = await screen.findByRole("dialog", {name: "Rename session"});
+
+		fireEvent.change(within(rename).getByRole("textbox", {name: "Rename session"}), {target: {value: "   "}});
+
+		expect(within(rename).getByRole<HTMLButtonElement>("button", {name: "Save"}).disabled).toBe(true);
+	});
+
+	it("Save renames the session and keeps the palette open", async () => {
+		const {dialog: palette, card} = await openCard();
+		fireEvent.click(within(card).getByRole("menuitem", {name: /^Rename/}));
+		const rename = await screen.findByRole("dialog", {name: "Rename session"});
+
+		fireEvent.change(within(rename).getByRole("textbox", {name: "Rename session"}), {
+			target: {value: "  Auth rewrite  "},
+		});
+		fireEvent.click(within(rename).getByRole("button", {name: "Save"}));
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Rename session"})).toBeNull();
+		});
+		expect({
+			request: fetchMock.mock.calls.at(-1),
+			paletteOpen: palette.isConnected,
+			location: document.querySelector('output[aria-label="Location"]')?.textContent,
+		}).toStrictEqual({
+			request: [
+				"/api/sessions/sess-1/title",
+				{
+					method: "PUT",
+					headers: {"Content-Type": "application/json"},
+					body: JSON.stringify({title: "Auth rewrite"}),
+					credentials: "same-origin",
+				},
+			],
+			paletteOpen: true,
+			location: "/",
+		});
+	});
+
+	it("Save with the name unchanged closes the dialog without renaming", async () => {
+		const {card} = await openCard();
+		fireEvent.click(within(card).getByRole("menuitem", {name: /^Rename/}));
+		const rename = await screen.findByRole("dialog", {name: "Rename session"});
+
+		fireEvent.click(within(rename).getByRole("button", {name: "Save"}));
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Rename session"})).toBeNull();
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("Cancel closes only the rename dialog", async () => {
+		const {dialog: palette, card} = await openCard();
+		fireEvent.click(within(card).getByRole("menuitem", {name: /^Rename/}));
+		const rename = await screen.findByRole("dialog", {name: "Rename session"});
+
+		fireEvent.click(within(rename).getByRole("button", {name: "Cancel"}));
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Rename session"})).toBeNull();
+		});
+		expect({paletteOpen: palette.isConnected, fetched: fetchMock.mock.calls.length}).toStrictEqual({
+			paletteOpen: true,
+			fetched: 0,
+		});
+	});
+
+	it("Escape closes only the rename dialog and returns focus to the Search input", async () => {
+		const {dialog: palette, input, card} = await openCard();
+		fireEvent.click(within(card).getByRole("menuitem", {name: /^Rename/}));
+		const rename = await screen.findByRole("dialog", {name: "Rename session"});
+
+		fireEvent.keyDown(within(rename).getByRole("textbox", {name: "Rename session"}), {
+			key: "Escape",
+			code: "Escape",
+		});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Rename session"})).toBeNull();
 		});
 		await waitFor(() => {
-			expect(renameRequests).toStrictEqual(["sess-1"]);
+			expect(document.activeElement).toBe(input);
 		});
-		expect(screen.getByRole("status", {name: "Location"}).textContent).toBe("/session/sess-1");
+		expect(palette.isConnected).toBe(true);
 	});
 
 	it("shows the Actions tooltip on the row's hover … button", async () => {

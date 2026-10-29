@@ -1,8 +1,10 @@
 import {useQueryClient} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
-import {type KeyboardEvent, useEffect, useLayoutEffect, useMemo, useRef} from "react";
+import {type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useMemo, useRef} from "react";
 
 import {useSessionArchive} from "../hooks/use-session-archive";
+import {RENAME_FAILED_MESSAGE} from "../hooks/use-session-rename";
+import {useRenameSessionMutation} from "../lib/api/sessions";
 import {assertNever} from "../lib/assert-never";
 import {pin, unpin, usePins} from "../lib/pin-store";
 import {relativeBucket} from "../lib/search-text";
@@ -15,6 +17,7 @@ import {
 } from "../lib/session-menu-items";
 import type {SessionBucket} from "../lib/session-state";
 import {markSeen, markUnseen} from "../lib/unread-store";
+import {SessionRenameDialog} from "./session-rename-dialog";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 import {useToast} from "./toast-context";
 import {inlineEndSide, Menu, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
@@ -126,8 +129,8 @@ export function isAltEnter(event: KeyboardEvent<HTMLElement>): boolean {
  * The claude.ai/code ⌘K row-actions card: a 280px compact cds Menu overlapping the receded palette's
  * inline-end edge by 44px, with the session title, "Code session · <bucket>" and items numbered 1…N. Its modal
  * backdrop eats the first click outside. ←, Esc, Tab, ⌥⏎ again or a held Enter close only the card; digits
- * ignore repeats and the first 300ms after the item list changes. Delete is never offered
- * (transcripts are never deleted).
+ * ignore repeats and the first 300ms after the item list changes. Rename opens a dialog over the palette, as
+ * upstream's `CodeSessionRenameDialog` does. Delete is never offered (transcripts are never deleted).
  */
 export function PaletteRowActionsCard({
 	session,
@@ -140,8 +143,8 @@ export function PaletteRowActionsCard({
 	/** The anchor box from {@link rowActionsAnchorRect}, measured once as the card opens. */
 	anchorRect: Box;
 	onOpen: (id: string) => void;
-	/** Closes the palette and starts the session's inline rename, as ⌥⌘R does. */
-	onRename: (id: string) => void;
+	/** Opens upstream's Rename session dialog over the palette, which stays open. */
+	onRename: (session: PaletteCardSession) => void;
 	onClose: (options: RowActionsCloseOptions) => void;
 }) {
 	const queryClient = useQueryClient();
@@ -206,7 +209,7 @@ export function PaletteRowActionsCard({
 			return;
 		}
 		if (id === "rename") {
-			onRename(session.id);
+			onRename(session);
 			return;
 		}
 		onClose({refocus: true});
@@ -361,5 +364,39 @@ export function PaletteRowActionsButton({onOpen}: {onOpen: () => void}) {
 				</button>
 			</Tooltip>
 		</span>
+	);
+}
+
+/** The row card's Rename: upstream's rename dialog over the palette, saving through the session title API. */
+export function PaletteRenameDialog({
+	session,
+	open,
+	onClose,
+	onClosed,
+	finalFocus,
+}: {
+	session: PaletteCardSession;
+	open: boolean;
+	onClose: () => void;
+	onClosed: () => void;
+	finalFocus: RefObject<HTMLElement | null>;
+}) {
+	const mutation = useRenameSessionMutation(session.id);
+	const toast = useToast();
+	return (
+		<SessionRenameDialog
+			open={open}
+			initialName={session.title}
+			onClose={onClose}
+			onClosed={onClosed}
+			finalFocus={finalFocus}
+			onRename={(name) => {
+				mutation.mutate(name, {
+					onError: () => {
+						toast({kind: "error", message: RENAME_FAILED_MESSAGE});
+					},
+				});
+			}}
+		/>
 	);
 }
