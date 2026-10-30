@@ -1,13 +1,14 @@
 /* Upstream's prose root spaces top-level blocks 7px apart (its p+p / ul
    margin-top); the flex gap is the only such spacing, so nothing here relies on
-   collapsing margins. */
+   collapsing margins. Prose sizes are rem, so a browser text zoom (a larger root
+   font size) scales them as it scales upstream's. */
 .markdown {
 	display: flex;
 	flex-direction: column;
 	gap: 7px;
 	font-family: var(--font-sans);
-	--md-prose-size: 14px;
-	--md-prose-leading: 20px;
+	--md-prose-size: 0.875rem;
+	--md-prose-leading: 1.25rem;
 	font-size: var(--md-prose-size);
 	font-weight: 400;
 	line-height: var(--md-prose-leading);
@@ -21,8 +22,8 @@
 	.markdown:where(:global([data-density="comfortable"] *)):not(
 		:where(:global([data-density="comfortable"] [data-density="compact"] *))
 	) {
-	--md-prose-size: 16px;
-	--md-prose-leading: 24px;
+	--md-prose-size: 1rem;
+	--md-prose-leading: 1.5rem;
 }
 
 .markdown h1,

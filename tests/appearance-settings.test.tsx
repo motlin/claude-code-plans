@@ -85,7 +85,7 @@ describe("appearance setting schemas", () => {
 				(value) => InterfaceFontSchema.safeParse(value).success,
 			),
 			sizes: ["sm", "md", "lg", "xl", "medium"].map((value) => TranscriptTextSizeSchema.safeParse(value).success),
-			sizePx: TRANSCRIPT_TEXT_SIZES,
+			textSizes: TRANSCRIPT_TEXT_SIZES,
 			defaults: {
 				interfaceFont: DEFAULTS.interfaceFont,
 				transcriptTextSize: DEFAULTS.transcriptTextSize,
@@ -95,10 +95,10 @@ describe("appearance setting schemas", () => {
 		}).toStrictEqual({
 			fonts: [true, true, true, false, false],
 			sizes: [true, true, true, false, false],
-			sizePx: {
-				sm: {fontSize: 13, lineHeight: 18.57, promptLineHeight: 18},
-				md: {fontSize: 14, lineHeight: 20, promptLineHeight: 20},
-				lg: {fontSize: 15, lineHeight: 22, promptLineHeight: 21},
+			textSizes: {
+				sm: {fontSize: "0.8125rem", lineHeight: "1.42857", promptFontSize: "13px", promptLineHeight: "18px"},
+				md: {fontSize: "0.875rem", lineHeight: "1.42857", promptFontSize: "14px", promptLineHeight: "20px"},
+				lg: {fontSize: "0.9375rem", lineHeight: "1.46667", promptFontSize: "15px", promptLineHeight: "21px"},
 			},
 			defaults: {
 				interfaceFont: "sans",
@@ -137,16 +137,16 @@ describe("Claude Code settings ▸ Appearance", () => {
 			initial: {
 				"--font-sans": "",
 				"--max-content-width": "768px",
-				"--transcript-text-size": "14px",
-				"--transcript-leading": "20px",
+				"--transcript-text-size": "0.875rem",
+				"--transcript-leading": "1.42857",
 				"--prompt-text-size": "14px",
 				"--prompt-line-height": "20px",
 			},
 			changed: {
 				"--font-sans": SYSTEM_FONT_STACK,
 				"--max-content-width": "1280px",
-				"--transcript-text-size": "15px",
-				"--transcript-leading": "22px",
+				"--transcript-text-size": "0.9375rem",
+				"--transcript-leading": "1.46667",
 				"--prompt-text-size": "15px",
 				"--prompt-line-height": "21px",
 			},
@@ -154,8 +154,8 @@ describe("Claude Code settings ▸ Appearance", () => {
 			reverted: {
 				"--font-sans": "",
 				"--max-content-width": "1280px",
-				"--transcript-text-size": "13px",
-				"--transcript-leading": "18.57px",
+				"--transcript-text-size": "0.8125rem",
+				"--transcript-leading": "1.42857",
 				"--prompt-text-size": "13px",
 				"--prompt-line-height": "18px",
 			},

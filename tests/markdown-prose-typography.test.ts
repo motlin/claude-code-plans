@@ -14,7 +14,7 @@ describe("prose size at comfortable density", () => {
 				".markdown h1,\n.markdown h2,\n.markdown h3,\n.markdown h4,\n.markdown h5,\n.markdown h6",
 			),
 		}).toStrictEqual({
-			comfortable: {"--md-prose-size": "16px", "--md-prose-leading": "24px"},
+			comfortable: {"--md-prose-size": "1rem", "--md-prose-leading": "1.5rem"},
 			headings: {
 				"font-size": "var(--md-prose-size)",
 				"font-weight": "600",

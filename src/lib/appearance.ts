@@ -14,18 +14,19 @@ export const SYSTEM_FONT_STACK =
 	'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 /**
- * Transcript body font size and line height in pixels, from upstream's non-fizzy-lake
- * `[data-chat-text-size]` blocks: `--chat-body` 13/14/15px at `--chat-leading` 1.42857 /
- * 1.42857 / 1.46667. The composer's `--prompt-text-size` follows the same 13/14/15px; its
+ * Transcript body font size and leading, from upstream's non-fizzy-lake `[data-chat-text-size]`
+ * blocks: `--chat-body` .8125/.875/.9375rem at `--chat-leading` 1.42857 / 1.42857 / 1.46667.
+ * Rem sizes and unitless leadings let a browser text zoom (a larger root font size) scale the
+ * transcript as it scales upstream's. The composer's `--prompt-text-size` stays 13/14/15px; its
  * `--prompt-line-height` is upstream's unset fallback, `round(size * 1.4, 1px)`.
  */
 export const TRANSCRIPT_TEXT_SIZES: Record<
 	TranscriptTextSize,
-	{fontSize: number; lineHeight: number; promptLineHeight: number}
+	{fontSize: string; lineHeight: string; promptFontSize: string; promptLineHeight: string}
 > = {
-	sm: {fontSize: 13, lineHeight: 18.57, promptLineHeight: 18},
-	md: {fontSize: 14, lineHeight: 20, promptLineHeight: 20},
-	lg: {fontSize: 15, lineHeight: 22, promptLineHeight: 21},
+	sm: {fontSize: "0.8125rem", lineHeight: "1.42857", promptFontSize: "13px", promptLineHeight: "18px"},
+	md: {fontSize: "0.875rem", lineHeight: "1.42857", promptFontSize: "14px", promptLineHeight: "20px"},
+	lg: {fontSize: "0.9375rem", lineHeight: "1.46667", promptFontSize: "15px", promptLineHeight: "21px"},
 };
 
 interface AppearancePrefs {
@@ -46,10 +47,10 @@ export function appearanceCssVars({
 	const size = TRANSCRIPT_TEXT_SIZES[transcriptTextSize];
 	return {
 		"--font-sans": interfaceFont === "system" ? SYSTEM_FONT_STACK : null,
-		"--transcript-text-size": `${size.fontSize}px`,
-		"--transcript-leading": `${size.lineHeight}px`,
-		"--prompt-text-size": `${size.fontSize}px`,
-		"--prompt-line-height": `${size.promptLineHeight}px`,
+		"--transcript-text-size": size.fontSize,
+		"--transcript-leading": size.lineHeight,
+		"--prompt-text-size": size.promptFontSize,
+		"--prompt-line-height": size.promptLineHeight,
 		"--max-content-width": `${TRANSCRIPT_WIDTH_PX[transcriptWidth]}px`,
 	};
 }
