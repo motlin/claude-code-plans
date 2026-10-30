@@ -5,6 +5,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import type {ComposerState} from "../src/lib/composer-state";
@@ -174,15 +175,30 @@ describe("Composer", () => {
 		}).toStrictEqual({tooltip: "Send⏎", descriptionCount: 2, hintKept: true});
 	});
 
-	it("relies on the global text-entry floor on coarse pointers", () => {
-		render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
+	it("keeps the editor box 28 tall on coarse pointers, with the overlay aligned", async () => {
+		await preloadComposerSurfaces();
+		render(
+			<Composer
+				variant="home"
+				draftKey="home"
+				onSend={() => {}}
+				slashCommands={[
+					{name: "model", description: "Set the model", source: "builtin", argumentHint: "[model]"},
+				]}
+			/>,
+		);
+		const textarea = screen.getByRole("textbox", {name: "Prompt"});
+		fireEvent.change(textarea, {target: {value: "/mo"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		const overlay = screen.getByTestId("slash-argument-hint").parentElement;
+		const coarsePadding = (element: Element | null) =>
+			(element?.className ?? "").split(" ").filter((token) => token.startsWith("pointer-coarse:py-"));
 
-		expect(
-			screen
-				.getByRole("textbox", {name: "Prompt"})
-				.className.split(" ")
-				.filter((token) => token.startsWith("pointer-coarse:")),
-		).toStrictEqual([]);
+		// Upstream's coarse 22px line + 3px top and bottom = h28, same as fine 20px + py-1.
+		expect({textarea: coarsePadding(textarea), overlay: coarsePadding(overlay)}).toStrictEqual({
+			textarea: ["pointer-coarse:py-[3px]"],
+			overlay: ["pointer-coarse:py-[3px]"],
+		});
 	});
 
 	it("swaps Send for Stop while streaming", () => {
