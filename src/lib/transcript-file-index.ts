@@ -26,7 +26,13 @@ export interface TranscriptFileIndex {
 	ends: number[];
 	/** Each line's `chainSkeleton`, or undefined when the line is not a JSON object. */
 	skeletons: (Record<string, unknown> | undefined)[];
-	/** `countableBefore[i]` is the countable messages in lines `0..i-1`; one longer than `starts`. */
+	/** Whether each line is a countable message (message-count.ts), on the chain or not. */
+	countable: boolean[];
+	/**
+	 * `countableBefore[i]` is the countable messages on the active chain in lines
+	 * `0..i-1`; one longer than `starts`. Hidden lines don't count, so a window's
+	 * numbering matches the session's chain-only message count.
+	 */
 	countableBefore: number[];
 	abandoned: AbandonedBranches;
 	/** Whether each line's uuid is on an abandoned branch. */
@@ -71,9 +77,7 @@ function appendLines(index: TranscriptFileIndex, buffer: Buffer, base: number): 
 			index.starts.push(base + position);
 			index.ends.push(base + end);
 			index.skeletons.push(record === undefined ? undefined : chainSkeleton(record));
-			index.countableBefore.push(
-				(index.countableBefore.at(-1) ?? 0) + (isCountableMessageRecord(record) ? 1 : 0),
-			);
+			index.countable.push(isCountableMessageRecord(record));
 			index.partialTail = newline === -1;
 		}
 		if (newline === -1) break;
@@ -88,6 +92,13 @@ function refreshChain(index: TranscriptFileIndex): void {
 		const uuid = skeleton?.["uuid"];
 		return typeof uuid === "string" && index.abandoned.hidden.has(uuid);
 	});
+	// A fork can hide lines anywhere in the file, so the prefix sums restart from zero.
+	let count = 0;
+	index.countableBefore = [0];
+	for (const [i, countable] of index.countable.entries()) {
+		if (countable && index.hidden[i] !== true) count += 1;
+		index.countableBefore.push(count);
+	}
 }
 
 function build(fd: number, size: number, mtimeMs: number): {index: TranscriptFileIndex; buffer: Buffer} {
@@ -100,6 +111,7 @@ function build(fd: number, size: number, mtimeMs: number): {index: TranscriptFil
 		starts: [],
 		ends: [],
 		skeletons: [],
+		countable: [],
 		countableBefore: [0],
 		abandoned: {hidden: new Set(), cuts: []},
 		hidden: [],
@@ -122,7 +134,7 @@ function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: n
 		index.starts.pop();
 		index.ends.pop();
 		index.skeletons.pop();
-		index.countableBefore.pop();
+		index.countable.pop();
 		index.partialTail = false;
 	}
 	appendLines(index, appended.subarray(index.consumed - from), index.consumed);

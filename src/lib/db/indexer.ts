@@ -13,7 +13,7 @@ import {
 	TaskFileSchema,
 } from "../runtime-schemas";
 import {encodeProjectPath, resolveProjectPath} from "../memory";
-import {isCountableMessageRecord} from "../message-count";
+import {ActiveChainMessageCounter} from "../message-count";
 import {deriveProjectDisplayName, lastEncodedSegment} from "../project-display-name";
 import {normalizeGitBranch} from "../git-branch";
 import {SYNTHETIC_MODEL} from "../model-name";
@@ -614,7 +614,8 @@ class SessionIndexState {
 	readonly firstPrompt = new FirstUserMessageCollector();
 	readonly subagentLinks = new SubagentLinkCollector();
 	readonly indexedMessages: IndexedMessage[] = [];
-	messageCount = 0;
+	/** Messages on the active chain: an append can abandon an earlier branch, so this resolves at persist time. */
+	readonly messages = new ActiveChainMessageCounter();
 	/** How many of `indexedMessages` the last persist left in session_messages. */
 	persistedMessages = 0;
 	/** How many message_content rows the last persist left for this session. */
@@ -776,7 +777,7 @@ class SessionIndexState {
 
 		// Extract text content for FTS indexing
 		try {
-			if (isCountableMessageRecord(obj)) this.messageCount++;
+			this.messages.add(obj);
 			this.artifactEvents.add(obj);
 			this.routines.add(obj);
 			this.usage.add(obj);
@@ -910,7 +911,8 @@ async function persistSessionIndexState(
 	const {sessionId} = state;
 	const {customTitle, aiTitle, bridged} = await state.titleRecords.finish(filePath);
 	const sessionCwd = state.anchoredSessionCwd ?? state.lastSessionCwd;
-	const {latestPrLink, forkedFromSessionId, sessionGitBranch, messageCount} = state;
+	const {latestPrLink, forkedFromSessionId, sessionGitBranch} = state;
+	const messageCount = state.messages.count();
 	// sessions.mtime_ms is the activity time every list sorts and stamps by.
 	const activityAt = state.lastRecordAt ?? fileStat.mtimeMs;
 

@@ -1,11 +1,17 @@
-import {mkdirSync, rmSync, writeFileSync} from "node:fs";
+import {appendFileSync, mkdirSync, rmSync, statSync, utimesSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
-import {indexJsonlFile, indexSessionsIndex} from "../src/lib/db/indexer";
+import {createJsonlIndexCache, indexJsonlFile, indexSessionsIndex} from "../src/lib/db/indexer";
 import {listRecentSessionsFromDb, getSessionMeta} from "../src/lib/db/queries";
 import {getCurrentSessionMessageIndex, getSessionViewedState} from "../src/lib/db/viewed-state";
-import {countMessageRecords, isCountableMessageRecord, mightBeCountableMessageLine} from "../src/lib/message-count";
+import {
+	countActiveChainMessages,
+	countMessageRecords,
+	isCountableMessageRecord,
+	mightBeCountableMessageLine,
+} from "../src/lib/message-count";
+import {readStructuredTranscript} from "../src/lib/structured-transcript";
 import {listSessions, readSession} from "../src/lib/sessions";
 import * as schema from "../src/lib/db/schema";
 import {eq} from "drizzle-orm";
@@ -245,5 +251,140 @@ describe("single message-count definition", () => {
 			.where(eq(schema.sessions.id, sessionId))
 			.get();
 		expect(row?.messageCount).toBe(EXPECTED_MESSAGE_COUNT);
+	});
+});
+
+/**
+ * A pulled-back prompt: "do chapter 2" was sent, answered, then abandoned when
+ * "do chapter 3" was re-parented onto the same assistant reply (the shape of
+ * local session 649c3fab). Six countable records, four on the active chain.
+ */
+const forkedRecords: Record<string, unknown>[] = [
+	{type: "user", ...baseFields, uuid: "f-1", message: {role: "user", content: "Write the novel"}},
+	{
+		type: "assistant",
+		...baseFields,
+		uuid: "f-2",
+		parentUuid: "f-1",
+		message: {role: "assistant", content: [{type: "text", text: "Chapter 1 done"}]},
+	},
+	{
+		type: "user",
+		...baseFields,
+		uuid: "f-old",
+		parentUuid: "f-2",
+		timestamp: "1999-12-31T00:01:00.000Z",
+		message: {role: "user", content: "do chapter 2"},
+	},
+	{
+		type: "assistant",
+		...baseFields,
+		uuid: "f-old-reply",
+		parentUuid: "f-old",
+		message: {role: "assistant", content: [{type: "text", text: "Starting chapter 2"}]},
+	},
+	{
+		type: "user",
+		...baseFields,
+		uuid: "f-new",
+		parentUuid: "f-2",
+		timestamp: "1999-12-31T00:02:00.000Z",
+		message: {role: "user", content: "do chapter 3"},
+	},
+	{
+		type: "assistant",
+		...baseFields,
+		uuid: "f-new-reply",
+		parentUuid: "f-new",
+		message: {role: "assistant", content: [{type: "text", text: "Chapter 3 done"}]},
+	},
+];
+
+const EXPECTED_CHAIN_COUNT = 4;
+
+function writeForkedTranscript(records: Record<string, unknown>[] = forkedRecords): string {
+	const filePath = join(testDir, projectId, `${sessionId}.jsonl`);
+	writeFileSync(filePath, jsonl(...records));
+	return filePath;
+}
+
+describe("active-chain message counts", () => {
+	it("counts only the records on the active chain", () => {
+		expect({
+			all: countMessageRecords(forkedRecords),
+			chain: countActiveChainMessages(forkedRecords),
+			visible: countMessageRecords(forkedRecords, new Set(["f-old", "f-old-reply"])),
+		}).toStrictEqual({all: 6, chain: EXPECTED_CHAIN_COUNT, visible: EXPECTED_CHAIN_COUNT});
+	});
+
+	it("every surface leaves the abandoned branch out of the count", async () => {
+		const filePath = writeForkedTranscript();
+		await indexJsonlFile(db.index, filePath, projectId);
+
+		const row = db.index
+			.select({messageCount: schema.sessions.messageCount})
+			.from(schema.sessions)
+			.where(eq(schema.sessions.id, sessionId))
+			.get();
+		const detail = await readSession(testDir, sessionId);
+		const filesystemEntry = (await listSessions(testDir))
+			.flatMap((group) => group.sessions)
+			.find((session) => session.id === sessionId);
+
+		expect({
+			indexedCount: row?.messageCount,
+			currentIndex: getCurrentSessionMessageIndex(db.index, sessionId),
+			detailCount: detail?.messageCount,
+			filesystemCount: filesystemEntry?.messageCount,
+		}).toStrictEqual({
+			indexedCount: EXPECTED_CHAIN_COUNT,
+			currentIndex: EXPECTED_CHAIN_COUNT - 1,
+			detailCount: EXPECTED_CHAIN_COUNT,
+			filesystemCount: EXPECTED_CHAIN_COUNT,
+		});
+	});
+
+	it("numbers a transcript window by the on-chain messages before it, matching the session counter", async () => {
+		const filePath = writeForkedTranscript();
+		await indexJsonlFile(db.index, filePath, projectId);
+
+		const tail = readStructuredTranscript(db.index, sessionId, {maxRecords: 2});
+		const hidden = new Set(tail.hiddenUuids);
+
+		expect({
+			startIndex: tail.startIndex,
+			precedingMessageCount: tail.precedingMessageCount,
+			currentMessageIndex: tail.precedingMessageCount + countMessageRecords(tail.records, hidden) - 1,
+		}).toStrictEqual({
+			startIndex: 4,
+			precedingMessageCount: 2,
+			currentMessageIndex: getCurrentSessionMessageIndex(db.index, sessionId),
+		});
+	});
+
+	it("drops the abandoned branch from the incremental count when an append forks the chain", async () => {
+		const cache = createJsonlIndexCache();
+		const filePath = writeForkedTranscript(forkedRecords.slice(0, 4));
+		await indexJsonlFile(db.index, filePath, projectId, {cache});
+		const before = db.index
+			.select({messageCount: schema.sessions.messageCount})
+			.from(schema.sessions)
+			.where(eq(schema.sessions.id, sessionId))
+			.get();
+
+		appendFileSync(filePath, jsonl(...forkedRecords.slice(4)));
+		const later = new Date(statSync(filePath).mtimeMs + 10_000);
+		utimesSync(filePath, later, later);
+		await indexJsonlFile(db.index, filePath, projectId, {cache});
+		const after = db.index
+			.select({messageCount: schema.sessions.messageCount})
+			.from(schema.sessions)
+			.where(eq(schema.sessions.id, sessionId))
+			.get();
+
+		expect({before: before?.messageCount, after: after?.messageCount}).toStrictEqual({
+			before: 4,
+			after: EXPECTED_CHAIN_COUNT,
+		});
 	});
 });

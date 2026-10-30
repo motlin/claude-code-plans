@@ -17,7 +17,7 @@ import {
 	HistorySuppressionRecordSchema,
 	SessionsIndexSchema,
 } from "./runtime-schemas";
-import {isCountableMessageRecord} from "./message-count";
+import {ActiveChainMessageCounter} from "./message-count";
 import type {SessionCostState} from "./session-cost";
 import {costStateFromRecord} from "./session-cost-record";
 import {narrationProse} from "./thinking-narration";
@@ -347,14 +347,13 @@ export async function readSessionPrompts(filePath: string): Promise<string[]> {
 
 async function readSessionMessageCount(filePath: string): Promise<number> {
 	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
-	let messageCount = 0;
+	const messages = new ActiveChainMessageCounter();
 
 	try {
 		for await (const line of rl) {
 			if (!line.trim()) continue;
 			try {
-				const entry: unknown = JSON.parse(line);
-				if (isCountableMessageRecord(entry)) messageCount++;
+				messages.add(JSON.parse(line));
 			} catch {
 				// skip malformed lines
 			}
@@ -363,7 +362,7 @@ async function readSessionMessageCount(filePath: string): Promise<number> {
 		await rl.close();
 	}
 
-	return messageCount;
+	return messages.count();
 }
 
 /**
@@ -896,7 +895,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 
 	const projectName = await resolveProjectName(project);
 	const messages: SessionMessage[] = [];
-	let messageCount = 0;
+	const messageCounter = new ActiveChainMessageCounter();
 	let title = sessionId;
 	let titleNamesWork = false;
 	const titleRecords = new TitleRecordCollector();
@@ -924,6 +923,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 				continue;
 			}
 			if (!isRecord(obj)) continue;
+			messageCounter.add(obj);
 
 			const sourceUuid = typeof obj["uuid"] === "string" ? obj["uuid"] : "";
 			if (sourceUuid) uuidToLine.set(sourceUuid, lineIndex);
@@ -960,7 +960,6 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 
 			const type = obj["type"];
 			if (type !== "user" && type !== "assistant") continue;
-			if (isCountableMessageRecord(obj)) messageCount++;
 
 			const parsedMessage = RawMessageSchema.safeParse(obj["message"]);
 			if (!parsedMessage.success) continue;
@@ -1152,7 +1151,7 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 		projectName,
 		projectId: project,
 		messages,
-		messageCount,
+		messageCount: messageCounter.count(),
 		uuidToLine,
 	};
 	if (entrypoint !== undefined) detail.entrypoint = entrypoint;

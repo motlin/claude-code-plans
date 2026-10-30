@@ -412,9 +412,11 @@ function SessionView({
 	// they line up with messageCount and newMessageCount on every surface. The
 	// transcript is only a window over the JSONL, so the messages the server
 	// trimmed off the front still count towards the position.
+	// Rows on an abandoned branch don't count, matching the chain-only session count.
+	const hiddenUuids = useMemo(() => new Set(transcript.hiddenUuids), [transcript.hiddenUuids]);
 	const currentMessageIndex = useMemo(
-		() => transcript.precedingMessageCount + countMessageRecords(transcript.records) - 1,
-		[transcript.precedingMessageCount, transcript.records],
+		() => transcript.precedingMessageCount + countMessageRecords(transcript.records, hiddenUuids) - 1,
+		[transcript.precedingMessageCount, transcript.records, hiddenUuids],
 	);
 	// Grows only when the session appends; paging backwards through history
 	// leaves it alone, so it stays a reliable "did new work land?" signal.
@@ -437,7 +439,6 @@ function SessionView({
 	// neighbour and resolves links copied before anchors moved to message uuids.
 	// The server computes the active chain over the whole file, so the page only
 	// skips the records it served as hidden and never recomputes the chain.
-	const hiddenUuids = useMemo(() => new Set(transcript.hiddenUuids), [transcript.hiddenUuids]);
 	const chainProcessed = useMemo(
 		() =>
 			processTranscript(transcript.records, transcript.startIndex, {hidden: hiddenUuids, cuts: transcript.cuts}),
