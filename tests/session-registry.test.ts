@@ -67,6 +67,13 @@ describe("SessionRegistryFileSchema", () => {
 		expect(SessionRegistryFileSchema.parse(registering)).toStrictEqual(registering);
 	});
 
+	it("accepts a null asksForConvertedSkills", () => {
+		// Seen in the 7526 server log (2026-10-30): the CLI writes null as well as a boolean.
+		const unasked = registryFixture({asksForConvertedSkills: null});
+
+		expect(SessionRegistryFileSchema.parse(unasked)).toStrictEqual(unasked);
+	});
+
 	it("rejects unknown keys and unknown statuses", () => {
 		expect(SessionRegistryFileSchema.safeParse({...registryFixture(), surprise: true}).success).toBe(false);
 		expect(SessionRegistryFileSchema.safeParse({...registryFixture(), status: "sleeping"}).success).toBe(false);

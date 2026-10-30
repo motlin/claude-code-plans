@@ -2487,7 +2487,8 @@ export const SessionRegistryFileSchema = z
 		statusUpdatedAt: z.number().optional(),
 		/** `null` once the Remote Control bridge is torn down. */
 		bridgeSessionId: z.string().nullable().optional(),
-		asksForConvertedSkills: z.boolean().optional(),
+		/** `null` until the session has answered whether it asks for converted skills. */
+		asksForConvertedSkills: z.boolean().nullable().optional(),
 	})
 	.strict();
 
