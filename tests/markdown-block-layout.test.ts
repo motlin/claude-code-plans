@@ -21,9 +21,11 @@ describe("markdown block layout", () => {
 			"flex-direction": "column",
 			gap: "7px",
 			"font-family": "var(--font-sans)",
-			"font-size": "14px",
+			"--md-prose-size": "14px",
+			"--md-prose-leading": "20px",
+			"font-size": "var(--md-prose-size)",
 			"font-weight": "400",
-			"line-height": "20px",
+			"line-height": "var(--md-prose-leading)",
 			color: "var(--color-primary)",
 			"white-space": "normal",
 		});

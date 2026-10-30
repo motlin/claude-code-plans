@@ -392,6 +392,7 @@ describe("plain status marker gaps", () => {
 				markerPadding: false,
 				classes: [
 					"pb-4",
+					"comfortable:pb-5",
 					"has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)]",
 					"[&>[data-assistant-span-footer]]:mt-[5px]",
 				],

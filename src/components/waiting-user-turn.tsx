@@ -158,7 +158,7 @@ export function WaitingUserTurn({
 			<span role="status" className="sr-only">
 				{delivered ? (reading ? "read" : "") : "unread"}
 			</span>
-			<div className="flex w-full flex-col min-w-0 ms-auto items-end gap-g5">
+			<div className="flex w-full flex-col min-w-0 ms-auto items-end gap-g5 comfortable:gap-g6">
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 max-w-[85%] overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 					<p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]">
 						{text}

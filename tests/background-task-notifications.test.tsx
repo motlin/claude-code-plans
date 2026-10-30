@@ -893,6 +893,14 @@ describe("idle-period background command failures", () => {
 		}).toStrictEqual({text: "6 background commands completed, 1 failed", danger: ["1 failed"]});
 	});
 
+	it("opens the row's 16px assistant-column gap to upstream's comfortable 20px (coarse pointer)", () => {
+		const container = renderLines(doAllFailedIdleRecords(), "normal", [worker]);
+		const row = container.querySelector("[data-task-event-row]");
+		expect(
+			(row?.getAttribute("class") ?? "").split(" ").filter((name) => /^(comfortable:)?pb-/.test(name)),
+		).toStrictEqual(["pb-4", "comfortable:pb-5"]);
+	});
+
 	it("labels a lone failed command as failed", () => {
 		const lone = doAllWorker("a7da25778818cc058", "Do task M2-47", [
 			["2026-10-18T10:37:33.830Z", "git fetch -q origin", "failed"],

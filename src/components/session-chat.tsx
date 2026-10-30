@@ -1640,7 +1640,7 @@ function TaskEventRunRow({
 		<div
 			data-task-event-row=""
 			data-record-index={recordIndex}
-			className="group/msg flex flex-col w-full pb-4 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+			className="group/msg flex flex-col w-full pb-4 comfortable:pb-5 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
 			<TaskEventRunStatus events={events} />
 			{footer}
@@ -1664,7 +1664,7 @@ function ArtifactWatchEndedRow({
 	return (
 		<div
 			data-record-index={recordIndex}
-			className="group/msg flex flex-col w-full pb-4 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+			className="group/msg flex flex-col w-full pb-4 comfortable:pb-5 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" className={TURN_STATUS_CLASS}>
@@ -1700,7 +1700,7 @@ function ContextRefreshRow({
 	return (
 		<div
 			data-record-index={recordIndex}
-			className="group/msg flex flex-col w-full pb-4 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
+			className="group/msg flex flex-col w-full pb-4 comfortable:pb-5 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" className={TURN_STATUS_CLASS}>
@@ -4236,7 +4236,7 @@ function UserEntry({
 				sessionId={sessionId}
 				uuid={line.uuid}
 				markdown={messageText(line)}
-				render={<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0" />}
+				render={<div className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0" />}
 			>
 				<UserAttachments images={images} />
 				<MessageExcerptTiles snippets={excerpts} />
@@ -4789,7 +4789,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 
 	return (
 		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}>
-			<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0">
+			<div className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0">
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
@@ -5451,14 +5451,26 @@ function InkedLabel({
  */
 function TurnStatusFrame({leading, children}: {leading: boolean; children: React.ReactNode}) {
 	return (
-		<div data-turn-status-frame="" className={`flex flex-col w-full ${leading ? "pb-p3" : "py-p3"}`}>
+		<div
+			data-turn-status-frame=""
+			className={`flex flex-col w-full ${leading ? "pb-p3 comfortable:pb-1.5" : "py-p3 comfortable:py-1.5"}`}
+		>
 			{children}
 		</div>
 	);
 }
 
+/** Upstream's TurnStatus row: h24 with 2/4 padding at compact (the row's own `px-1 py-0.5`). */
+const TURN_STATUS_ROW_LAYOUT = "min-w-0 self-stretch me-[52px] px-1 py-0.5";
+
+/** The same row at comfortable density: h32, 6/6 padding, r8 (upstream's gap-xs/pad-xs/radius tokens). */
+const TURN_STATUS_ROW_COMFORTABLE = "comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6";
+
+/** Upstream's status chevron grows from 12px to 16px at comfortable density. */
+const TURN_STATUS_CHEVRON_COMFORTABLE = "comfortable:[&_svg]:size-4";
+
 /** Class of the status wrapper a TurnStatusFrame pads back. */
-const TURN_STATUS_CLASS = "flex flex-col w-full -my-p3";
+const TURN_STATUS_CLASS = "flex flex-col w-full -my-p3 comfortable:-my-1.5";
 
 /** Upstream's row media slot (`data-cds-row-media`), trailing the row's label and chevron. */
 const ROW_MEDIA_CLASS = "order-last ms-auto inline-flex h-[1lh] shrink-0 items-center overflow-visible";
@@ -5660,7 +5672,7 @@ function ToolCallRow({
 	// Upstream draws every standalone status row in one 24px padded layout, whether it
 	// completed, failed, or is still running.
 	const isTurnStatus = !isAgent && !nested;
-	const disclosureLayout = isTurnStatus ? "min-w-0 self-stretch me-[52px] px-1 py-0.5" : "self-start py-0";
+	const disclosureLayout = isTurnStatus ? TURN_STATUS_ROW_LAYOUT : "self-start py-0";
 	const paramClass =
 		isSkill || isCompletedPaneAgent
 			? "text-primary"
@@ -5671,7 +5683,9 @@ function ToolCallRow({
 	// rather than the hover-reactive ink every other tool row uses.
 	// Upstream's 6px row gap less the chevron's -4px start margin leaves its 12px
 	// svg 2px from the status.
-	const chevronClass = isAgent ? "shrink-0 -ms-1 self-center text-t6" : `shrink-0 -ms-1 ${ink}`;
+	const chevronClass = isAgent
+		? "shrink-0 -ms-1 self-center text-t6"
+		: `shrink-0 -ms-1 ${ink}${isTurnStatus ? ` ${TURN_STATUS_CHEVRON_COMFORTABLE}` : ""}`;
 	// A failed call whose param is its own description keeps that description as
 	// written ("Rebase and push X"); upstream past-tenses it only on success.
 	// A workflow keeps its name instead.
@@ -5989,7 +6003,7 @@ function ToolCallRow({
 						toggleExpanded();
 					}
 				}}
-				className={`relative group/tool flex max-w-full items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+				className={`relative group/tool flex max-w-full items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${isTurnStatus ? ` ${TURN_STATUS_ROW_COMFORTABLE} comfortable:gap-g6` : ""}`}
 			>
 				{rowLabel}
 				<span className={chevronClass}>
@@ -6077,7 +6091,7 @@ function ToolCallSummary({
 	const failedNotices = taskNotices.filter(leadsLabel);
 	const settledNotices = taskNotices.filter((notice) => !leadsLabel(notice));
 	// Upstream draws the grouped header in one 24px padded row whether it completed, failed, or is still running.
-	const summaryLayout = "min-w-0 self-stretch me-[52px] px-1 py-0.5";
+	const summaryLayout = TURN_STATUS_ROW_LAYOUT;
 	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
@@ -6107,7 +6121,7 @@ function ToolCallSummary({
 			aria-controls={bodyId}
 			aria-labelledby={busy ? `${statusId}-label ${statusId}-busy` : `${statusId}-label`}
 			onClick={toggleExpanded}
-			className={`relative group/tool flex max-w-full items-center ${hasGroupMedia ? "min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+			className={`relative group/tool flex max-w-full items-center ${hasGroupMedia ? "min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}`}
 		>
 			<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
 				{busy ? (
@@ -6132,7 +6146,7 @@ function ToolCallSummary({
 				)}
 			</span>
 			{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
-			<span className={`shrink-0 ${ink}`}>
+			<span className={`shrink-0 ${ink} ${TURN_STATUS_CHEVRON_COMFORTABLE}`}>
 				<ChevronIcon expanded={expanded} size={12} />
 			</span>
 		</button>

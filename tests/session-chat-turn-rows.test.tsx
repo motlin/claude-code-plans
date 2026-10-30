@@ -355,17 +355,41 @@ describe("SessionChat turn rows", () => {
 					frame: row.parentElement?.closest<HTMLElement>("[data-turn-status-frame]")?.className,
 				})),
 			).toStrictEqual([
-				{line: "1", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
+				{
+					line: "1",
+					replyBoundary: "",
+					turnStatus: "",
+					outset: true,
+					frame: "flex flex-col w-full pb-p3 comfortable:pb-1.5",
+				},
 				{
 					line: "4",
 					replyBoundary: undefined,
 					turnStatus: "",
 					outset: true,
-					frame: "flex flex-col w-full py-p3",
+					frame: "flex flex-col w-full py-p3 comfortable:py-1.5",
 				},
-				{line: "7", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
-				{line: "12", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
-				{line: "15", replyBoundary: "", turnStatus: "", outset: true, frame: "flex flex-col w-full pb-p3"},
+				{
+					line: "7",
+					replyBoundary: "",
+					turnStatus: "",
+					outset: true,
+					frame: "flex flex-col w-full pb-p3 comfortable:pb-1.5",
+				},
+				{
+					line: "12",
+					replyBoundary: "",
+					turnStatus: "",
+					outset: true,
+					frame: "flex flex-col w-full pb-p3 comfortable:pb-1.5",
+				},
+				{
+					line: "15",
+					replyBoundary: "",
+					turnStatus: "",
+					outset: true,
+					frame: "flex flex-col w-full pb-p3 comfortable:pb-1.5",
+				},
 			]);
 		});
 	});

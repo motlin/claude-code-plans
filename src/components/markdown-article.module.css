@@ -6,11 +6,23 @@
 	flex-direction: column;
 	gap: 7px;
 	font-family: var(--font-sans);
-	font-size: 14px;
+	--md-prose-size: 14px;
+	--md-prose-leading: 20px;
+	font-size: var(--md-prose-size);
 	font-weight: 400;
-	line-height: 20px;
+	line-height: var(--md-prose-leading);
 	color: var(--color-primary);
 	white-space: normal;
+}
+
+/* Inside the transcript's nearest comfortable scope (a coarse pointer), upstream's prose steps up
+   to its comfortable scale: 16/24 at Transcript text size Medium. */
+:global(.transcript-text)
+	.markdown:where(:global([data-density="comfortable"] *)):not(
+		:where(:global([data-density="comfortable"] [data-density="compact"] *))
+	) {
+	--md-prose-size: 16px;
+	--md-prose-leading: 24px;
 }
 
 .markdown h1,
@@ -19,9 +31,9 @@
 .markdown h4,
 .markdown h5,
 .markdown h6 {
-	font-size: 14px;
+	font-size: var(--md-prose-size);
 	font-weight: 600;
-	line-height: 20px;
+	line-height: var(--md-prose-leading);
 }
 
 .markdown h1 {
@@ -425,8 +437,8 @@
 .markdown table {
 	border-collapse: collapse;
 	width: 100%;
-	font-size: 14px;
-	line-height: 20px;
+	font-size: var(--md-prose-size);
+	line-height: var(--md-prose-leading);
 }
 
 .markdown :is(th, td) {
@@ -436,15 +448,15 @@
 }
 
 .markdown th {
-	font-size: 14px;
-	line-height: 20px;
+	font-size: var(--md-prose-size);
+	line-height: var(--md-prose-leading);
 	font-weight: 500;
 	background: var(--color-alpha-1);
 	border-bottom: 1px solid var(--color-border);
 }
 
 .markdown td {
-	font-size: 14px;
+	font-size: var(--md-prose-size);
 	vertical-align: top;
 }
 

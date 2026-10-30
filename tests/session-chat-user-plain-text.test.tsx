@@ -108,6 +108,14 @@ describe("SessionChat user bubbles as plain text", () => {
 		]);
 	});
 
+	it("opens the user row's bubble gap from 6px to upstream's comfortable 8px (coarse pointer)", () => {
+		const column = bubble(renderRecords([prompt("hello")])).parentElement;
+
+		expect(
+			(column?.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:")),
+		).toStrictEqual(["comfortable:gap-g6"]);
+	});
+
 	it("renders a heading line as literal text", () => {
 		const el = bubble(renderRecords([prompt("# Heading\nbody")]));
 

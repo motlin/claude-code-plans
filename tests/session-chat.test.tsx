@@ -1028,7 +1028,10 @@ function rowHeaderChildren(records: unknown[]): {text: string | null; className:
 const MUTED_LABEL = "text-body text-ink-muted group-hover/tool:text-secondary";
 const FAILED_SUFFIX = {text: "Failed", className: "shrink-0 text-body text-danger-ink"};
 const STOPPED_SUFFIX = {text: "Stopped", className: "shrink-0 text-body text-secondary"};
-const ROW_CHEVRON = {text: "", className: "shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary"};
+const ROW_CHEVRON = {
+	text: "",
+	className: "shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&_svg]:size-4",
+};
 
 describe("SessionChat tool row permission decision", () => {
 	const records = toolResultRecords({name: "Grep", input: {pattern: "alice"}}, "found", false, {
@@ -1360,7 +1363,7 @@ describe("SessionChat Skill row label", () => {
 			spans: [
 				"shrink-0 text-body text-secondary",
 				"truncate min-w-0 text-body text-primary",
-				"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary",
+				"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 			],
 			name: true,
 		});
@@ -1382,7 +1385,7 @@ describe("SessionChat Skill row label", () => {
 				"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
 				"truncate min-w-0 text-body text-secondary",
 				"shrink-0 text-body text-danger-ink",
-				"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary",
+				"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 			],
 			code: false,
 			oldLabel: false,
@@ -2110,7 +2113,7 @@ describe("SessionChat tool row hover treatment", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(false)))).toStrictEqual([
 			"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
 			"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
-			"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary",
+			"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 
@@ -2119,7 +2122,7 @@ describe("SessionChat tool row hover treatment", () => {
 			"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
 			"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
 			"shrink-0 text-body text-danger-ink",
-			"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary",
+			"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 
@@ -2129,7 +2132,7 @@ describe("SessionChat tool row hover treatment", () => {
 			"text-body truncate min-w-0",
 			"text-body",
 			"",
-			"shrink-0 text-ink-muted group-hover/tool:text-secondary",
+			"shrink-0 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 });
@@ -2286,9 +2289,9 @@ describe("SessionChat grouped header height", () => {
 			failed: disclosureClassName(renderTranscriptElement(groupedBashRecords("error"))),
 			running: disclosureClassName(renderTranscriptElement(groupedBashRecords("pending"))),
 		}).toStrictEqual({
-			completed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
-			failed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
-			running: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
+			completed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6`,
+			failed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6`,
+			running: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6`,
 		});
 	});
 });
@@ -2302,7 +2305,7 @@ describe("SessionChat standalone status row layout", () => {
 			className: frame.querySelector(".group\\/tool")!.className,
 		};
 	};
-	const rowClass = `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`;
+	const rowClass = `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`;
 
 	it("draws failed and running standalone rows in the completed row's 24px padded layout, as upstream does", () => {
 		const pending = toolResultRecords(bash, "").slice(0, 1);
@@ -2331,6 +2334,45 @@ describe("SessionChat standalone status row layout", () => {
 	});
 });
 
+describe("SessionChat TurnStatus rows at comfortable density (coarse pointer)", () => {
+	const comfortable = (element: Element | null) =>
+		(element?.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:"));
+	const statusRow = (container: HTMLElement) => {
+		const frame = container.querySelector("[data-turn-status-frame]");
+		const wrapper = frame?.querySelector(":scope > [data-turn-status]") ?? null;
+		const control = disclosureControls(container)[0] ?? null;
+		return {
+			frame: comfortable(frame),
+			wrapper: comfortable(wrapper),
+			control: comfortable(control),
+			chevron: comfortable(control?.querySelector("svg")?.parentElement ?? null),
+		};
+	};
+	const rowTokens = ["comfortable:px-1.5", "comfortable:py-1.5", "comfortable:rounded-r6"];
+
+	it("grows grouped and standalone tool rows to upstream's h32 6/6 r8 row with a 16px chevron and a 6px outset", () => {
+		const bash = {name: "Bash", input: {command: "git push", description: "Push the branch"}};
+
+		expect({
+			grouped: statusRow(renderTranscriptElement(groupedBashRecords("ok"))),
+			standalone: statusRow(renderTranscriptElement(toolResultRecords(bash, "ok"))),
+		}).toStrictEqual({
+			grouped: {
+				frame: ["comfortable:py-1.5"],
+				wrapper: ["comfortable:-my-1.5"],
+				control: rowTokens,
+				chevron: ["comfortable:[&_svg]:size-4"],
+			},
+			standalone: {
+				frame: ["comfortable:py-1.5"],
+				wrapper: ["comfortable:-my-1.5"],
+				control: [...rowTokens, "comfortable:gap-g6"],
+				chevron: ["comfortable:[&_svg]:size-4"],
+			},
+		});
+	});
+});
+
 describe("SessionChat disclosure focus treatment", () => {
 	it("gives the single tool row and the group summary upstream's focus-ring classes", () => {
 		const singleBash = renderTranscriptElement(
@@ -2347,9 +2389,9 @@ describe("SessionChat disclosure focus treatment", () => {
 			row: disclosureClassName(singleBash),
 			summary: disclosureClassName(groupedBash),
 		}).toStrictEqual({
-			row: "relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
+			row: "relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6",
 			summary:
-				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
+				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6",
 		});
 	});
 
@@ -2412,7 +2454,10 @@ describe("SessionChat skill attribution", () => {
 	};
 
 	it("draws no attribution pill in Normal, so the tool row opens the reply as upstream does", () => {
-		expect(renderMode("normal")).toStrictEqual({pill: false, frame: "flex flex-col w-full pb-p3"});
+		expect(renderMode("normal")).toStrictEqual({
+			pill: false,
+			frame: "flex flex-col w-full pb-p3 comfortable:pb-1.5",
+		});
 	});
 
 	it("keeps the attribution pill in Verbose", () => {

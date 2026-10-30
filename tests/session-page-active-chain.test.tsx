@@ -303,7 +303,7 @@ describe("session page active chain", () => {
 					: (marker.compareDocumentPosition(chapter3) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
 		}).toStrictEqual({
 			count: 1,
-			html: '<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" class="flex flex-col w-full -my-p3"><div data-turn-status-marker="" class="flex min-w-0 me-[52px] px-1 py-0.5"><span class="text-body min-w-0 truncate text-ink-muted">Rewound here</span></div></div>',
+			html: '<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" class="flex flex-col w-full -my-p3 comfortable:-my-1.5"><div data-turn-status-marker="" class="flex min-w-0 me-[52px] px-1 py-0.5"><span class="text-body min-w-0 truncate text-ink-muted">Rewound here</span></div></div>',
 			before: true,
 		});
 	});

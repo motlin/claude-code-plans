@@ -2,6 +2,28 @@ import {describe, expect, it} from "vite-plus/test";
 import {renderMarkdownToHtml} from "../src/lib/client-markdown";
 import {markdownCss, ruleDeclarations} from "./markdown-css";
 
+describe("prose size at comfortable density", () => {
+	it("steps transcript prose and its headings up to upstream's comfortable 16/24 (Medium) in the nearest comfortable scope", () => {
+		expect({
+			comfortable: ruleDeclarations(
+				markdownCss,
+				':global(.transcript-text)\n\t.markdown:where(:global([data-density="comfortable"] *)):not(\n\t\t:where(:global([data-density="comfortable"] [data-density="compact"] *))\n\t)',
+			),
+			headings: ruleDeclarations(
+				markdownCss,
+				".markdown h1,\n.markdown h2,\n.markdown h3,\n.markdown h4,\n.markdown h5,\n.markdown h6",
+			),
+		}).toStrictEqual({
+			comfortable: {"--md-prose-size": "16px", "--md-prose-leading": "24px"},
+			headings: {
+				"font-size": "var(--md-prose-size)",
+				"font-weight": "600",
+				"line-height": "var(--md-prose-leading)",
+			},
+		});
+	});
+});
+
 describe("prose strong", () => {
 	it("sets bold text at upstream's 600 instead of the browser's 700", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown strong")).toStrictEqual({"font-weight": "600"});
@@ -21,8 +43,8 @@ describe("prose tables", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown table")).toStrictEqual({
 			"border-collapse": "collapse",
 			width: "100%",
-			"font-size": "14px",
-			"line-height": "20px",
+			"font-size": "var(--md-prose-size)",
+			"line-height": "var(--md-prose-leading)",
 		});
 	});
 
@@ -36,8 +58,8 @@ describe("prose tables", () => {
 
 	it("sets headers at 14px/20px weight 500 on the 5% wash over a single bottom rule", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown th")).toStrictEqual({
-			"font-size": "14px",
-			"line-height": "20px",
+			"font-size": "var(--md-prose-size)",
+			"line-height": "var(--md-prose-leading)",
 			"font-weight": "500",
 			background: "var(--color-alpha-1)",
 			"border-bottom": "1px solid var(--color-border)",
@@ -46,7 +68,7 @@ describe("prose tables", () => {
 
 	it("tops body cells so a wrapped neighbor does not center them", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown td")).toStrictEqual({
-			"font-size": "14px",
+			"font-size": "var(--md-prose-size)",
 			"vertical-align": "top",
 		});
 	});
