@@ -7,6 +7,7 @@ import {afterEach, describe, expect, it} from "vite-plus/test";
 import {ApiRequestDisclosure} from "../src/components/api-request-disclosure";
 import {sessionQueryKeys} from "../src/lib/api/sessions";
 import type {ApiRequestLog} from "../src/lib/api-request-log";
+import type {ApiRequestMessages} from "../src/lib/api-request-messages";
 
 afterEach(cleanup);
 
@@ -89,9 +90,41 @@ const LOG: ApiRequestLog = {
 	shapes: {s1: {shapeHash: "s1", system: ["You are a test."], tools: ["Read", "Write"]}},
 };
 
+const MESSAGES: ApiRequestMessages = {
+	found: true,
+	messages: [
+		{
+			hash: "h-user",
+			role: "user",
+			blocks: [
+				{type: "text", text: "I got [Image #1]"},
+				{type: "image", mediaType: "image/png", data: "AAAA"},
+				{
+					type: "tool_result",
+					toolUseId: "toolu_1",
+					isError: true,
+					text: "Failed.",
+					images: [{mediaType: "image/jpeg", data: "BBBB"}],
+				},
+				{type: "tool_addition", name: "mcp__docs__guide", definition: false},
+			],
+		},
+		{
+			hash: "h-assistant",
+			role: "assistant",
+			blocks: [
+				{type: "thinking", text: "Plan."},
+				{type: "tool_use", id: "toolu_1", name: "Read", input: '{"file_path":"/a"}'},
+			],
+		},
+	],
+	missing: ["h-gone"],
+};
+
 function renderDisclosure(requestRef: string) {
 	const queryClient = new QueryClient();
 	queryClient.setQueryData(sessionQueryKeys.apiRequests("session-1"), LOG);
+	queryClient.setQueryData(sessionQueryKeys.apiRequestMessages("session-1", "r1"), MESSAGES);
 	render(
 		<QueryClientProvider client={queryClient}>
 			<ApiRequestDisclosure sessionId="session-1" requestRef={requestRef} />
@@ -121,6 +154,7 @@ describe("ApiRequestDisclosure", () => {
 				"Tools changed+Write −Bash",
 				"Tools (2)Read, Write",
 				"System prompt (1 block)",
+				"New messages",
 			].join(""),
 		);
 		fireEvent.click(screen.getByRole("button", {name: "System prompt (1 block)"}));
@@ -136,6 +170,7 @@ describe("ApiRequestDisclosure", () => {
 				"Max tokens100",
 				"Query sourcerepl_main_thread",
 				"No tool list or system prompt logged for this request",
+				"New messages",
 			].join(""),
 		);
 	});
@@ -158,8 +193,36 @@ describe("ApiRequestDisclosure", () => {
 				"artifact-alice-4",
 				"from /tmp/alice/other.html",
 				"No tool list or system prompt logged for this request",
+				"New messages",
 			].join(""),
 		);
+	});
+
+	it("shows the messages the request appended once its Messages section opens", () => {
+		renderDisclosure("r1");
+		fireEvent.click(screen.getByRole("button", {name: "Request"}));
+		fireEvent.click(screen.getByRole("button", {name: "New messages"}));
+		const messages = screen.getByTestId("api-request-messages");
+		expect(messages.textContent).toBe(
+			[
+				"user",
+				"I got [Image #1]",
+				"Tool result toolu_1 (error)",
+				"Failed.",
+				"Added tool mcp__docs__guide (by name)",
+				"assistant",
+				"Thinking",
+				"Plan.",
+				"Tool use Read",
+				'{"file_path":"/a"}',
+				"1 message has no logged blob",
+			].join(""),
+		);
+		expect([...messages.querySelectorAll("img")].map((image) => image.getAttribute("src"))).toStrictEqual([
+			"data:image/png;base64,AAAA",
+			"data:image/jpeg;base64,BBBB",
+		]);
+		expect(screen.getAllByRole("button", {name: "Open Attached image"})).toHaveLength(2);
 	});
 
 	it("says so when the session never logged the request", () => {

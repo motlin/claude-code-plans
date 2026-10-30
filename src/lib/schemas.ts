@@ -2106,7 +2106,7 @@ export const ApiRequestBlobContentBlockSchema = z.discriminatedUnion("type", [
 	ToolAdditionBlockSchema,
 ]);
 
-const ApiRequestBlobRecordSchema = z
+export const ApiRequestBlobRecordSchema = z
 	.object({
 		type: z.literal("api-request-blob"),
 		sessionId: z.string(),

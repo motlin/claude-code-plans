@@ -1,13 +1,15 @@
 import {useQuery} from "@tanstack/react-query";
 import {useId, useState, type ReactNode} from "react";
 
-import {sessionApiRequestsQueryOptions} from "../lib/api/sessions";
+import {sessionApiRequestMessagesQueryOptions, sessionApiRequestsQueryOptions} from "../lib/api/sessions";
 import {
 	resolveApiRequest,
 	type ApiRequestSummary,
 	type ApiRequestShapeSummary,
 	type ClassifierArtifactSummary,
 } from "../lib/api-request-log";
+import type {ApiRequestMessage, ApiRequestMessageBlock} from "../lib/api-request-messages";
+import {assertNever} from "../lib/assert-never";
 import {formatModelName} from "../lib/model-name";
 import {
 	classifierArtifactAttestationLabels,
@@ -16,6 +18,7 @@ import {
 	classifierArtifactShareRoleLabels,
 } from "../lib/schema-choices";
 import {ChevronIcon, CollapsibleSection} from "./tool-renderers/shared";
+import {type AttachedImage, UserAttachments} from "./user-attachments";
 
 const NUMBER = new Intl.NumberFormat("en-US");
 
@@ -119,6 +122,82 @@ function ShapeFacts({request, shape}: {request: ApiRequestSummary; shape: ApiReq
 	);
 }
 
+const PRE = "whitespace-pre-wrap break-words font-mono text-[11px] text-secondary";
+
+function attachedImages(key: string, images: readonly {mediaType: string; data: string}[]): AttachedImage[] {
+	return images.map((image, index) => ({
+		key: `${key}-${index}`,
+		src: `data:${image.mediaType};base64,${image.data}`,
+		label: "Attached image",
+	}));
+}
+
+function MessageBlock({block, blockKey}: {block: ApiRequestMessageBlock; blockKey: string}) {
+	switch (block.type) {
+		case "text":
+			return <pre className={PRE}>{block.text}</pre>;
+		case "thinking":
+			return (
+				<div className="flex flex-col min-w-0">
+					<span className="text-t6">Thinking</span>
+					<pre className={PRE}>{block.text}</pre>
+				</div>
+			);
+		case "tool_use":
+			return (
+				<div className="flex flex-col min-w-0">
+					<span className="text-t6">{`Tool use ${block.name}`}</span>
+					<pre className={PRE}>{block.input}</pre>
+				</div>
+			);
+		case "tool_result":
+			return (
+				<div className="flex flex-col min-w-0">
+					<span className="text-t6">{`Tool result ${block.toolUseId}${block.isError ? " (error)" : ""}`}</span>
+					{block.text !== "" && <pre className={PRE}>{block.text}</pre>}
+					<UserAttachments images={attachedImages(blockKey, block.images)} />
+				</div>
+			);
+		case "tool_addition":
+			return <span className="text-t6">{`Added tool ${block.name}${block.definition ? "" : " (by name)"}`}</span>;
+		case "image":
+			return <UserAttachments images={attachedImages(blockKey, [block])} />;
+		default:
+			return assertNever(block);
+	}
+}
+
+function RequestMessage({message}: {message: ApiRequestMessage}) {
+	return (
+		<div className="flex flex-col gap-1 min-w-0">
+			<span className="text-t6 font-medium">{message.role}</span>
+			<div className="flex flex-col gap-1 pl-4 min-w-0">
+				{message.blocks.map((block, index) => (
+					<MessageBlock key={index} block={block} blockKey={`${message.hash}-${index}`} />
+				))}
+			</div>
+		</div>
+	);
+}
+
+/** The request's tail: the messages it appended after the prefix it kept, loaded when this section mounts. */
+function RequestMessages({sessionId, requestId}: {sessionId: string; requestId: string}) {
+	const query = useQuery(sessionApiRequestMessagesQueryOptions(sessionId, requestId));
+	if (query.data === undefined) return query.isError ? "Couldn't load the request's messages" : "Loading…";
+	const {messages, missing} = query.data;
+	return (
+		<div data-testid="api-request-messages" className="flex flex-col gap-2 min-w-0">
+			{messages.length === 0 && missing.length === 0 && <span className="text-t6">No new messages</span>}
+			{messages.map((message, index) => (
+				<RequestMessage key={`${message.hash}-${index}`} message={message} />
+			))}
+			{missing.length > 0 && (
+				<span className="text-t6">{`${missing.length} message${missing.length === 1 ? " has" : "s have"} no logged blob`}</span>
+			)}
+		</div>
+	);
+}
+
 function RequestBody({sessionId, requestRef}: {sessionId: string; requestRef: string}) {
 	const query = useQuery(sessionApiRequestsQueryOptions(sessionId, true));
 	if (query.data === undefined) return query.isError ? "Couldn't load the API request log" : "Loading…";
@@ -132,13 +211,17 @@ function RequestBody({sessionId, requestRef}: {sessionId: string; requestRef: st
 			) : (
 				<ShapeFacts request={resolved.request} shape={resolved.shape} />
 			)}
+			<CollapsibleSection label="New messages">
+				<RequestMessages sessionId={sessionId} requestId={resolved.request.id} />
+			</CollapsibleSection>
 		</>
 	);
 }
 
 /**
  * The Messages API request (CLI 2.1.300+) an assistant turn came from: its
- * model, effort, thinking mode, betas, tools and system prompt. A local
+ * model, effort, thinking mode, betas, tools, system prompt and the messages
+ * it appended (fetched by hash when that section opens). A local
  * diagnostic upstream never shows, so only Verbose draws it. The session's
  * request log is fetched on first open.
  */

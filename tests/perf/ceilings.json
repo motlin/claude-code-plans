@@ -68,11 +68,11 @@
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1935847,
+		"ceiling": 1955688,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Classifier artifact share state (2026-10-29): the api-request Request disclosure lists each artifact the classifier was told about with its share state, publish and local paths (about 1.8 KB raw), on top of the growth since the 2026-10-29 persisted diff comments raise (1915839 to 1934025, within tolerance). Raw went to 1935847, about 850 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-29"
+		"reason": "Request panel messages (2026-10-30): the Verbose Request disclosure gains a lazy New messages section that renders each request's tail blobs (text, thinking, tool_use, tool_result, tool_addition and image blocks through the attachment tiles) plus its response schema and query options (about 3-4 KB raw), on top of the growth since the 2026-10-29 classifier artifact raise (1935847 to about 1952000, within tolerance). Raw went to 1955688, about 480 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-10-30"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

@@ -8,6 +8,7 @@ import {RemoteControlStateSchema, SessionBucketSchema} from "../session-state";
 import {PrStatusSchema} from "../pr-status";
 import {SessionCostStateSchema} from "../session-cost";
 import {ApiRequestLogSchema} from "../api-request-log";
+import {ApiRequestMessagesSchema} from "../api-request-messages";
 import type {SessionStatusFilter} from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
@@ -359,6 +360,9 @@ export const sessionQueryKeys = {
 	transcript: (id: string) => [...SESSION_QUERY_ROOT, id, "transcript"] as const,
 	resources: (id: string) => [...SESSION_QUERY_ROOT, id, "resources"] as const,
 	apiRequests: (id: string) => [...SESSION_QUERY_ROOT, id, "api-requests"] as const,
+	// A sibling of apiRequests, not a child: a request's tail never changes, so an appended request mustn't refetch it.
+	apiRequestMessages: (id: string, requestId: string) =>
+		[...SESSION_QUERY_ROOT, id, "api-request-messages", requestId] as const,
 	devServers: (id: string) => [...SESSION_QUERY_ROOT, id, "dev-servers"] as const,
 	artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
 	subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
@@ -538,6 +542,21 @@ export const sessionApiRequestsQueryOptions = (id: string, enabled: boolean) =>
 		enabled,
 		staleTime: Infinity,
 		gcTime: Infinity,
+	});
+
+/**
+ * The messages one API request appended (its tail), fetched only once the
+ * Request disclosure's Messages section opens. Immutable once logged.
+ */
+export const sessionApiRequestMessagesQueryOptions = (id: string, requestId: string) =>
+	queryOptions({
+		queryKey: sessionQueryKeys.apiRequestMessages(id, requestId),
+		queryFn: async () =>
+			apiFetch(
+				`/api/sessions/${encodeURIComponent(id)}/api-requests/${encodeURIComponent(requestId)}`,
+				ApiRequestMessagesSchema,
+			),
+		staleTime: Infinity,
 	});
 
 /**

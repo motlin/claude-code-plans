@@ -10,6 +10,7 @@
 import {toLenient} from "./lenient-schema";
 import {
 	AiTitleRecordSchema as StrictAiTitleRecordSchema,
+	ApiRequestBlobRecordSchema as StrictApiRequestBlobRecordSchema,
 	ApiRequestRecordSchema as StrictApiRequestRecordSchema,
 	ApiRequestShapeRecordSchema as StrictApiRequestShapeRecordSchema,
 	AttachmentPayloadSchema as StrictAttachmentPayloadSchema,
@@ -42,6 +43,7 @@ import {
 } from "./schemas";
 
 export const AiTitleRecordSchema = /* @__PURE__ */ toLenient(StrictAiTitleRecordSchema);
+export const ApiRequestBlobRecordSchema = /* @__PURE__ */ toLenient(StrictApiRequestBlobRecordSchema);
 export const ApiRequestRecordSchema = /* @__PURE__ */ toLenient(StrictApiRequestRecordSchema);
 export const ApiRequestShapeRecordSchema = /* @__PURE__ */ toLenient(StrictApiRequestShapeRecordSchema);
 export const AttachmentPayloadSchema = /* @__PURE__ */ toLenient(StrictAttachmentPayloadSchema);
