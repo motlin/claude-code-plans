@@ -2468,11 +2468,12 @@ export const SessionRegistryFileSchema = z
 		nameSince: z.number().optional(),
 		/** Earlier names, each with `until`, the epoch ms it was replaced. */
 		formerNames: z.array(z.object({name: z.string(), until: z.number()}).strict()).optional(),
-		status: SessionRegistryStatusSchema,
+		/** Absent from the first write a starting CLI makes; its first status update adds it with both timestamps. */
+		status: SessionRegistryStatusSchema.optional(),
 		/** Why a `waiting` session waits, e.g. "input needed". */
 		waitingFor: z.string().optional(),
-		updatedAt: z.number(),
-		statusUpdatedAt: z.number(),
+		updatedAt: z.number().optional(),
+		statusUpdatedAt: z.number().optional(),
 		/** `null` once the Remote Control bridge is torn down. */
 		bridgeSessionId: z.string().nullable().optional(),
 		asksForConvertedSkills: z.boolean().optional(),

@@ -14,7 +14,7 @@ export interface RegistrySessionState {
 	pid: number;
 	cwd: string;
 	startedAt: number;
-	status: SessionRegistryEntry["status"];
+	status: NonNullable<SessionRegistryEntry["status"]>;
 	waitingFor?: string;
 	statusUpdatedAt: number;
 	/** The Remote Control bridge session, `null` once torn down; absent from CLIs that do not write it. */
@@ -40,15 +40,16 @@ export function clearSessionRegistry(): void {
 	live.clear();
 }
 
+/** A CLI that registered but has not written its first status yet sits at its prompt: idle since it started. */
 function toState(entry: SessionRegistryEntry): RegistrySessionState {
 	return {
 		sessionId: entry.sessionId,
 		pid: entry.pid,
 		cwd: entry.cwd,
 		startedAt: entry.startedAt,
-		status: entry.status,
+		status: entry.status ?? "idle",
 		...(entry.waitingFor === undefined ? {} : {waitingFor: entry.waitingFor}),
-		statusUpdatedAt: entry.statusUpdatedAt,
+		statusUpdatedAt: entry.statusUpdatedAt ?? entry.startedAt,
 		...(entry.bridgeSessionId === undefined ? {} : {bridgeSessionId: entry.bridgeSessionId}),
 	};
 }
@@ -67,10 +68,11 @@ function sameState(a: RegistrySessionState, b: RegistrySessionState): boolean {
 function applyEntries(entries: readonly SessionRegistryEntry[]): Set<string> {
 	const next = new Map<string, RegistrySessionState>();
 	for (const entry of entries) {
+		const state = toState(entry);
 		const existing = next.get(entry.sessionId);
 		// A session resumed in two processes reads as whichever wrote its status last.
-		if (existing === undefined || entry.statusUpdatedAt > existing.statusUpdatedAt) {
-			next.set(entry.sessionId, toState(entry));
+		if (existing === undefined || state.statusUpdatedAt > existing.statusUpdatedAt) {
+			next.set(entry.sessionId, state);
 		}
 	}
 	const changed = new Set<string>();

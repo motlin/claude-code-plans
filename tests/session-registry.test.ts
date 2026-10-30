@@ -53,6 +53,20 @@ describe("SessionRegistryFileSchema", () => {
 		expect(SessionRegistryFileSchema.parse(shell)).toStrictEqual(shell);
 	});
 
+	it("accepts the first write a starting CLI makes, before any status, updatedAt or statusUpdatedAt", () => {
+		// Real shape (2.1.314, 2026-10-30), sanitized: registration writes the file, the first status update follows.
+		const {
+			status: _status,
+			updatedAt: _updatedAt,
+			statusUpdatedAt: _statusUpdatedAt,
+			...registering
+		} = registryFixture({
+			asksForConvertedSkills: false,
+		});
+
+		expect(SessionRegistryFileSchema.parse(registering)).toStrictEqual(registering);
+	});
+
 	it("rejects unknown keys and unknown statuses", () => {
 		expect(SessionRegistryFileSchema.safeParse({...registryFixture(), surprise: true}).success).toBe(false);
 		expect(SessionRegistryFileSchema.safeParse({...registryFixture(), status: "sleeping"}).success).toBe(false);
@@ -103,9 +117,23 @@ describe("readSessionRegistry", () => {
 		expect({entries, drift}).toStrictEqual({
 			entries: [registryFixture({pid: 4545, status: "sleeping" as "idle"})],
 			drift: [
-				'4545.json: status Invalid option: expected one of "idle"|"busy"|"waiting"|"shell";  Unrecognized key: "surprise"',
+				'4545.json: status invalid_value (received string "sleeping"); (root) unrecognized_keys (surprise)',
 			],
 		});
+	});
+
+	it("names each offending value's type in the drift report, independent of the zod locale", async () => {
+		writeFileSync(
+			join(dir, "4646.json"),
+			JSON.stringify({...registryFixture({pid: 4646}), status: null, updatedAt: "soon", statusUpdatedAt: [1]}),
+		);
+		const drift: string[] = [];
+
+		await readSessionRegistry(dir, (name, message) => drift.push(`${name}: ${message}`));
+
+		expect(drift).toStrictEqual([
+			'4646.json: status invalid_value (received null); updatedAt invalid_type (received string "soon"); statusUpdatedAt invalid_type (received array)',
+		]);
 	});
 
 	it("recovers a file the CLI overwrote in place without truncating, leaving a stale tail", async () => {

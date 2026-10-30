@@ -6,7 +6,7 @@ import {join} from "node:path";
 import type {z} from "zod";
 import {SessionRegistryFileSchema} from "./runtime-schemas";
 import {SessionRegistryFileSchema as StrictSessionRegistryFileSchema} from "./schemas";
-import {errnoCode} from "./narrow";
+import {errnoCode, isRecord} from "./narrow";
 import {parseIgnoringStaleTail} from "./parse-leading-json";
 
 /**
@@ -37,6 +37,45 @@ function warnDriftOnce(name: string, message: string): void {
 	console.warn(`Session registry ${name} failed strict validation (schema drift): ${message}`);
 }
 
+function valueAt(raw: unknown, path: readonly PropertyKey[]): unknown {
+	let value = raw;
+	for (const key of path) {
+		if (!isRecord(value)) return undefined;
+		value = value[String(key)];
+	}
+	return value;
+}
+
+const MAX_SHOWN_STRING = 40;
+
+function describeValue(value: unknown): string {
+	if (value === null) return "null";
+	if (Array.isArray(value)) return "array";
+	if (typeof value === "string") {
+		const shown = value.length > MAX_SHOWN_STRING ? `${value.slice(0, MAX_SHOWN_STRING)}…` : value;
+		return `string ${JSON.stringify(shown)}`;
+	}
+	if (typeof value === "number" || typeof value === "boolean") return `${typeof value} ${String(value)}`;
+	return typeof value;
+}
+
+/**
+ * Each issue as its path, zod code, and the offending value's type. The production
+ * bundle drops zod's English messages, leaving every one a bare "Invalid input".
+ */
+function describeDriftIssues(raw: unknown, issues: readonly z.core.$ZodIssue[]): string {
+	return issues
+		.map((issue) => {
+			const path = issue.path.length === 0 ? "(root)" : issue.path.map(String).join(".");
+			const detail =
+				issue.code === "unrecognized_keys"
+					? issue.keys.join(", ")
+					: `received ${describeValue(valueAt(raw, issue.path))}`;
+			return `${path} ${issue.code} (${detail})`;
+		})
+		.join("; ");
+}
+
 /**
  * Every valid registry file in `dir`. A stale tail left by an in-place rewrite is ignored;
  * unreadable or torn files are skipped quietly; one that parses but fails the strict schema is reported as drift.
@@ -62,10 +101,7 @@ export async function readSessionRegistry(
 			// The strict parse reports drift; the lenient twin still keeps the entry.
 			const result = StrictSessionRegistryFileSchema.safeParse(raw);
 			if (result.success) return result.data;
-			reportDrift(
-				name,
-				result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join("; "),
-			);
+			reportDrift(name, describeDriftIssues(raw, result.error.issues));
 			const lenient = SessionRegistryFileSchema.safeParse(raw);
 			return lenient.success ? lenient.data : null;
 		}),

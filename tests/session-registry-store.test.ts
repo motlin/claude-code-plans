@@ -48,6 +48,29 @@ describe("session registry store", () => {
 		rmSync(dir, {recursive: true, force: true});
 	});
 
+	it("reads a session the CLI registered but has not given a status yet as idle since it started", async () => {
+		const {
+			status: _status,
+			updatedAt: _updatedAt,
+			statusUpdatedAt: _statusUpdatedAt,
+			...registering
+		} = registryFixture();
+		write(registering);
+
+		await refreshSessionRegistry(dir, everyoneAlive);
+
+		expect(getRegistrySessionStates()).toStrictEqual([
+			{
+				sessionId: "session-test-100",
+				pid: 4242,
+				cwd: "/tmp/test/alice-project",
+				startedAt: 946_598_400_000,
+				status: "idle",
+				statusUpdatedAt: 946_598_400_000,
+			},
+		]);
+	});
+
 	it("loads live entries by session id and reports which sessions changed", async () => {
 		write(registryFixture({status: "waiting", waitingFor: "input needed", statusUpdatedAt: 946_598_402_000}));
 		write(registryFixture({pid: 4343, sessionId: "session-test-200", status: "busy"}));
