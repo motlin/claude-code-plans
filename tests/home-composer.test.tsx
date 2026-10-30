@@ -215,7 +215,7 @@ describe("HomeComposer", () => {
 
 		const textarea = await screen.findByRole("textbox", {name: "Prompt"});
 		expect({
-			placeholder: textarea.getAttribute("placeholder"),
+			placeholder: textarea.getAttribute("aria-placeholder"),
 			picker: screen.getByRole("combobox", {name: /^Folder: /}).textContent,
 			model: screen.getByLabelText("Model: Opus 4.8 Medium").textContent,
 			mode: document.querySelector("[data-chin-mode]")?.textContent,
@@ -339,7 +339,11 @@ describe("HomeComposer", () => {
 		const whitespace = send();
 
 		await typePrompt("fix the flaky test");
-		expect({before, whitespace, after: send()}).toStrictEqual({before: null, whitespace: null, after: false});
+		expect({before, whitespace, after: send()}).toStrictEqual({
+			before: null,
+			whitespace: null,
+			after: false,
+		});
 	});
 
 	it("posts the prompt and the selected project to the herdr launch API", async () => {
@@ -498,7 +502,12 @@ describe("HomeComposer", () => {
 
 	it("fetches the selected folder's git status and hides the Worktree footer for a non-git folder", async () => {
 		folderStatusResponse = () =>
-			Response.json({isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0});
+			Response.json({
+				isGitRepo: false,
+				headBranch: null,
+				defaultBranch: null,
+				uncommittedFiles: 0,
+			});
 		localStorage.setItem(HOME_WORKTREE_STORAGE_KEY, "true");
 		await renderApp();
 		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
@@ -618,7 +627,11 @@ describe("HomeComposer", () => {
 			expect(launchCalls.length).toBe(1);
 		});
 		act(() => {
-			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "new-session", cwd: "/users/dev/it's", model: ""});
+			eventSource.emit(SSE_EVENTS.SESSION_START, {
+				sessionId: "new-session",
+				cwd: "/users/dev/it's",
+				model: "",
+			});
 		});
 
 		await waitFor(() => {
@@ -653,7 +666,11 @@ describe("HomeComposer", () => {
 			expect(launchCalls.length).toBe(1);
 		});
 		act(() => {
-			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "new-session", cwd: "/users/dev/it's", model: ""});
+			eventSource.emit(SSE_EVENTS.SESSION_START, {
+				sessionId: "new-session",
+				cwd: "/users/dev/it's",
+				model: "",
+			});
 		});
 
 		await waitFor(() => {
@@ -672,17 +689,27 @@ describe("HomeComposer", () => {
 		await waitFor(() => {
 			expect(launchCalls.length).toBe(1);
 		});
-		expect(launchBody(launchCalls[0])).toStrictEqual({cwd: "/users/dev/it's", prompt: "fix the flaky test"});
+		expect(launchBody(launchCalls[0])).toStrictEqual({
+			cwd: "/users/dev/it's",
+			prompt: "fix the flaky test",
+		});
 		expect((await findToast()).textContent).toContain("Started a session in it's");
 		act(() => {
-			eventSource.emit(SSE_EVENTS.SESSION_START, {sessionId: "stay-session", cwd: "/users/dev/it's", model: ""});
+			eventSource.emit(SSE_EVENTS.SESSION_START, {
+				sessionId: "stay-session",
+				cwd: "/users/dev/it's",
+				model: "",
+			});
 		});
 		await act(async () => {
 			await new Promise((resolve) => {
 				setTimeout(resolve, 50);
 			});
 		});
-		expect({path: router.state.location.pathname, prompt: (textarea as HTMLTextAreaElement).value}).toStrictEqual({
+		expect({
+			path: router.state.location.pathname,
+			prompt: (textarea as HTMLTextAreaElement).value,
+		}).toStrictEqual({
 			path: "/",
 			prompt: "",
 		});
@@ -789,7 +816,11 @@ describe("HomeComposer", () => {
 			value: field.value,
 			selectionStart: field.selectionStart,
 			selectionEnd: field.selectionEnd,
-		}).toStrictEqual({value: prefill, selectionStart: prefill.length, selectionEnd: prefill.length});
+		}).toStrictEqual({
+			value: prefill,
+			selectionStart: prefill.length,
+			selectionEnd: prefill.length,
+		});
 	});
 
 	it("navigates home and focuses the composer on ⇧⌘O from another page", async () => {
@@ -834,8 +865,20 @@ describe("getComposerDefaults", () => {
 				getComposerDefaults(async () => Promise.resolve({fastMode: true, fastModePerSessionOptIn: true})),
 			]),
 		).toStrictEqual([
-			{model: null, effortLevel: null, defaultMode: null, bypassPermissionsAllowed: false, fastMode: true},
-			{model: null, effortLevel: null, defaultMode: null, bypassPermissionsAllowed: false, fastMode: false},
+			{
+				model: null,
+				effortLevel: null,
+				defaultMode: null,
+				bypassPermissionsAllowed: false,
+				fastMode: true,
+			},
+			{
+				model: null,
+				effortLevel: null,
+				defaultMode: null,
+				bypassPermissionsAllowed: false,
+				fastMode: false,
+			},
 		]);
 	});
 

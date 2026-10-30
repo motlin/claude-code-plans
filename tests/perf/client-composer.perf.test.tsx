@@ -308,7 +308,10 @@ type Surface = keyof typeof SURFACES;
 /** One keystroke: the composer's value grows to `value`, then the typist's pause (plus `extraMs`) elapses. */
 function keystroke(placeholder: string, value: string, extraMs = 0): () => void {
 	return () => {
-		fireEvent.change(screen.getByPlaceholderText(placeholder), {target: {value}});
+		// The composer's placeholder is an aria-hidden overlay; the textarea carries it as `aria-placeholder`.
+		const textarea = document.querySelector(`textarea[aria-placeholder="${placeholder}"]`);
+		if (textarea === null) throw new Error(`No composer with placeholder ${placeholder}`);
+		fireEvent.change(textarea, {target: {value}});
 		vi.advanceTimersByTime(KEYSTROKE_INTERVAL_MS + extraMs);
 	};
 }

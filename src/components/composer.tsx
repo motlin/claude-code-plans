@@ -122,7 +122,7 @@ function workingPlaceholder(isMac: boolean): string {
  * takes 3px padding on coarse pointers so the editor box stays upstream's h28, as 20px + py-1 does on fine.
  */
 const EDITOR_CLASS =
-	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 pointer-coarse:py-[3px] font-sans text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] [field-sizing:content] placeholder:text-[rgb(137,135,129)] focus:outline-none disabled:opacity-50";
+	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 pointer-coarse:py-[3px] font-sans text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] [field-sizing:content] focus:outline-none disabled:opacity-50";
 
 /** Overlays ghost text after the prompt, lined up with the textarea's text (and its coarse-pointer floor). */
 const GHOST_OVERLAY_CLASS =
@@ -130,6 +130,13 @@ const GHOST_OVERLAY_CLASS =
 
 /** Paints the whole prompt over a transparent textarea, so it also follows the coarse-pointer send gutter. */
 const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] pointer-coarse:right-[51px]`;
+
+/**
+ * Upstream's composer placeholder (shared-9 `absolute inset-0 pointer-events-none overflow-hidden`): an overlay,
+ * not a native `placeholder`, so the 16px coarse-pointer text never wraps into `[field-sizing:content]` and grows
+ * the empty editor past h28. The second line of a too-wide placeholder is clipped.
+ */
+const PLACEHOLDER_OVERLAY_CLASS = `${PAINTED_OVERLAY_CLASS} text-[rgb(137,135,129)] select-none`;
 
 /** Upstream's inline visually-hidden style for the argument hint's live twin. */
 const SR_ONLY_STYLE: CSSProperties = {
@@ -714,6 +721,8 @@ export function Composer({
 	const mentions =
 		mentionState?.draftKey === draftKey && mentionState.text === prompt ? mentionState.mentions : NO_MENTIONS;
 	const painted = chip !== null || mentions.length > 0;
+	const placeholder =
+		onStop !== undefined && onQueueForLater !== undefined ? workingPlaceholder(isMac) : PLACEHOLDER[variant];
 	// The textarea's selection end, so a selection spanning exactly one chip paints it selected.
 	const [selectionEnd, setSelectionEnd] = useState(0);
 	const selectedMention = mentions.find((m) => m.start === caret && m.end === selectionEnd);
@@ -1445,6 +1454,15 @@ export function Composer({
 							</span>
 						</div>
 					)}
+					{prompt === "" && (
+						<div
+							data-testid="composer-placeholder"
+							aria-hidden="true"
+							className={`${PLACEHOLDER_OVERLAY_CLASS}${isStreaming || disabled ? " opacity-50" : ""}`}
+						>
+							{placeholder}
+						</div>
+					)}
 					<textarea
 						ref={textareaRef}
 						aria-label="Prompt"
@@ -1500,11 +1518,7 @@ export function Composer({
 									? fileMentionOptionId(mentionMenuId, mentionHighlighted)
 									: undefined
 						}
-						placeholder={
-							onStop !== undefined && onQueueForLater !== undefined
-								? workingPlaceholder(isMac)
-								: PLACEHOLDER[variant]
-						}
+						aria-placeholder={placeholder}
 						disabled={isStreaming || disabled}
 						rows={1}
 						enterKeyHint="enter"

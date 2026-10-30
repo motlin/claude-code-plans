@@ -528,7 +528,9 @@ describe("Composer queued message bar", () => {
 	});
 
 	it("renders no band when only steers are held", () => {
-		renderComposer({queue: queueView([{id: "q4", text: "Dave's answer instead", midTurn: true}])});
+		renderComposer({
+			queue: queueView([{id: "q4", text: "Dave's answer instead", midTurn: true}]),
+		});
 		expect({
 			band: document.querySelector("[data-take-back-entry]"),
 			status: screen.getByTestId("coach-queued-status").textContent,
@@ -574,7 +576,10 @@ describe("Composer queued message bar", () => {
 		const queue = queueView([ALICE]);
 		renderComposer({queue});
 		fireEvent.click(screen.getByRole("button", {name: "Remove from queue"}));
-		expect({removed: queue.remove.mock.calls, dialog: screen.queryByRole("alertdialog")}).toStrictEqual({
+		expect({
+			removed: queue.remove.mock.calls,
+			dialog: screen.queryByRole("alertdialog"),
+		}).toStrictEqual({
 			removed: [["q1"]],
 			dialog: null,
 		});
@@ -587,11 +592,20 @@ describe("Composer queued message bar", () => {
 		fireEvent.change(textarea, {target: {value: "Bob's draft"}});
 		fireEvent.click(screen.getByRole("button", {name: "Edit in composer"}));
 
-		expect({value: textarea.value, removed: queue.remove.mock.calls, toasts: toast.mock.calls}).toStrictEqual({
+		expect({
+			value: textarea.value,
+			removed: queue.remove.mock.calls,
+			toasts: toast.mock.calls,
+		}).toStrictEqual({
 			value: "Bob's draft",
 			removed: [],
 			toasts: [
-				[{kind: "warning", message: "The input already has a draft. Clear it to pull this message back in."}],
+				[
+					{
+						kind: "warning",
+						message: "The input already has a draft. Clear it to pull this message back in.",
+					},
+				],
 			],
 		});
 	});
@@ -633,7 +647,11 @@ describe("Composer while working", () => {
 		fireEvent.change(textarea, {target: {value: "Bob's later prompt"}});
 		fireEvent.keyDown(textarea, {key: "Enter", ctrlKey: true});
 
-		expect({sent: onSend.mock.calls, later: onQueueForLater.mock.calls, stops: onStop.mock.calls}).toStrictEqual({
+		expect({
+			sent: onSend.mock.calls,
+			later: onQueueForLater.mock.calls,
+			stops: onStop.mock.calls,
+		}).toStrictEqual({
 			sent: [],
 			later: [["Alice's later prompt"], ["Bob's later prompt"]],
 			stops: [],
@@ -644,20 +662,20 @@ describe("Composer while working", () => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
 		const textarea = renderComposer({onQueueForLater: () => {}, onStop: () => {}});
 
-		expect(textarea.placeholder).toBe("⏎ to send, ⌘⏎ to queue for later");
+		expect(textarea.getAttribute("aria-placeholder")).toBe("⏎ to send, ⌘⏎ to queue for later");
 	});
 
 	it("shows the working placeholder with Ctrl⏎ off Mac", () => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (X11; Linux x86_64)");
 		const textarea = renderComposer({onQueueForLater: () => {}, onStop: () => {}});
 
-		expect(textarea.placeholder).toBe("⏎ to send, Ctrl⏎ to queue for later");
+		expect(textarea.getAttribute("aria-placeholder")).toBe("⏎ to send, Ctrl⏎ to queue for later");
 	});
 
 	it("keeps the idle placeholder when the live pane is not working", () => {
 		const textarea = renderComposer({onQueueForLater: () => {}});
 
-		expect(textarea.placeholder).toBe("Type / for commands");
+		expect(textarea.getAttribute("aria-placeholder")).toBe("Type / for commands");
 	});
 
 	it("swallows a repeated ⌘⏎ keydown", () => {
@@ -672,7 +690,12 @@ describe("Composer while working", () => {
 			sent: onSend.mock.calls,
 			later: onQueueForLater.mock.calls,
 			draft: textarea.value,
-		}).toStrictEqual({notCancelled: false, sent: [], later: [], draft: "Alice's held-down prompt"});
+		}).toStrictEqual({
+			notCancelled: false,
+			sent: [],
+			later: [],
+			draft: "Alice's held-down prompt",
+		});
 	});
 });
 

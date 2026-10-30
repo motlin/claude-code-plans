@@ -20,15 +20,60 @@ afterEach(() => {
 describe("Composer", () => {
 	it("uses the upstream placeholder for each variant", () => {
 		const {unmount} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
-		const session = screen.getByRole("textbox", {name: "Prompt"}).getAttribute("placeholder");
+		const session = screen.getByRole("textbox", {name: "Prompt"}).getAttribute("aria-placeholder");
 		unmount();
 		render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
-		const home = screen.getByRole("textbox", {name: "Prompt"}).getAttribute("placeholder");
+		const home = screen.getByRole("textbox", {name: "Prompt"}).getAttribute("aria-placeholder");
 
 		expect({session, home}).toStrictEqual({
 			session: "Type / for commands",
 			home: "Describe a task or ask a question",
 		});
+	});
+
+	it("draws the placeholder as upstream's clipped overlay so it never sizes the empty editor", () => {
+		render(<Composer variant="home" draftKey="home" onSend={() => {}} />);
+		const textarea = screen.getByRole("textbox", {name: "Prompt"});
+		const overlay = screen.getByTestId("composer-placeholder");
+		const classes = overlay.className.split(" ");
+
+		expect({
+			nativePlaceholder: textarea.hasAttribute("placeholder"),
+			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
+			text: overlay.textContent,
+			ariaHidden: overlay.getAttribute("aria-hidden"),
+			layout: [
+				"absolute",
+				"inset-y-0",
+				"left-[30px]",
+				"right-[30px]",
+				"pointer-coarse:right-[51px]",
+				"overflow-hidden",
+				"pointer-events-none",
+				"text-entry-floored",
+			].filter((name) => classes.includes(name)),
+		}).toStrictEqual({
+			nativePlaceholder: false,
+			ariaPlaceholder: "Describe a task or ask a question",
+			text: "Describe a task or ask a question",
+			ariaHidden: "true",
+			layout: [
+				"absolute",
+				"inset-y-0",
+				"left-[30px]",
+				"right-[30px]",
+				"pointer-coarse:right-[51px]",
+				"overflow-hidden",
+				"pointer-events-none",
+				"text-entry-floored",
+			],
+		});
+
+		fireEvent.change(textarea, {target: {value: "hi"}});
+		expect({
+			overlay: screen.queryByTestId("composer-placeholder"),
+			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
+		}).toStrictEqual({overlay: null, ariaPlaceholder: "Describe a task or ask a question"});
 	});
 
 	it("rings the card faintly while idle and darkens the ring only while focused", () => {
@@ -135,7 +180,9 @@ describe("Composer", () => {
 				deliveryHint="Sends to the live terminal"
 			/>,
 		);
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "Continue Alice's test"}});
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
+			target: {value: "Continue Alice's test"},
+		});
 		const send = screen.getByRole("button", {name: "Send"});
 		const describedBy = send.getAttribute("aria-describedby") ?? "";
 
@@ -157,7 +204,9 @@ describe("Composer", () => {
 				deliveryHint="Starts a forked session"
 			/>,
 		);
-		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "Continue Alice's test"}});
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {
+			target: {value: "Continue Alice's test"},
+		});
 		const send = screen.getByRole("button", {name: "Send"});
 
 		fireEvent.pointerEnter(send);
@@ -183,7 +232,12 @@ describe("Composer", () => {
 				draftKey="home"
 				onSend={() => {}}
 				slashCommands={[
-					{name: "model", description: "Set the model", source: "builtin", argumentHint: "[model]"},
+					{
+						name: "model",
+						description: "Set the model",
+						source: "builtin",
+						argumentHint: "[model]",
+					},
 				]}
 			/>,
 		);
@@ -261,7 +315,12 @@ describe("Composer", () => {
 					?.className.split(" ")
 					.filter((name) => ["absolute", "left-0"].includes(name)),
 				padding: card?.className.split(" ").includes("p-2"),
-			}).toStrictEqual({inCard: true, inChin: false, slot: ["absolute", "left-0"], padding: true});
+			}).toStrictEqual({
+				inCard: true,
+				inChin: false,
+				slot: ["absolute", "left-0"],
+				padding: true,
+			});
 		});
 
 		it("uses upstream's card and chin tokens: r14 p8 card, 28px Add and Send, 24px 13/20 chin controls", () => {
@@ -291,7 +350,10 @@ describe("Composer", () => {
 				mode: pick(document.querySelector("[data-chin-mode]"), ["h-6", "px-1.5", "text-secondary"]),
 				model: {
 					height: pick(model, ["h-6"]),
-					parts: Array.from(model.children, (part) => ({text: part.textContent, classes: classes(part)})),
+					parts: Array.from(model.children, (part) => ({
+						text: part.textContent,
+						classes: classes(part),
+					})),
 				},
 				ring: {
 					height: pick(ring, ["h-6", "aspect-square"]),
@@ -353,7 +415,10 @@ describe("Composer", () => {
 			{weekly: 75, stroke: "var(--color-usage-warning)"},
 			{weekly: 90, stroke: "var(--color-usage-danger)"},
 		])("colours the arc $stroke at $weekly%", ({weekly, stroke}) => {
-			const usage = CHIN.usage && {...CHIN.usage, weekly: {...CHIN.usage.weekly!, usedPercentage: weekly}};
+			const usage = CHIN.usage && {
+				...CHIN.usage,
+				weekly: {...CHIN.usage.weekly!, usedPercentage: weekly},
+			};
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={{...CHIN, usage}} />);
 			expect(document.querySelector("[data-usage-ring-arc]")?.getAttribute("stroke")).toBe(stroke);
 		});
