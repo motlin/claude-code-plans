@@ -1,9 +1,10 @@
-import {describe, expect, it} from "vite-plus/test";
+import {describe, expect, it, vi} from "vite-plus/test";
 import type {ActiveSessionEntry} from "../src/lib/active-session-store";
 import type {HookEvent} from "../src/lib/hook-events";
 import type {HerdrResult} from "../src/lib/herdr/client";
 import {
 	createHerdrSequence,
+	logHerdrReportObservation,
 	reportHookStateToHerdr,
 	stateForHerdrHookEvent,
 	type HerdrHookStateDependencies,
@@ -577,6 +578,34 @@ describe("herdr hook-state reporting", () => {
 			});
 		} finally {
 			process.off("unhandledRejection", onUnhandledRejection);
+		}
+	});
+});
+
+describe("logHerdrReportObservation", () => {
+	it("stays quiet for a session that is not attached to herdr but logs other request errors", () => {
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const notAttached: HerdrReportObservation = {
+				outcome: "request-error",
+				method: "pane.report_agent",
+				paneId: null,
+				message: "session-not-found: session is not attached to a live herdr terminal",
+			};
+			const clearNotAttached: HerdrReportObservation = {...notAttached, method: "pane.clear_agent_authority"};
+			const socketError: HerdrReportObservation = {
+				outcome: "request-error",
+				method: "pane.report_agent",
+				paneId: "w100:p100",
+				message: "fabricated socket rejection",
+			};
+			logHerdrReportObservation(notAttached);
+			logHerdrReportObservation(clearNotAttached);
+			logHerdrReportObservation(socketError);
+
+			expect(consoleError.mock.calls).toStrictEqual([["herdr hook-state report failed", socketError]]);
+		} finally {
+			consoleError.mockRestore();
 		}
 	});
 });

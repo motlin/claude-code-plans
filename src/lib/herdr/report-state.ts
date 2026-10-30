@@ -103,8 +103,18 @@ function overridesReportedState(event: HookEvent, previous: HerdrReportedState |
 	return true;
 }
 
-function defaultObserver(observation: HerdrReportObservation): void {
+/** A session running outside herdr (plain terminal, scratch agent) has no pane to report to. */
+function isUnattachedSession(observation: HerdrReportObservation): boolean {
+	return (
+		observation.outcome === "request-error" &&
+		observation.paneId === null &&
+		observation.message.startsWith("session-not-found:")
+	);
+}
+
+export function logHerdrReportObservation(observation: HerdrReportObservation): void {
 	if (observation.outcome === "verified" || observation.outcome === "metadata-fallback") return;
+	if (isUnattachedSession(observation)) return;
 	console.error("herdr hook-state report failed", observation);
 }
 
@@ -113,7 +123,7 @@ const defaultDependencies: HerdrHookStateDependencies = {
 	resolveTarget: resolveHerdrPromptTarget,
 	request: herdrRequest,
 	nextSequence: createHerdrSequence(),
-	observe: defaultObserver,
+	observe: logHerdrReportObservation,
 	reportedStates: new Map(),
 };
 
