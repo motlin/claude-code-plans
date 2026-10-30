@@ -24,10 +24,23 @@
 }
 
 /* Inside the transcript's nearest comfortable scope (a coarse pointer), upstream's prose steps up
-   to its comfortable scale: 15/22, 16/24 and 18/27 at Small, Medium and Large. */
+   to its comfortable scale: 15/22, 16/24 and 18/27 at Small, Medium and Large. The chain matches
+   globals.css's comfortable: variant, so the nearest of up to four nested scopes decides. */
 :global(.transcript-text)
 	.markdown:where(:global([data-density="comfortable"] *)):not(
-		:where(:global([data-density="comfortable"] [data-density="compact"] *))
+		:where(:global([data-density="comfortable"] [data-density="compact"] *)):not(
+			:where(:global([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)):not(
+				:where(
+					:global(
+						[data-density="comfortable"]
+							[data-density="compact"]
+							[data-density="comfortable"]
+							[data-density="compact"]
+							*
+					)
+				)
+			)
+		)
 	) {
 	--md-prose-size: var(--transcript-comfortable-text-size, 1rem);
 	--md-prose-leading: calc(

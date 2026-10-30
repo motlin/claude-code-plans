@@ -5,7 +5,7 @@ import {markdownCss, ruleDeclarations} from "./markdown-css";
 
 const TRANSCRIPT_PROSE = ":global(.transcript-text) .markdown";
 const COMFORTABLE_PROSE =
-	':global(.transcript-text)\n\t.markdown:where(:global([data-density="comfortable"] *)):not(\n\t\t:where(:global([data-density="comfortable"] [data-density="compact"] *))\n\t)';
+	':global(.transcript-text)\n\t.markdown:where(:global([data-density="comfortable"] *)):not(\n\t\t:where(:global([data-density="comfortable"] [data-density="compact"] *)):not(\n\t\t\t:where(:global([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)):not(\n\t\t\t\t:where(\n\t\t\t\t\t:global(\n\t\t\t\t\t\t[data-density="comfortable"]\n\t\t\t\t\t\t\t[data-density="compact"]\n\t\t\t\t\t\t\t[data-density="comfortable"]\n\t\t\t\t\t\t\t[data-density="compact"]\n\t\t\t\t\t\t\t*\n\t\t\t\t\t)\n\t\t\t\t)\n\t\t\t)\n\t\t)\n\t)';
 
 /** Resolves `var(--name, fallback)` against `vars`, then a `calc(a * b)` of a unitless factor and a rem length, to px. */
 function resolvePx(value: string, vars: Record<string, string | null>, rootPx = 16): number {

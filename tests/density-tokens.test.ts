@@ -40,12 +40,15 @@ function typeTokens(source: string): Record<string, string | null> {
 }
 
 describe("density type tokens", () => {
-	it("uses upstream's comfortable type scale on :root and the compact scale under [data-density=compact]", () => {
+	it("uses upstream's comfortable type scale on :root and [data-density=comfortable] and the compact scale under [data-density=compact]", () => {
 		const theme = block("@theme inline");
 		const compact = block('[data-density="compact"]');
+		const comfortable = block('[data-density="comfortable"]');
 
 		expect({
 			root: typeTokens(block(":root")),
+			comfortable: typeTokens(comfortable),
+			comfortableDeclarations: comfortable.match(/--[\w-]+:/g)?.length ?? 0,
 			compact: typeTokens(compact),
 			compactDeclarations: compact.match(/--[\w-]+:/g)?.length ?? 0,
 			caption: token(theme, "--text-caption"),
@@ -61,6 +64,17 @@ describe("density type tokens", () => {
 				"--upstream-text-caption": "12px",
 				"--upstream-leading-caption": "17px",
 			},
+			comfortable: {
+				"--upstream-text-body": "14px",
+				"--upstream-leading-body": "20px",
+				"--upstream-text-footnote": "13px",
+				"--upstream-leading-footnote": "17px",
+				"--upstream-text-code": "13px",
+				"--upstream-leading-code": "19px",
+				"--upstream-text-caption": "12px",
+				"--upstream-leading-caption": "17px",
+			},
+			comfortableDeclarations: 8,
 			compact: {
 				"--upstream-text-body": "13px",
 				"--upstream-leading-body": "19px",
@@ -206,9 +220,9 @@ describe("density variants", () => {
 
 		expect(variants).toStrictEqual({
 			compact:
-				'&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *))',
+				'&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *))))',
 			comfortable:
-				'&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *))',
+				'&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *))))',
 		});
 	});
 });

@@ -23,9 +23,11 @@
 @custom-variant dark (&:is(.dark *));
 @custom-variant touch (@media (pointer: coarse), (hover: none));
 /* Upstream's density variants: the nearest [data-density] scope wins, so the compact
-   main column flips to comfortable when a coarse pointer swaps its scope. */
-@custom-variant compact (&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *)));
-@custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *)));
+   main column flips to comfortable when a coarse pointer swaps its scope. Each :not() level
+   undoes the previous one for a deeper scope of the other density, so the nearest of up to
+   four nested scopes decides; markdown-article.module.css repeats the comfortable chain. */
+@custom-variant compact (&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)))));
+@custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));
 
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */
@@ -1595,7 +1597,19 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 
 /* Upstream claude.ai/code — compact type scale. :root carries the comfortable
    scale (upstream .cds-root[data-density=comfortable], the web shell); the Claude
-   Code main column is marked compact, which is upstream's base .cds-root block. */
+   Code main column is marked compact, which is upstream's base .cds-root block.
+   A comfortable scope restates :root's scale so it wins over an enclosing compact one. */
+[data-density="comfortable"] {
+	--upstream-text-body: 14px;
+	--upstream-leading-body: 20px;
+	--upstream-text-footnote: 13px;
+	--upstream-leading-footnote: 17px;
+	--upstream-text-code: 13px;
+	--upstream-leading-code: 19px;
+	--upstream-text-caption: 12px;
+	--upstream-leading-caption: 17px;
+}
+
 [data-density="compact"] {
 	--upstream-text-body: 13px;
 	--upstream-leading-body: 19px;
