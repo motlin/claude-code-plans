@@ -20,6 +20,7 @@ import {
 	ClaudeJsonOauthAccountSchema as StrictClaudeJsonOauthAccountSchema,
 	ClaudeJsonProjectMcpSchema as StrictClaudeJsonProjectMcpSchema,
 	ClaudeSettingsSchema as StrictClaudeSettingsSchema,
+	ContextMirrorFileSchema as StrictContextMirrorFileSchema,
 	ContextUsageTwinSchema as StrictContextUsageTwinSchema,
 	CostStateRecordSchema as StrictCostStateRecordSchema,
 	CustomTitleRecordSchema as StrictCustomTitleRecordSchema,
@@ -51,6 +52,7 @@ export const ClaudeJsonOauthAccountSchema = /* @__PURE__ */ toLenient(StrictClau
 export const ClaudeJsonProjectMcpSchema = /* @__PURE__ */ toLenient(StrictClaudeJsonProjectMcpSchema);
 export const ClaudeSettingsSchema = /* @__PURE__ */ toLenient(StrictClaudeSettingsSchema);
 export const ContextUsageTwinSchema = /* @__PURE__ */ toLenient(StrictContextUsageTwinSchema);
+export const ContextMirrorFileSchema = /* @__PURE__ */ toLenient(StrictContextMirrorFileSchema);
 export const CostStateRecordSchema = /* @__PURE__ */ toLenient(StrictCostStateRecordSchema);
 export const CustomTitleRecordSchema = /* @__PURE__ */ toLenient(StrictCustomTitleRecordSchema);
 export const CustomTitleSidecarSchema = /* @__PURE__ */ toLenient(StrictCustomTitleSidecarSchema);

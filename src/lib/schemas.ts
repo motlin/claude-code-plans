@@ -1662,6 +1662,93 @@ export const ContextUsageTwinSchema = z
 
 export type ContextUsageTwin = z.infer<typeof ContextUsageTwinSchema>;
 
+/** How the window a context breakdown measures against was settled (the CLI's `ContextWindowSource`). */
+export const ContextWindowSourceSchema = z.enum([
+	"env",
+	"settings",
+	"clientdata",
+	"experiment",
+	"model-default",
+	"unknown-model",
+	"auto",
+]);
+
+/** The CLI's `ModelUsage`: the four token counts of one API response. */
+const ContextApiUsageSchema = z
+	.object({
+		input_tokens: z.number(),
+		output_tokens: z.number(),
+		cache_read_input_tokens: z.number(),
+		cache_creation_input_tokens: z.number(),
+	})
+	.strict();
+
+/**
+ * The file the `ccb-context-mirror` CLI mod writes after each turn: `$.session.usage({breakdown: "summary"})`'s
+ * `context.breakdown` (the SDK's `get_context_usage` shape) less its `gridRows`.
+ */
+export const ContextMirrorFileSchema = z
+	.object({
+		sessionId: z.string(),
+		fetchedAt: z.string(),
+		breakdown: z
+			.object({
+				categories: z.array(
+					z
+						.object({
+							name: z.string(),
+							tokens: z.number(),
+							color: z.string(),
+							isDeferred: z.boolean(),
+							kind: ContextUsageCategoryKindSchema,
+						})
+						.strict(),
+				),
+				totalTokens: z.number(),
+				maxTokens: z.number(),
+				rawMaxTokens: z.number(),
+				autocompactSource: ContextWindowSourceSchema,
+				percentage: z.number(),
+				model: z.string(),
+				memoryFiles: z.array(z.object({path: z.string(), type: z.string(), tokens: z.number()}).strict()),
+				mcpTools: z.array(
+					z
+						.object({name: z.string(), serverName: z.string(), tokens: z.number(), isLoaded: z.boolean()})
+						.strict(),
+				),
+				agents: z.array(z.object({agentType: z.string(), source: z.string(), tokens: z.number()}).strict()),
+				slashCommands: z
+					.object({totalCommands: z.number(), includedCommands: z.number(), tokens: z.number()})
+					.strict()
+					.optional(),
+				skills: z
+					.object({
+						totalSkills: z.number(),
+						includedSkills: z.number(),
+						tokens: z.number(),
+						skillFrontmatter: z.array(
+							z
+								.object({
+									name: z.string(),
+									source: z.string(),
+									pluginName: z.string().optional(),
+									tokens: z.number(),
+								})
+								.strict(),
+						),
+					})
+					.strict()
+					.optional(),
+				autoCompactThreshold: z.number().optional(),
+				isAutoCompactEnabled: z.boolean(),
+				apiUsage: ContextApiUsageSchema.nullable(),
+			})
+			.strict(),
+	})
+	.strict();
+
+export type ContextMirrorFile = z.infer<typeof ContextMirrorFileSchema>;
+
 /** `model_refusal_fallback`: whether the fallback retried the refused turn, reverted to the original model, or stuck. */
 export const ModelRefusalFallbackDirectionSchema = z.enum(["retry", "revert", "sticky"]);
 /** `model_refusal_fallback`: whether the model switch holds for the session or only the refused turn. */

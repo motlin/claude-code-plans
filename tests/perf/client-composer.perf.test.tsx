@@ -95,6 +95,11 @@ function sessionEndpoints(id: string): Array<{path: string; module: string; para
 		{path: `/api/sessions/${id}/transcript`, module: "../../src/routes/api/sessions.$id.transcript", params: {id}},
 		{path: `/api/sessions/${id}/subagents`, module: "../../src/routes/api/sessions.$id.subagents", params: {id}},
 		{path: `/api/sessions/${id}/workflows`, module: "../../src/routes/api/sessions.$id.workflows", params: {id}},
+		{
+			path: `/api/sessions/${id}/context-breakdown`,
+			module: "../../src/routes/api/sessions.$id.context-breakdown",
+			params: {id},
+		},
 		{path: `/api/sessions/${id}/artifacts`, module: "../../src/routes/api/sessions.$id.artifacts", params: {id}},
 		{path: `/api/sessions/${id}/statusline`, module: "../../src/routes/api/sessions.$id.statusline", params: {id}},
 		{

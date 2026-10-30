@@ -48,6 +48,7 @@ import {getSessionTerminalHosts} from "./session-terminal-hosts";
 import {hmrPersist, hmrDispose} from "./hmr-persist";
 import {DEFAULT_IGNORED_DIR_NAMES, getConfigPath, readConfig} from "./config";
 import {broadcastTyped, broadcast, addClient, removeClient} from "./sse-broadcast";
+import {handleContextMirrorEvent} from "./context-breakdown-reader";
 import {recentlyBroadcast, sessionUpdatedDedupeKey} from "./update-dedupe";
 import {isRegistryFileName} from "./session-registry";
 import {scheduleSessionRegistryRefresh} from "./session-registry-store";
@@ -80,6 +81,8 @@ let projectsDir = "";
 let plansDir = "";
 let statuslineDir = "";
 let jobsDir = "";
+/** The ccb-context-mirror mod's directory, as its real path: the recursive watcher reports real paths. */
+let contextMirrorDir = "";
 /** The registry directory as given and as its real path: the recursive watcher reports real paths. */
 let sessionRegistryDirs = new Set<string>();
 let fileContentRoots: string[] = [];
@@ -710,6 +713,7 @@ function handleSessionRegistryEvent(path: string): boolean {
 async function handleFileChange(path: string): Promise<void> {
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
+	if (handleContextMirrorEvent(path, contextMirrorDir, broadcastTyped)) return;
 	await awaitInitialScan();
 	handleWorkflowFileEvent(path, projectsDir, broadcastTyped);
 	const normalizedPath = resolve(path);
@@ -807,6 +811,7 @@ function onFileUnlink(path: string): void {
 async function handleFileUnlink(path: string): Promise<void> {
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
+	if (handleContextMirrorEvent(path, contextMirrorDir, broadcastTyped)) return;
 	await awaitInitialScan();
 	if (isPathInsideFileContentRoots(path, fileContentRoots)) {
 		try {
@@ -863,6 +868,7 @@ export async function createWatcher(
 	configuredFileContentRoots: string[] = [],
 	jbDir?: string,
 	registryDir?: string,
+	mirrorDir?: string,
 ): Promise<RecursiveWatcher> {
 	if (projDir) {
 		resolveProjectsDirectory(projDir);
@@ -872,6 +878,7 @@ export async function createWatcher(
 	if (slDir) statuslineDir = slDir;
 	if (jbDir) jobsDir = resolve(jbDir);
 	if (registryDir) sessionRegistryDirs = new Set([resolve(registryDir), realpathOrSelf(registryDir)]);
+	if (mirrorDir) contextMirrorDir = realpathOrSelf(mirrorDir);
 	setFileContentRoots(configuredFileContentRoots);
 
 	await Promise.all(

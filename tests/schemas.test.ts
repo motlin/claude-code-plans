@@ -22,6 +22,7 @@ import {
 	TaskFileSchema,
 	SessionRegistryFileSchema,
 	ClaudeSettingsSchema,
+	ContextMirrorFileSchema,
 } from "../src/lib/schemas";
 import {
 	BashInputSchema,
@@ -3009,6 +3010,29 @@ describe("SessionRegistryFileSchema against disk", () => {
 		}
 
 		const failures = await scanRegistryDir(io, SessionRegistryFileSchema);
+		expect(failures).toStrictEqual([]);
+	});
+});
+
+describe("ContextMirrorFileSchema against disk", () => {
+	const mirrorDir = join(homedir(), ".claude", "plugins", "data", "ccb-context-mirror", "context");
+
+	it("validates every file the ccb-context-mirror mod wrote", () => {
+		let files: string[];
+		try {
+			files = readdirSync(mirrorDir).filter((file) => file.endsWith(".json"));
+		} catch {
+			return;
+		}
+
+		const failures = files.flatMap((file) => {
+			const result = ContextMirrorFileSchema.safeParse(JSON.parse(readFileSync(join(mirrorDir, file), "utf-8")));
+			return result.success
+				? []
+				: [
+						`${file}: ${result.error.issues.map((issue) => `${issue.path.join(".")} ${issue.message}`).join(", ")}`,
+					];
+		});
 		expect(failures).toStrictEqual([]);
 	});
 });

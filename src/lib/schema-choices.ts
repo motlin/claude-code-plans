@@ -54,6 +54,7 @@ import type {
 	ContextRefreshReasonSchema,
 	ContextUsageCategoryKindSchema,
 	ContextUsageOverLimitKindSchema,
+	ContextWindowSourceSchema,
 	GitBranchActionSchema,
 	GitCommitKindSchema,
 	GitPrActionSchema,
@@ -538,6 +539,17 @@ const contextUsageOverLimitKindChoices = {
 	hard_limit: true,
 	compaction_window: true,
 } satisfies Record<z.infer<typeof ContextUsageOverLimitKindSchema>, true>;
+
+/** Not consumed yet — how the ccb-context-mirror breakdown's window was settled (`autocompactSource`). */
+const contextWindowSourceChoices = {
+	env: true,
+	settings: true,
+	clientdata: true,
+	experiment: true,
+	"model-default": true,
+	"unknown-model": true,
+	auto: true,
+} satisfies Record<z.infer<typeof ContextWindowSourceSchema>, true>;
 
 /** `renderedRole` on attachment JSONL records. */
 const renderedRoleChoices = {
@@ -1601,6 +1613,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"JsonlRecordSchema.<assistant>.streamCutCause": streamCutCauseChoices,
 	"JsonlRecordSchema.<system>.contextUsage.over_limit.kind": contextUsageOverLimitKindChoices,
 	"JsonlRecordSchema.<system>.contextUsage.categories[].kind": contextUsageCategoryKindChoices,
+	"ContextMirrorFileSchema.breakdown.autocompactSource": contextWindowSourceChoices,
 	"ClaudeSettingsSchema.hooks{}[].hooks[]": claudeHookVariants,
 	"ClaudeSettingsSchema.hooks{}[].hooks[].<command>.shell": claudeHookShellLabels,
 	"ClaudeSettingsSchema.skillOverrides{}": skillOverrideLabels,

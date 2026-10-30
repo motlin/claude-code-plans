@@ -11,7 +11,7 @@
 		"tests/perf/run-hot-path.mjs",
 		"scripts/**/*.mjs",
 	],
-	"ignorePatterns": [".storybook/**", "src/routeTree.gen.ts"],
+	"ignorePatterns": [".storybook/**", "src/routeTree.gen.ts", "mods/**"],
 	"ignoreDependencies": [
 		"@chromatic-com/storybook",
 		"@shikijs/core",

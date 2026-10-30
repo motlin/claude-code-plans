@@ -363,6 +363,7 @@ export const sessionQueryKeys = {
 	artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
 	subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
 	workflows: (id: string) => [...SESSION_QUERY_ROOT, id, "workflows"] as const,
+	contextBreakdown: (id: string) => [...SESSION_QUERY_ROOT, id, "context-breakdown"] as const,
 	openIn: (id: string) => [...SESSION_QUERY_ROOT, id, "open-in"] as const,
 };
 

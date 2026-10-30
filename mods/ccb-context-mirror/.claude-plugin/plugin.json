@@ -1,0 +1,5 @@
+{
+	"name": "ccb-context-mirror",
+	"version": "0.1.0",
+	"description": "Mirrors each turn's /context breakdown to a file Claude Code Browser watches, for its session rail's Context card"
+}

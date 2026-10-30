@@ -1,5 +1,5 @@
 import handler, {createServerEntry} from "@tanstack/react-start/server-entry";
-import {readFile} from "node:fs/promises";
+import {mkdir, readFile} from "node:fs/promises";
 import {homedir} from "node:os";
 import {join} from "node:path";
 import {withHeadBodyCancel} from "./lib/head-request";
@@ -34,6 +34,7 @@ import {takeOverServerShutdown} from "./lib/server-shutdown";
 import {announceThisDevEnvReady} from "./lib/dev-env-ready-gate";
 import {defined} from "./lib/defined";
 import {withShellChinLabels} from "./lib/shell-chin-labels";
+import {CONTEXT_MIRROR_DIR} from "./lib/context-breakdown-reader";
 
 const PLANS_DIR = join(homedir(), ".claude", "plans");
 const PROJECTS_DIR = join(homedir(), ".claude", "projects");
@@ -108,6 +109,9 @@ void (async () => {
 		console.error("Failed to initialize pending approvals cache:", err);
 	}
 
+	// The mod creates its directory on its first write; make it now so the watcher can root there.
+	await mkdir(CONTEXT_MIRROR_DIR, {recursive: true}).catch(() => {});
+
 	let watcher: RecursiveWatcher;
 	const fileContentRoots = await trackActivity("startup file search roots", async () =>
 		resolveFileSearchRoots(getDb().index),
@@ -125,6 +129,7 @@ void (async () => {
 					STATUSLINE_DIR,
 					JOBS_DIR,
 					SESSION_REGISTRY_DIR,
+					CONTEXT_MIRROR_DIR,
 				],
 				PROJECTS_DIR,
 				PLANS_DIR,
@@ -132,6 +137,7 @@ void (async () => {
 				fileContentRoots,
 				JOBS_DIR,
 				SESSION_REGISTRY_DIR,
+				CONTEXT_MIRROR_DIR,
 			),
 		);
 	} catch (err) {

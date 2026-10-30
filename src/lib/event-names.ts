@@ -52,6 +52,8 @@ export const DOMAIN_EVENTS = {
 	SESSION_ELICITATION_CHANGED: "session:elicitation-changed",
 	SESSION_COMPACTING: "session:compacting",
 	SESSION_COMPACTED: "session:compacted",
+	/** The ccb-context-mirror mod wrote a session's context breakdown. */
+	SESSION_CONTEXT_BREAKDOWN_CHANGED: "session:context-breakdown-changed",
 	SUBAGENT_STARTED: "subagent:started",
 	SUBAGENT_STOPPED: "subagent:stopped",
 	SUBAGENTS_SNAPSHOT: "subagents:snapshot",

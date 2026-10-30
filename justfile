@@ -33,6 +33,17 @@ ensure-sqlite-native:
         node -e 'const Database = require(process.argv[1]); new Database(":memory:").close();' "$package_dir"
     done
 
+# Link the ccb-context-mirror CLI mod into ~/.claude/skills, where every Claude Code session auto-loads it; it mirrors each turn's context breakdown for the session rail's Context card
+[group('setup')]
+install-context-mirror:
+    mkdir -p ~/.claude/skills
+    ln -sfn "{{ justfile_directory() }}/mods/ccb-context-mirror" ~/.claude/skills/ccb-context-mirror
+
+# Check the ccb-context-mirror mod's manifest and hooks module the way Claude Code loads them
+[group('setup')]
+validate-context-mirror:
+    claude plugin validate mods/ccb-context-mirror
+
 # Run dev server with Vite
 dev *args: install
     PORT={{ port }} scripts/server.sh dev vp dev {{ args }}

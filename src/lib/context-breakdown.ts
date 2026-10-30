@@ -60,6 +60,16 @@ export function latestBreakdown(records: readonly unknown[]): ContextBreakdown |
 	return null;
 }
 
+/** The newer of a `/context` run's breakdown and the mod's, by when each was taken. */
+export function preferNewerBreakdown(
+	fromCommand: ContextBreakdown | null,
+	fromMod: ContextBreakdown | null,
+): ContextBreakdown | null {
+	if (fromCommand === null) return fromMod;
+	if (fromMod === null) return fromCommand;
+	return Date.parse(fromMod.fetchedAt) > Date.parse(fromCommand.fetchedAt) ? fromMod : fromCommand;
+}
+
 type BreakdownCategory = ContextBreakdown["categories"][number];
 
 export interface ContextLegendRow {

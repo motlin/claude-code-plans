@@ -7,7 +7,8 @@ import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps} from "react";
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
-import {latestBreakdown} from "../lib/context-breakdown";
+import {latestBreakdown, preferNewerBreakdown} from "../lib/context-breakdown";
+import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
 import {focusComposer, refillComposer, requestComposerTakeBack} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
@@ -604,7 +605,9 @@ function SessionView({
 	const statusline = useStatusline(sessionId);
 	useRegisterSessionDetailsPane(statusline, data.messageCount);
 	const composerServerState = useComposerServerState(sessionId);
-	const contextBreakdown = useMemo(() => latestBreakdown(transcript.records), [transcript.records]);
+	const commandBreakdown = useMemo(() => latestBreakdown(transcript.records), [transcript.records]);
+	const {data: modBreakdown = null} = useQuery(sessionContextBreakdownQueryOptions(sessionId));
+	const contextBreakdown = preferNewerBreakdown(commandBreakdown, modBreakdown);
 	const composerChin = useMemo(
 		() =>
 			resolveComposerState({

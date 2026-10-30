@@ -198,6 +198,8 @@ export default defineConfig({
 			"coverage",
 			"storybook-static",
 			".llm/**",
+			// Claude Code mods type against the engine's own `claude-code` module: `just validate-context-mirror` checks them
+			"mods/**",
 			".output/**",
 			".remember/**",
 			"src/routeTree.gen.ts",

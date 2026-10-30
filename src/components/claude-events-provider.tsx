@@ -77,6 +77,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SUBAGENTS_SNAPSHOT,
 	DOMAIN_EVENTS.SUBAGENTS_CHANGED,
 	DOMAIN_EVENTS.WORKFLOWS_CHANGED,
+	DOMAIN_EVENTS.SESSION_CONTEXT_BREAKDOWN_CHANGED,
 	DOMAIN_EVENTS.SESSION_CWD_CHANGED,
 	DOMAIN_EVENTS.MESSAGE_DISPLAYED,
 	DOMAIN_EVENTS.NOTIFICATION,
@@ -450,6 +451,13 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 						void queryClient.invalidateQueries({queryKey: sessionQueryKeys.workflows(sessionId)});
 						// Agent states and superseded attempts come from the same journal and run file.
 						void queryClient.invalidateQueries({queryKey: sessionQueryKeys.subagents(sessionId)});
+					}
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_CONTEXT_BREAKDOWN_CHANGED: {
+					const sessionId = data["sessionId"];
+					if (typeof sessionId === "string") {
+						void queryClient.invalidateQueries({queryKey: sessionQueryKeys.contextBreakdown(sessionId)});
 					}
 					break;
 				}
