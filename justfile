@@ -162,6 +162,11 @@ screenshots *args: install
 palette-footer-layout *args: install
     vp exec tsx scripts/palette-footer-layout.ts {{ args }}
 
+# Check transcript prose scales with a 20px root font size (25px line height at Medium) against a running dev server. Not part of precommit
+[group('docs')]
+transcript-prose-root-size *args: install
+    vp exec tsx scripts/transcript-prose-root-size.ts {{ args }}
+
 # Build static Storybook site
 build-storybook: install
     vp run build-storybook

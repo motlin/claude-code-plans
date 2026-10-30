@@ -1,25 +1,95 @@
 import {describe, expect, it} from "vite-plus/test";
+import {appearanceCssVars} from "../src/lib/appearance";
 import {renderMarkdownToHtml} from "../src/lib/client-markdown";
 import {markdownCss, ruleDeclarations} from "./markdown-css";
 
-describe("prose size at comfortable density", () => {
-	it("steps transcript prose and its headings up to upstream's comfortable 16/24 (Medium) in the nearest comfortable scope", () => {
+const TRANSCRIPT_PROSE = ":global(.transcript-text) .markdown";
+const COMFORTABLE_PROSE =
+	':global(.transcript-text)\n\t.markdown:where(:global([data-density="comfortable"] *)):not(\n\t\t:where(:global([data-density="comfortable"] [data-density="compact"] *))\n\t)';
+
+/** Resolves `var(--name, fallback)` against `vars`, then a `calc(a * b)` of a unitless factor and a rem length, to px. */
+function resolvePx(value: string, vars: Record<string, string | null>, rootPx = 16): number {
+	const substituted = value.replace(/var\((--[\w-]+), [^)]+\)/g, (_, name: string) => {
+		const resolved = vars[name];
+		if (resolved == null) throw new Error(`unset ${name}`);
+		return resolved;
+	});
+	const factors = substituted.replace(/^calc\(\s*(.*?)\s*\)$/, "$1").split(" * ");
+	let px = 1;
+	let lengths = 0;
+	for (const factor of factors) {
+		if (factor.endsWith("rem")) {
+			px *= Number.parseFloat(factor) * rootPx;
+			lengths += 1;
+		} else {
+			px *= Number(factor);
+		}
+	}
+	if (lengths !== 1 || Number.isNaN(px)) throw new Error(`not a length: ${substituted}`);
+	return Math.round(px * 100) / 100;
+}
+
+describe("transcript prose follows Transcript text size", () => {
+	it("derives the prose variables from the setting's custom properties, only inside the transcript", () => {
 		expect({
-			comfortable: ruleDeclarations(
-				markdownCss,
-				':global(.transcript-text)\n\t.markdown:where(:global([data-density="comfortable"] *)):not(\n\t\t:where(:global([data-density="comfortable"] [data-density="compact"] *))\n\t)',
-			),
+			compact: ruleDeclarations(markdownCss, TRANSCRIPT_PROSE),
+			comfortable: ruleDeclarations(markdownCss, COMFORTABLE_PROSE),
 			headings: ruleDeclarations(
 				markdownCss,
 				".markdown h1,\n.markdown h2,\n.markdown h3,\n.markdown h4,\n.markdown h5,\n.markdown h6",
 			),
 		}).toStrictEqual({
-			comfortable: {"--md-prose-size": "1rem", "--md-prose-leading": "1.5rem"},
+			compact: {
+				"--md-prose-size": "var(--transcript-text-size, 0.875rem)",
+				"--md-prose-leading":
+					"calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem))",
+			},
+			comfortable: {
+				"--md-prose-size": "var(--transcript-comfortable-text-size, 1rem)",
+				"--md-prose-leading":
+					"calc( var(--transcript-comfortable-leading, 1.5) * var(--transcript-comfortable-text-size, 1rem) )",
+			},
 			headings: {
 				"font-size": "var(--md-prose-size)",
 				"font-weight": "600",
 				"line-height": "var(--md-prose-leading)",
 			},
+		});
+	});
+
+	it("sizes prose at upstream's chat body for each setting, and its comfortable steps on touch", () => {
+		const compact = ruleDeclarations(markdownCss, TRANSCRIPT_PROSE);
+		const comfortable = ruleDeclarations(markdownCss, COMFORTABLE_PROSE);
+		const measured = Object.fromEntries(
+			(["sm", "md", "lg"] as const).map((transcriptTextSize) => {
+				const vars = appearanceCssVars({interfaceFont: "sans", transcriptTextSize, transcriptWidth: "narrow"});
+				return [
+					transcriptTextSize,
+					{
+						compact: [
+							resolvePx(compact["--md-prose-size"]!, vars),
+							resolvePx(compact["--md-prose-leading"]!, vars),
+						],
+						comfortable: [
+							resolvePx(comfortable["--md-prose-size"]!, vars),
+							resolvePx(comfortable["--md-prose-leading"]!, vars),
+						],
+					},
+				];
+			}),
+		);
+
+		expect(measured).toStrictEqual({
+			sm: {compact: [13, 18.57], comfortable: [15, 22]},
+			md: {compact: [14, 20], comfortable: [16, 24]},
+			lg: {compact: [15, 22], comfortable: [18, 27]},
+		});
+	});
+
+	it("keeps plan pages and other markdown at the fixed 14/20 prose size", () => {
+		expect(ruleDeclarations(markdownCss, ".markdown")).toMatchObject({
+			"--md-prose-size": "0.875rem",
+			"--md-prose-leading": "1.25rem",
 		});
 	});
 });

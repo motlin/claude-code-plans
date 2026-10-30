@@ -16,14 +16,23 @@
 	white-space: normal;
 }
 
+/* Transcript prose follows Settings ▸ Transcript text size: upstream sets it in the chat body size
+   and leading the setting writes on <html>. Plan pages and other markdown keep the fixed size. */
+:global(.transcript-text) .markdown {
+	--md-prose-size: var(--transcript-text-size, 0.875rem);
+	--md-prose-leading: calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem));
+}
+
 /* Inside the transcript's nearest comfortable scope (a coarse pointer), upstream's prose steps up
-   to its comfortable scale: 16/24 at Transcript text size Medium. */
+   to its comfortable scale: 15/22, 16/24 and 18/27 at Small, Medium and Large. */
 :global(.transcript-text)
 	.markdown:where(:global([data-density="comfortable"] *)):not(
 		:where(:global([data-density="comfortable"] [data-density="compact"] *))
 	) {
-	--md-prose-size: 1rem;
-	--md-prose-leading: 1.5rem;
+	--md-prose-size: var(--transcript-comfortable-text-size, 1rem);
+	--md-prose-leading: calc(
+		var(--transcript-comfortable-leading, 1.5) * var(--transcript-comfortable-text-size, 1rem)
+	);
 }
 
 .markdown h1,
