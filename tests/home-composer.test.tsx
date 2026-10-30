@@ -275,7 +275,7 @@ describe("HomeComposer", () => {
 			barClass: "@container pt-1 comfortable:pt-0.5",
 			afterCard: true,
 			rowClass:
-				"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem]",
+				"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem] comfortable:[&_button]:rounded-r6",
 			placeClass: "flex min-w-0 items-center @max-[28.75rem]:basis-full",
 			placeButton: "Folder: it's",
 			rowItems: ["it's", "Plan", "Opus 4.8 Medium"],

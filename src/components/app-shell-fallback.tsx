@@ -18,6 +18,7 @@ import {
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
+	COMPOSER_EDITOR_ROW_CLASS,
 	EFFORT_LABEL_CLASS,
 	ENVIRONMENT_BAR_CLASS,
 	ENVIRONMENT_BAR_ROW_CLASS,
@@ -65,7 +66,7 @@ function FallbackComposer({
 	return (
 		<div data-cds="ChatComposer" className="flex w-full min-w-0 flex-col font-sans">
 			<div data-fallback-composer="" className={COMPOSER_CARD_CLASS}>
-				<div className="relative pr-[30px] pl-[30px]">
+				<div className={COMPOSER_EDITOR_ROW_CLASS}>
 					<div className="absolute left-0 bottom-0 flex min-h-7 items-center">
 						<span data-fallback-add="" className={ADD_BUTTON_CLASS}>
 							<Plus data-fallback-chin-readout="" aria-hidden="true" className="size-[18px]" />

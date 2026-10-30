@@ -1,7 +1,15 @@
 import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
 
-import {ENVIRONMENT_BAR_CLASS} from "../src/components/composer-tokens";
+import {
+	ADD_BUTTON_CLASS,
+	CHIN_TRIGGER_CLASS,
+	COMPOSER_CARD_CLASS,
+	COMPOSER_EDITOR_ROW_CLASS,
+	ENVIRONMENT_BAR_CLASS,
+	ENVIRONMENT_BAR_ROW_CLASS,
+	PLACE_CHIP_CLASS,
+} from "../src/components/composer-tokens";
 import {SESSION_DOCK_COLUMN_CLASS} from "../src/components/dock-tokens";
 
 const styles = readFileSync("src/styles/globals.css", "utf8");
@@ -212,6 +220,28 @@ describe("main-column comfortable variants", () => {
 		expect({dock: comfortable(SESSION_DOCK_COLUMN_CLASS), bar: comfortable(ENVIRONMENT_BAR_CLASS)}).toStrictEqual({
 			dock: ["comfortable:gap-2"],
 			bar: ["comfortable:pt-0.5"],
+		});
+	});
+});
+
+describe("composer comfortable variants", () => {
+	it("flips the composer to upstream's comfortable literals: 8px card gap, 32px editor insets, 8px Add and env-pill radii, 6px chin-pill radius and an 8px place-label gap", () => {
+		const comfortable = (classes: string) => classes.split(" ").filter((name) => name.startsWith("comfortable:"));
+
+		expect({
+			card: comfortable(COMPOSER_CARD_CLASS),
+			editorRow: comfortable(COMPOSER_EDITOR_ROW_CLASS),
+			add: comfortable(ADD_BUTTON_CLASS),
+			chinTrigger: comfortable(CHIN_TRIGGER_CLASS),
+			envRow: comfortable(ENVIRONMENT_BAR_ROW_CLASS),
+			placeChip: comfortable(PLACE_CHIP_CLASS),
+		}).toStrictEqual({
+			card: ["comfortable:gap-y-2"],
+			editorRow: ["comfortable:pr-[32px]", "comfortable:pl-[32px]"],
+			add: ["comfortable:rounded-r6"],
+			chinTrigger: ["comfortable:rounded-r5"],
+			envRow: ["comfortable:[&_button]:rounded-r6"],
+			placeChip: ["comfortable:gap-2"],
 		});
 	});
 });

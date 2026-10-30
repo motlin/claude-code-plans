@@ -85,6 +85,7 @@ import type {ChinMenu} from "./composer-launch-menus";
 import {
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
+	COMPOSER_EDITOR_ROW_CLASS,
 	ENVIRONMENT_BAR_CLASS,
 	ENVIRONMENT_BAR_ROW_CLASS,
 	ENVIRONMENT_PLACE_CLASS,
@@ -126,10 +127,10 @@ const EDITOR_CLASS =
 
 /** Overlays ghost text after the prompt, lined up with the textarea's text (and its coarse-pointer floor). */
 const GHOST_OVERLAY_CLASS =
-	"pointer-events-none absolute inset-y-0 right-[30px] overflow-hidden py-1 pl-1 pointer-coarse:py-[3px] font-sans text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] break-words whitespace-pre-wrap text-entry-floored";
+	"pointer-events-none absolute inset-y-0 right-[30px] comfortable:right-[32px] overflow-hidden py-1 pl-1 pointer-coarse:py-[3px] font-sans text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] break-words whitespace-pre-wrap text-entry-floored";
 
 /** Paints the whole prompt over a transparent textarea, so it also follows the coarse-pointer send gutter. */
-const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] pointer-coarse:right-[51px]`;
+const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] comfortable:left-[32px] pointer-coarse:right-[51px] comfortable:pointer-coarse:right-[53px]`;
 
 /**
  * Upstream's composer placeholder (shared-9 `absolute inset-0 pointer-events-none overflow-hidden`): an overlay,
@@ -160,7 +161,7 @@ interface AcceptedSkillChip {
 }
 
 const ICON_BUTTON_CLASS =
-	"flex aspect-square size-7 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
+	"flex aspect-square size-7 items-center justify-center rounded-r5 comfortable:rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
 
 /** Prompts waiting for the live session to go idle, with their chip actions. */
 export interface ComposerQueueView {
@@ -454,7 +455,7 @@ const SendSlot = memo(function SendSlot({
 	 */
 	if (coarse) {
 		return (
-			<div className="absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5">
+			<div className="absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5 comfortable:pl-2">
 				<div data-send-spacer aria-hidden="true" inert className="invisible col-start-1 row-start-1 flex">
 					<SplitDropdownButton
 						variant="ghost"
@@ -476,7 +477,7 @@ const SendSlot = memo(function SendSlot({
 		);
 	}
 	return (
-		<div className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5">
+		<div className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5 comfortable:pl-2">
 			{face ?? (
 				<div data-send-spacer aria-hidden="true" inert className="invisible flex">
 					<span className="size-7" />
@@ -1366,7 +1367,10 @@ export function Composer({
 						cwd={mentionCwd}
 					/>
 				)}
-				<div ref={mentionInputRef} className="relative pr-[30px] pl-[30px] pointer-coarse:pr-[51px]">
+				<div
+					ref={mentionInputRef}
+					className={`${COMPOSER_EDITOR_ROW_CLASS} pointer-coarse:pr-[51px] comfortable:pointer-coarse:pr-[53px]`}
+				>
 					<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">
 						<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} active={active} />
 					</div>
@@ -1444,7 +1448,10 @@ export function Composer({
 						</div>
 					)}
 					{slashOpen && query === "" && (
-						<div aria-hidden="true" className={`${GHOST_OVERLAY_CLASS} left-[30px]`}>
+						<div
+							aria-hidden="true"
+							className={`${GHOST_OVERLAY_CLASS} left-[30px] comfortable:left-[32px]`}
+						>
 							<span className="invisible">{prompt}</span>
 							<span
 								data-testid="slash-filter-placeholder"

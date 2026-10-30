@@ -243,7 +243,7 @@ describe("Composer touch send-cell spacer", () => {
 		hidden: "true",
 		classes: "invisible col-start-1 row-start-1 flex",
 		cds: "SplitDropdownButton",
-		slot: "absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5",
+		slot: "absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5 comfortable:pl-2",
 	};
 
 	it("reserves the split width with an inert split on an idle, empty coarse composer", () => {

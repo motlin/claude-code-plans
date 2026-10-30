@@ -48,6 +48,9 @@ describe("Composer", () => {
 				"left-[30px]",
 				"right-[30px]",
 				"pointer-coarse:right-[51px]",
+				"comfortable:left-[32px]",
+				"comfortable:right-[32px]",
+				"comfortable:pointer-coarse:right-[53px]",
 				"overflow-hidden",
 				"pointer-events-none",
 				"text-entry-floored",
@@ -63,6 +66,9 @@ describe("Composer", () => {
 				"left-[30px]",
 				"right-[30px]",
 				"pointer-coarse:right-[51px]",
+				"comfortable:left-[32px]",
+				"comfortable:right-[32px]",
+				"comfortable:pointer-coarse:right-[53px]",
 				"overflow-hidden",
 				"pointer-events-none",
 				"text-entry-floored",
@@ -74,6 +80,28 @@ describe("Composer", () => {
 			overlay: screen.queryByTestId("composer-placeholder"),
 			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
 		}).toStrictEqual({overlay: null, ariaPlaceholder: "Describe a task or ask a question"});
+	});
+
+	it("flips the composer's compact literals to upstream's comfortable sizes: 8px card gap, 8px cluster gaps and 8px button radii", () => {
+		const {container} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "hi"}});
+		const comfortable = (element: Element | null | undefined) =>
+			(element?.className ?? "").split(" ").filter((name) => name.startsWith("comfortable:"));
+		const send = screen.getByRole("button", {name: "Send"});
+
+		expect({
+			card: comfortable(container.querySelector("[data-cds=ChatComposer] .rounded-composer")),
+			editorRow: comfortable(screen.getByRole("textbox", {name: "Prompt"}).parentElement),
+			add: comfortable(screen.getByRole("button", {name: "Add"})),
+			send: comfortable(send),
+			sendSlot: comfortable(send.closest(".absolute")),
+		}).toStrictEqual({
+			card: ["comfortable:gap-y-2"],
+			editorRow: ["comfortable:pr-[32px]", "comfortable:pl-[32px]", "comfortable:pointer-coarse:pr-[53px]"],
+			add: ["comfortable:rounded-r6"],
+			send: ["comfortable:rounded-r6"],
+			sendSlot: ["comfortable:pl-2"],
+		});
 	});
 
 	it("rings the card faintly while idle and darkens the ring only while focused", () => {
