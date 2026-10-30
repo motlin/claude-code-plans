@@ -51,6 +51,13 @@
 	line-height: 24px;
 }
 
+/* Upstream's chat prose steps h1 and h2 up from body by 0.125rem size and 0.1875rem leading (h3–h6
+   stay at body), so transcript headings track the text size setting and density. */
+:global(.transcript-text) .markdown :is(h1, h2) {
+	font-size: calc(var(--md-prose-size) + 0.125rem);
+	line-height: calc(var(--md-prose-leading) + 0.1875rem);
+}
+
 .markdown p {
 	margin: 4px 0;
 	white-space: pre-wrap;

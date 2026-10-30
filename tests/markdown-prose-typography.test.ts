@@ -86,6 +86,59 @@ describe("transcript prose follows Transcript text size", () => {
 		});
 	});
 
+	it("sets transcript h1 and h2 one upstream step above body (+2px size, +3px leading) for every setting and density", () => {
+		const compact = ruleDeclarations(markdownCss, TRANSCRIPT_PROSE);
+		const comfortable = ruleDeclarations(markdownCss, COMFORTABLE_PROSE);
+		const headings = ruleDeclarations(markdownCss, `${TRANSCRIPT_PROSE} :is(h1, h2)`);
+		expect(headings).toStrictEqual({
+			"font-size": "calc(var(--md-prose-size) + 0.125rem)",
+			"line-height": "calc(var(--md-prose-leading) + 0.1875rem)",
+		});
+
+		/** Resolves `calc(var(--md-prose-*) + Nrem)` given the prose variable's px. */
+		const stepPx = (value: string, prosePx: number): number => {
+			const match = /^calc\(var\(--md-prose-(?:size|leading)\) \+ ([\d.]+)rem\)$/.exec(value);
+			if (match == null) throw new Error(`not a prose step: ${value}`);
+			return Math.round((prosePx + Number(match[1]) * 16) * 100) / 100;
+		};
+		const measured = Object.fromEntries(
+			(["sm", "md", "lg"] as const).map((transcriptTextSize) => {
+				const vars = appearanceCssVars({interfaceFont: "sans", transcriptTextSize, transcriptWidth: "narrow"});
+				const measure = (prose: Record<string, string | undefined>) => {
+					const body = resolvePx(prose["--md-prose-size"]!, vars);
+					const leading = resolvePx(prose["--md-prose-leading"]!, vars);
+					return {
+						body: [body, leading],
+						heading: [stepPx(headings["font-size"]!, body), stepPx(headings["line-height"]!, leading)],
+					};
+				};
+				return [transcriptTextSize, {compact: measure(compact), comfortable: measure(comfortable)}];
+			}),
+		);
+
+		expect(measured).toStrictEqual({
+			sm: {
+				compact: {body: [13, 18.57], heading: [15, 21.57]},
+				comfortable: {body: [15, 22], heading: [17, 25]},
+			},
+			md: {
+				compact: {body: [14, 20], heading: [16, 23]},
+				comfortable: {body: [16, 24], heading: [18, 27]},
+			},
+			lg: {
+				compact: {body: [15, 22], heading: [17, 25]},
+				comfortable: {body: [18, 27], heading: [20, 30]},
+			},
+		});
+	});
+
+	it("keeps plan-page h1 at its fixed 18/24", () => {
+		expect(ruleDeclarations(markdownCss, ".markdown h1")).toStrictEqual({
+			"font-size": "18px",
+			"line-height": "24px",
+		});
+	});
+
 	it("keeps plan pages and other markdown at the fixed 14/20 prose size", () => {
 		expect(ruleDeclarations(markdownCss, ".markdown")).toMatchObject({
 			"--md-prose-size": "0.875rem",
