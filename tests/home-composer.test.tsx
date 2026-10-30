@@ -12,7 +12,7 @@ import {
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
-import {HOME_RECENT_LIMIT, HomeComposer} from "../src/components/home/home-composer";
+import {HOME_RECENT_LIMIT} from "../src/components/home/home-composer";
 import {NewSessionShortcut} from "../src/components/new-session-shortcut";
 import {ToastProvider} from "../src/components/toast";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
@@ -22,6 +22,7 @@ import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {getComposerDefaults} from "../src/lib/composer-state-server";
 import {requestHomeComposerPrefill} from "../src/lib/home-composer-focus";
+import {HomeDock, Route as HomeRoute, validateHomeSearch} from "../src/routes/index";
 import {SSE_EVENTS} from "../src/lib/hook-events";
 import {HOME_WORKTREE_STORAGE_KEY} from "../src/lib/home-worktree-pref";
 import {createGroup, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";
@@ -144,7 +145,8 @@ async function renderApp(
 	const indexRoute = createRoute({
 		getParentRoute: () => rootRoute,
 		path: "/",
-		component: HomeComposer,
+		...(HomeRoute.options.validateSearch ? {validateSearch: HomeRoute.options.validateSearch} : {}),
+		component: HomeDock,
 	});
 	const elsewhereRoute = createRoute({
 		getParentRoute: () => rootRoute,
@@ -726,6 +728,44 @@ describe("HomeComposer", () => {
 
 		await waitFor(() => {
 			expect(document.activeElement).toBe(textarea);
+		});
+	});
+
+	it("prefills a Make something new template from ?create=, focuses it, drops the param and sends nothing", async () => {
+		const {router} = await renderApp("/?create=slides");
+		const field = await screen.findByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		const prefill = "Make a Slides artifact: ";
+
+		await waitFor(() => {
+			expect(router.state.location.searchStr).toBe("");
+		});
+		expect({
+			value: field.value,
+			focused: document.activeElement === field,
+			caret: [field.selectionStart, field.selectionEnd],
+			path: router.state.location.pathname,
+			launches: launchCalls.length,
+		}).toStrictEqual({
+			value: prefill,
+			focused: true,
+			caret: [prefill.length, prefill.length],
+			path: "/",
+			launches: 0,
+		});
+	});
+
+	it("names Docs for upstream's ?create=pages and ignores unknown templates", async () => {
+		expect([
+			validateHomeSearch({create: "pages"}),
+			validateHomeSearch({create: "dashboard"}),
+			validateHomeSearch({create: "bogus"}),
+			validateHomeSearch({}),
+		]).toStrictEqual([{create: "pages"}, {create: "dashboard"}, {}, {}]);
+
+		await renderApp("/?create=pages");
+		const field = await screen.findByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		await waitFor(() => {
+			expect(field.value).toBe("Make a Docs artifact: ");
 		});
 	});
 

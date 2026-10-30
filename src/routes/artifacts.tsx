@@ -49,6 +49,7 @@ import {
 	MenuTrigger,
 } from "../components/ui/menu";
 import {CodePageHeader} from "../components/code-page-header";
+import {MakeSomethingNew} from "../components/make-something-new";
 import {Tooltip} from "../components/ui/tooltip";
 
 export const Route = createFileRoute("/artifacts")({
@@ -293,6 +294,7 @@ function ArtifactsPage() {
 			</CodePageHeader>
 
 			<div className={`${ARTIFACTS_BOX_CLASS} flex flex-col pb-12 pt-1`}>
+				<MakeSomethingNew />
 				{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
 					<ArtifactsEmptyState view={view} />
 				) : visible.length === 0 ? (

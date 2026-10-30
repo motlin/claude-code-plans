@@ -13,7 +13,11 @@ import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
 import {resolveComposerState} from "../../lib/composer-state";
 import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
-import {onHomeComposerFocusRequest, onHomeComposerPrefillRequest} from "../../lib/home-composer-focus";
+import {
+	onHomeComposerFocusRequest,
+	onHomeComposerPrefillRequest,
+	requestHomeComposerPrefill,
+} from "../../lib/home-composer-focus";
 import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-session";
 import {assignLaunchedSession, setPendingLaunchGroup} from "../../lib/session-group-store";
 import {Composer} from "../composer";
@@ -29,9 +33,13 @@ export {HOME_RECENT_LIMIT} from "./launch-folder";
  * The docked claude.ai/code home composer: the prompt card over an environment
  * bar that leads with the project folder picker. Sending starts `claude` in a new herdr tab in the chosen project and
  * opens the session once its SessionStart arrives; without herdr it copies the
- * equivalent shell command instead.
+ * equivalent shell command instead. A `prefill` replaces the draft once on mount (nothing is sent), then
+ * `onPrefillApplied` lets the caller drop whatever asked for it.
  */
-export function HomeComposer() {
+export function HomeComposer({
+	prefill,
+	onPrefillApplied,
+}: Readonly<{prefill?: string | undefined; onPrefillApplied?: (() => void) | undefined}> = {}) {
 	const navigate = useNavigate();
 	const toast = useToast();
 	const activeSessions = useActiveSessionsIfAvailable();
@@ -80,6 +88,13 @@ export function HomeComposer() {
 			}),
 		[],
 	);
+
+	// Runs after the Composer's own mount effects, so the prefill wins over the restored draft.
+	useEffect(() => {
+		if (prefill === undefined) return;
+		requestHomeComposerPrefill(prefill);
+		onPrefillApplied?.();
+	}, [prefill, onPrefillApplied]);
 
 	// The launched session opens once its SessionStart hook arrives over SSE.
 	useEffect(() => {

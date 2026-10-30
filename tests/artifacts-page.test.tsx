@@ -339,6 +339,21 @@ async function renderArtifactsPage(initialEntry: string, seed: boolean | ((db: A
 	return router;
 }
 
+/** The gallery's own lists and rows, without the Make something new strip's tiles. */
+function outsideStrip(elements: HTMLElement[]): HTMLElement[] {
+	return elements.filter((element) => element.closest("[data-make-something-new]") === null);
+}
+
+const GALLERY_SECTION = "section:not([data-make-something-new])";
+
+function galleryLists(): HTMLElement[] {
+	return outsideStrip(screen.getAllByRole("list"));
+}
+
+function galleryRows(): HTMLElement[] {
+	return outsideStrip(screen.getAllByRole("listitem"));
+}
+
 /** The page's own live statuses, without the toast region. */
 function pageStatuses() {
 	return screen
@@ -614,7 +629,7 @@ describe("artifacts route", () => {
 	it("lists artifacts by date group linking out to claude.ai", async () => {
 		await renderArtifactsPage("/artifacts", true);
 
-		const groups = screen.getAllByRole("list").map((list) => ({
+		const groups = galleryLists().map((list) => ({
 			heading: list.getAttribute("aria-labelledby")
 				? document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.textContent
 				: null,
@@ -737,7 +752,7 @@ describe("artifacts route", () => {
 			input: screen.getByRole<HTMLInputElement>("searchbox", {name: "Search your artifacts"}).value,
 			placeholder: screen.getByRole("searchbox").getAttribute("placeholder"),
 			status: pageStatuses()[0],
-			rows: screen.getAllByRole("listitem").map((row) => rowSummary(row).title),
+			rows: galleryRows().map((row) => rowSummary(row).title),
 		}).toStrictEqual({
 			input: "ladder",
 			placeholder: "Search artifacts...",
@@ -768,7 +783,7 @@ describe("artifacts route", () => {
 		expect({
 			stored: storage.getItem(ARTIFACTS_LAYOUT_STORAGE_KEY),
 			toggle: screen.getByRole("button", {name: "List view"}).tagName,
-			headings: screen.queryAllByRole("heading", {level: 2}).length,
+			headings: outsideStrip(screen.queryAllByRole("heading", {level: 2})).length,
 			cards: document.querySelectorAll("[data-gallery-card]").length,
 		}).toStrictEqual({stored: "grid", toggle: "BUTTON", headings: 0, cards: 3});
 
@@ -893,8 +908,7 @@ describe("artifacts route", () => {
 		const router = await renderArtifactsPage("/artifacts", seedMixedGallery);
 
 		function titles() {
-			return screen
-				.getAllByRole("listitem")
+			return galleryRows()
 				.map((row) => rowSummary(row).title ?? "")
 				.toSorted();
 		}
@@ -934,7 +948,7 @@ describe("artifacts route", () => {
 
 		expect({
 			selected: screen.getByRole("tab", {selected: true}).textContent,
-			rows: screen.getAllByRole("listitem").length,
+			rows: galleryRows().length,
 		}).toStrictEqual({selected: "Shared with you", rows: 8});
 	});
 
@@ -943,7 +957,7 @@ describe("artifacts route", () => {
 
 		expect({
 			selected: screen.getByRole("tab", {selected: true}).textContent,
-			rows: screen.getAllByRole("listitem").length,
+			rows: galleryRows().length,
 		}).toStrictEqual({selected: "Yours", rows: 8});
 	});
 
@@ -1052,7 +1066,7 @@ describe("artifacts route", () => {
 	});
 
 	function groupedTitles() {
-		return screen.getAllByRole("list").map((list) => ({
+		return galleryLists().map((list) => ({
 			heading: document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.textContent,
 			rows: within(list)
 				.getAllByRole("listitem")
@@ -1116,7 +1130,7 @@ describe("artifacts route", () => {
 		fireEvent.click(await screen.findByRole("menuitem", {name: "Pin"}));
 
 		await waitFor(() => {
-			expect(screen.getAllByRole("list")).toHaveLength(3);
+			expect(galleryLists()).toHaveLength(3);
 		});
 		const pinned = {
 			groups: groupedTitles(),
@@ -1157,8 +1171,8 @@ describe("artifacts route", () => {
 	it("splits the grid into upstream's Pinned / Other artifacts sections only while something is pinned", async () => {
 		storage.setItem(ARTIFACTS_LAYOUT_STORAGE_KEY, "grid");
 		const gridSections = () => ({
-			wrapper: document.querySelector("section")?.parentElement?.className ?? null,
-			sections: Array.from(document.querySelectorAll("section")).map((section) => ({
+			wrapper: document.querySelector(GALLERY_SECTION)?.parentElement?.className ?? null,
+			sections: Array.from(document.querySelectorAll(GALLERY_SECTION)).map((section) => ({
 				className: section.className,
 				heading: section.querySelector("h2")?.className,
 				label: section.querySelector("h2")?.textContent,
@@ -1173,7 +1187,7 @@ describe("artifacts route", () => {
 		await renderArtifactsPage("/artifacts", true);
 		const unpinned = {
 			sections: gridSections(),
-			headings: screen.queryAllByRole("heading", {level: 2}).length,
+			headings: outsideStrip(screen.queryAllByRole("heading", {level: 2})).length,
 		};
 		cleanup();
 
@@ -1215,5 +1229,70 @@ describe("artifacts route", () => {
 			toast: (await screen.findByText("Link copied to clipboard.")).textContent,
 			copied: writeText.mock.calls,
 		}).toStrictEqual({toast: "Link copied to clipboard.", copied: [[LADDER_URL]]});
+	});
+});
+
+describe("Make something new strip", () => {
+	beforeEach(() => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+	});
+
+	it("shows upstream's four template tiles above the grid, each linking home with ?create=<slug>", async () => {
+		await renderArtifactsPage("/artifacts", true);
+		const strip = screen.getByRole("region", {name: "Make something new"});
+		const links = within(strip).getAllByRole("link");
+
+		expect({
+			heading: within(strip).getByRole("heading", {level: 2}).className,
+			links: links.map((link) => ({
+				name: link.getAttribute("aria-label"),
+				href: link.getAttribute("href"),
+				label: link.textContent,
+			})),
+			description:
+				screen.getByText(/^By Anthropic\. A document/).id === links[0]?.getAttribute("aria-describedby"),
+			beforeGrid:
+				strip.compareDocumentPosition(document.querySelector("[data-gallery-card]") ?? strip) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		}).toStrictEqual({
+			heading: "text-caption font-medium text-ink-muted",
+			links: [
+				{
+					name: "Docs, New",
+					href: "/?create=pages",
+					label: "DocsNewBy Anthropic. A document your team reads, comments on and edits in place while Claude keeps it current.",
+				},
+				{name: "Slides, New", href: "/?create=slides", label: "SlidesNew"},
+				{name: "Design, New", href: "/?create=design", label: "DesignNew"},
+				{name: "Dashboard, Beta", href: "/?create=dashboard", label: "DashboardBeta"},
+			],
+			description: true,
+			beforeGrid: Node.DOCUMENT_POSITION_FOLLOWING,
+		});
+	});
+
+	it("draws 136×96 composer-radius tiles with a 50% hue ring on hover, and stays while searching", async () => {
+		await renderArtifactsPage("/artifacts?search=zzz-no-match", true);
+		const strip = screen.getByRole("region", {name: "Make something new"});
+		const tiles = [...strip.querySelectorAll<HTMLElement>("[data-template-tile]")];
+
+		expect({
+			tile: tiles[0]?.className
+				.split(" ")
+				.filter((name) =>
+					["w-34", "h-24", "rounded-composer", "bg-surface-2", "shadow-sm", "group-hover:shadow-md"].includes(
+						name,
+					),
+				),
+			rings: tiles.map((tile) => tile.style.getPropertyValue("--tile-ring")),
+		}).toStrictEqual({
+			tile: ["w-34", "h-24", "rounded-composer", "bg-surface-2", "shadow-sm", "group-hover:shadow-md"],
+			rings: [
+				"color-mix(in srgb, var(--color-blue-500) 50%, transparent)",
+				"color-mix(in srgb, #b7791f 50%, transparent)",
+				"color-mix(in srgb, #7663b8 50%, transparent)",
+				"color-mix(in srgb, var(--color-violet-500) 50%, transparent)",
+			],
+		});
 	});
 });
