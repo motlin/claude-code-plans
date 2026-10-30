@@ -150,41 +150,29 @@ describe("openPane follows upstream placement", () => {
 		expect(openPane(defaultPaneLayout(), "files")).toEqual(layout([tile("chat", 2), tile("files", 3)], "files"));
 	});
 
-	it("opens Changes as its own far-right column at its 280px minimum", () => {
-		const state = openAll("files", "background-tasks");
-		expect(openPane(state, "changes", 1424)).toEqual(
+	it("stacks Changes under the last pane like any other pane, as upstream does at desktop width", () => {
+		const files = openPane(defaultPaneLayout(), "files");
+		const changes = openPane(defaultPaneLayout(), "changes");
+		expect([
+			openPane(files, "changes"),
+			openPane(changes, "files"),
+			openAll("files", "background-tasks", "changes"),
+			openAll("changes", "plan", "files"),
+		]).toEqual([
+			layout([tile("chat", 2), stack("column", 3, [tile("files", 1), tile("changes", 1)])], "changes"),
+			layout([tile("chat", 2), stack("column", 3, [tile("changes", 1), tile("files", 1)])], "files"),
 			layout(
 				[
 					tile("chat", 2),
 					stack("column", 3, [tile("files", 1), tile("background-tasks", 1)]),
-					tile("changes", 1.25),
+					tile("changes", 1),
 				],
 				"changes",
 			),
-		);
-	});
-
-	it("never stacks a later pane into the Changes column", () => {
-		const state = openPane(defaultPaneLayout(), "changes", 1412);
-		expect([state, openPane(state, "files"), openAll("changes", "plan", "files")]).toEqual([
-			layout([tile("chat", 2), tile("changes", 3)], "changes"),
-			layout([tile("chat", 2), tile("files", 3), tile("changes", 1.25)], "files"),
 			layout(
-				[tile("chat", 2), stack("column", 3, [tile("plan", 1), tile("files", 1)]), tile("changes", 1.25)],
+				[tile("chat", 2), stack("column", 3, [tile("changes", 1), tile("plan", 1)]), tile("files", 1)],
 				"files",
 			),
-		]);
-	});
-
-	it("stacks Changes like any other pane on a phone, as upstream's 390px split does", () => {
-		const files = openPane(defaultPaneLayout(), "files", 390, {phone: true});
-		const changes = openPane(defaultPaneLayout(), "changes", 390, {phone: true});
-		expect([
-			openPane(files, "changes", 390, {phone: true}),
-			openPane(changes, "files", 390, {phone: true}),
-		]).toEqual([
-			layout([tile("chat", 2), stack("column", 3, [tile("files", 1), tile("changes", 1)])], "changes"),
-			layout([tile("chat", 2), stack("column", 3, [tile("changes", 1), tile("files", 1)])], "files"),
 		]);
 	});
 
@@ -544,7 +532,7 @@ describe("resizeDivider", () => {
 			),
 		],
 		[
-			"keeps the far-right Changes column at or above 280px",
+			"keeps the narrower side column at or above 280px",
 			layout([tile("chat", 2), tile("files", 3), tile("changes", 2.25)], "files"),
 			{path: [], index: 1, deltaPx: 300, sizePx: 1474},
 			layout([tile("chat", 2), tile("files", 3.85), tile("changes", 1.4)], "files"),

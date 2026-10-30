@@ -821,16 +821,12 @@ export function TileHost({
 		collapsedRef.current = layout.expanded;
 		update(collapsePane);
 	}, [layout.expanded, update]);
-	const open = useCallback(
-		(state: PaneLayoutState, kind: PaneKind) => openPane(state, kind, sizeAlong(rootRef.current, "row"), {phone}),
-		[phone],
-	);
 
 	useEffect(() => {
 		if (requestedPane === undefined || !loaded) return;
-		if (definitions.has(requestedPane)) update((state) => open(state, requestedPane));
+		if (definitions.has(requestedPane)) update((state) => openPane(state, requestedPane));
 		onRequestedPaneHandled?.();
-	}, [requestedPane, loaded, definitions, update, open, onRequestedPaneHandled]);
+	}, [requestedPane, loaded, definitions, update, onRequestedPaneHandled]);
 	const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
 
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
@@ -865,16 +861,18 @@ export function TileHost({
 			openKinds,
 			isOpen: (kind) => openKinds.includes(kind),
 			openPane: (kind) => {
-				update((state) => open(state, kind));
+				update((state) => openPane(state, kind));
 			},
 			closePane: (kind) => {
 				update((state) => closePane(state, kind));
 			},
 			togglePane: (kind) => {
-				update((state) => (tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : open(state, kind)));
+				update((state) =>
+					tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : openPane(state, kind),
+				);
 			},
 		}),
-		[layout, openKinds, update, open],
+		[layout, openKinds, update],
 	);
 
 	useShortcut("close_pane", () => {
