@@ -12,6 +12,7 @@ import {
 } from "react";
 import type {Section} from "./types";
 import {activeSectionFor} from "./hooks";
+import {ArtifactsNavRow} from "./artifact-template-menu";
 import {MoreNavMenu, type NavBadge} from "./more-menu";
 import {useVisibleNavItems} from "./navigation";
 import {NavScroll} from "./nav-scroll";
@@ -109,14 +110,17 @@ export function Sidebar({
 						{navigationItems.map((item) => {
 							const Icon = item.icon;
 							const badge = badgeFor(item.section);
-							return (
+							// Upstream's Artifacts row wraps its link with the "New from a template" + action.
+							const hasRowActions = item.section === "artifacts";
+							const link = (
 								<Link
 									key={item.to}
 									to={item.to}
-									data-row=""
+									data-row={hasRowActions ? undefined : ""}
+									data-row-main-button={hasRowActions ? "" : undefined}
 									data-roving-item=""
 									data-selected={item.section === activeSection ? "focused" : undefined}
-									className="group df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+									className="group df-nav-row h-[var(--sb-row-h)] data-[row-main-button]:flex-1 rounded-[var(--sb-radius)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 								>
 									<span className="df-leading-slot">
 										<Icon aria-hidden="true" />
@@ -134,6 +138,7 @@ export function Sidebar({
 									)}
 								</Link>
 							);
+							return hasRowActions ? <ArtifactsNavRow key={item.to}>{link}</ArtifactsNavRow> : link;
 						})}
 						<MoreNavMenu
 							overflow={overflowItems}

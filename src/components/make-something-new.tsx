@@ -3,7 +3,7 @@ import {ChartLine, FileText, Palette, Presentation, type LucideIcon} from "lucid
 import {useId} from "react";
 import {ARTIFACT_TEMPLATES, type ArtifactTemplate, type ArtifactTemplateSlug} from "../lib/artifact-templates";
 
-const TEMPLATE_ICONS: Record<ArtifactTemplateSlug, LucideIcon> = {
+export const TEMPLATE_ICONS: Record<ArtifactTemplateSlug, LucideIcon> = {
 	pages: FileText,
 	slides: Presentation,
 	design: Palette,
@@ -71,11 +71,7 @@ function TemplateTile({template}: Readonly<{template: ArtifactTemplate}>) {
 			</span>
 			<span className="flex min-h-4 min-w-0 items-center gap-1.5 px-0.5 text-footnote font-medium text-primary">
 				<span className="truncate">{template.label}</span>
-				<span
-					className={`inline-flex h-[18px] shrink-0 items-center whitespace-nowrap rounded-r4 px-1.5 text-caption font-medium ${BADGE_CLASS[template.badge]}`}
-				>
-					{template.badge}
-				</span>
+				<TemplateBadge badge={template.badge} />
 			</span>
 			{template.description === undefined ? null : (
 				<span id={descriptionId} className="sr-only select-none">
@@ -83,5 +79,16 @@ function TemplateTile({template}: Readonly<{template: ArtifactTemplate}>) {
 				</span>
 			)}
 		</Link>
+	);
+}
+
+/** A template's xs cds Badge ("New" or "Beta"), shared by the strip tiles and the sidebar template menu. */
+export function TemplateBadge({badge, className}: Readonly<{badge: ArtifactTemplate["badge"]; className?: string}>) {
+	return (
+		<span
+			className={`inline-flex h-[18px] shrink-0 items-center whitespace-nowrap rounded-r4 px-1.5 text-caption font-medium ${BADGE_CLASS[badge]}${className === undefined ? "" : ` ${className}`}`}
+		>
+			{badge}
+		</span>
 	);
 }
