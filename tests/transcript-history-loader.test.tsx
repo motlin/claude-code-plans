@@ -194,6 +194,57 @@ describe("TranscriptHistoryLoader", () => {
 		});
 	});
 
+	/** Lays the document scroller out at `clientHeight` over `scrollHeight` of content, scrolled to `scrollTop`. */
+	function layOutScroller(clientHeight: number, scrollHeight: number, scrollTop: number) {
+		const scroller = document.documentElement;
+		vi.spyOn(scroller, "clientHeight", "get").mockReturnValue(clientHeight);
+		vi.spyOn(scroller, "scrollHeight", "get").mockReturnValue(scrollHeight);
+		vi.spyOn(scroller, "scrollTop", "get").mockReturnValue(scrollTop);
+	}
+
+	async function settleFrames() {
+		for (let frame = 0; frame < 3; frame++) {
+			await new Promise((resolve) => {
+				requestAnimationFrame(resolve);
+			});
+		}
+	}
+
+	it.each([
+		["fits its scroller", 900],
+		["overflows by less than the 600px lookahead", 1206],
+	])(
+		"loads when the transcript %s, so scrolling to the newest message leaves the sentinel in view",
+		async (_, scrollHeight) => {
+			// Session 76b11aac: its byte-capped tail is one short turn, so the sentinel sat in view forever, unarmed.
+			mockEarlierPage(EARLIER_PAGE);
+			layOutScroller(900, scrollHeight, scrollHeight - 900);
+			const {queryClient} = renderLoader(TAIL);
+
+			intersect(true);
+
+			await waitFor(() => {
+				expect(
+					queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))?.startIndex,
+				).toBe(0);
+			});
+		},
+	);
+
+	it("still ignores the opening frame once layout settles while the view has not reached the newest message", async () => {
+		const fetchSpy = mockEarlierPage(EARLIER_PAGE);
+		layOutScroller(900, 4000, 0);
+		renderLoader(TAIL);
+
+		intersect(true);
+
+		await settleFrames();
+		expect({fetches: fetchSpy.mock.calls, status: screen.queryByRole("status")}).toStrictEqual({
+			fetches: [],
+			status: null,
+		});
+	});
+
 	it("loads when one callback carries both the exit and the return", async () => {
 		// A fast scroll down and back up is delivered as a single batch.
 		mockEarlierPage(EARLIER_PAGE);

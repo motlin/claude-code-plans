@@ -1662,6 +1662,43 @@ describe("message metadata fields", () => {
 		);
 		expect(refs).toStrictEqual(["r1", undefined, undefined, "r2", undefined]);
 	});
+
+	// Shapes from session 76b11aac (CLI 2.1.312): with thinkingDisplay "updates" a request's first record is an
+	// empty thinking block that never renders, so a Request disclosure on it never appeared.
+	it("passes a requestRef past a leading empty thinking record to the request's first visible record", () => {
+		const emptyThinking = (requestRef: string, extra: Record<string, unknown> = {}) =>
+			assistantRecord([{type: "thinking", thinking: "", signature: "EqwBCkYIDRgCKkB"}], {
+				requestRef,
+				thinkingDisplay: "updates",
+				thinkingDurationMs: 1204,
+				...extra,
+			});
+		const records = [
+			emptyThinking("432f6d37"),
+			assistantRecord([{type: "text", text: "Done."}], {requestRef: "432f6d37"}),
+			{type: "user", message: {role: "user", content: "next"}},
+			emptyThinking("8be78525"),
+			assistantRecord([{type: "tool_use", id: "toolu_1", name: "Bash", input: {command: "ls"}}], {
+				requestRef: "8be78525",
+			}),
+			{type: "user", message: {role: "user", content: "again"}},
+			emptyThinking("dba7639d", {thinkingDisplay: "omitted"}),
+			assistantRecord([{type: "text", text: "Hidden reasoning."}], {requestRef: "dba7639d"}),
+		];
+		const refs = processTranscript(records).lines.map((line) =>
+			"requestRef" in line ? line.requestRef : undefined,
+		);
+		expect(refs).toStrictEqual([
+			undefined,
+			"432f6d37",
+			undefined,
+			undefined,
+			"8be78525",
+			undefined,
+			"dba7639d",
+			undefined,
+		]);
+	});
 });
 
 // ---------------------------------------------------------------------------

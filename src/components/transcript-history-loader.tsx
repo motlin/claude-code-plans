@@ -61,21 +61,43 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 	useEffect(() => {
 		const sentinel = sentinelRef.current;
 		if (!sentinel) return undefined;
+		const scroller = findScrollContainer(sentinel);
+		let intersecting = false;
+		let frame = 0;
+		/**
+		 * A transcript shorter than the scroller plus the lookahead margin can never
+		 * take the sentinel out of view, so it would never arm. Once the opening
+		 * frames have laid out and scrolled, a view that sits at its newest message
+		 * with the sentinel still in view has nowhere further to scroll: load, as if
+		 * the reader had scrolled to it.
+		 */
+		const loadIfStuckInView = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(() => {
+				frame = requestAnimationFrame(() => {
+					const {clientHeight, scrollHeight, scrollTop} = scroller;
+					const atNewest = clientHeight > 0 && scrollTop >= scrollHeight - clientHeight - 1;
+					if (intersecting && !armedRef.current && atNewest) void loadEarlier();
+				});
+			});
+		};
 		const observer = new IntersectionObserver(
 			(entries) => {
 				// A fast scroll down and back up arrives as one callback carrying both
 				// transitions, so walk the whole batch in order rather than reading
 				// only the first entry and throwing the arrival away.
 				for (const entry of entries) {
+					intersecting = entry.isIntersecting;
 					if (!entry.isIntersecting) {
 						armedRef.current = true;
 						continue;
 					}
 					if (armedRef.current) void loadEarlier();
+					else loadIfStuckInView();
 				}
 			},
 			{
-				root: toObserverRoot(findScrollContainer(sentinel)),
+				root: toObserverRoot(scroller),
 				// Start the fetch a screenful early so the older messages are usually
 				// already in place by the time the reader scrolls onto them.
 				rootMargin: "600px 0px 0px 0px",
@@ -83,6 +105,7 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 		);
 		observer.observe(sentinel);
 		return () => {
+			cancelAnimationFrame(frame);
 			observer.disconnect();
 		};
 	}, [loadEarlier, startIndex]);

@@ -751,6 +751,20 @@ function trackQueue(
 	}
 }
 
+/** An assistant record holding only empty thinking that no transcript mode draws (an omitted one draws a stub). */
+function isInvisibleThinkingRecord(record: {
+	thinkingDisplay?: string | undefined;
+	message: {content: string | readonly {type: string; thinking?: string}[]};
+}): boolean {
+	const {content} = record.message;
+	return (
+		record.thinkingDisplay !== "omitted" &&
+		typeof content !== "string" &&
+		content.length > 0 &&
+		content.every((block) => block.type === "thinking" && block.thinking?.trim() === "")
+	);
+}
+
 function processRecordBatch(
 	records: unknown[],
 	startLineIndex: number,
@@ -1178,10 +1192,13 @@ function processRecordBatch(
 				processedLine.isApiErrorMessage = true;
 				if (typeof record.error === "string") processedLine.apiErrorCode = record.error;
 			}
-			if (record.requestRef !== undefined && record.requestRef !== lastRequestRef) {
-				processedLine.requestRef = record.requestRef;
+			// The Request disclosure rides on its request's first line, so a record that never renders (the empty
+			// thinking block a `thinkingDisplay: "updates"` request opens with) leaves the ref to the next one.
+			const {requestRef} = record;
+			if (requestRef !== lastRequestRef && (requestRef === undefined || !isInvisibleThinkingRecord(record))) {
+				if (requestRef !== undefined) processedLine.requestRef = requestRef;
+				lastRequestRef = requestRef;
 			}
-			lastRequestRef = record.requestRef;
 			if (record.apiErrorStatus !== undefined) processedLine.apiErrorStatus = record.apiErrorStatus;
 			if (record.errorDetails !== undefined) processedLine.errorDetails = record.errorDetails;
 			const limitInfo = record.apiErrorParams?.rate_limit_info ?? record.quotaLimits;
