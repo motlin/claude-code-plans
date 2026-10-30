@@ -1861,6 +1861,13 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 			--session-dock-bottom: max(0px, calc(env(safe-area-inset-bottom) - 9px));
 		}
 
+		/* With a side pane open upstream's chat and pane split the whole viewport (chat at 0,0, 741px tall at 386x741). */
+		[data-route-tile-shell="session"]:has([data-pane-phone]) {
+			padding: 0;
+			--tile-title-start: var(--top-left-clearance-start, 0px);
+			--session-dock-bottom: env(safe-area-inset-bottom);
+		}
+
 		[data-route-tile-shell="home"] {
 			/* Upstream's home chat card sits 9px from the start and 1px from the end, like the session card. */
 			padding-inline: 9px 1px;

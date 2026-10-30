@@ -19,6 +19,7 @@ import {decodeFilePath} from "../src/lib/api/file";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
+import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import type {SessionFiles} from "../src/lib/session-files";
 import {installLocalStorage} from "./fake-storage";
 
@@ -728,6 +729,70 @@ describe("File tabs", () => {
 		expect({restored, afterClose: tabStrip(afterClose)}).toStrictEqual({
 			restored: [{name: "agent.ts", selected: "true", italic: false}],
 			afterClose: [],
+		});
+	});
+});
+
+describe("Files pane on a phone", () => {
+	function stubPhone(): void {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === PHONE_SHEET_QUERY,
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+	}
+
+	function columns(pane: HTMLElement) {
+		const tree = pane.querySelector<HTMLElement>("[data-files-tree]");
+		const preview = pane.querySelector<HTMLElement>("[data-files-preview]");
+		return {
+			tree: tree === null ? null : {fills: tree.classList.contains("flex-1"), width: tree.style.width},
+			treeResizeHandle: within(pane).queryByRole("separator", {name: "Resize file tree"}) !== null,
+			previewHidden: preview?.hidden ?? null,
+		};
+	}
+
+	it("shows the tree OR the open file in one column, and opening a file hides the tree", async () => {
+		stubPhone();
+		fileContents.set("/home/alice/example/agent.ts", "export const agent = 1;\n");
+		const pane = await openPane();
+		await switchMode(pane, "Session");
+		const before = columns(pane);
+
+		fireEvent.click(within(pane).getByRole("button", {name: "agent.ts"}));
+		await waitFor(() => {
+			expect(
+				within(pane)
+					.queryAllByRole("cell")
+					.map((line) => line.textContent),
+			).toContain("export const agent = 1;");
+		});
+		const opened = columns(pane);
+		fireEvent.click(within(pane).getByRole("button", {name: "Show file tree"}));
+
+		expect({before, opened, reshown: columns(pane)}).toStrictEqual({
+			before: {tree: {fills: true, width: ""}, treeResizeHandle: false, previewHidden: true},
+			opened: {tree: null, treeResizeHandle: false, previewHidden: false},
+			reshown: {tree: {fills: true, width: ""}, treeResizeHandle: false, previewHidden: true},
+		});
+	});
+
+	it("keeps the tree and the preview side by side at 640px and up", async () => {
+		const pane = await openPane();
+		const state = columns(pane);
+
+		expect(state).toStrictEqual({
+			tree: {fills: false, width: state.tree?.width},
+			treeResizeHandle: true,
+			previewHidden: false,
 		});
 	});
 });

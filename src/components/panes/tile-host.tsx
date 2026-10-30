@@ -50,8 +50,14 @@ const RESIZE_STEP_PX = 16;
 const RESIZE_STEP_LARGE_PX = 64;
 /** A Move grip press becomes a drag once the pointer travels this far. */
 const DRAG_THRESHOLD_PX = 4;
-/** Below 640px a side pane covers the viewport instead of squeezing beside the chat. */
-const PHONE_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
+/**
+ * Below 640px upstream keeps the split: a side pane holds its 280px minimum
+ * beside the chat, which squeezes down to 100px (measured at 386x741, 2026-10-30).
+ */
+const PHONE_PANE_MIN_CLASS = "min-w-[280px]";
+const PHONE_CHAT_MIN_CLASS = "min-w-[100px]";
+/** Below 640px an expanded pane covers the viewport. */
+const PHONE_EXPANDED_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
 /** Upstream's expanded pane: maximised over the sidebar and titlebar, 9px in from the window edge. */
 const EXPANDED_SLOT_CLASSES = "fixed inset-[9px] z-40";
 
@@ -212,7 +218,10 @@ function Divider({
 	const total = stack.children.reduce((sum, child) => sum + child.flex, 0);
 	const prefixFlex = stack.children.slice(0, index).reduce((sum, child) => sum + child.flex, 0);
 	const now = Math.round(((prefixFlex + before.flex) / total) * 100);
-	const available = sizePx - TILE_GAP_PX * (stack.children.length - 1);
+	// Below 640px upstream's root divider is a 1px hairline with an 8px hit zone, not the 12px gap.
+	const hairline = host.phone && path.length === 0 && stack.direction === "row";
+	const gapPx = hairline ? 1 : TILE_GAP_PX;
+	const available = sizePx - gapPx * (stack.children.length - 1);
 	const bounds =
 		available > 0
 			? {
@@ -232,7 +241,9 @@ function Divider({
 	function resizeBy(deltaPx: number) {
 		const measured = sizeAlong(stackRef.current, stack.direction);
 		if (measured <= 0) return;
-		host.update((state) => resizeDivider(state, {path, index, deltaPx, sizePx: measured}));
+		// The reducer subtracts 12px gaps; hand it the size those gaps would leave.
+		const reducerSizePx = measured + (TILE_GAP_PX - gapPx) * (stack.children.length - 1);
+		host.update((state) => resizeDivider(state, {path, index, deltaPx, sizePx: reducerSizePx}));
 	}
 
 	function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
@@ -279,7 +290,11 @@ function Divider({
 			onPointerUp={onPointerUp}
 			onPointerCancel={onPointerUp}
 			className={`group/divider relative flex shrink-0 touch-none items-center justify-center outline-none ${
-				isRow ? "w-3 cursor-col-resize" : "h-3 cursor-row-resize"
+				hairline
+					? "w-px cursor-col-resize before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
+					: isRow
+						? "w-3 cursor-col-resize"
+						: "h-3 cursor-row-resize"
 			}`}
 		>
 			<span
@@ -600,7 +615,7 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
  */
 function cornersOf(path: readonly number[], host: InternalHost): Partial<Record<"left" | "right", number>> {
 	const [rootIndex, ...rest] = path;
-	if (rootIndex === undefined || rest.length > 0 || host.phone) return {};
+	if (rootIndex === undefined || rest.length > 0) return {};
 	const corners: Partial<Record<"left" | "right", number>> = {};
 	if (rootIndex > 0) corners.left = rootIndex - 1;
 	if (rootIndex < host.layout.root.children.length - 1) corners.right = rootIndex;
@@ -627,7 +642,7 @@ function StackView({
 	const items: ReactNode[] = [];
 	// Keep the expanded pane and chat on their keyed paths so their reader state survives.
 	stack.children.forEach((child, index) => {
-		if (host.expanded === null && index > 0 && !(isRoot && host.phone)) {
+		if (host.expanded === null && index > 0) {
 			items.push(
 				<Divider
 					key={`divider:${nodeKey(stack.children[index - 1] ?? child)}|${nodeKey(child)}`}
@@ -680,7 +695,9 @@ function NodeView({
 }) {
 	const style = {flex: `${node.flex} 1 0`};
 	const phone = isRootChild && host.phone;
-	const slotClass = `min-h-0 min-w-0 ${phone ? PHONE_SLOT_CLASSES : "relative"}`;
+	const holdsChat = tileIdsOf(node).includes("chat");
+	const phoneMin = holdsChat ? PHONE_CHAT_MIN_CLASS : PHONE_PANE_MIN_CLASS;
+	const slotClass = `relative min-h-0 ${phone ? phoneMin : "min-w-0"}`;
 	if (node.kind === "stack") {
 		return (
 			<div
@@ -697,7 +714,7 @@ function NodeView({
 	if (node.tileId === "chat") {
 		const hidden = host.expanded !== null;
 		return (
-			<TileSlot tileId="chat" host={host} className="relative min-h-0 min-w-0" style={style} hidden={hidden}>
+			<TileSlot tileId="chat" host={host} className={slotClass} style={style} hidden={hidden}>
 				{!hidden && tileIdsOf(host.layout.root).length > 1 && (
 					// Keep the chat's Move grip above its titlebar while the transcript scrolls.
 					<div className="sticky top-0 z-20 h-0">
@@ -718,7 +735,9 @@ function NodeView({
 			tileId={node.tileId}
 			host={host}
 			className={
-				expanded ? `min-h-0 min-w-0 ${host.phone ? PHONE_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}` : slotClass
+				expanded
+					? `min-h-0 min-w-0 ${host.phone ? PHONE_EXPANDED_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}`
+					: slotClass
 			}
 			style={expanded ? undefined : style}
 			phone={expanded ? host.phone : phone}

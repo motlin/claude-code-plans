@@ -65,7 +65,19 @@ function symlinkLabel(entry: WorkspaceEntry): string | undefined {
  * "Resize file tree" separator, and the width persisted across reloads. A
  * click on the separator without a drag hides the tree, like upstream.
  */
-export function FilesTreeColumn({children, onHide}: {children: ReactNode; onHide?: () => void}) {
+/**
+ * The tree column beside the viewer. `fill` makes it the pane's only column (a
+ * phone, where upstream shows the tree OR the file), with no width or resize handle.
+ */
+export function FilesTreeColumn({
+	children,
+	onHide,
+	fill = false,
+}: {
+	children: ReactNode;
+	onHide?: () => void;
+	fill?: boolean;
+}) {
 	const {settings, setSetting} = useSettings();
 	const hideKeys = useShortcutKeys("toggle_changes_file_list");
 	const width = clampFilesTreeWidth(settings.filesTreeWidth);
@@ -81,6 +93,13 @@ export function FilesTreeColumn({children, onHide}: {children: ReactNode; onHide
 		},
 		...(onHide === undefined ? {} : {onClick: onHide}),
 	});
+	if (fill) {
+		return (
+			<div data-files-tree className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+				{children}
+			</div>
+		);
+	}
 	return (
 		<div
 			data-files-tree

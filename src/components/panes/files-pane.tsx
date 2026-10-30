@@ -12,6 +12,7 @@ import {onFileOpenRequest, takePendingFileOpen} from "../../lib/file-open-reques
 import type {FileRef} from "../../lib/file-refs";
 import {loadFileTabs, saveFileTabs} from "../../lib/pane-layout";
 import type {SessionFiles} from "../../lib/session-files";
+import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {FILE_TAB_SIZES, normalizeFileTabSize} from "../../lib/file-preview";
 import {ConfirmDialog} from "../confirm-dialog";
 import type {ContentMatchOpenOptions} from "../files/content-search-results";
@@ -426,6 +427,14 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		}),
 	);
 	const [lineTarget, setLineTarget] = useState<(FileRef & {findQuery?: string}) | null>(null);
+	// A phone pane has room for one column, as upstream: the tree OR the open
+	// file. Opening (or switching to) a file there trades the tree for it.
+	const phone = usePhoneSheet();
+	const [shownPath, setShownPath] = useState(openPath);
+	if (shownPath !== openPath) {
+		setShownPath(openPath);
+		if (phone && openPath !== null) setTreeShown(false);
+	}
 	const openFile = (path: string, options: {pin: boolean}): void => {
 		dispatchFileTabs({type: "open", path, pin: options.pin});
 	};
@@ -571,6 +580,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 			<div className="flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
 				{treeShown && (
 					<FilesTreeColumn
+						fill={phone}
 						onHide={() => {
 							setTreeShown(false);
 						}}
@@ -607,7 +617,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 						)}
 					</FilesTreeColumn>
 				)}
-				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+				<div data-files-preview hidden={phone && treeShown} className="flex min-h-0 min-w-0 flex-1 flex-col">
 					{openPath === null ? (
 						<FilesEmpty hasTree={treeShown} tabCount={fileTabs.tabs.length} />
 					) : (

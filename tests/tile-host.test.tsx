@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import {readFileSync} from "node:fs";
+
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -559,25 +561,42 @@ describe("TileHost on a phone", () => {
 		return {
 			phone: slot.hasAttribute("data-pane-phone"),
 			fullWidth: ["fixed", "inset-0", "w-full"].every((name) => slot.classList.contains(name)),
+			paneMin: slot.classList.contains("min-w-[280px]"),
 			sticky: slot.classList.contains("sticky"),
-			separators: screen.queryAllByRole("separator").length,
+			separators: screen.queryAllByRole("separator").map((separator) => ({
+				hairline: separator.classList.contains("w-px"),
+				gap: separator.classList.contains("w-3"),
+			})),
 		};
 	}
 
-	it("covers the viewport with the pane and hides the resize handle below 640px", () => {
+	function chatSlotState() {
+		const slot = document.querySelector("[data-tile-host=chat]");
+		if (slot === null) throw new Error("chat slot missing");
+		return {
+			fixed: slot.classList.contains("fixed"),
+			chatMin: slot.classList.contains("min-w-[100px]"),
+		};
+	}
+
+	it("keeps the pane beside the chat at its 280px minimum, squeezing the chat to 100px, below 640px", () => {
 		mockViewport(390);
 		renderHost("session-phone");
 		openTestPane();
 
-		expect(paneSlotState()).toStrictEqual({
-			phone: true,
-			fullWidth: true,
-			sticky: false,
-			separators: 0,
+		expect({pane: paneSlotState(), chat: chatSlotState()}).toStrictEqual({
+			pane: {
+				phone: true,
+				fullWidth: false,
+				paneMin: true,
+				sticky: false,
+				separators: [{hairline: true, gap: false}],
+			},
+			chat: {fixed: false, chatMin: true},
 		});
 	});
 
-	it("hides non-owning fixed stack wrappers while a nested phone pane is expanded", () => {
+	it("hides non-owning stack wrappers while a nested phone pane is expanded", () => {
 		mockViewport(390);
 		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
 		const unregisterTasks = registerPane("background-tasks", {title: "Tasks", render: () => <p>Tasks body</p>});
@@ -624,15 +643,30 @@ describe("TileHost on a phone", () => {
 		expect(
 			wrappers.map((wrapper) => ({fixed: wrapper.classList.contains("fixed"), hidden: wrapper.hidden})),
 		).toStrictEqual([
-			{fixed: true, hidden: false},
-			{fixed: true, hidden: true},
+			{fixed: false, hidden: false},
+			{fixed: false, hidden: true},
 		]);
 		expect(screen.getByRole("region", {name: "Test pane"})).toBe(pane);
-		expect(paneSlotState()).toStrictEqual({phone: true, fullWidth: true, sticky: false, separators: 0});
+		expect(paneSlotState()).toStrictEqual({
+			phone: true,
+			fullWidth: true,
+			paneMin: false,
+			sticky: false,
+			separators: [],
+		});
 		fireEvent.click(within(pane).getByRole("button", {name: "Collapse"}));
 		expect(wrappers.map((wrapper) => wrapper.hidden)).toStrictEqual([false, false]);
 		unregisterFiles();
 		unregisterTasks();
+	});
+
+	it("drops the session card's phone inset while a side pane shares the row, as upstream's split runs edge to edge", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		const phoneBlock = styles.slice(styles.indexOf('@media (width < 40rem) { [data-route-tile-shell="session"]'));
+
+		expect(phoneBlock.includes('[data-route-tile-shell="session"]:has([data-pane-phone]) { padding: 0;')).toBe(
+			true,
+		);
 	});
 
 	it("keeps the side-by-side tile with its resize handle at 640px and up", () => {
@@ -640,11 +674,15 @@ describe("TileHost on a phone", () => {
 		renderHost("session-wide");
 		openTestPane();
 
-		expect(paneSlotState()).toStrictEqual({
-			phone: false,
-			fullWidth: false,
-			sticky: false,
-			separators: 1,
+		expect({pane: paneSlotState(), chat: chatSlotState()}).toStrictEqual({
+			pane: {
+				phone: false,
+				fullWidth: false,
+				paneMin: false,
+				sticky: false,
+				separators: [{hairline: false, gap: true}],
+			},
+			chat: {fixed: false, chatMin: false},
 		});
 	});
 });
