@@ -405,6 +405,26 @@ describe("SessionTitlebar title and chevron", () => {
 		}).toStrictEqual({title: true, chevron: true});
 	});
 
+	it("grows the title and chevron to upstream's comfortable 32px controls under a comfortable scope (coarse pointer)", async () => {
+		await renderTitlebar(baseDetail);
+		const comfortable = (element: HTMLElement) =>
+			[...element.classList].filter((name) => name.startsWith("comfortable:"));
+
+		expect({
+			title: comfortable(screen.getByRole("button", {name: `${TITLE}, rename session`})),
+			chevron: comfortable(screen.getByRole("button", {name: `More options for ${TITLE}`})),
+		}).toStrictEqual({
+			title: [
+				"comfortable:-mx-1.5",
+				"comfortable:h-8",
+				"comfortable:px-1.5",
+				"comfortable:rounded-r6",
+				"comfortable:text-[14px]/[20px]",
+			],
+			chevron: ["comfortable:size-8"],
+		});
+	});
+
 	it("leads with upstream's 7px spacer at every width so the title text clears the chat card edge, landing at x=48 at 390", async () => {
 		const titlebar = await renderTitlebar(baseDetail);
 		const lead = titlebar.querySelector("[data-titlebar-lead]");

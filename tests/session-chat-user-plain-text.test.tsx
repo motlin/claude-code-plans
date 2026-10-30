@@ -95,6 +95,19 @@ describe("SessionChat user bubbles as plain text", () => {
 		});
 	});
 
+	it("grows the bubble to upstream's comfortable 15/20 type, 16/12 padding and 12px card radius (coarse pointer)", () => {
+		const el = bubble(renderRecords([prompt("hello")]));
+
+		expect(
+			(el.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:")),
+		).toStrictEqual([
+			"comfortable:rounded-card",
+			"comfortable:px-4",
+			"comfortable:py-3",
+			"comfortable:text-[15px]/[20px]",
+		]);
+	});
+
 	it("renders a heading line as literal text", () => {
 		const el = bubble(renderRecords([prompt("# Heading\nbody")]));
 

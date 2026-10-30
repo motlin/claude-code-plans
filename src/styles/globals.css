@@ -22,6 +22,10 @@
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant touch (@media (pointer: coarse), (hover: none));
+/* Upstream's density variants: the nearest [data-density] scope wins, so the compact
+   main column flips to comfortable when a coarse pointer swaps its scope. */
+@custom-variant compact (&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *)));
+@custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *)));
 
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */

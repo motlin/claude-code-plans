@@ -272,7 +272,7 @@ describe("HomeComposer", () => {
 			placeButton: place?.querySelector("[role=combobox]")?.getAttribute("aria-label"),
 			rowItems: [...(row?.children ?? [])].map((child) => child.textContent),
 		}).toStrictEqual({
-			barClass: "@container pt-1",
+			barClass: "@container pt-1 comfortable:pt-0.5",
 			afterCard: true,
 			rowClass:
 				"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem]",

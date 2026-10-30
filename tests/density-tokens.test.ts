@@ -1,6 +1,9 @@
 import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
 
+import {ENVIRONMENT_BAR_CLASS} from "../src/components/composer-tokens";
+import {SESSION_DOCK_COLUMN_CLASS} from "../src/components/dock-tokens";
+
 const styles = readFileSync("src/styles/globals.css", "utf8");
 
 function block(selector: string): string {
@@ -180,6 +183,35 @@ describe("described session rows", () => {
 	it("centres a described row's decoration and kebab on the title line, as upstream's described top", () => {
 		expect(declarations("[data-described] :is([data-row-decoration], [data-row-action])")).toStrictEqual({
 			top: "calc(var(--sb-row-h) / 2 + var(--sb-described-tuck) / 2 - var(--sb-described-trim))",
+		});
+	});
+});
+
+describe("density variants", () => {
+	it("defines compact: and comfortable: variants keyed on the nearest [data-density] scope", () => {
+		const variants = Object.fromEntries(
+			[...styles.matchAll(/@custom-variant (compact|comfortable) \((.+)\);/g)].map((match) => [
+				match[1],
+				match[2],
+			]),
+		);
+
+		expect(variants).toStrictEqual({
+			compact:
+				'&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *))',
+			comfortable:
+				'&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *))',
+		});
+	});
+});
+
+describe("main-column comfortable variants", () => {
+	it("opens the dock column gap to 8px and closes the environment bar's top pad to 2px at comfortable, as upstream's compact:/comfortable: pairs", () => {
+		const comfortable = (classes: string) => classes.split(" ").filter((name) => name.startsWith("comfortable:"));
+
+		expect({dock: comfortable(SESSION_DOCK_COLUMN_CLASS), bar: comfortable(ENVIRONMENT_BAR_CLASS)}).toStrictEqual({
+			dock: ["comfortable:gap-2"],
+			bar: ["comfortable:pt-0.5"],
 		});
 	});
 });

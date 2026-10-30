@@ -379,9 +379,9 @@ export function NextStepsList({
 											if (row.type === "rest") closeRest();
 											dismiss(event.currentTarget, key, candidates);
 										}}
-										className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+										className="pointer-events-auto flex size-6 items-center justify-center rounded-r5 text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:size-8 comfortable:rounded-r6"
 									>
-										<X aria-hidden="true" className="size-4" />
+										<X aria-hidden="true" className="size-4 comfortable:size-5" />
 									</button>
 								</Tooltip>
 							</span>

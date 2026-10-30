@@ -89,7 +89,7 @@ describe("SessionDock scroll-to-bottom pill", () => {
 			fades: pill.classList.contains("duration-150"),
 			composerInColumn: column.contains(screen.getByLabelText("Fabricated composer")),
 		}).toStrictEqual({
-			columnClassName: "chat-dock-column relative flex flex-col gap-1.5",
+			columnClassName: "chat-dock-column relative flex flex-col gap-1.5 comfortable:gap-2",
 			pillPositioning: [
 				["absolute", true],
 				["bottom-full", true],

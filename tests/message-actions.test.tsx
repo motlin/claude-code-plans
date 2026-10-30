@@ -95,6 +95,26 @@ describe("AssistantMessageActions", () => {
 		}).toStrictEqual({bar: true, button: [true, false], barHover: true});
 	});
 
+	it("grows to upstream's comfortable 32px buttons, 20px icons and 32px time slot under a comfortable scope (coarse pointer)", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		const comfortable = (element: Element | null | undefined) =>
+			(element?.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:"));
+
+		expect({
+			bar: comfortable(bar(container)),
+			button: comfortable(button(container, "Copy")),
+			icon: comfortable(button(container, "Copy").querySelector("svg")),
+			time: comfortable(container.querySelector("time")),
+		}).toStrictEqual({
+			bar: ["comfortable:h-8"],
+			button: ["comfortable:size-8", "comfortable:rounded-r6"],
+			icon: ["comfortable:size-5"],
+			time: ["comfortable:h-8", "comfortable:ps-3", "comfortable:text-[14px]/[20px]"],
+		});
+	});
+
 	it("paints a pinned Pin as chapter with upstream's pressed accent ink and fill", () => {
 		toggleChapter(MESSAGE.sessionId, {uuid: MESSAGE.uuid, label: "Hello", recordIndex: 0});
 		const {container} = render(
@@ -470,7 +490,8 @@ describe("UserMessageActions", () => {
 			unmount();
 			return result;
 		};
-		const slot = "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none";
+		const slot =
+			"flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8";
 
 		expect([
 			time("2026-09-26T10:00:00.000Z"),

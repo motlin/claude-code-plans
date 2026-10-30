@@ -4241,7 +4241,7 @@ function UserEntry({
 				<UserAttachments images={images} />
 				<MessageExcerptTiles snippets={excerpts} />
 				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text">
+					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 						{textNodes}
 					</div>
 				)}
@@ -4551,7 +4551,7 @@ function CompactSummaryBody({
 			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
 				<UserAttachments images={images} />
 				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 						{textNodes}
 					</div>
 				)}
@@ -4587,7 +4587,7 @@ function LabeledAutomatedEntry({
 				</div>
 				<UserAttachments images={images} />
 				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text">
+					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 						{textNodes}
 					</div>
 				)}
@@ -4790,7 +4790,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 	return (
 		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}>
 			<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0">
-				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text">
+				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
 					</TruncatedContent>

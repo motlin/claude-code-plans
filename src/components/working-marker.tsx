@@ -53,7 +53,7 @@ function BlockedStatus({reduceMotion}: Readonly<{reduceMotion: boolean}>) {
 			title={NEEDS_INPUT_LABEL}
 			className="group/status flex w-full min-w-0 flex-col"
 		>
-			<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body">
+			<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5">
 				<span
 					data-cds-row-mark
 					aria-hidden
@@ -155,12 +155,12 @@ export function WorkingMarker({
 			data-testid="code-working-line"
 			data-turn-working={turnWorking ? "true" : "false"}
 			{...(quiet && turnWorking ? {"data-quiet": "true", "aria-hidden": true} : {})}
-			className={`${quiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col`}
+			className={`${quiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col comfortable:min-h-8`}
 		>
 			{waitingOnUser && <BlockedStatus reduceMotion={reduceMotion} />}
 			{busy && (
 				<div data-cds="TurnStatus" data-state="busy" className="group/status flex w-full min-w-0 flex-col">
-					<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body">
+					<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5">
 						<span
 							data-cds-row-mark
 							aria-hidden

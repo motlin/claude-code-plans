@@ -39,7 +39,7 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId, sent
 		<div className={`${CHAT_COLUMN_CLASS} py-4`}>
 			{sentPrompt && (
 				<div className="flex flex-col items-end gap-1 mb-6" data-perf-pending-prompt="">
-					<div className="user-message-bubble flex flex-col gap-[5px] rounded-r7 px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[85%] text-body leading-[1.2857] select-text">
+					<div className="user-message-bubble flex flex-col gap-[5px] rounded-r7 px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[85%] text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 						<UserPlainText text={sentPrompt} />
 					</div>
 				</div>

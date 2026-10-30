@@ -281,6 +281,34 @@ describe("home launch-folder request", () => {
 	});
 });
 
+describe("Next steps Dismiss at comfortable density", () => {
+	it("grows the Dismiss button to upstream's comfortable 32px square with a 20px icon (coarse pointer)", () => {
+		const candidate: NextStepCandidate = {
+			id: "worktree-apart",
+			kind: "worktree",
+			subject: "/Users/dev/projects/p1",
+			stamp: 0,
+			title: "Turn on Worktree",
+			detail: "Session running here",
+			tooltipText: "Worktree",
+			dismissLabel: "Dismiss the Worktree suggestion",
+		};
+		renderHomeStartCard({
+			rows: selectNextSteps({candidates: [candidate], dismissed: {}}),
+			onOpen: () => {},
+			onDismiss: () => {},
+		});
+		const dismiss = screen.getByRole("button", {name: "Dismiss the Worktree suggestion"});
+		const comfortable = (element: Element | null) =>
+			(element?.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:"));
+
+		expect({button: comfortable(dismiss), icon: comfortable(dismiss.querySelector("svg"))}).toStrictEqual({
+			button: ["comfortable:size-8", "comfortable:rounded-r6"],
+			icon: ["comfortable:size-5"],
+		});
+	});
+});
+
 describe("Next steps Turn on Worktree", () => {
 	const worktreeApart: NextStepCandidate = {
 		id: "worktree-apart",

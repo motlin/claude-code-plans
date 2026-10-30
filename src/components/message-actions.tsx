@@ -58,7 +58,7 @@ export interface MessageActionsProps {
 }
 
 const BAR_CLASS = [
-	"flex h-6 items-center gap-0 select-none",
+	"flex h-6 items-center gap-0 select-none comfortable:h-8",
 	// Upstream's toolbar turns a hovered button's icon primary, except a pressed one, which keeps its accent ink.
 	"[&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary",
 	"opacity-0 pointer-events-none",
@@ -82,9 +82,9 @@ const BAR_CLASS = [
 ].join(" ");
 
 const BUTTON_CLASS =
-	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted";
+	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted comfortable:size-8 comfortable:rounded-r6";
 
-const ICON_CLASS = "size-4";
+const ICON_CLASS = "size-4 comfortable:size-5";
 
 const COPIED_MS = 2000;
 
@@ -319,8 +319,8 @@ function MessageTime({
 				dateTime={timestamp}
 				className={
 					inner === "left"
-						? "flex h-6 items-center ps-2 text-[13px]/[19px] text-ink-muted tabular-nums outline-none"
-						: "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none"
+						? "flex h-6 items-center ps-2 text-[13px]/[19px] text-ink-muted tabular-nums outline-none comfortable:h-8 comfortable:ps-3 comfortable:text-[14px]/[20px]"
+						: "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8"
 				}
 			>
 				{relative}

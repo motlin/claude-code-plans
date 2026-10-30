@@ -52,10 +52,10 @@ import {
 import {Tooltip} from "./ui/tooltip";
 
 const TITLE_CLASS =
-	"-mx-1 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"-mx-1 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:-mx-1.5 comfortable:h-8 comfortable:px-1.5 comfortable:rounded-r6 comfortable:text-[14px]/[20px]";
 
 const CHEVRON_CLASS =
-	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover";
+	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover comfortable:size-8";
 
 const PILL_CLASS =
 	"inline-flex h-5 min-w-0 shrink-0 cursor-default items-center gap-[3px] rounded-r5 bg-primary/10 dark:bg-alpha-2 px-[5px] text-caption leading-[15px] text-secondary no-underline select-none transition-colors hover:bg-alpha-3 data-[popup-open]:bg-alpha-3 dark:hover:bg-alpha-3 dark:data-[popup-open]:bg-alpha-3";

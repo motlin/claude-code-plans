@@ -29,7 +29,7 @@ export const USAGE_RING_CLASS = `${CHIN_BUTTON_CLASS} aspect-square`;
 export const ADD_BUTTON_CLASS = CHIN_BUTTON_CLASS.replace("h-6", "size-7").replace("rounded-r4", "rounded-r5");
 
 /** The home composer's environment bar, which takes the chin's place under the card. */
-export const ENVIRONMENT_BAR_CLASS = "@container pt-1";
+export const ENVIRONMENT_BAR_CLASS = "@container pt-1 comfortable:pt-0.5";
 
 /** The environment bar's row: the place controls, then the chin's mode, model and ring. */
 export const ENVIRONMENT_BAR_ROW_CLASS =

@@ -76,7 +76,7 @@ function PendingUserRowShell({
 				data-delivery-status={deliveryStatus}
 			>
 				<div className="flex flex-col items-end gap-g5 max-w-[85%] min-w-0" data-perf-pending-prompt="">
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text">
+					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 						<p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]">
 							{prompt}
 						</p>
