@@ -48,7 +48,7 @@ import {ContextBreakdownBody} from "./context-breakdown";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
-import {RemoteControlRow, RemoteControlRowPending} from "./remote-control-row";
+import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from "./remote-control-row";
 import {SessionRail, type RailCard} from "./session-rail";
 
 /** What the session page knows that the rail's cards show. */
@@ -64,6 +64,8 @@ export interface SessionRailInputs {
 	live: boolean;
 	/** A turn is running: the Context card's usage refreshes when it ends. */
 	working: boolean;
+	/** The session has a live terminal pane and Live terminal input is on, so the Remote Control switch can type `/remote-control`. */
+	canToggleRemoteControl?: boolean;
 	usage: ComposerUsage | null;
 	/** The newest `/context` run's per-category breakdown, null when none or stale. */
 	breakdown: ContextBreakdown | null;
@@ -227,13 +229,22 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 				(openInPending && inputs.live ? (
 					<RemoteControlRowPending />
 				) : (
-					remoteControl !== null && (
+					remoteControl !== null &&
+					(inputs.canToggleRemoteControl === true ? (
+						<RemoteControlToggleRow
+							sessionId={inputs.sessionId}
+							state={remoteControl.state}
+							url={remoteControl.url}
+							working={inputs.working}
+							historySuppressed={openIn?.remoteHistory ?? null}
+						/>
+					) : (
 						<RemoteControlRow
 							state={remoteControl.state}
 							url={remoteControl.url}
 							historySuppressed={openIn?.remoteHistory ?? null}
 						/>
-					)
+					))
 				))}
 			{model !== null && <RailRow icon={<Icon icon={Cpu} />} label={model} />}
 			{herdrPane === null ? (

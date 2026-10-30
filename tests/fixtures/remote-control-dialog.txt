@@ -1,0 +1,38 @@
+
+ ▐▛███▛█   Claude Code v2.1.314
+▝▜██████▀  Opus 5.5 · Claude Max
+ ▝▝   ▝▝   /…/-Users-craig-projects-claude-code-plans/10e1d0ca-19a8-4418-990a-f66008edde61/scratchpad/rc-live · /rc
+
+
+❯ /remote-control
+  ⎿  Remote Control disconnected.
+
+❯ /remote-control
+
+  /remote-control is active · Continue here, on your phone, or at https://claude.ai/code/session_01RWFcDE6f3xW8i7wzbLfASZ
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔
+   Remote Control
+
+   This session is available in the Claude mobile app and at https://claude.ai/code/session_01RWFcDE6f3xW8i7wzbLfASZ.
+
+     Disconnect this session
+     Show QR code   Scan with your phone to open this session
+   ❯ Continue
+
+   Enter to select · Esc to continue

@@ -32,6 +32,7 @@ import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herd
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
 import {defaultHerdrPermissionDependencies, handleHerdrPermission} from "../herdr/permission";
 import {defaultHerdrPlanDependencies, handleHerdrPlan, handleHerdrPlanDialog} from "../herdr/plan";
+import {defaultHerdrRemoteControlDependencies, handleHerdrRemoteControl} from "../herdr/remote-control";
 import {defaultHerdrRewindDependencies, handleHerdrRewind} from "../herdr/rewind";
 import {defaultHerdrPromptDependencies, handleHerdrPrompt, midTurnPromptReady} from "../herdr/prompt";
 import {getPendingQuestion} from "../pending-question-store";
@@ -95,6 +96,8 @@ export interface TerminalHost {
 	answerElicitation: (request: Request) => Promise<Response>;
 	/** Rewind the conversation to a prompt through the CLI's own message selector. */
 	rewind: (request: Request) => Promise<Response>;
+	/** Turn the session's Remote Control bridge on or off by typing `/remote-control` (and its dialog's keys). */
+	toggleRemoteControl: (request: Request) => Promise<Response>;
 	/** Send the keys that change model, effort or mode in the live session. */
 	applyLiveOption: (request: Request) => Promise<Response>;
 	/** Launch: open a new pane running `claude`. */
@@ -136,6 +139,7 @@ const herdrTerminalHost: TerminalHost = {
 	readElicitationDialog: async (request) => handleHerdrElicitationDialog(request),
 	answerElicitation: async (request) => handleHerdrElicitation(request),
 	rewind: async (request) => handleHerdrRewind(request),
+	toggleRemoteControl: async (request) => handleHerdrRemoteControl(request),
 	applyLiveOption: async (request) => handleHerdrLiveOption(request),
 	launch: async (request) => handleHerdrLaunch(request),
 	reportHookState: (event, entry) => {
@@ -174,6 +178,7 @@ const noTerminalHost: TerminalHost = {
 	readElicitationDialog: noHostWrite,
 	answerElicitation: noHostWrite,
 	rewind: noHostWrite,
+	toggleRemoteControl: noHostWrite,
 	applyLiveOption: noHostWrite,
 	launch: noHostWrite,
 	reportHookState: () => undefined,
@@ -288,6 +293,23 @@ export function createTmuxTerminalHost(
 				readScreen: async (sessionId: string, paneId: string) =>
 					readTmuxScreen(sessionId, paneId, sources, undefined, {ansi: true}),
 				...tmuxWriteDependencies("rewind", sources, io),
+			}),
+		toggleRemoteControl: async (request) =>
+			handleHerdrRemoteControl(request, {
+				...defaultHerdrRemoteControlDependencies,
+				...writes,
+				pause: io.pause,
+				ready: (sessionId: string) => {
+					const entry = sources.entries().find((candidate) => candidate.sessionId === sessionId);
+					return (
+						entry?.state === "idle" &&
+						entry.pendingPermissionRequest === undefined &&
+						getPendingQuestion(sessionId) === null
+					);
+				},
+				readScreen: async (sessionId: string, paneId: string) =>
+					readTmuxScreen(sessionId, paneId, sources, undefined, {ansi: true}),
+				...tmuxWriteDependencies("remote-control", sources, io),
 			}),
 		applyLiveOption: async (request) =>
 			handleHerdrLiveOption(request, {

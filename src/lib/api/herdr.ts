@@ -320,3 +320,23 @@ export async function sendHerdrRewind(
 
 	HerdrPromptSuccessResponse.parse(json);
 }
+
+/** Turn the session's Remote Control bridge on or off through its live CLI; throws with the server's reason. */
+export async function toggleRemoteControl(
+	sessionId: string,
+	on: boolean,
+	fetcher: typeof fetch = fetch,
+): Promise<void> {
+	const response = await fetcher("/api/herdr/remote-control", {
+		method: "POST",
+		credentials: "same-origin",
+		headers: {"Content-Type": "application/json"},
+		body: JSON.stringify({sessionId, on}),
+	});
+	const json: unknown = await response.json();
+	if (!response.ok) {
+		const {error, code} = HerdrPromptErrorResponse.parse(json);
+		throw new HerdrRequestError(error, response.status, code);
+	}
+	HerdrPromptSuccessResponse.parse(json);
+}

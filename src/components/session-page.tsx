@@ -1184,6 +1184,7 @@ function SessionView({
 							herdrPane: herdr.panes.find((pane) => pane.sessionId === sessionId) ?? null,
 							live: sessionProcessLive({hookActive: isActive, summaryState: sessionSummaryState}),
 							working: workingMarkerState.status !== "idle",
+							canToggleRemoteControl: promptBehavior.hasLivePane && herdr.writesEnabled,
 							usage: composerChin.usage,
 							breakdown: contextBreakdown,
 							artifacts: sessionArtifacts,

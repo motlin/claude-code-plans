@@ -524,6 +524,25 @@ describe("Environment card", () => {
 		});
 	});
 
+	it("makes the Remote Control switch toggleable only where it can type into the session's pane, disabled mid-turn", async () => {
+		const switchState = () => {
+			const control = document.querySelector("[data-rail-remote-control] [role=switch]");
+			return [control?.hasAttribute("aria-readonly") ?? null, control?.hasAttribute("data-disabled") ?? null];
+		};
+		const seen: Record<string, unknown> = {};
+		for (const [name, inputs] of [
+			["readOnly", {...BASE, herdrPane: PANE}],
+			["idle", {...BASE, herdrPane: PANE, canToggleRemoteControl: true}],
+			["working", {...BASE, herdrPane: PANE, canToggleRemoteControl: true, working: true}],
+		] as const) {
+			await renderCards(inputs, bridge);
+			seen[name] = switchState();
+			cleanup();
+		}
+
+		expect(seen).toStrictEqual({readOnly: [true, false], idle: [false, false], working: [false, true]});
+	});
+
 	it("names a herdr named session beside herdr, bridged or not", async () => {
 		const named = {...PANE, paneId: "wM:p1@later", workspaceId: "wM@later"};
 		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: named}, noBridge);

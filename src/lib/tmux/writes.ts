@@ -40,7 +40,8 @@ export type TmuxWriteKind =
 	| "plan"
 	| "elicitation"
 	| "live-option"
-	| "rewind";
+	| "rewind"
+	| "remote-control";
 
 /**
  * Prompts and live option changes go into an idle composer; a mid-turn prompt
@@ -49,7 +50,7 @@ export type TmuxWriteKind =
  * shows while waiting. A permission dialog opens after PreToolUse already said
  * working, so it takes either, as do the plan approval and MCP elicitation
  * dialogs. A rewind opens the CLI's message selector, which only an idle
- * session shows.
+ * session shows; so does the `/remote-control` dialog.
  */
 const READY_STATES = {
 	prompt: ["idle"],
@@ -61,6 +62,7 @@ const READY_STATES = {
 	elicitation: ["working", "waiting"],
 	"live-option": ["idle"],
 	rewind: ["idle"],
+	"remote-control": ["idle"],
 } as const satisfies Record<TmuxWriteKind, readonly ActivityState[]>;
 
 const NAMED_KEYS: Readonly<Record<string, string>> = {

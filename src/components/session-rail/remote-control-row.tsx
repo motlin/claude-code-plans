@@ -1,10 +1,13 @@
 import {Ellipsis, MousePointer2} from "lucide-react";
-import {useId, useState} from "react";
+import {useEffect, useId, useState, useSyncExternalStore} from "react";
 
+import {HerdrRequestError, toggleRemoteControl} from "../../lib/api/herdr";
 import {writeClipboardText} from "../../lib/clipboard";
+import type {RemoteControlState} from "../../lib/session-state";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {Skeleton} from "../ui/skeleton";
+import {Spinner} from "../ui/spinner";
 import {Switch} from "../ui/switch";
 import {Tooltip} from "../ui/tooltip";
 
@@ -23,14 +26,14 @@ const OPTIONS_WRAPPER_CLASS =
 const OPTIONS_TRIGGER_CLASS =
 	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary data-[popup-open]:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-export type RemoteControlState = "on" | "off";
-
 export interface RemoteControlRowProps {
 	state: RemoteControlState;
 	/** The bridged session's claude.ai link; the options menu needs it. */
 	url: string | null;
 	onToggle?: ((on: boolean) => void) | undefined;
 	toggleDisabled?: boolean | undefined;
+	/** A turn-on is in flight: upstream shows a "Connecting" spinner and checks the switch. */
+	connecting?: boolean | undefined;
 	/**
 	 * Set when the CLI did not backfill the session's history to claude.ai (`bridge-session.noHistoryBackfill`),
 	 * with the latest `history-suppression` cause's label, or null for an unknown cause.
@@ -58,6 +61,7 @@ export function RemoteControlRow({
 	url,
 	onToggle,
 	toggleDisabled = false,
+	connecting = false,
 	historySuppressed = null,
 }: RemoteControlRowProps) {
 	const switchId = useId();
@@ -120,7 +124,13 @@ export function RemoteControlRow({
 					</Menu>
 				</span>
 			)}
-			<Switch id={switchId} checked={state === "on"} disabled={toggleDisabled} onCheckedChange={onToggle} />
+			{connecting && <Spinner size="sm" label="Connecting" />}
+			<Switch
+				id={switchId}
+				checked={state === "on" || connecting}
+				disabled={toggleDisabled}
+				onCheckedChange={onToggle}
+			/>
 		</div>
 	);
 }
@@ -135,5 +145,111 @@ export function RemoteControlRowPending() {
 			</span>
 			<Skeleton className="h-3 w-7 rounded" />
 		</div>
+	);
+}
+
+/*
+ * Toggles in flight by session id (upstream `Kf`), kept outside React so a
+ * remounted rail still shows the spinner: each holds the requested state until
+ * the bridge reaches it or 15 s pass.
+ */
+const PENDING_TIMEOUT_MS = 15_000;
+const pendingToggles = new Map<string, {on: boolean; timer: ReturnType<typeof setTimeout> | null}>();
+const pendingListeners = new Set<() => void>();
+
+function notifyPending(): void {
+	for (const listener of pendingListeners) listener();
+}
+
+function setPendingToggle(sessionId: string, on: boolean | null): void {
+	const previous = pendingToggles.get(sessionId);
+	if (previous?.timer != null) clearTimeout(previous.timer);
+	if (on === null) pendingToggles.delete(sessionId);
+	else pendingToggles.set(sessionId, {on, timer: null});
+	notifyPending();
+}
+
+/** Starts the 15 s give-up once the send has gone through. */
+function armPendingTimeout(sessionId: string): void {
+	const pending = pendingToggles.get(sessionId);
+	if (pending === undefined) return;
+	pending.timer = setTimeout(() => {
+		if (pendingToggles.get(sessionId) === pending) setPendingToggle(sessionId, null);
+	}, PENDING_TIMEOUT_MS);
+}
+
+function subscribePending(listener: () => void): () => void {
+	pendingListeners.add(listener);
+	return () => {
+		pendingListeners.delete(listener);
+	};
+}
+
+function usePendingToggle(sessionId: string): boolean | null {
+	return useSyncExternalStore(
+		subscribePending,
+		() => pendingToggles.get(sessionId)?.on ?? null,
+		() => null,
+	);
+}
+
+const TOGGLE_FAILED = "Couldn’t toggle Remote Control. Try again.";
+
+export interface RemoteControlToggleRowProps {
+	sessionId: string;
+	state: RemoteControlState;
+	url: string | null;
+	/** A turn is running: upstream's `blockedByTurn` disables the switch. */
+	working: boolean;
+	historySuppressed?: {reason: string | null} | null | undefined;
+	send?: (sessionId: string, on: boolean) => Promise<void>;
+}
+
+/**
+ * The Remote Control row with a working switch for a session in a live
+ * terminal pane: upstream's no-IPC path, which types `/remote-control` into
+ * the session, then waits for the registry's bridge state to follow.
+ */
+export function RemoteControlToggleRow({
+	sessionId,
+	state,
+	url,
+	working,
+	historySuppressed = null,
+	send = toggleRemoteControl,
+}: RemoteControlToggleRowProps) {
+	const toast = useToast();
+	const pending = usePendingToggle(sessionId);
+	useEffect(() => {
+		if (pending === null || (state === "on") !== pending) return;
+		setPendingToggle(sessionId, null);
+		toast({kind: "success", message: pending ? "Remote Control turned on." : "Remote Control turned off."});
+	}, [pending, state, sessionId, toast]);
+	const onToggle = (on: boolean) => {
+		if (pendingToggles.has(sessionId)) return;
+		setPendingToggle(sessionId, on);
+		send(sessionId, on).then(
+			() => {
+				armPendingTimeout(sessionId);
+			},
+			(error: unknown) => {
+				setPendingToggle(sessionId, null);
+				toast(
+					error instanceof HerdrRequestError && error.status === 409
+						? {kind: "warning", message: error.message}
+						: {kind: "error", message: TOGGLE_FAILED},
+				);
+			},
+		);
+	};
+	return (
+		<RemoteControlRow
+			state={state}
+			url={url}
+			onToggle={onToggle}
+			toggleDisabled={pending !== null || working}
+			connecting={pending === true && state === "off"}
+			historySuppressed={historySuppressed}
+		/>
 	);
 }
