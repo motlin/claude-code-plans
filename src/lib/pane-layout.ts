@@ -252,17 +252,25 @@ function changesFlex(root: StackNode, rowSizePx: number | undefined): number {
  * row 2:3 when it is the first side pane. Changes otherwise gets its own column
  * at the far right, sized to its minimum against `rowSizePx` (the measured row
  * width); other panes stack under / add columns before it, never inside it.
+ * On a phone (`options.phone`) Changes is no exception: like upstream at 390px,
+ * a second pane stacks under the first so both fit the one 280px side column.
  */
-export function openPane(state: PaneLayoutState, kind: PaneKind, rowSizePx?: number): PaneLayoutState {
+export function openPane(
+	state: PaneLayoutState,
+	kind: PaneKind,
+	rowSizePx?: number,
+	options: {phone?: boolean} = {},
+): PaneLayoutState {
 	if (isOpen(state, kind)) return focusPane(state, kind);
 	const children = [...state.root.children];
 	const onlyChat = children.length === 1 && children[0] !== undefined && isChat(children[0]);
-	if (kind === "changes" && !onlyChat) {
+	const changesApart = options.phone !== true;
+	if (changesApart && kind === "changes" && !onlyChat) {
 		children.push(tile(kind, changesFlex(state.root, rowSizePx)));
 		return {root: {...state.root, children}, expanded: null, focused: kind};
 	}
 	const changesColumn = children.find((child) => containsTile(child, "changes"));
-	if (kind !== "changes" && changesColumn !== undefined && children.length === 2) {
+	if (changesApart && kind !== "changes" && changesColumn !== undefined && children.length === 2) {
 		// A first side pane after a lone Changes takes the 2:3 split, and Changes falls back to its minimum.
 		const opened = openPane(
 			{...state, root: {...state.root, children: children.filter((c) => c !== changesColumn)}},
@@ -272,7 +280,7 @@ export function openPane(state: PaneLayoutState, kind: PaneKind, rowSizePx?: num
 		const withChanges = [...opened.root.children, tile("changes", changesFlex(opened.root, rowSizePx))];
 		return {...opened, root: {...opened.root, children: withChanges}};
 	}
-	const isSide = (child: LayoutNode): boolean => !isChat(child) && !containsTile(child, "changes");
+	const isSide = (child: LayoutNode): boolean => !isChat(child) && !(changesApart && containsTile(child, "changes"));
 	const lastSide = children.reduce((last, child, index) => (isSide(child) ? index : last), -1);
 	const lastNode = children[lastSide];
 	if (lastNode === undefined) {

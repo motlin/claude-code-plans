@@ -176,6 +176,18 @@ describe("openPane follows upstream placement", () => {
 		]);
 	});
 
+	it("stacks Changes like any other pane on a phone, as upstream's 390px split does", () => {
+		const files = openPane(defaultPaneLayout(), "files", 390, {phone: true});
+		const changes = openPane(defaultPaneLayout(), "changes", 390, {phone: true});
+		expect([
+			openPane(files, "changes", 390, {phone: true}),
+			openPane(changes, "files", 390, {phone: true}),
+		]).toEqual([
+			layout([tile("chat", 2), stack("column", 3, [tile("files", 1), tile("changes", 1)])], "changes"),
+			layout([tile("chat", 2), stack("column", 3, [tile("changes", 1), tile("files", 1)])], "files"),
+		]);
+	});
+
 	it("focuses an already-open pane without changing the tree", () => {
 		expect(openPane(THREE_PANES, "background-tasks")).toEqual({
 			...THREE_PANES,

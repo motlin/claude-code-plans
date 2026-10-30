@@ -669,6 +669,74 @@ describe("TileHost on a phone", () => {
 		);
 	});
 
+	it("flattens the pane surface below 640px, as upstream's phone pane has no radius or card shadow", () => {
+		mockViewport(390);
+		renderHost("session-phone");
+		openTestPane();
+
+		const classes = screen.getByRole("region", {name: "Test pane"}).className.split(" ");
+		expect({radius: classes.includes("rounded-r7"), shadow: classes.includes("shadow-panel-sm")}).toStrictEqual({
+			radius: false,
+			shadow: false,
+		});
+	});
+
+	it("stacks a second pane under the first in one 280px column below 640px, Changes included", () => {
+		mockViewport(390);
+		const unregisterChanges = registerPane("changes", {title: "Changes", render: () => <p>Changes body</p>});
+		function TwoPaneChat() {
+			const host = usePaneHost();
+			return (
+				<>
+					<button
+						type="button"
+						onClick={() => {
+							host.openPane("plan");
+						}}
+					>
+						Open test pane
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							host.openPane("changes");
+						}}
+					>
+						Open changes
+					</button>
+				</>
+			);
+		}
+		render(
+			<TileHost sessionId="session-phone">
+				<TwoPaneChat />
+			</TileHost>,
+		);
+		openTestPane();
+		fireEvent.click(screen.getByRole("button", {name: "Open changes"}));
+
+		const root = document.querySelector("[data-tile-stack=row]");
+		const column = document.querySelector("[data-tile-stack=column]");
+		expect({
+			rootChildren: Array.from(root?.children ?? []).map((child) =>
+				child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-host") ?? "stack"),
+			),
+			column: Array.from(column?.children ?? []).map((child) =>
+				child.matches("[role=separator]")
+					? {divider: child.classList.contains("h-px") && !child.classList.contains("h-3")}
+					: child.getAttribute("data-tile-host"),
+			),
+			columnPhone: column?.parentElement?.hasAttribute("data-pane-phone"),
+			columnMin: column?.parentElement?.classList.contains("min-w-[280px]"),
+		}).toStrictEqual({
+			rootChildren: ["chat", "divider", "stack"],
+			column: ["plan", {divider: true}, "changes"],
+			columnPhone: true,
+			columnMin: true,
+		});
+		unregisterChanges();
+	});
+
 	it("keeps the side-by-side tile with its resize handle at 640px and up", () => {
 		mockViewport(640);
 		renderHost("session-wide");

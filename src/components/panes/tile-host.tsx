@@ -218,8 +218,8 @@ function Divider({
 	const total = stack.children.reduce((sum, child) => sum + child.flex, 0);
 	const prefixFlex = stack.children.slice(0, index).reduce((sum, child) => sum + child.flex, 0);
 	const now = Math.round(((prefixFlex + before.flex) / total) * 100);
-	// Below 640px upstream's root divider is a 1px hairline with an 8px hit zone, not the 12px gap.
-	const hairline = host.phone && path.length === 0 && stack.direction === "row";
+	// Below 640px upstream's dividers are 1px hairlines with an 8px hit zone, not the 12px gap.
+	const hairline = host.phone;
 	const gapPx = hairline ? 1 : TILE_GAP_PX;
 	const available = sizePx - gapPx * (stack.children.length - 1);
 	const bounds =
@@ -291,7 +291,9 @@ function Divider({
 			onPointerCancel={onPointerUp}
 			className={`group/divider relative flex shrink-0 touch-none items-center justify-center outline-none ${
 				hairline
-					? "w-px cursor-col-resize before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
+					? isRow
+						? "w-px cursor-col-resize before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
+						: "h-px cursor-row-resize before:absolute before:inset-x-0 before:-top-1 before:h-2 before:content-['']"
 					: isRow
 						? "w-3 cursor-col-resize"
 						: "h-3 cursor-row-resize"
@@ -582,7 +584,10 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			data-perf-screen={kind}
 			data-focus-region="pane"
 			aria-label={definition.title}
-			className="relative isolate flex h-full min-w-0 flex-col rounded-r7 bg-surface-2 shadow-panel-sm"
+			className={`relative isolate flex h-full min-w-0 flex-col bg-surface-2 ${
+				// Upstream's phone pane is flat: no radius, no card shadow (measured at 386px, 2026-10-30).
+				host.phone ? "" : "rounded-r7 shadow-panel-sm"
+			}`}
 		>
 			{definition.header === "custom" ? (
 				definition.render({moveHandle, controls})
@@ -817,8 +822,8 @@ export function TileHost({
 		update(collapsePane);
 	}, [layout.expanded, update]);
 	const open = useCallback(
-		(state: PaneLayoutState, kind: PaneKind) => openPane(state, kind, sizeAlong(rootRef.current, "row")),
-		[],
+		(state: PaneLayoutState, kind: PaneKind) => openPane(state, kind, sizeAlong(rootRef.current, "row"), {phone}),
+		[phone],
 	);
 
 	useEffect(() => {
