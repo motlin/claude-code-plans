@@ -140,6 +140,129 @@ describe("GET /api/sessions/$id/api-requests/$requestId", () => {
 		});
 	});
 
+	it("resolves tail hashes with no blob to the transcript records the CLI hashed instead", async () => {
+		// Records copied from a real 2.1.314 session (only `message.role`/`id`/`content` feed the hash), with the
+		// real requests' tails: the CLI writes a blob only for a message whose hash its transcript doesn't already
+		// cover, hashing each consecutive run of same-role records (same message id for assistants) as one message.
+		const assistantText = {
+			type: "assistant",
+			message: {
+				role: "assistant",
+				id: "msg_011CgWLTJFxhUHDVSW6PunyX",
+				content: [
+					{
+						type: "text",
+						text: 'Task completed successfully: 7e6757bf is good. Starting task: "Fix React error #185".',
+					},
+				],
+			},
+		};
+		const assistantToolUse = {
+			type: "assistant",
+			message: {
+				role: "assistant",
+				id: "msg_011CgWLTJFxhUHDVSW6PunyX",
+				content: [
+					{
+						type: "tool_use",
+						id: "toolu_01FWkWZnm4ojFjQ8V2LSJY4M",
+						name: "Agent",
+						input: {
+							description: "Do one task: React #185 fix",
+							prompt: "Follow the markdown-tasks:do-one-task skill.",
+						},
+						caller: {type: "direct"},
+					},
+				],
+			},
+		};
+		const monitorResult = {
+			type: "user",
+			message: {
+				role: "user",
+				content: [
+					{
+						tool_use_id: "toolu_01828Eas8TULx3v5xB4JhvHD",
+						type: "tool_result",
+						content:
+							"Monitor started (task bv9cxjw8j, expires in 30m unless the source ends first; you get one notice at expiry — re-arm if you still need the watch). You will be notified on each event. Keep working — do not poll or sleep. Events may arrive while you are waiting for the user — an event is not their reply.",
+					},
+				],
+			},
+		};
+		const curlResult = {
+			type: "user",
+			message: {
+				role: "user",
+				content: [
+					{
+						tool_use_id: "toolu_01PJEAMo71V6ddTwDEKPAcHN",
+						type: "tool_result",
+						content: "200",
+						is_error: false,
+					},
+				],
+			},
+		};
+		const assistantHash = "af26fd184cf244206280c2d8e9da8a8319011a3769afa9022fd9f7afe48603fa";
+		const userHash = "d9515b0c43cf054dba4438f6dc222b88010a9af1ac91c58777a6e7eec455095f";
+		const unlogged = "14be5fd51e3175088905193456cb0e56a7a5c4fed2cb55069984c1a5dca7f112";
+		seedSession("s", [
+			assistantText,
+			{type: "attachment", attachment: {type: "todo_reminder"}},
+			assistantToolUse,
+			monitorResult,
+			curlResult,
+			{...request, id: "r1", tail: [assistantHash, unlogged]},
+			{...request, id: "r2", tail: [userHash]},
+		]);
+		expect(await getMessages("s", "r1")).toStrictEqual({
+			found: true,
+			messages: [
+				{
+					hash: assistantHash,
+					role: "assistant",
+					blocks: [
+						{type: "text", text: assistantText.message.content[0]!.text},
+						{
+							type: "tool_use",
+							id: "toolu_01FWkWZnm4ojFjQ8V2LSJY4M",
+							name: "Agent",
+							input: JSON.stringify(assistantToolUse.message.content[0]!.input, null, 2),
+						},
+					],
+				},
+			],
+			missing: [unlogged],
+		});
+		expect(await getMessages("s", "r2")).toStrictEqual({
+			found: true,
+			messages: [
+				{
+					hash: userHash,
+					role: "user",
+					blocks: [
+						{
+							type: "tool_result",
+							toolUseId: "toolu_01828Eas8TULx3v5xB4JhvHD",
+							isError: false,
+							text: monitorResult.message.content[0]!.content,
+							images: [],
+						},
+						{
+							type: "tool_result",
+							toolUseId: "toolu_01PJEAMo71V6ddTwDEKPAcHN",
+							isError: false,
+							text: "200",
+							images: [],
+						},
+					],
+				},
+			],
+			missing: [],
+		});
+	});
+
 	it("reports an unlogged request as not found", async () => {
 		seedSession("s", [blob("h1", {role: "user", content: "hi"}), request]);
 		expect(await getMessages("s", "nope")).toStrictEqual({found: false, messages: [], missing: []});
