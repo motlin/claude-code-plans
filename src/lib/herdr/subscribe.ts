@@ -15,6 +15,7 @@ import {
 import {isSessionVisible} from "../session-visibility";
 import {getActiveSessionEntries} from "../active-session-store";
 import {probeHerdrSocket, type HerdrAvailability} from "./availability";
+import {herdrReconnectState} from "./reconnect-state";
 import {herdrRequest} from "./client";
 import {splitHerdrId} from "./herdr-id";
 import {createHerdrPaneDiffer, extractPaneRevision} from "./pane-differ";
@@ -84,6 +85,8 @@ interface BridgeDependencies {
 	schedule: (callback: () => void, delayMs: number) => Timer;
 	cancel: (timer: Timer) => void;
 	viewedStateTracker: Pick<ReturnType<typeof createHerdrViewedStateTracker>, "syncPanes" | "handleStatusEvent">;
+	/** Report whether this bridge lost herdr and has not yet resubscribed. */
+	setReconnecting: (reconnecting: boolean) => void;
 }
 
 type IndexDb = ReturnType<typeof getDb>["index"];
@@ -151,6 +154,9 @@ function bridgeDependenciesFor(server: HerdrServer): BridgeDependencies {
 		cancel: clearTimeout,
 		// One tracker for every server: each resync hands it the panes of all of them.
 		viewedStateTracker: sharedViewedStateTracker,
+		setReconnecting: (reconnecting) => {
+			herdrReconnectState.set(server.socketPath, reconnecting);
+		},
 	};
 }
 
@@ -186,6 +192,8 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 	let reconnectPending = false;
 	let resyncRunning = false;
 	let resyncAgain = false;
+	// Set from losing herdr until a resubscribe starts; a deliberate resubscribe never sets it.
+	let lostHerdr = false;
 	let socketPath = "";
 	// herdr replays pane_created for every existing pane on each subscribe, so
 	// the bridge must remember what it has already announced across reconnects
@@ -295,6 +303,10 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		const handleDisconnect = (): void => {
 			if (stopped || reconnectPending || socket !== nextSocket) return;
 			paneTable.invalidate();
+			if (!lostHerdr) {
+				lostHerdr = true;
+				dependencies.setReconnecting(true);
+			}
 			scheduleReconnect();
 		};
 		nextSocket.on("error", handleDisconnect);
@@ -303,7 +315,14 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		nextLineReader.on("line", (line) => {
 			if (stopped || line.trim() === "") return;
 			const message = parseMessage(line);
-			if (!message || isSubscriptionStarted(message)) return;
+			if (!message) return;
+			if (isSubscriptionStarted(message)) {
+				if (lostHerdr) {
+					lostHerdr = false;
+					dependencies.setReconnecting(false);
+				}
+				return;
+			}
 
 			const pushedEvent = message["event"];
 			const rawData = message["data"];
@@ -397,6 +416,10 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		lineReader?.close();
 		socket?.destroy();
 		paneTable.invalidate();
+		if (lostHerdr) {
+			lostHerdr = false;
+			dependencies.setReconnecting(false);
+		}
 		probeRetryTimer = null;
 		reconnectTimer = null;
 		resyncTimer = null;

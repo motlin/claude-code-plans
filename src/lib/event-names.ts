@@ -28,6 +28,8 @@ export const HERDR_EVENTS = {
 	PANE_EXITED: "herdr:pane-exited",
 	PANE_AGENT_DETECTED: "herdr:pane-agent-detected",
 	PANE_AGENT_STATUS_CHANGED: "herdr:pane-agent-status-changed",
+	/** Whether a bridge is resubscribing after losing herdr: `{reconnecting: boolean}`, across all herdr servers. */
+	CONNECTION_CHANGED: "herdr:connection-changed",
 } as const;
 
 /**

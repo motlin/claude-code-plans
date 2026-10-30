@@ -132,6 +132,7 @@ describe("herdr event bridge", () => {
 			},
 			cancel: clearTimeout,
 			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 
@@ -174,6 +175,7 @@ describe("herdr event bridge", () => {
 			},
 			cancel,
 			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 
@@ -212,6 +214,7 @@ describe("herdr event bridge", () => {
 			schedule: setTimeout,
 			cancel: clearTimeout,
 			viewedStateTracker: tracker,
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 
@@ -311,6 +314,7 @@ describe("herdr event bridge", () => {
 			},
 			cancel: clearTimeout,
 			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 
@@ -361,6 +365,7 @@ describe("herdr event bridge", () => {
 			},
 			cancel: clearTimeout,
 			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 		const socket = sockets[0]!;
@@ -410,6 +415,7 @@ describe("herdr event bridge", () => {
 			schedule: setTimeout,
 			cancel: clearTimeout,
 			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 		const socket = sockets[0]!;
@@ -460,6 +466,7 @@ describe("herdr event bridge", () => {
 			schedule: setTimeout,
 			cancel: clearTimeout,
 			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 		sockets[0]!.emit("connect");
@@ -514,6 +521,7 @@ describe("herdr event bridge", () => {
 			schedule: setTimeout,
 			cancel: clearTimeout,
 			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 		sockets[0]!.emit("connect");
@@ -571,6 +579,7 @@ describe("herdr event bridge", () => {
 			schedule: setTimeout,
 			cancel: clearTimeout,
 			viewedStateTracker: tracker,
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 		sockets[0]!.emit("connect");
@@ -630,6 +639,7 @@ describe("herdr event bridge", () => {
 			schedule: setTimeout,
 			cancel: clearTimeout,
 			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 		const seeded = paneTable.current();
@@ -713,6 +723,7 @@ describe("herdr event bridge", () => {
 			schedule: setTimeout,
 			cancel: clearTimeout,
 			viewedStateTracker: tracker,
+			setReconnecting: () => {},
 		});
 		await flushPromises();
 		sockets[0]!.emit("connect");
@@ -732,6 +743,73 @@ describe("herdr event bridge", () => {
 			written: [__testing.subscriptionRequest(["wM:p1"])],
 			statusEvents: [[qualifiedStatus]],
 			broadcasts: [{type: HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED, data: qualifiedStatus}],
+		});
+	});
+
+	it("reports reconnecting from losing herdr until the resubscribe starts, but not for a deliberate resubscribe", async () => {
+		const sockets: FakeSocket[] = [];
+		const lineReaders: FakeLineReader[] = [];
+		const reconnecting: boolean[] = [];
+		const stop = __testing.createBridge({
+			probe: available,
+			connect: () => {
+				const socket = new FakeSocket();
+				sockets.push(socket);
+				return socket as unknown as Socket;
+			},
+			createLineReader: () => {
+				const lineReader = new FakeLineReader();
+				lineReaders.push(lineReader);
+				return lineReader as unknown as ReadlineInterface;
+			},
+			getSnapshot: async () => Promise.resolve(paneState([{paneId: "w1:p1", revision: 0}])),
+			getPanes: async () => Promise.resolve([]),
+			paneTable: createHerdrPaneTable(),
+			broadcast: () => {},
+			schedule: setTimeout,
+			cancel: clearTimeout,
+			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: (value) => reconnecting.push(value),
+		});
+		await flushPromises();
+		sockets[0]!.emit("connect");
+		lineReaders[0]!.send({id: "ccp:sub", result: {type: "subscription_started"}});
+		const afterFirstSubscribe = [...reconnecting];
+
+		// A new pane forces a resubscribe, which is not herdr going away.
+		lineReaders[0]!.send({event: "pane_created", data: {pane: wirePane("w1:p2", 0)}});
+		await vi.advanceTimersByTimeAsync(250);
+		sockets[1]!.emit("connect");
+		lineReaders[1]!.send({id: "ccp:sub", result: {type: "subscription_started"}});
+		const afterDeliberateResubscribe = [...reconnecting];
+
+		sockets[1]!.emit("error", new Error("herdr went away"));
+		const afterHangUp = [...reconnecting];
+		await vi.advanceTimersByTimeAsync(250);
+		sockets[2]!.emit("error", new Error("herdr still down"));
+		await vi.advanceTimersByTimeAsync(500);
+		const whileResubscribing = [...reconnecting];
+		sockets[3]!.emit("connect");
+		lineReaders[3]!.send({id: "ccp:sub", result: {type: "subscription_started"}});
+		const afterRecovery = [...reconnecting];
+
+		sockets[3]!.emit("close");
+		stop();
+
+		expect({
+			afterFirstSubscribe,
+			afterDeliberateResubscribe,
+			afterHangUp,
+			whileResubscribing,
+			afterRecovery,
+			afterStop: reconnecting,
+		}).toStrictEqual({
+			afterFirstSubscribe: [],
+			afterDeliberateResubscribe: [],
+			afterHangUp: [true],
+			whileResubscribing: [true],
+			afterRecovery: [true, false],
+			afterStop: [true, false, true, false],
 		});
 	});
 });

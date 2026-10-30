@@ -10,6 +10,7 @@ import {
 	SessionSummaryPayloadSchema,
 } from "../lib/domain-event-payload-schemas";
 import {asRecord} from "../lib/narrow";
+import {herdrConnectionQueryOptions} from "../lib/api/herdr-connection";
 import {PendingQuestionResponse, applyPendingQuestionChanged} from "../lib/api/pending-question";
 import {PendingPlanResponse, applyPendingPlanChanged} from "../lib/api/pending-plan";
 import {PendingElicitationsResponse, applyPendingElicitationsChanged} from "../lib/api/pending-elicitations";
@@ -54,7 +55,8 @@ import {
 // ---------------------------------------------------------------------------
 
 const LIFECYCLE_EVENT_TYPES = [SSE_EVENTS.SESSION_START, SSE_EVENTS.SESSION_END] as const;
-const HERDR_EVENT_TYPES = Object.values(HERDR_EVENTS);
+// The connection event carries its own state, so it updates that query instead of refetching the pane read models.
+const HERDR_EVENT_TYPES = Object.values(HERDR_EVENTS).filter((type) => type !== HERDR_EVENTS.CONNECTION_CHANGED);
 
 const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SESSION_ADDED,
@@ -618,6 +620,13 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 			void queryClient.invalidateQueries({queryKey: sessionQueryKeys.all()});
 		}
 
+		function handleHerdrConnectionEvent(e: Event) {
+			const reconnecting = eventJson(e)?.["reconnecting"];
+			if (typeof reconnecting === "boolean") {
+				queryClient.setQueryData(herdrConnectionQueryOptions.queryKey, {reconnecting});
+			}
+		}
+
 		// SSE reconnection safety: with staleTime: Infinity, data is never
 		// "stale" so refetchOnReconnect won't refetch after a disconnect.
 		// On reconnect, catch up on the events missed during the gap. Every tab of the
@@ -633,6 +642,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				for (const eventType of HERDR_EVENT_TYPES) {
 					es.addEventListener(eventType, handleHerdrEvent);
 				}
+				es.addEventListener(HERDR_EVENTS.CONNECTION_CHANGED, handleHerdrConnectionEvent);
 				es.addEventListener(SSE_EVENTS.STATUSLINE_UPDATED, handleStatuslineEvent);
 			},
 			onReconnected: () => {

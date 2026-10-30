@@ -7,6 +7,7 @@ import {useEffect, type ReactNode} from "react";
 import {useSubscribeSessionRemovals} from "../src/hooks/use-claude-events";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {sessionQueryKeys, transcriptQueryOptions, type TranscriptData} from "../src/lib/api/sessions";
+import {herdrConnectionQueryOptions} from "../src/lib/api/herdr-connection";
 import {DOMAIN_EVENTS, HERDR_EVENTS, type SessionSummaryPayload} from "../src/lib/hook-events";
 
 class TestEventSource extends EventTarget {
@@ -130,6 +131,22 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 			herdrPanes: true,
 			herdrWorkspaces: true,
 			terminalPlacements: true,
+		});
+	});
+
+	it("stores the herdr connection's reconnect state from its event without refetching the Herdr read models", () => {
+		const {client, eventSource} = renderProvider();
+
+		act(() => {
+			eventSource.emit(HERDR_EVENTS.CONNECTION_CHANGED, {reconnecting: true});
+		});
+
+		expect({
+			connection: client.getQueryData(herdrConnectionQueryOptions.queryKey),
+			invalidation: invalidationState(client),
+		}).toStrictEqual({
+			connection: {reconnecting: true},
+			invalidation: {herdrPanes: false, herdrWorkspaces: false, terminalPlacements: false},
 		});
 	});
 

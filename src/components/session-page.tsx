@@ -189,6 +189,7 @@ import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {getSessionPromptBehavior} from "./session-prompt-behavior";
 import {sessionAnswerRoute, sessionLiveness} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
+import {useHerdrReconnecting} from "../hooks/use-herdr-reconnecting";
 import {
 	errorRecoveryAvailability,
 	errorRecoveryHandlers,
@@ -699,6 +700,7 @@ function SessionView({
 			.map((pane) => `${pane.paneId}@${pane.revision}`)
 			.join(","),
 	);
+	const herdrReconnecting = useHerdrReconnecting(liveHerdrPrompt.state.phase === "held");
 	const {retryRejection, dismissRejection} = useSendRejectionActions(
 		sessionId,
 		liveHerdrPrompt.state.rejection,
@@ -1572,10 +1574,9 @@ function SessionView({
 								<SendingUserRow prompt={liveHerdrPrompt.state.prompt} />
 							)}
 							{liveHerdrPrompt.state.phase === "held" && (
-								// The herdr subscription's reconnect state isn't sent to the browser yet, so this never says reconnecting.
 								<HeldUserRow
 									prompt={liveHerdrPrompt.state.prompt}
-									reconnecting={false}
+									reconnecting={herdrReconnecting}
 									onWithdraw={liveHerdrPrompt.withdraw}
 								/>
 							)}
