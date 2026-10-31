@@ -9,16 +9,24 @@ const BACKWARD_READ_BYTES = 64 * 1024;
 const NEWLINE = 0x0a;
 
 /**
+ * The most transcript bytes a resume replays. A live append is a few kilobytes; a transcript the index has not reached
+ * yet (every one, right after a schema change wipes the index) can be hundreds of megabytes, and replaying it parsed
+ * every record into one `session:lines-appended` event and ran the server out of heap. Past this, the read starts at
+ * the end and the index, not the broadcast, catches the transcript up.
+ */
+export const MAX_JSONL_REPLAY_BYTES = 1024 * 1024;
+
+/**
  * Where to start reading a transcript's appended lines when this process has no byte offset for it yet, as after a
- * restart: the start of the line the index stopped in, or the start of the file for a transcript the index has not
- * seen or that shrank since. Starting at zero instead re-reads and re-broadcasts a long transcript's whole history
- * in one `session:lines-appended` event, whose serialization blocks the event loop for hundreds of milliseconds.
+ * restart: the start of the line the index stopped in, or the start of the file for a short transcript the index has
+ * not seen or that shrank since. Starting at zero instead re-reads and re-broadcasts a long transcript's whole history
+ * in one `session:lines-appended` event, whose serialization blocks the event loop for hundreds of milliseconds, so
+ * when that would replay more than `MAX_JSONL_REPLAY_BYTES` the read starts at the line the file now ends in.
  */
 export async function jsonlResumeOffset(db: IndexDb, filePath: string): Promise<number> {
 	// The scan indexes transcripts under the resolved projects directory, while hooks name them by the unresolved one.
 	const indexedSize =
 		indexedSizeBytes(db, filePath) ?? indexedSizeBytes(db, await realpath(filePath).catch(() => ""));
-	if (indexedSize === undefined || indexedSize <= 0) return 0;
 
 	let handle;
 	try {
@@ -28,8 +36,11 @@ export async function jsonlResumeOffset(db: IndexDb, filePath: string): Promise<
 	}
 	try {
 		const {size} = await handle.stat();
-		if (indexedSize > size) return 0;
-		return await lineStartAtOrBefore(handle, indexedSize);
+		const resumeAt =
+			indexedSize === undefined || indexedSize <= 0 || indexedSize > size
+				? 0
+				: await lineStartAtOrBefore(handle, indexedSize);
+		return size - resumeAt > MAX_JSONL_REPLAY_BYTES ? await lineStartAtOrBefore(handle, size) : resumeAt;
 	} finally {
 		await handle.close();
 	}

@@ -4,7 +4,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
-import {jsonlReadOffset, jsonlResumeOffset} from "../src/lib/jsonl-resume-offset";
+import {MAX_JSONL_REPLAY_BYTES, jsonlReadOffset, jsonlResumeOffset} from "../src/lib/jsonl-resume-offset";
 
 describe("jsonlResumeOffset", () => {
 	let root: string;
@@ -62,6 +62,48 @@ describe("jsonlResumeOffset", () => {
 		recordIndexedSize(path, 1000);
 
 		expect(await jsonlResumeOffset(db.index, path)).toBe(0);
+	});
+
+	it("starts a never-indexed transcript longer than the replay bound at its end", async () => {
+		const path = join(root, "unindexed-long.jsonl");
+		const line = `${JSON.stringify({text: "x".repeat(1000)})}\n`;
+		const contents = line.repeat(Math.ceil(MAX_JSONL_REPLAY_BYTES / line.length) + 1);
+		writeFileSync(path, contents);
+
+		expect(contents.length).toBeGreaterThan(MAX_JSONL_REPLAY_BYTES);
+		expect(await jsonlResumeOffset(db.index, path)).toBe(contents.length);
+	});
+
+	it("starts a never-indexed transcript longer than the replay bound at the start of its partial last line", async () => {
+		const path = join(root, "unindexed-long-partial.jsonl");
+		const line = `${JSON.stringify({text: "x".repeat(1000)})}\n`;
+		const complete = line.repeat(Math.ceil(MAX_JSONL_REPLAY_BYTES / line.length) + 1);
+		writeFileSync(path, `${complete}{"b`);
+
+		expect(complete.length).toBeGreaterThan(MAX_JSONL_REPLAY_BYTES);
+		expect(await jsonlResumeOffset(db.index, path)).toBe(complete.length);
+	});
+
+	it("skips to the end when more than the replay bound was appended since the index stopped", async () => {
+		const path = join(root, "far-behind.jsonl");
+		const line = `${JSON.stringify({text: "x".repeat(1000)})}\n`;
+		const contents = line.repeat(Math.ceil(MAX_JSONL_REPLAY_BYTES / line.length) + 2);
+		writeFileSync(path, contents);
+		recordIndexedSize(path, line.length);
+
+		expect(contents.length - line.length).toBeGreaterThan(MAX_JSONL_REPLAY_BYTES);
+		expect(await jsonlResumeOffset(db.index, path)).toBe(contents.length);
+	});
+
+	it("starts a rewritten transcript longer than the replay bound at its end", async () => {
+		const path = join(root, "rewritten-long.jsonl");
+		const line = `${JSON.stringify({text: "x".repeat(1000)})}\n`;
+		const contents = line.repeat(Math.ceil(MAX_JSONL_REPLAY_BYTES / line.length) + 1);
+		writeFileSync(path, contents);
+		recordIndexedSize(path, contents.length * 2);
+
+		expect(contents.length).toBeGreaterThan(MAX_JSONL_REPLAY_BYTES);
+		expect(await jsonlResumeOffset(db.index, path)).toBe(contents.length);
 	});
 
 	it("starts from the beginning when the transcript is gone", async () => {

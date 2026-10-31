@@ -1,6 +1,6 @@
 import {eq} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
-import {readFile, realpath, stat} from "node:fs/promises";
+import {realpath, stat} from "node:fs/promises";
 import {isAbsolute, relative} from "node:path";
 import {
 	formatDiffScope,
@@ -27,6 +27,7 @@ import {
 	type ScopeDiffOptions,
 } from "./session-diff";
 import {aggregateSessionEdits, findTurnUuids} from "./session-edits-diff";
+import {coalescePerKey, forEachTranscriptLine} from "./transcript-stream";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -62,15 +63,23 @@ async function resolveDirectory(cwd: string): Promise<string | null> {
 	}
 }
 
-export async function readRecords(filePath: string): Promise<JsonlRecord[]> {
-	let text: string;
+/**
+ * The transcript's records, without its `api-request` records, which no diff, undo or rewind reads. One read per
+ * transcript runs at a time: the changes pane asks for the session diff and each long file's patch at once, and every
+ * append refetches them.
+ */
+export const readRecords: (filePath: string) => Promise<JsonlRecord[]> = coalescePerKey(async (filePath) => {
+	const records: JsonlRecord[] = [];
 	try {
-		text = await readFile(filePath, "utf8");
+		await forEachTranscriptLine(filePath, (line) => {
+			const record = parseJsonlRecord(line);
+			if (record !== null) records.push(record);
+		});
 	} catch {
 		return [];
 	}
-	return text.split("\n").flatMap((line) => parseJsonlRecord(line) ?? []);
-}
+	return records;
+});
 
 export function jsonResponse(body: unknown, status = 200): Response {
 	return Response.json(body, {status, headers: {"Cache-Control": PRIVATE_NO_CACHE}});

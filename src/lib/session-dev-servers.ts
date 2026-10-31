@@ -8,27 +8,29 @@ import {
 	type DevServer,
 } from "./dev-server-links";
 import {probeDevServer} from "./dev-server-probe";
+import {coalescePerKey, forEachTranscriptLine} from "./transcript-stream";
 
 export interface ProbedDevServer extends DevServer {
 	live: boolean;
 }
 
-async function readRecords(filePath: string): Promise<unknown[]> {
-	let text: string;
+/** The transcript's tool records, streamed so a long transcript is never held as one string; one read per file at a time. */
+const readRecords = coalescePerKey(async (filePath): Promise<unknown[]> => {
+	const records: unknown[] = [];
 	try {
-		text = await readFile(filePath, "utf-8");
+		await forEachTranscriptLine(filePath, (line) => {
+			if (!line.includes('"tool_')) return;
+			try {
+				records.push(JSON.parse(line) as unknown);
+			} catch {
+				// a malformed line holds no dev server
+			}
+		});
 	} catch {
 		return [];
 	}
-	return text.split("\n").flatMap((line) => {
-		if (!line.includes('"tool_')) return [];
-		try {
-			return [JSON.parse(line) as unknown];
-		} catch {
-			return [];
-		}
-	});
-}
+	return records;
+});
 
 async function readLaunchJson(cwd: string): Promise<DevServer[]> {
 	try {
