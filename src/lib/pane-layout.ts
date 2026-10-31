@@ -55,10 +55,22 @@ export interface StackNode {
 
 export type LayoutNode = TileNode | StackNode;
 
+/**
+ * Where a closed pane sat, upstream's `closedPaneSlotsBySession` entry: the
+ * tiles of the sibling it sat beside (`anchorIds`), the tiles after it in a
+ * row (`otherSideIds`), its parent stack's direction, whether it came before
+ * (0) or after (1) the anchor, and its flex over the siblings' total.
+ */
+export type ClosedPaneSlot = z.infer<typeof ClosedPaneSlotSchema>;
+
+type ClosedPaneSlots = z.infer<typeof ClosedPaneSlotsSchema>;
+
 export interface PaneLayoutState {
 	root: StackNode;
 	expanded: PaneKind | null;
 	focused: TileId;
+	/** Present only while some closed pane has a slot to reopen into. */
+	closedSlots?: ClosedPaneSlots;
 }
 
 /** Gap between tiles (upstream `--tiles-gap`). */
@@ -83,13 +95,27 @@ const StackNodeSchema: z.ZodType<StackNode> = z.strictObject({
 
 const LayoutNodeSchema: z.ZodType<LayoutNode> = z.union([TileNodeSchema, StackNodeSchema]);
 
+/** Upstream's accepted slot ratio range. */
+const SLOT_RATIO_RANGE = [0.001, 1000] as const;
+
+const ClosedPaneSlotSchema = z.strictObject({
+	anchorIds: z.array(TileIdSchema),
+	otherSideIds: z.array(TileIdSchema),
+	direction: DirectionSchema,
+	side: z.union([z.literal(0), z.literal(1)]),
+	ratio: z.number().min(SLOT_RATIO_RANGE[0]).max(SLOT_RATIO_RANGE[1]),
+});
+
+const ClosedPaneSlotsSchema = z.partialRecord(PaneKindSchema, ClosedPaneSlotSchema);
+
 const PaneLayoutShape = {
 	root: StackNodeSchema,
 	expanded: PaneKindSchema.nullable(),
 	focused: TileIdSchema,
+	closedSlots: ClosedPaneSlotsSchema.optional(),
 };
 
-function checkLayout(state: PaneLayoutState, ctx: z.RefinementCtx): void {
+function checkLayout(state: Pick<PaneLayoutState, "root" | "expanded" | "focused">, ctx: z.RefinementCtx): void {
 	const ids = tileIds(state.root);
 	if (new Set(ids).size !== ids.length) ctx.addIssue({code: "custom", message: "duplicate tile"});
 	if (!ids.includes("chat")) ctx.addIssue({code: "custom", message: "missing chat tile"});
@@ -230,26 +256,153 @@ function pathTo(node: LayoutNode, tileId: TileId): number[] | undefined {
 	return undefined;
 }
 
+function withClosedSlots(state: PaneLayoutState, slots: ClosedPaneSlots): PaneLayoutState {
+	const {closedSlots: _previous, ...rest} = state;
+	return Object.keys(slots).length === 0 ? rest : {...rest, closedSlots: slots};
+}
+
+function withoutSlot(slots: ClosedPaneSlots | undefined, kind: PaneKind): ClosedPaneSlots {
+	const {[kind]: _closed, ...rest} = slots ?? {};
+	return rest;
+}
+
+/** Upstream's slot capture: the closing tile's sibling, side and share of its parent stack. */
+function captureSlot(root: StackNode, kind: PaneKind): ClosedPaneSlot | null {
+	const path = pathTo(root, kind);
+	const index = path?.at(-1);
+	const parent = path === undefined ? undefined : nodeAt(root, path.slice(0, -1));
+	if (parent?.kind !== "stack" || index === undefined || parent.children.length < 2) return null;
+	const side = index > 0 ? 1 : 0;
+	const anchor = parent.children[side === 1 ? index - 1 : index + 1];
+	const own = parent.children[index];
+	if (anchor === undefined || own === undefined) return null;
+	const after = side === 1 ? parent.children[index + 1] : undefined;
+	const rest = sumFlex(parent.children) - own.flex;
+	return {
+		anchorIds: tileIds(anchor),
+		otherSideIds: after === undefined ? [] : tileIds(after),
+		direction: parent.direction,
+		side,
+		ratio: own.flex > 0 && rest > 0 ? own.flex / rest : 1,
+	};
+}
+
+function commonPrefix(a: readonly number[], b: readonly number[]): number[] {
+	let length = 0;
+	while (length < a.length && length < b.length && a[length] === b[length]) length += 1;
+	return a.slice(0, length);
+}
+
+/**
+ * Upstream's slot restore: puts the pane back beside the smallest node holding
+ * the surviving anchors, on its old side and at its old ratio. Returns null
+ * when no anchor survives, or when a row slot's far neighbour has changed.
+ */
+function restoreSlot(state: PaneLayoutState, kind: PaneKind, slot: ClosedPaneSlot): StackNode | null {
+	const root = structuredClone(state.root);
+	const present = new Set<TileId>();
+	let commonPath: number[] | null = null;
+	for (const id of slot.anchorIds) {
+		const path = pathTo(root, id);
+		if (path === undefined) continue;
+		present.add(id);
+		commonPath = commonPath === null ? path : commonPrefix(commonPath, path);
+	}
+	if (commonPath === null) return null;
+	let node = nodeAt(root, commonPath);
+	if (node === undefined) return null;
+	if (node.kind === "stack") {
+		// Anchors that are a contiguous run of this stack's children get their own sub-stack to sit beside.
+		const cover = node.children.map((child) => {
+			const ids = tileIds(child);
+			const count = ids.filter((id) => present.has(id)).length;
+			return count === 0 ? "none" : count === ids.length ? "all" : "some";
+		});
+		const first = cover.indexOf("all");
+		const last = cover.lastIndexOf("all");
+		if (
+			first >= 0 &&
+			!cover.includes("some") &&
+			cover.includes("none") &&
+			cover.slice(first, last + 1).every((entry) => entry === "all")
+		) {
+			const group = node.children.splice(first, last - first + 1);
+			const grouped: StackNode = {
+				kind: "stack",
+				direction: node.direction,
+				flex: sumFlex(group),
+				children: group,
+			};
+			node.children.splice(first, 0, grouped);
+			commonPath = [...commonPath, first];
+			node = grouped;
+		}
+	}
+	const index = commonPath.at(-1);
+	const parent = index === undefined ? undefined : nodeAt(root, commonPath.slice(0, -1));
+	const parentStack = parent?.kind === "stack" ? parent : null;
+	const target =
+		parentStack?.direction === slot.direction
+			? parentStack
+			: node.kind === "stack" && node.direction === slot.direction
+				? node
+				: null;
+	if (target !== null) {
+		const flex = round(slot.ratio * sumFlex(target.children));
+		if (!Number.isFinite(flex) || flex <= 0) return null;
+		const at =
+			target === parentStack && index !== undefined ? index + slot.side : slot.side * target.children.length;
+		const beyond =
+			target === parentStack && slot.direction === "row"
+				? target.children[slot.side === 1 ? at : at - 1]
+				: undefined;
+		if (beyond !== undefined && !tileIds(beyond).some((id) => slot.otherSideIds.includes(id))) return null;
+		target.children.splice(at, 0, tile(kind, flex));
+		return normalizeRoot(root);
+	}
+	const pane = tile(kind, slot.ratio);
+	const anchor = {...node, flex: 1};
+	const wrapped: StackNode = {
+		kind: "stack",
+		direction: slot.direction,
+		flex: node.flex,
+		children: slot.side === 0 ? [pane, anchor] : [anchor, pane],
+	};
+	if (parentStack === null || index === undefined) {
+		return normalizeRoot({kind: "stack", direction: "row", flex: 1, children: [wrapped]});
+	}
+	parentStack.children[index] = wrapped;
+	return normalizeRoot(root);
+}
+
 /** Upstream's first split: chat 2 : pane 3, so a lone pane takes about 60% of the row. */
 const FIRST_SPLIT = {chat: 2, pane: 3} as const;
 /**
- * Opens a pane the way upstream does: the first side pane splits the row 2:3,
- * and every later one, Changes included, stacks under the last side column
- * (or opens a new column once that column already stacks two).
+ * Opens a pane the way upstream does: back in the slot it was closed from
+ * while that slot's anchor survives, otherwise the first side pane splits the
+ * row 2:3 and every later one, Changes included, stacks under the last side
+ * column (or opens a new column once that column already stacks two).
  */
 export function openPane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState {
 	if (isOpen(state, kind)) return focusPane(state, kind);
-	const children = [...state.root.children];
+	const slot = state.closedSlots?.[kind];
+	const root = (slot && restoreSlot(state, kind, slot)) ?? stackPane(state.root, kind);
+	if (root === null) return state;
+	return withClosedSlots({root, expanded: null, focused: kind}, withoutSlot(state.closedSlots, kind));
+}
+
+function stackPane(stackRoot: StackNode, kind: PaneKind): StackNode | null {
+	const children = [...stackRoot.children];
 	const lastSide = children.reduce((last, child, index) => (isChat(child) ? last : index), -1);
 	const lastNode = children[lastSide];
 	if (lastNode === undefined) {
 		const chatIndex = children.findIndex(isChat);
 		const chat = children[chatIndex];
-		if (chat === undefined) return state;
+		if (chat === undefined) return null;
 		const scale = (FIRST_SPLIT.chat + FIRST_SPLIT.pane) / chat.flex;
 		const scaled = children.map((child) => ({...child, flex: round(child.flex * scale)}));
 		scaled.splice(chatIndex, 1, {...chat, flex: FIRST_SPLIT.chat}, tile(kind, FIRST_SPLIT.pane));
-		return {root: {...state.root, children: scaled}, expanded: null, focused: kind};
+		return {...stackRoot, children: scaled};
 	}
 	if (lastNode.kind === "tile") {
 		children[lastSide] = {
@@ -261,16 +414,23 @@ export function openPane(state: PaneLayoutState, kind: PaneKind): PaneLayoutStat
 	} else {
 		children.splice(lastSide + 1, 0, tile(kind, 1));
 	}
-	return {root: normalizeRoot({...state.root, children}), expanded: null, focused: kind};
+	return normalizeRoot({...stackRoot, children});
 }
 
+/** Closes a pane, remembering its slot so reopening puts it back there. */
 export function closePane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState {
 	if (!isOpen(state, kind)) return state;
-	return {
-		root: normalizeRoot(withoutTile(state.root, kind)),
-		expanded: state.expanded === kind ? null : state.expanded,
-		focused: state.focused === kind ? "chat" : state.focused,
-	};
+	const slot = captureSlot(state.root, kind);
+	const slots = withoutSlot(state.closedSlots, kind);
+	if (slot !== null) slots[kind] = slot;
+	return withClosedSlots(
+		{
+			root: normalizeRoot(withoutTile(state.root, kind)),
+			expanded: state.expanded === kind ? null : state.expanded,
+			focused: state.focused === kind ? "chat" : state.focused,
+		},
+		slots,
+	);
 }
 
 export function focusPane(state: PaneLayoutState, tileId: TileId): PaneLayoutState {
@@ -563,7 +723,8 @@ export function loadPaneLayout(sessionId: string, storage: Storage | null = brow
 	try {
 		const entry = storage ? readStore(storage)?.[sessionId] : undefined;
 		if (entry === undefined) return defaultPaneLayout();
-		return {root: entry.root, expanded: entry.expanded, focused: entry.focused};
+		const layout: PaneLayoutState = {root: entry.root, expanded: entry.expanded, focused: entry.focused};
+		return entry.closedSlots === undefined ? layout : {...layout, closedSlots: entry.closedSlots};
 	} catch {
 		// localStorage can be denied even when window exists; layout persistence is best-effort.
 		return defaultPaneLayout();

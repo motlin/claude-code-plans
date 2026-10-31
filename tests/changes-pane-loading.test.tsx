@@ -211,6 +211,10 @@ describe("deferred Changes renderer", () => {
 				},
 				closed: null,
 				savedAfterClose: {
+					// Closing remembers the pane's slot beside the chat, as upstream's closedPaneSlotsBySession does.
+					closedSlots: {
+						changes: {anchorIds: ["chat"], otherSideIds: [], direction: "row", side: 1, ratio: 1.5},
+					},
 					expanded: null,
 					focused: "chat",
 					root: {

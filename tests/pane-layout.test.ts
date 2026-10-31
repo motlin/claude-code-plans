@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
 	PANE_LAYOUT_STORAGE_KEY,
+	type ClosedPaneSlot,
 	type LayoutNode,
 	type MoveDirection,
 	type MovePreview,
@@ -41,6 +42,18 @@ function stack(direction: "row" | "column", flex: number, children: LayoutNode[]
 function layout(children: LayoutNode[], focused: TileId, expanded: PaneKind | null = null): PaneLayoutState {
 	return {root: stack("row", 1, children), expanded, focused};
 }
+
+function slotted(state: PaneLayoutState, kind: PaneKind, slot: ClosedPaneSlot): PaneLayoutState {
+	return {...state, closedSlots: {[kind]: slot}};
+}
+
+const CHANGES_UNDER_BACKGROUND_TASKS: ClosedPaneSlot = {
+	anchorIds: ["background-tasks"],
+	otherSideIds: [],
+	direction: "column",
+	side: 1,
+	ratio: 1,
+};
 
 function openAll(...kinds: PaneKind[]): PaneLayoutState {
 	return kinds.reduce((state, kind) => openPane(state, kind), defaultPaneLayout());
@@ -199,33 +212,107 @@ describe("closePane", () => {
 			"closing the middle pane collapses its column",
 			THREE_PANES,
 			"changes",
-			layout([tile("chat", 2), tile("background-tasks", 1), tile("files", 1)], "files"),
+			slotted(
+				layout([tile("chat", 2), tile("background-tasks", 1), tile("files", 1)], "files"),
+				"changes",
+				CHANGES_UNDER_BACKGROUND_TASKS,
+			),
 		],
 		[
 			"closing the focused pane focuses chat",
 			THREE_PANES,
 			"files",
-			layout([tile("chat", 2), stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)])], "chat"),
+			slotted(
+				layout(
+					[tile("chat", 2), stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)])],
+					"chat",
+				),
+				"files",
+				{anchorIds: ["background-tasks", "changes"], otherSideIds: [], direction: "row", side: 1, ratio: 1 / 3},
+			),
 		],
 		[
 			"closing a stacked pane hands the column's flex to its sibling",
 			TWO_PANES,
 			"background-tasks",
-			layout([tile("chat", 2), tile("changes", 1)], "changes"),
+			slotted(layout([tile("chat", 2), tile("changes", 1)], "changes"), "background-tasks", {
+				anchorIds: ["changes"],
+				otherSideIds: [],
+				direction: "column",
+				side: 0,
+				ratio: 1,
+			}),
 		],
-		["closing the last pane restores the default", ONE_PANE, "background-tasks", defaultPaneLayout()],
+		[
+			"closing the last pane restores the default, remembering the pane's slot beside the chat",
+			ONE_PANE,
+			"background-tasks",
+			slotted(defaultPaneLayout(), "background-tasks", {
+				anchorIds: ["chat"],
+				otherSideIds: [],
+				direction: "row",
+				side: 1,
+				ratio: 0.5,
+			}),
+		],
 	] satisfies Array<[string, PaneLayoutState, PaneKind, PaneLayoutState]>)("%s", (_name, state, kind, expected) => {
 		expect(closePane(state, kind)).toEqual(expected);
 	});
 
 	it("clears expanded mode when the expanded pane closes", () => {
 		expect(closePane(expandPane(TWO_PANES, "changes"), "changes")).toEqual(
-			layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+			slotted(
+				layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+				"changes",
+				CHANGES_UNDER_BACKGROUND_TASKS,
+			),
 		);
 	});
 
 	it("returns the same state when the pane is not open", () => {
 		expect(closePane(ONE_PANE, "files")).toBe(ONE_PANE);
+	});
+});
+
+describe("closed pane slots", () => {
+	const filesOverChanges = openAll("files", "changes");
+
+	it("remembers where a closed pane sat, as upstream's closedPaneSlotsBySession does", () => {
+		expect(closePane(filesOverChanges, "files")).toEqual({
+			...layout([tile("chat", 2), tile("changes", 3)], "changes"),
+			closedSlots: {files: {anchorIds: ["changes"], otherSideIds: [], direction: "column", side: 0, ratio: 1}},
+		});
+	});
+
+	it("reopens Files above Changes when it was closed from there, and forgets the slot", () => {
+		expect(openPane(closePane(filesOverChanges, "files"), "files")).toEqual(
+			layout([tile("chat", 2), stack("column", 3, [tile("files", 1), tile("changes", 1)])], "files"),
+		);
+	});
+
+	it("reopens a pane between its old neighbours in a row", () => {
+		const threeColumns = layout([tile("chat", 2), tile("files", 1), tile("plan", 1)], "plan");
+		expect(openPane(closePane(threeColumns, "files"), "files")).toEqual(
+			layout([tile("chat", 2), tile("files", 1), tile("plan", 1)], "files"),
+		);
+	});
+
+	it("falls back to stacking when the slot's anchor is gone", () => {
+		const state = ["files", "changes"].reduce<PaneLayoutState>(
+			(acc, kind) => closePane(acc, kind as PaneKind),
+			openAll("files", "changes", "plan"),
+		);
+		expect(openPane(state, "files")).toEqual({
+			...layout([tile("chat", 2), stack("column", 1, [tile("plan", 1), tile("files", 1)])], "files"),
+			closedSlots: {changes: {anchorIds: ["chat"], otherSideIds: ["plan"], direction: "row", side: 1, ratio: 1}},
+		});
+	});
+
+	it("persists the slots with the layout", () => {
+		const storage = new MemoryStorage();
+		const closed = closePane(filesOverChanges, "files");
+		savePaneLayout("s", closed, storage);
+		expect(loadPaneLayout("s", storage)).toEqual(closed);
 	});
 });
 
@@ -601,7 +688,11 @@ describe("updatePhoneView", () => {
 
 	it("closes a pane from the saved columns rather than saving the phone shape", () => {
 		expect(updatePhoneView(THREE_PANES, (state) => closePane(state, "changes"))).toStrictEqual(
-			layout([tile("chat", 2), tile("background-tasks", 1), tile("files", 1)], "files"),
+			slotted(
+				layout([tile("chat", 2), tile("background-tasks", 1), tile("files", 1)], "files"),
+				"changes",
+				CHANGES_UNDER_BACKGROUND_TASKS,
+			),
 		);
 	});
 
@@ -626,7 +717,11 @@ describe("updatePhoneView", () => {
 
 	it("applies the update directly when the layout already fits", () => {
 		expect(updatePhoneView(TWO_PANES, (state) => closePane(state, "changes"))).toStrictEqual(
-			layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+			slotted(
+				layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+				"changes",
+				CHANGES_UNDER_BACKGROUND_TASKS,
+			),
 		);
 	});
 });
