@@ -97,6 +97,8 @@ html[data-interface-font="dyslexic"] {
 	--color-border: var(--upstream-border);
 	--color-subtle: var(--upstream-border-subtle);
 	--color-strong: var(--upstream-border-strong);
+	--color-seam: var(--upstream-seam);
+	--color-border-line: var(--upstream-border-line);
 
 	/* Semantic colors */
 	--color-danger-000: var(--danger-000);
@@ -301,6 +303,9 @@ html[data-interface-font="dyslexic"] {
 	--upstream-border-subtle: hsl(0 0% 4% / 0.06);
 	--upstream-border: hsl(0 0% 4% / 0.1);
 	--upstream-border-strong: hsl(0 0% 4% / 0.2);
+	/* Upstream's line-mode tile dividers: --cds-fizzy-lake-color-seam (vertical) and --cds-border-line (horizontal), read live 2026-10-30. */
+	--upstream-seam: #0000001a;
+	--upstream-border-line: #0000001f;
 
 	/* Semantic colors */
 	--danger-000: hsl(0 58.6% 34.1%);
@@ -576,6 +581,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-border-subtle: hsl(0 0% 100% / 0.08);
 	--upstream-border: hsl(0 0% 100% / 0.1);
 	--upstream-border-strong: hsl(0 0% 100% / 0.2);
+	--upstream-seam: #ffffff1a;
+	--upstream-border-line: #ffffff1f;
 
 	/* Semantic colors */
 	--danger-000: hsl(0 98.4% 75.1%);

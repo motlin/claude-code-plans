@@ -215,6 +215,8 @@ function Divider({
 	const before = stack.children[index];
 	const after = stack.children[index + 1];
 	const dragRef = useRef<number | null>(null);
+	// Upstream's `is-active`: lights the line for the whole drag (pointerdown's preventDefault rules out :active).
+	const [dragging, setDragging] = useState(false);
 	if (before === undefined || after === undefined) return null;
 
 	const total = stack.children.reduce((sum, child) => sum + child.flex, 0);
@@ -260,6 +262,7 @@ function Divider({
 		event.preventDefault();
 		event.currentTarget.setPointerCapture(event.pointerId);
 		dragRef.current = isRow ? event.clientX : event.clientY;
+		setDragging(true);
 	}
 
 	function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
@@ -273,14 +276,17 @@ function Divider({
 
 	function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
 		dragRef.current = null;
+		setDragging(false);
 		event.currentTarget.releasePointerCapture(event.pointerId);
 	}
 
+	// z-[4] as upstream's tiles-handle, so the neighbouring tiles never paint over the hairline or its hit zone.
 	return (
 		<div
 			role="separator"
 			tabIndex={0}
 			data-tile-divider
+			{...(dragging ? {"data-dragging": ""} : {})}
 			aria-orientation={isRow ? "vertical" : "horizontal"}
 			aria-valuenow={now}
 			{...bounds}
@@ -290,15 +296,25 @@ function Divider({
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}
 			onPointerCancel={onPointerUp}
-			className={`group/divider relative flex shrink-0 touch-none items-center justify-center bg-border outline-none ${
+			className={`group/divider relative z-[4] flex shrink-0 touch-none items-center justify-center outline-none ${
 				isRow
-					? "w-px cursor-col-resize before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
-					: "h-px cursor-row-resize before:absolute before:inset-x-0 before:-top-1 before:h-2 before:content-['']"
+					? "w-px cursor-col-resize bg-seam before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
+					: "h-px cursor-row-resize bg-border-line before:absolute before:inset-x-0 before:-top-1 before:h-2 before:content-['']"
 			}`}
 		>
+			{/* Upstream's tiles-handle-line: a 2px accent line centred on the hairline, lit on hover after 100ms and at once while dragging. */}
 			<span
 				aria-hidden
-				className={`rounded-full bg-fill-grip opacity-0 transition-opacity duration-[120ms] group-hover/divider:opacity-100 group-focus-visible/divider:bg-accent-100 group-focus-visible/divider:opacity-100 group-active/divider:bg-fill-primary group-active/divider:opacity-100 ${
+				data-tile-divider-line
+				className={`pointer-events-none absolute ${
+					isRow ? "inset-y-0 left-[-0.5px] w-[2px]" : "inset-x-0 top-[-0.5px] h-[2px]"
+				} bg-fill-accent opacity-0 transition-opacity duration-200 delay-100 group-hover/divider:opacity-100 group-data-dragging/divider:opacity-100 group-data-dragging/divider:duration-[120ms] group-data-dragging/divider:delay-0 group-focus-visible/divider:opacity-0`}
+			/>
+			{/* Upstream's tiles-handle-affordance: in line mode only keyboard focus shows the grip, in --tile-resize-color-focus. */}
+			<span
+				aria-hidden
+				data-tile-divider-grip
+				className={`rounded-full bg-fill-accent opacity-0 transition-opacity duration-[120ms] group-focus-visible/divider:opacity-100 ${
 					isRow ? "h-14 w-[3px]" : "h-[3px] w-14"
 				}`}
 			/>

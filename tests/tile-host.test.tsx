@@ -225,6 +225,64 @@ describe("TileHost", () => {
 		});
 	});
 
+	it("lights the line-mode divider like upstream: seam hairline, 2px accent line on hover or drag, accent grip only on keyboard focus", () => {
+		renderHost("session-a");
+		openTestPane();
+		const separator = screen.getByRole("separator");
+		const classesOf = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
+		const line = classesOf(separator.querySelector("[data-tile-divider-line]"));
+		const grip = classesOf(separator.querySelector("[data-tile-divider-grip]"));
+		const dragging = () => separator.hasAttribute("data-dragging");
+
+		expect({
+			divider: {
+				seam: classesOf(separator).includes("bg-seam"),
+				border: classesOf(separator).includes("bg-border"),
+				aboveTiles: classesOf(separator).includes("z-[4]"),
+			},
+			dragging: [
+				dragging(),
+				(fireEvent.pointerDown(separator, {pointerId: 1}), dragging()),
+				(fireEvent.pointerUp(separator, {pointerId: 1}), dragging()),
+			],
+			line: line.filter((name) => /opacity|bg-|w-|delay|duration|left/.test(name)),
+			grip: grip.filter((name) => /opacity|bg-/.test(name)),
+		}).toStrictEqual({
+			divider: {seam: true, border: false, aboveTiles: true},
+			dragging: [false, true, false],
+			line: [
+				"left-[-0.5px]",
+				"w-[2px]",
+				"bg-fill-accent",
+				"opacity-0",
+				"transition-opacity",
+				"duration-200",
+				"delay-100",
+				"group-hover/divider:opacity-100",
+				"group-data-dragging/divider:opacity-100",
+				"group-data-dragging/divider:duration-[120ms]",
+				"group-data-dragging/divider:delay-0",
+				"group-focus-visible/divider:opacity-0",
+			],
+			grip: ["bg-fill-accent", "opacity-0", "transition-opacity", "group-focus-visible/divider:opacity-100"],
+		});
+	});
+
+	it("defines upstream's seam and border-line colours for light and dark", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		expect({
+			seam: [...styles.matchAll(/--upstream-seam: (#[0-9a-f]+);/g)].map((match) => match[1]),
+			line: [...styles.matchAll(/--upstream-border-line: (#[0-9a-f]+);/g)].map((match) => match[1]),
+			seamColor: styles.includes("--color-seam: var(--upstream-seam);"),
+			lineColor: styles.includes("--color-border-line: var(--upstream-border-line);"),
+		}).toStrictEqual({
+			seam: ["#0000001a", "#ffffff1a"],
+			line: ["#0000001f", "#ffffff1f"],
+			seamColor: true,
+			lineColor: true,
+		});
+	});
+
 	it("resizes with the keyboard and clamps to the minimum tile sizes", () => {
 		renderHost("session-a");
 		openTestPane();
@@ -570,7 +628,7 @@ describe("TileHost on a phone", () => {
 			sticky: slot.classList.contains("sticky"),
 			separators: screen.queryAllByRole("separator").map((separator) => ({
 				hairline: separator.classList.contains("w-px"),
-				ruled: separator.classList.contains("bg-border"),
+				ruled: separator.classList.contains("bg-seam"),
 				gap: separator.classList.contains("w-3"),
 			})),
 		};
@@ -734,14 +792,17 @@ describe("TileHost on a phone", () => {
 			),
 			column: Array.from(column?.children ?? []).map((child) =>
 				child.matches("[role=separator]")
-					? {divider: child.classList.contains("h-px") && !child.classList.contains("h-3")}
+					? {
+							divider: child.classList.contains("h-px") && !child.classList.contains("h-3"),
+							ruled: child.classList.contains("bg-border-line"),
+						}
 					: child.getAttribute("data-tile-host"),
 			),
 			columnPhone: column?.parentElement?.hasAttribute("data-pane-phone"),
 			columnMin: column?.parentElement?.classList.contains("min-w-[280px]"),
 		}).toStrictEqual({
 			rootChildren: ["chat", "divider", "stack"],
-			column: ["plan", {divider: true}, "changes"],
+			column: ["plan", {divider: true, ruled: true}, "changes"],
 			columnPhone: true,
 			columnMin: true,
 		});
