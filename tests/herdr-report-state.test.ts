@@ -608,4 +608,30 @@ describe("logHerdrReportObservation", () => {
 			consoleError.mockRestore();
 		}
 	});
+
+	it("stays quiet when the target pane has already closed but logs other errors for that pane", () => {
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const clearClosedPane: HerdrReportObservation = {
+				outcome: "request-error",
+				method: "pane.clear_agent_authority",
+				paneId: "w3K:p3",
+				message: "pane_not_found: pane w3K:p3 not found",
+			};
+			const reportClosedPane: HerdrReportObservation = {...clearClosedPane, method: "pane.report_agent"};
+			const verifyFailed: HerdrReportObservation = {
+				outcome: "request-error",
+				method: "pane.clear_agent_authority",
+				paneId: "w3K:p3",
+				message: "fabricated: pane w3K:p3 rejected the request",
+			};
+			logHerdrReportObservation(clearClosedPane);
+			logHerdrReportObservation(reportClosedPane);
+			logHerdrReportObservation(verifyFailed);
+
+			expect(consoleError.mock.calls).toStrictEqual([["herdr hook-state report failed", verifyFailed]]);
+		} finally {
+			consoleError.mockRestore();
+		}
+	});
 });

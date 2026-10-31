@@ -112,9 +112,19 @@ function isUnattachedSession(observation: HerdrReportObservation): boolean {
 	);
 }
 
+/** A pane can close between target resolution and the report; that race is expected, not a failure. */
+function isClosedPane(observation: HerdrReportObservation): boolean {
+	return (
+		observation.outcome === "request-error" &&
+		(observation.method === "pane.report_agent" || observation.method === "pane.clear_agent_authority") &&
+		observation.message.startsWith("pane_not_found:")
+	);
+}
+
 export function logHerdrReportObservation(observation: HerdrReportObservation): void {
 	if (observation.outcome === "verified" || observation.outcome === "metadata-fallback") return;
 	if (isUnattachedSession(observation)) return;
+	if (isClosedPane(observation)) return;
 	console.error("herdr hook-state report failed", observation);
 }
 
