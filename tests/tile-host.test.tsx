@@ -737,6 +737,71 @@ describe("TileHost on a phone", () => {
 		unregisterChanges();
 	});
 
+	it("reflows a saved three-column layout into one stacked side column below 640px without overwriting it", () => {
+		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+		const unregisterChanges = registerPane("changes", {title: "Changes", render: () => <p>Changes body</p>});
+		const saved = JSON.stringify({
+			"session-phone": {
+				root: {
+					kind: "stack",
+					direction: "row",
+					flex: 1,
+					children: [
+						{kind: "tile", tileId: "chat", flex: 2},
+						{
+							kind: "stack",
+							direction: "column",
+							flex: 1,
+							children: [
+								{kind: "tile", tileId: "files", flex: 1},
+								{kind: "tile", tileId: "plan", flex: 1},
+							],
+						},
+						{kind: "tile", tileId: "changes", flex: 1},
+					],
+				},
+				expanded: null,
+				focused: "changes",
+			},
+		});
+		localStorage.setItem("ccb.paneLayout.v1", saved);
+		mockViewport(390);
+		renderHost("session-phone");
+		fireEvent.pointerDown(screen.getByText("Files body"));
+
+		const root = document.querySelector("[data-tile-stack=row]");
+		const column = document.querySelector("[data-tile-stack=column]");
+		expect({
+			rootChildren: Array.from(root?.children ?? []).map((child) =>
+				child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-host") ?? "stack"),
+			),
+			column: Array.from(column?.children ?? []).map((child) =>
+				child.matches("[role=separator]") ? "divider" : child.getAttribute("data-tile-host"),
+			),
+			stored: JSON.parse(localStorage.getItem("ccb.paneLayout.v1") ?? "null"),
+		}).toStrictEqual({
+			rootChildren: ["chat", "divider", "stack"],
+			column: ["files", "divider", "plan", "divider", "changes"],
+			stored: {"session-phone": {...JSON.parse(saved)["session-phone"], focused: "files"}},
+		});
+		unregisterFiles();
+		unregisterChanges();
+	});
+
+	it("flattens the chat card while a side pane shares the phone row, as upstream's split tiles are square-cornered", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		const tileFrame = readFileSync("src/components/session-tile-frame.tsx", "utf8");
+		const fallback = readFileSync("src/components/app-shell-fallback.tsx", "utf8");
+
+		expect({
+			rule: styles.includes(
+				'@media (width < 40rem) { [data-route-tile-shell="session"]:has([data-pane-phone]) [data-session-tile] { border-radius: 0; box-shadow: none; } }',
+			),
+			frameMarked: tileFrame.includes("data-session-tile"),
+			fallbackMarked: fallback.includes("data-session-tile"),
+		}).toStrictEqual({rule: true, frameMarked: true, fallbackMarked: true});
+	});
+
 	it("keeps the side-by-side tile with its resize handle at 640px and up", () => {
 		mockViewport(640);
 		renderHost("session-wide");

@@ -18,6 +18,7 @@ import {
 	loadSubagentPaneAgent,
 	minTileSize,
 	dropPreview,
+	fitPhoneLayout,
 	movePane,
 	movePaneTo,
 	movePreview,
@@ -26,6 +27,7 @@ import {
 	saveChangesScope,
 	savePaneLayout,
 	saveSubagentPaneAgent,
+	updatePhoneView,
 } from "../src/lib/pane-layout";
 
 function tile(tileId: TileId, flex: number): LayoutNode {
@@ -549,6 +551,83 @@ describe("resizeDivider", () => {
 		["a divider index past the end", {path: [], index: 1, deltaPx: 10, sizePx: 1000}],
 	])("ignores %s", (_name, request) => {
 		expect(resizeDivider(ONE_PANE, request)).toBe(ONE_PANE);
+	});
+});
+
+describe("fitPhoneLayout", () => {
+	it("reflows a saved multi-column layout into one stacked side column, as a fresh phone open builds it", () => {
+		expect(fitPhoneLayout(THREE_PANES)).toStrictEqual(
+			layout(
+				[
+					tile("chat", 2),
+					stack("column", 3, [tile("background-tasks", 1), tile("changes", 1), tile("files", 1)]),
+				],
+				"files",
+			),
+		);
+	});
+
+	it("puts the chat first when a saved layout nests it in a column", () => {
+		const nested = layout(
+			[tile("files", 1), stack("column", 1, [tile("plan", 1), tile("chat", 1)]), tile("changes", 1)],
+			"chat",
+			"changes",
+		);
+		expect(fitPhoneLayout(nested)).toStrictEqual(
+			layout(
+				[tile("chat", 2), stack("column", 3, [tile("files", 1), tile("plan", 1), tile("changes", 1)])],
+				"chat",
+				"changes",
+			),
+		);
+	});
+
+	it("leaves a layout that already fits a phone untouched", () => {
+		expect(
+			[ONE_PANE, TWO_PANES, defaultPaneLayout()].map((state) => fitPhoneLayout(state) === state),
+		).toStrictEqual([true, true, true]);
+	});
+});
+
+describe("updatePhoneView", () => {
+	it("keeps the saved columns when a phone tap only focuses or expands a pane", () => {
+		const focused = updatePhoneView(THREE_PANES, (state) => focusPane(state, "changes"));
+		const expanded = updatePhoneView(THREE_PANES, (state) => expandPane(state, "background-tasks"));
+		expect({focused, expanded}).toStrictEqual({
+			focused: {...THREE_PANES, focused: "changes"},
+			expanded: {...THREE_PANES, expanded: "background-tasks", focused: "background-tasks"},
+		});
+	});
+
+	it("closes a pane from the saved columns rather than saving the phone shape", () => {
+		expect(updatePhoneView(THREE_PANES, (state) => closePane(state, "changes"))).toStrictEqual(
+			layout([tile("chat", 2), tile("background-tasks", 1), tile("files", 1)], "files"),
+		);
+	});
+
+	it("opens a pane into the saved columns", () => {
+		expect(updatePhoneView(THREE_PANES, (state) => openPane(state, "plan"))).toStrictEqual(
+			layout(
+				[
+					tile("chat", 2),
+					stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)]),
+					stack("column", 1, [tile("files", 1), tile("plan", 1)]),
+				],
+				"plan",
+			),
+		);
+	});
+
+	it("saves the phone shape once a phone resize rearranges the stacked column", () => {
+		const view = fitPhoneLayout(THREE_PANES);
+		const resized = resizeDivider(view, {path: [1], index: 0, deltaPx: 50, sizePx: 900});
+		expect(updatePhoneView(THREE_PANES, () => resized)).toStrictEqual(resized);
+	});
+
+	it("applies the update directly when the layout already fits", () => {
+		expect(updatePhoneView(TWO_PANES, (state) => closePane(state, "changes"))).toStrictEqual(
+			layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+		);
 	});
 });
 

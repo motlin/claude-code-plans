@@ -45,7 +45,10 @@ export function SessionTileFrame({
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	useScrollGutterVar(scrollerRef);
 	const geometryReady = useRef<string | undefined>(undefined);
-	const restoredHost = useRef<{node: HTMLDivElement; visitKey: string} | null>(null);
+	const restoredHost = useRef<{
+		node: HTMLDivElement;
+		visitKey: string;
+	} | null>(null);
 	const pendingFrame = useRef<number | undefined>(undefined);
 	const restoreGeometry = useCallback(() => {
 		geometryReady.current = visitKey;
@@ -118,7 +121,12 @@ export function SessionTileFrame({
 	};
 
 	return (
-		<div ref={tileRef} className={SESSION_TILE_CLASS} {...(railDocked ? {"data-session-rail-docked": ""} : {})}>
+		<div
+			ref={tileRef}
+			data-session-tile
+			className={SESSION_TILE_CLASS}
+			{...(railDocked ? {"data-session-rail-docked": ""} : {})}
+		>
 			<div className="shrink-0">{header}</div>
 			<div className="relative flex min-h-0 flex-1 flex-col">
 				<div
@@ -134,7 +142,10 @@ export function SessionTileFrame({
 					data-scroll-restoration-id="main"
 					onScroll={(event) => {
 						if (event.currentTarget.clientHeight > 0)
-							positionRef.current = {visitKey, top: event.currentTarget.scrollTop};
+							positionRef.current = {
+								visitKey,
+								top: event.currentTarget.scrollTop,
+							};
 					}}
 					className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]"
 				>

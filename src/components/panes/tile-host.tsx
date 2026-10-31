@@ -19,6 +19,7 @@ import {
 	defaultPaneLayout,
 	dropPreview,
 	expandPane,
+	fitPhoneLayout,
 	focusPane,
 	loadPaneLayout,
 	minTileSize,
@@ -29,6 +30,7 @@ import {
 	parseTileId,
 	resizeDivider,
 	savePaneLayout,
+	updatePhoneView,
 	type Direction,
 	type LayoutNode,
 	type MoveDirection,
@@ -813,8 +815,16 @@ export function TileHost({
 	children: ReactNode;
 }) {
 	const definitions = usePaneDefinitions();
-	const [layout, update, loaded] = usePersistedLayout(sessionId, definitions);
+	const [savedLayout, saveUpdate, loaded] = usePersistedLayout(sessionId, definitions);
 	const phone = usePhoneSheet();
+	// A phone shows saved desktop columns stacked in one side column, and edits made there keep the saved columns.
+	const layout = useMemo(() => (phone ? fitPhoneLayout(savedLayout) : savedLayout), [phone, savedLayout]);
+	const update = useCallback(
+		(fn: LayoutUpdate) => {
+			saveUpdate(phone ? (state) => updatePhoneView(state, fn) : fn);
+		},
+		[phone, saveUpdate],
+	);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const collapsedRef = useRef<PaneKind | null>(null);
 	const collapse = useCallback(() => {

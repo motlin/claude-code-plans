@@ -287,6 +287,47 @@ export function collapsePane(state: PaneLayoutState): PaneLayoutState {
 	return state.expanded === null ? state : {...state, expanded: null};
 }
 
+/**
+ * The layout a phone shows: a saved layout with more than one side column
+ * (from desktop) can't fit below 640px, so its panes stack in tree order in
+ * one side column beside the chat, the shape opening them fresh on a phone
+ * builds. A layout that already fits is returned as is.
+ */
+export function fitPhoneLayout(state: PaneLayoutState): PaneLayoutState {
+	if (state.root.children.length <= 2) return state;
+	const panes = tileIds(state.root).filter((tileId) => tileId !== "chat");
+	const side: LayoutNode =
+		panes.length === 1 && panes[0] !== undefined
+			? tile(panes[0], FIRST_SPLIT.pane)
+			: {kind: "stack", direction: "column", flex: FIRST_SPLIT.pane, children: panes.map((id) => tile(id, 1))};
+	return {...state, root: {...state.root, children: [tile("chat", FIRST_SPLIT.chat), side]}};
+}
+
+/**
+ * Applies an update made on the phone view (`fitPhoneLayout`) to the saved
+ * layout, so the desktop columns survive a phone visit: focus, expand, open
+ * and close carry over by tile, and only a phone resize or move, which
+ * rearranges the stacked column itself, saves the phone shape.
+ */
+export function updatePhoneView(
+	state: PaneLayoutState,
+	update: (state: PaneLayoutState) => PaneLayoutState,
+): PaneLayoutState {
+	const view = fitPhoneLayout(state);
+	if (view === state) return update(state);
+	const next = update(view);
+	if (next === view) return state;
+	const viewIds = tileIds(view.root);
+	const nextIds = tileIds(next.root);
+	const closed = viewIds.filter((id): id is PaneKind => id !== "chat" && !nextIds.includes(id));
+	const opened = nextIds.filter((id): id is PaneKind => id !== "chat" && !viewIds.includes(id));
+	if (closed.length === 0 && opened.length === 0 && JSON.stringify(next.root) !== JSON.stringify(view.root)) {
+		return next;
+	}
+	const saved = opened.reduce(openPane, closed.reduce(closePane, state));
+	return {...saved, expanded: next.expanded, focused: next.focused};
+}
+
 /** Minimum size of a node along `axis`: sums along a stack's own axis, maxes across it. */
 export function minTileSize(node: LayoutNode, axis: Direction): number {
 	if (node.kind === "tile") {

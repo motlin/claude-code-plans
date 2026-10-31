@@ -1954,6 +1954,15 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 	}
 }
 
+/* With a side pane open on a phone, upstream's split tiles are square-cornered, the chat as flat as the pane.
+   Unlayered so it beats the chat card's rounded-r7 and shadow-panel-sm utilities. */
+@media (width < 40rem) {
+	[data-route-tile-shell="session"]:has([data-pane-phone]) [data-session-tile] {
+		border-radius: 0;
+		box-shadow: none;
+	}
+}
+
 /* Shared geometry and states for the sidebar's New, navigation, and More rows. */
 @layer components {
 	.df-nav-row {

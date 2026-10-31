@@ -348,7 +348,7 @@ export function AppShellFallback({
 					// The loaded session's tile shell, chat tile and footer, so the composer lands where it hydrates.
 					<div data-route-tile-shell="session">
 						<div className="min-h-0 flex-1">
-							<div className={SESSION_TILE_CLASS}>
+							<div data-session-tile className={SESSION_TILE_CLASS}>
 								<div className="min-h-0 flex-1 overflow-hidden">
 									<SessionSkeleton />
 								</div>
