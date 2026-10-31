@@ -568,6 +568,35 @@ describe("TileHost", () => {
 		});
 	});
 
+	it("marks the tiles root data-tiles-moving only while a Move drag is under way, hiding the divider hairline as upstream", () => {
+		renderHost("session-a");
+		openTestPane();
+		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-host=chat]"));
+		const grip = paneMoveButton();
+		const moving = () => document.querySelector("[data-tile-stack]")?.hasAttribute("data-tiles-moving");
+
+		const states = [moving()];
+		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		states.push(moving());
+		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		states.push(moving());
+		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		states.push(moving());
+		fireEvent.pointerDown(paneMoveButton(), {pointerId: 2, clientX: 900, clientY: 10});
+		fireEvent.pointerMove(paneMoveButton(), {pointerId: 2, clientX: 600, clientY: 300});
+		states.push(moving());
+		fireEvent.pointerCancel(paneMoveButton(), {pointerId: 2});
+		states.push(moving());
+
+		expect({
+			states,
+			hairlineHidden: screen
+				.getByRole("separator")
+				.className.split(" ")
+				.includes("[[data-tiles-line][data-tiles-moving]_&]:bg-transparent"),
+		}).toStrictEqual({states: [false, false, true, false, true, false], hairlineHidden: true});
+	});
+
 	it("ignores a Move grip press that does not leave the grip", () => {
 		renderHost("session-a");
 		openTestPane();

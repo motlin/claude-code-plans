@@ -86,6 +86,9 @@ interface InternalHost {
 	preview: MovePreview | null;
 	setPendingMove: (move: PendingMove | null) => void;
 	setPointerDrop: (drop: PointerDrop | null) => void;
+	/** Upstream's `data-tiles-moving`: true while a Move grip drag is under way. */
+	moving: boolean;
+	setMoving: (moving: boolean) => void;
 	expanded: PaneKind | null;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
@@ -281,6 +284,7 @@ function Divider({
 	}
 
 	// z-[4] as upstream's tiles-handle, so the neighbouring tiles never paint over the hairline or its hit zone.
+	// Upstream's `[data-tiles-line][data-tiles-moving] .tiles-handle::before { opacity:0 }` drops the hairline mid-move.
 	return (
 		<div
 			role="separator"
@@ -296,7 +300,7 @@ function Divider({
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}
 			onPointerCancel={onPointerUp}
-			className={`group/divider relative z-[4] flex shrink-0 touch-none items-center justify-center outline-none ${
+			className={`group/divider relative z-[4] flex shrink-0 touch-none items-center justify-center outline-none [[data-tiles-line][data-tiles-moving]_&]:bg-transparent ${
 				isRow
 					? "w-px cursor-col-resize bg-seam before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
 					: "h-px cursor-row-resize bg-border-line before:absolute before:inset-x-0 before:-top-1 before:h-2 before:content-['']"
@@ -451,6 +455,7 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		const drag = dragRef.current;
 		if (drag === null) return;
 		if (!drag.dragging && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_THRESHOLD_PX) return;
+		if (!drag.dragging) host.setMoving(true);
 		drag.dragging = true;
 		host.setPendingMove(null);
 		host.setPointerDrop(dropAt(tileId, event.clientX, event.clientY));
@@ -461,6 +466,7 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		dragRef.current = null;
 		event.currentTarget.releasePointerCapture(event.pointerId);
 		host.setPointerDrop(null);
+		host.setMoving(false);
 		const drop = drag?.dragging === true ? dropAt(tileId, event.clientX, event.clientY) : null;
 		if (drop !== null) host.update((state) => movePaneTo(state, tileId, drop.targetId, drop.side));
 	}
@@ -469,6 +475,7 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		dragRef.current = null;
 		event.currentTarget.releasePointerCapture(event.pointerId);
 		host.setPointerDrop(null);
+		host.setMoving(false);
 	}
 
 	function onKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
@@ -693,6 +700,7 @@ function StackView({
 			data-tile-stack={stack.direction}
 			// Upstream's tiles viewport switches to `data-tiles-line` whenever its panels layout holds a pane.
 			{...(isRoot && tileIdsOf(stack).length > 1 ? {"data-tiles-line": ""} : {})}
+			{...(isRoot && host.moving ? {"data-tiles-moving": ""} : {})}
 			className={`flex h-full min-h-0 min-w-0 items-stretch ${stack.direction === "row" ? "flex-row" : "flex-col"}`}
 			style={isRoot ? undefined : {flex: `${stack.flex} 1 0`}}
 		>
@@ -855,6 +863,7 @@ export function TileHost({
 
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
 	const [pointerDrop, setPointerDrop] = useState<PointerDrop | null>(null);
+	const [moving, setMoving] = useState(false);
 	const preview = useMemo(() => {
 		if (pointerDrop !== null)
 			return dropPreview(layout, pointerDrop.tileId, pointerDrop.targetId, pointerDrop.side);
@@ -870,13 +879,15 @@ export function TileHost({
 			preview,
 			setPendingMove,
 			setPointerDrop,
+			moving,
+			setMoving,
 			expanded: layout.expanded,
 			phone,
 			rootRef,
 			collapsedRef,
 			collapse,
 		}),
-		[definitions, layout, update, pendingMove, preview, phone, collapse],
+		[definitions, layout, update, pendingMove, preview, moving, phone, collapse],
 	);
 
 	const api = useMemo<PaneHostApi>(
