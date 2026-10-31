@@ -563,12 +563,16 @@
 		"tolerance": 0
 	},
 	"hot.processTranscript.small.calls": {
-		"ceiling": 3547,
+		"reason": "Time-sliced resources scan (2026-10-31): processTranscript now drains a generator (processTranscriptSteps / processRecordBatchSteps) that pauses every 64 records so /api/sessions/$id/resources can hand the event loop back between steps; V8 coverage counts each resumption and the drain helper as calls. Ceiling raised to the measurement.",
+		"raisedAt": "2026-10-31",
+		"ceiling": 3563,
 		"unit": "calls",
 		"tolerance": 0
 	},
 	"hot.processTranscript.typical.calls": {
-		"ceiling": 2489,
+		"reason": "Time-sliced resources scan (2026-10-31): processTranscript now drains a generator (processTranscriptSteps / processRecordBatchSteps) that pauses every 64 records so /api/sessions/$id/resources can hand the event loop back between steps; V8 coverage counts each resumption and the drain helper as calls. Ceiling raised to the measurement.",
+		"raisedAt": "2026-10-31",
+		"ceiling": 2501,
 		"unit": "calls",
 		"tolerance": 0
 	},

@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/sessions/$id/resources")({
 				const {homedir} = await import("node:os");
 
 				const {index} = getDb();
-				const resources = readSessionResources(index, params.id, homedir());
+				const resources = await readSessionResources(index, params.id, homedir());
 
 				return Response.json(SessionResourcesResponse.parse(resources), {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},

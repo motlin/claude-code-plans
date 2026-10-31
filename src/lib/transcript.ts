@@ -765,17 +765,48 @@ function isInvisibleThinkingRecord(record: {
 	);
 }
 
+interface RecordBatchResult {
+	sessionLines: ProcessedLine[];
+	toolResults: Map<string, ToolResultInfo>;
+	title: string;
+	customTitle: string | undefined;
+}
+
+/**
+ * Records processed between pause points of `processRecordBatchSteps`. Small
+ * enough that a pause comes every millisecond or so, large enough that the
+ * generator's resumption cost disappears into the work.
+ */
+const RECORD_BATCH_STEP = 64;
+
+/** Run a stepped computation to completion without pausing. */
+function drainSteps<T>(steps: Generator<void, T, void>): T {
+	for (;;) {
+		const step = steps.next();
+		if (step.done) return step.value;
+	}
+}
+
 function processRecordBatch(
 	records: unknown[],
 	startLineIndex: number,
 	uuidToLine?: Map<string, number>,
 	hidden?: ReadonlySet<string>,
-): {
-	sessionLines: ProcessedLine[];
-	toolResults: Map<string, ToolResultInfo>;
-	title: string;
-	customTitle: string | undefined;
-} {
+): RecordBatchResult {
+	return drainSteps(processRecordBatchSteps(records, startLineIndex, uuidToLine, hidden));
+}
+
+/**
+ * The record loop as a generator that pauses every `RECORD_BATCH_STEP` records,
+ * so a caller holding a whole huge transcript can hand the event loop back
+ * between steps instead of blocking it for seconds (see session-resource-scan).
+ */
+function* processRecordBatchSteps(
+	records: unknown[],
+	startLineIndex: number,
+	uuidToLine?: Map<string, number>,
+	hidden?: ReadonlySet<string>,
+): Generator<void, RecordBatchResult, void> {
 	const sessionLines: ProcessedLine[] = [];
 	const toolResults = new Map<string, ToolResultInfo>();
 	const toolStartTimes = new Map<string, number>();
@@ -801,6 +832,7 @@ function processRecordBatch(
 	const surfacedDescriptions = new Map<string, Map<string, string | undefined>>();
 
 	for (let i = 0; i < records.length; i++) {
+		if (i > 0 && i % RECORD_BATCH_STEP === 0) yield;
 		const obj = records[i];
 		const lineIndex = startLineIndex + i;
 		if (hidden !== undefined && isRecord(obj) && typeof obj["uuid"] === "string" && hidden.has(obj["uuid"]))
@@ -1290,8 +1322,21 @@ function processRecordBatch(
  *   raw file.
  */
 export function processTranscript(records: unknown[], startLineIndex = 0, chain?: ServedChain): ProcessedTranscript {
+	return drainSteps(processTranscriptSteps(records, startLineIndex, chain));
+}
+
+/**
+ * `processTranscript` as a generator that pauses every few dozen records. Drive
+ * it with `runCooperatively` to process a huge transcript without blocking the
+ * server's event loop; the result is identical to `processTranscript`'s.
+ */
+export function* processTranscriptSteps(
+	records: unknown[],
+	startLineIndex = 0,
+	chain?: ServedChain,
+): Generator<void, ProcessedTranscript, void> {
 	const uuidToLine = new Map<string, number>();
-	const {sessionLines, toolResults, title, customTitle} = processRecordBatch(
+	const {sessionLines, toolResults, title, customTitle} = yield* processRecordBatchSteps(
 		records,
 		startLineIndex,
 		uuidToLine,
