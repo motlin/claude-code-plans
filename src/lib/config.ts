@@ -258,21 +258,27 @@ function isContainedPath(path: string, root: string): boolean {
 	);
 }
 
+async function resolveRealDirectory(root: string): Promise<string | null> {
+	try {
+		const resolvedRoot = await realpath(root);
+		return (await stat(resolvedRoot)).isDirectory() ? resolvedRoot : null;
+	} catch {
+		return null;
+	}
+}
+
 export async function resolveDirectoryRoots(
 	roots: readonly string[],
 	excludedResolvedRoots: ReadonlySet<string> = new Set(),
 	overlapPreference: "widest" | "narrowest" = "widest",
 ): Promise<string[]> {
+	// Resolve every root concurrently: awaiting them one by one queued each
+	// filesystem call behind the rest of the server's work in turn.
+	const realRoots = await Promise.all(roots.map(resolveRealDirectory));
 	const resolvedRoots: string[] = [];
 
-	for (const root of roots) {
-		let resolvedRoot: string;
-		try {
-			resolvedRoot = await realpath(root);
-			if (!(await stat(resolvedRoot)).isDirectory()) continue;
-		} catch {
-			continue;
-		}
+	for (const resolvedRoot of realRoots) {
+		if (resolvedRoot === null) continue;
 		if (excludedResolvedRoots.has(resolvedRoot)) continue;
 		if (
 			resolvedRoots.some((root) =>
@@ -307,7 +313,7 @@ export async function resolveConfiguredFileRoots(
 	configPath: string = getConfigPath(),
 	defaultRoots: readonly string[] = [],
 ): Promise<string[]> {
-	return resolveDirectoryRoots(readConfig(configPath)?.file_roots ?? defaultRoots);
+	return resolveFileRootsCached(readConfig(configPath)?.file_roots ?? defaultRoots);
 }
 
 /** Resolve explicit file roots, or indexed project paths when the setting is absent. */
@@ -317,9 +323,14 @@ export async function resolveFileSearchRoots(
 ): Promise<string[]> {
 	const configuredRoots = readConfig(configPath)?.file_roots;
 	if (configuredRoots !== undefined) {
-		return resolveDirectoryRoots(configuredRoots.filter(isGitRepository));
+		return resolveFileRootsCached(configuredRoots.filter(isGitRepository));
 	}
 
+	return resolveFileRootsCached(listFileSearchProjectPathsFromDb(indexDatabase).filter(isGitRepository), "inferred");
+}
+
+/** Real paths of the home, filesystem root and temporary directories, which are never inferred as roots. */
+async function resolveBroadRoots(): Promise<Set<string>> {
 	const resolvedHome = await realpath(homedir());
 	const filesystemRoot = parse(resolvedHome).root;
 	const broadRootCandidates = [
@@ -329,19 +340,55 @@ export async function resolveFileSearchRoots(
 		join(filesystemRoot, "tmp"),
 		join(filesystemRoot, "var", "tmp"),
 	];
-	const broadRoots = new Set<string>();
-	for (const candidate of broadRootCandidates) {
-		try {
-			broadRoots.add(await realpath(candidate));
-		} catch {
-			// A platform may not provide every conventional temporary directory.
-		}
-	}
-	return resolveDirectoryRoots(
-		listFileSearchProjectPathsFromDb(indexDatabase).filter(isGitRepository),
-		broadRoots,
-		"narrowest",
+	const resolvedCandidates = await Promise.all(
+		// A platform may not provide every conventional temporary directory.
+		broadRootCandidates.map(async (candidate) => realpath(candidate).catch(() => null)),
 	);
+	return new Set(resolvedCandidates.filter((candidate) => candidate !== null));
+}
+
+/**
+ * How long a file-root resolution is reused. A resolution costs a realpath
+ * and a stat per indexed project, and every await queues behind whatever else
+ * the server is doing; done per request (twice, once per layer), one file read
+ * took seconds under indexing load. A different root list (projects or config changed) always
+ * resolves afresh; the TTL only bounds how long a root that vanished or lost
+ * its `.git` stays listed. Per-file realpath containment checks still run on
+ * every request.
+ */
+export const FILE_ROOTS_CACHE_TTL_MILLISECONDS = 10_000;
+
+const fileRootsCache = new Map<string, {expiresAt: number; roots: Promise<string[]>}>();
+
+export function clearFileRootsCache(): void {
+	fileRootsCache.clear();
+}
+
+/**
+ * `resolveDirectoryRoots` memoized per exact input. "explicit" keeps the
+ * widest roots as configured; "inferred" drops broad roots and keeps the
+ * narrowest repositories.
+ */
+async function resolveFileRootsCached(
+	roots: readonly string[],
+	mode: "explicit" | "inferred" = "explicit",
+): Promise<string[]> {
+	const now = Date.now();
+	for (const [key, entry] of fileRootsCache) {
+		if (entry.expiresAt <= now) fileRootsCache.delete(key);
+	}
+	const key = JSON.stringify([mode, roots]);
+	const cached = fileRootsCache.get(key);
+	// Copies, so no caller can edit the shared result. Microtask hops only; no I/O.
+	if (cached !== undefined) return cached.roots.then((resolvedRoots) => [...resolvedRoots]);
+
+	const resolved =
+		mode === "explicit"
+			? resolveDirectoryRoots(roots)
+			: resolveBroadRoots().then(async (broadRoots) => resolveDirectoryRoots(roots, broadRoots, "narrowest"));
+	fileRootsCache.set(key, {expiresAt: now + FILE_ROOTS_CACHE_TTL_MILLISECONDS, roots: resolved});
+	resolved.catch(() => fileRootsCache.delete(key));
+	return resolved.then((resolvedRoots) => [...resolvedRoots]);
 }
 
 /** Resolve a requested search directory and prove it remains inside a configured real root. */
@@ -359,7 +406,7 @@ export async function resolveFileSearchScope(
 	}
 
 	const explicitRoots = readConfig(configPath)?.file_roots;
-	const configuredRoots = await resolveDirectoryRoots(
+	const configuredRoots = await resolveFileRootsCached(
 		explicitRoots === undefined ? defaultRoots : explicitRoots.filter(isGitRepository),
 	);
 	return configuredRoots.some((root) => isContainedPath(resolvedScope, root)) ? resolvedScope : null;
