@@ -1,4 +1,4 @@
-import {sqliteTable, text, integer, index, primaryKey} from "drizzle-orm/sqlite-core";
+import {sqliteTable, text, integer, index, primaryKey, real} from "drizzle-orm/sqlite-core";
 import type {ReviewBundle} from "../api/reviews";
 import type {RoutineKind} from "../routines";
 
@@ -337,6 +337,21 @@ export const summaries = sqliteTable("summaries", {
 	lastMessageId: text("last_message_id").notNull(),
 	summary: text("summary").notNull(),
 	generatedAt: integer("generated_at").notNull(),
+});
+
+/**
+ * The last whole-transcript file and link scan per JSONL (see
+ * session-resource-scan.ts), so a server restart does not rescan a 400 MB
+ * session. A row answers only while the file's size and mtime, the home root
+ * and the scan version all still match. `resources` is the JSON result.
+ */
+export const sessionResourceScans = sqliteTable("session_resource_scans", {
+	filePath: text("file_path").primaryKey(),
+	homeRoot: text("home_root").notNull(),
+	size: integer("size").notNull(),
+	mtimeMs: real("mtime_ms").notNull(),
+	scanVersion: integer("scan_version").notNull(),
+	resources: text("resources").notNull(),
 });
 
 export const reviews = sqliteTable("reviews", {

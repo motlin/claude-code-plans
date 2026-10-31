@@ -710,6 +710,25 @@ function handleSessionRegistryEvent(path: string): boolean {
 	return true;
 }
 
+/**
+ * Whether a `.jsonl` change is a Claude Code transcript: under the projects
+ * directory, as configured or resolved. The watcher also sees the file-content
+ * roots, where an application's own `.jsonl` log can be gigabytes; reading one
+ * of those as appended transcript lines -- from byte 0, as an unindexed file --
+ * parsed it whole into the heap and ran the server out of memory.
+ */
+function isTranscriptPath(path: string): boolean {
+	if (!projectsDir) return true;
+	const roots = [resolve(projectsDir)];
+	try {
+		roots.push(resolveProjectsDirectory(projectsDir));
+	} catch {
+		// A missing projects directory has no resolved form; the configured one still applies.
+	}
+	const normalized = resolve(path);
+	return roots.some((root) => normalized.startsWith(`${root}/`));
+}
+
 async function handleFileChange(path: string): Promise<void> {
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
@@ -740,6 +759,7 @@ async function handleFileChange(path: string): Promise<void> {
 	if (!WATCHED_EXTENSIONS.has(ext)) return;
 
 	if (ext === ".jsonl") {
+		if (!isTranscriptPath(path)) return;
 		// Throttle: fire immediately on the first change, then at most once
 		// per JSONL_THROTTLE_MS. A trailing timer ensures the final batch of
 		// changes is always processed even after writes stop.
@@ -938,6 +958,9 @@ export const __testing = {
 	/** Restore the pattern derived purely from the hard-coded defaults. */
 	resetIgnoredDirPattern(): void {
 		ignoredDirPattern = buildIgnoredDirPattern(new Set(DEFAULT_IGNORED_DIR_NAMES));
+	},
+	setProjectsDir(dir: string): void {
+		projectsDir = dir;
 	},
 	setFileContentRoots(roots: string[]): void {
 		setFileContentRoots(roots);

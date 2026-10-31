@@ -180,6 +180,46 @@ describe("handleFileChange", () => {
 	});
 });
 
+describe("handleFileChange outside the projects directory", () => {
+	let fixtureDirectory: string;
+
+	beforeEach(() => {
+		fixtureDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watcher-projects-dir-test-")));
+		__testing.resetJsonlThrottle();
+	});
+
+	afterEach(() => {
+		__testing.setProjectsDir("");
+		__testing.resetJsonlThrottle();
+		vi.restoreAllMocks();
+		rmSync(fixtureDirectory, {recursive: true, force: true});
+	});
+
+	it("reads appended lines only from transcripts, never from an application's own .jsonl log", async () => {
+		const projectsDirectory = join(fixtureDirectory, "projects");
+		const sessionDirectory = join(projectsDirectory, "-home-alice-app");
+		const logDirectory = join(fixtureDirectory, "app", "logs");
+		mkdirSync(sessionDirectory, {recursive: true});
+		mkdirSync(logDirectory, {recursive: true});
+		const transcriptPath = join(sessionDirectory, "alice-session.jsonl");
+		const logPath = join(logDirectory, "logstash.jsonl");
+		writeFileSync(transcriptPath, jsonl({type: "user", sessionId: "alice-session"}));
+		writeFileSync(logPath, jsonl({level: "INFO", message: "started"}));
+		__testing.setProjectsDir(projectsDirectory);
+		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
+
+		await __testing.handleFileChange(logPath);
+		await __testing.handleFileChange(transcriptPath);
+
+		await vi.waitFor(() => {
+			// An earlier test's trailing throttle timer can still read its own file.
+			expect(
+				readNewJsonlLines.mock.calls.map(([path]) => path).filter((path) => path.startsWith(fixtureDirectory)),
+			).toStrictEqual([transcriptPath]);
+		});
+	});
+});
+
 describe("handleFileChange file content", () => {
 	let fixtureDirectory: string;
 	let repositoryDirectory: string;

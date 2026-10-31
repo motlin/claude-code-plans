@@ -532,9 +532,18 @@ function isBlankAssistantLine(line: ProcessedLine): boolean {
  * Blank assistant messages between groups are treated as transparent and
  * removed along with the duplicate group.
  */
-function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
+/**
+ * Told about every command group `deduplicateCommandGroups` folds away. The
+ * fold depends only on the lines from the previous group's first line through
+ * the folded group's last, so `fromLineIndex`..`toLineIndex` bounds the records
+ * that could have changed the decision (see session-resource-scan).
+ */
+export type CommandGroupFoldObserver = (fromLineIndex: number, toLineIndex: number) => void;
+
+function deduplicateCommandGroups(lines: ProcessedLine[], onFold?: CommandGroupFoldObserver): ProcessedLine[] {
 	const indicesToRemove = new Set<number>();
 	let lastCommandContent: string | undefined;
+	let lastCommandGroupStart = -1;
 	let lastCommandGroupEnd = -1;
 
 	for (const [i, line] of lines.entries()) {
@@ -562,6 +571,11 @@ function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
 		const adjacentToPrevious = gap.every(isBlankAssistantLine);
 
 		if (commandContent === lastCommandContent && adjacentToPrevious) {
+			const previousStart = lines[lastCommandGroupStart];
+			const end = lines[groupEnd];
+			if (onFold !== undefined && previousStart !== undefined && end !== undefined) {
+				onFold(previousStart.lineIndex, end.lineIndex);
+			}
 			// Duplicate command group -- mark for removal
 			for (let j = groupStart; j <= groupEnd; j++) {
 				indicesToRemove.add(j);
@@ -575,6 +589,7 @@ function deduplicateCommandGroups(lines: ProcessedLine[]): ProcessedLine[] {
 		} else {
 			lastCommandContent = commandContent;
 		}
+		lastCommandGroupStart = groupStart;
 		lastCommandGroupEnd = groupEnd;
 	}
 
@@ -806,6 +821,7 @@ function* processRecordBatchSteps(
 	startLineIndex: number,
 	uuidToLine?: Map<string, number>,
 	hidden?: ReadonlySet<string>,
+	onFold?: CommandGroupFoldObserver,
 ): Generator<void, RecordBatchResult, void> {
 	const sessionLines: ProcessedLine[] = [];
 	const toolResults = new Map<string, ToolResultInfo>();
@@ -1295,6 +1311,7 @@ function* processRecordBatchSteps(
 	return {
 		sessionLines: deduplicateCommandGroups(
 			delivered.size === 0 ? sessionLines : sessionLines.filter((line) => !delivered.has(line)),
+			onFold,
 		),
 		toolResults,
 		title,
@@ -1334,6 +1351,7 @@ export function* processTranscriptSteps(
 	records: unknown[],
 	startLineIndex = 0,
 	chain?: ServedChain,
+	onFold?: CommandGroupFoldObserver,
 ): Generator<void, ProcessedTranscript, void> {
 	const uuidToLine = new Map<string, number>();
 	const {sessionLines, toolResults, title, customTitle} = yield* processRecordBatchSteps(
@@ -1341,6 +1359,7 @@ export function* processTranscriptSteps(
 		startLineIndex,
 		uuidToLine,
 		chain?.hidden,
+		onFold,
 	);
 	// The served cuts grouped by the prompt that replaced them, keeping served order.
 	const cutsByReplacement = new Map<string, TranscriptCut[]>();

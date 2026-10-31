@@ -257,6 +257,15 @@ CREATE TABLE IF NOT EXISTS herdr_terminal_view_states (
 CREATE INDEX IF NOT EXISTS herdr_terminal_view_states_session_idx
   ON herdr_terminal_view_states(session_id);
 
+CREATE TABLE IF NOT EXISTS session_resource_scans (
+  file_path TEXT PRIMARY KEY,
+  home_root TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  mtime_ms REAL NOT NULL,
+  scan_version INTEGER NOT NULL,
+  resources TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS reviews (
   review_id TEXT PRIMARY KEY,
   bundle TEXT NOT NULL
