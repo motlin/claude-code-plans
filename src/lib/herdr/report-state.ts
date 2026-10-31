@@ -35,10 +35,18 @@ export interface HerdrHookStateDependencies {
 	observe: (observation: HerdrReportObservation) => void;
 	/** The last state reported per session, in hook arrival order. */
 	reportedStates: Map<string, HerdrReportedState>;
+	/** Bumped per session for each report started, so a stale retry can see it was superseded. */
+	reportGenerations: Map<string, number>;
+	/** When a transient failure was last observed per pane, to log at most once a minute. */
+	transientFailureLoggedAt: Map<string, number>;
+	sleep: (ms: number) => Promise<void>;
+	now: () => number;
 }
 
 const SOURCE = "ccp";
 const AGENT = "claude";
+const RETRY_DELAY_MS = 250;
+const TRANSIENT_LOG_INTERVAL_MS = 60_000;
 
 /** Build source-global sequence numbers that remain increasing across clock stalls and rewinds. */
 export function createHerdrSequence(clock: () => number = Date.now): () => HerdrSequence {
@@ -135,7 +143,24 @@ const defaultDependencies: HerdrHookStateDependencies = {
 	nextSequence: createHerdrSequence(),
 	observe: logHerdrReportObservation,
 	reportedStates: new Map(),
+	reportGenerations: new Map(),
+	transientFailureLoggedAt: new Map(),
+	sleep: async (ms) =>
+		new Promise((resolve) => {
+			setTimeout(resolve, ms);
+		}),
+	now: Date.now,
 };
+
+/**
+ * A request that lost a race with host load rather than one herdr rejected. Each
+ * herdrRequest opens a fresh connection, so retrying never reuses the dead socket.
+ */
+function isTransientFailure(observation: HerdrReportObservation): boolean {
+	if (observation.outcome !== "request-error") return false;
+	if (observation.message.startsWith("timeout:")) return true;
+	return observation.message.startsWith("connect-failed:") && /\b(EPIPE|ECONNRESET)\b/.test(observation.message);
+}
 
 function observeRequestError(
 	dependencies: HerdrHookStateDependencies,
@@ -356,6 +381,47 @@ async function sendHookState(
 	await verifyPane(paneId, "pane.report_agent", report, dependencies, requestId);
 }
 
+/**
+ * Send one report, retrying once on a fresh connection after a transient failure.
+ * A retry is dropped when a newer report for the session started meanwhile, and a
+ * failed retry is logged at most once per pane per minute.
+ */
+async function sendHookStateWithRetry(
+	event: HookEvent,
+	entry: ActiveSessionEntry | null,
+	dependencies: HerdrHookStateDependencies,
+	generation: number,
+): Promise<void> {
+	/** Run one attempt, forwarding settled observations and returning a transient failure. */
+	const attempt = async (): Promise<HerdrReportObservation | null> => {
+		let transient: HerdrReportObservation | null = null;
+		await sendHookState(event, entry, {
+			...dependencies,
+			observe: (observation) => {
+				if (isTransientFailure(observation)) transient = observation;
+				else dependencies.observe(observation);
+			},
+		});
+		return transient;
+	};
+
+	if ((await attempt()) === null) return;
+	await dependencies.sleep(RETRY_DELAY_MS);
+	if (dependencies.reportGenerations.get(event.session_id) !== generation) return;
+	const failure = await attempt();
+	if (failure === null) return;
+
+	const key = failure.paneId ?? event.session_id;
+	const now = dependencies.now();
+	const lastLogged = dependencies.transientFailureLoggedAt.get(key);
+	if (lastLogged !== undefined && now - lastLogged < TRANSIENT_LOG_INTERVAL_MS) return;
+	for (const [loggedKey, loggedAt] of dependencies.transientFailureLoggedAt) {
+		if (now - loggedAt >= TRANSIENT_LOG_INTERVAL_MS) dependencies.transientFailureLoggedAt.delete(loggedKey);
+	}
+	dependencies.transientFailureLoggedAt.set(key, now);
+	dependencies.observe(failure);
+}
+
 /** Start a detached state report; transport failures are observed without rejecting the hook. */
 export function reportHookStateToHerdr(
 	event: HookEvent,
@@ -371,7 +437,9 @@ export function reportHookStateToHerdr(
 		if (!overridesReportedState(event, dependencies.reportedStates.get(event.session_id))) return;
 		dependencies.reportedStates.set(event.session_id, report.state);
 	}
-	void sendHookState(event, entry, dependencies).catch((error: unknown) => {
+	const generation = (dependencies.reportGenerations.get(event.session_id) ?? 0) + 1;
+	dependencies.reportGenerations.set(event.session_id, generation);
+	void sendHookStateWithRetry(event, entry, dependencies, generation).catch((error: unknown) => {
 		dependencies.observe({
 			outcome: "request-error",
 			method: event.hook_event_name === "SessionEnd" ? "pane.clear_agent_authority" : "pane.report_agent",

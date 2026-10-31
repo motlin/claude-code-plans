@@ -69,6 +69,10 @@ function dependencies(
 		nextSequence: () => ({timestamp: 946_684_800_000, ordinal: 0, value: 946_684_800_000_000}),
 		observe: (observation) => observations.push(observation),
 		reportedStates: new Map(),
+		reportGenerations: new Map(),
+		transientFailureLoggedAt: new Map(),
+		sleep: async () => Promise.resolve(),
+		now: () => 946_684_800_000,
 	};
 }
 
@@ -633,5 +637,129 @@ describe("logHerdrReportObservation", () => {
 		} finally {
 			consoleError.mockRestore();
 		}
+	});
+});
+
+describe("transient herdr report failures", () => {
+	const stop: HookEvent = {...baseEvent, hook_event_name: "Stop"};
+	const prompt: HookEvent = {...baseEvent, hook_event_name: "UserPromptSubmit", prompt: "Test prompt"};
+
+	/** A fake client whose report_agent calls fail with the queued results before succeeding. */
+	function flakyReportClient(failures: Array<Extract<HerdrResult<unknown>, {ok: false}>>): {
+		request: HerdrHookStateDependencies["request"];
+		reports: string[];
+	} {
+		const reports: string[] = [];
+		const request: HerdrHookStateDependencies["request"] = async (requestValue) => {
+			const request = requestValue as {method: string; params: {state?: string}};
+			if (request.method === "pane.report_agent") {
+				reports.push(request.params.state ?? "");
+				const failure = failures.shift();
+				if (failure) return Promise.resolve(failure);
+				return Promise.resolve({ok: true, value: {type: "ok"}});
+			}
+			const state = reports.at(-1) ?? "unknown";
+			return Promise.resolve({
+				ok: true,
+				value: paneInfo(
+					request.method === "pane.get" && reports.length > 0 ? {agent_status: state, agent: "claude"} : {},
+				),
+			});
+		};
+		return {request, reports};
+	}
+
+	const timeout = {ok: false, code: "timeout", message: "herdr request timed out"} as const;
+	const epipe = {ok: false, code: "connect-failed", message: "write EPIPE"} as const;
+
+	it.each([
+		["a timeout", timeout],
+		["a broken socket", epipe],
+	])("retries once after %s and stays quiet when the retry succeeds", async (_label, failure) => {
+		const observations: HerdrReportObservation[] = [];
+		const client = flakyReportClient([failure]);
+		const sleeps: number[] = [];
+		const hookDependencies = {
+			...dependencies(client.request, observations),
+			sleep: async (ms: number) => {
+				sleeps.push(ms);
+				return Promise.resolve();
+			},
+		};
+
+		reportHookStateToHerdr(stop, entry(), hookDependencies);
+		await settleDetachedReport();
+
+		expect({observations, reports: client.reports, sleeps}).toStrictEqual({
+			observations: [
+				{
+					outcome: "verified",
+					method: "pane.report_agent",
+					paneId: "w100:p100",
+					message: "pane.get confirmed write",
+				},
+			],
+			reports: ["idle", "idle"],
+			sleeps: [250],
+		});
+	});
+
+	it("logs once when the retry also times out, at most once per pane per minute", async () => {
+		const observations: HerdrReportObservation[] = [];
+		const client = flakyReportClient([timeout, timeout, timeout, timeout, timeout, timeout]);
+		let now = 946_684_800_000;
+		const hookDependencies = {...dependencies(client.request, observations), now: () => now};
+
+		reportHookStateToHerdr(stop, entry(), hookDependencies);
+		await settleDetachedReport();
+		now += 30_000;
+		reportHookStateToHerdr(prompt, entry(), hookDependencies);
+		await settleDetachedReport();
+		now += 30_000;
+		reportHookStateToHerdr(stop, entry(), hookDependencies);
+		await settleDetachedReport();
+
+		const failure: HerdrReportObservation = {
+			outcome: "request-error",
+			method: "pane.report_agent",
+			paneId: "w100:p100",
+			message: "timeout: herdr request timed out",
+		};
+		expect({observations, reports: client.reports}).toStrictEqual({
+			observations: [failure, failure],
+			reports: ["idle", "idle", "working", "working", "idle", "idle"],
+		});
+	});
+
+	it("drops a timed-out report instead of retrying when a newer report for the session has queued", async () => {
+		const observations: HerdrReportObservation[] = [];
+		const client = flakyReportClient([timeout]);
+		let wake: () => void = () => {};
+		const hookDependencies = {
+			...dependencies(client.request, observations),
+			sleep: async () =>
+				new Promise<void>((resolve) => {
+					wake = resolve;
+				}),
+		};
+
+		reportHookStateToHerdr(prompt, entry(), hookDependencies);
+		await settleDetachedReport();
+		reportHookStateToHerdr(stop, entry(), hookDependencies);
+		await settleDetachedReport();
+		wake();
+		await settleDetachedReport();
+
+		expect({observations, reports: client.reports}).toStrictEqual({
+			observations: [
+				{
+					outcome: "verified",
+					method: "pane.report_agent",
+					paneId: "w100:p100",
+					message: "pane.get confirmed write",
+				},
+			],
+			reports: ["working", "idle"],
+		});
 	});
 });
