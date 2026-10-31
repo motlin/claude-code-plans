@@ -128,14 +128,17 @@ describe("TileHost", () => {
 		}).toStrictEqual({region: "side_pane", screen: "plan"});
 	});
 
-	it("draws the pane surface with upstream's 10px radius and primary-ink header buttons", () => {
+	it("enters upstream's flat line mode once a pane opens: no radius or shadow, primary-ink header buttons", () => {
 		renderHost("session-a");
+		expect(document.querySelector("[data-tiles-line]")).toBeNull();
 		openTestPane();
 
 		const root = screen.getByText("Test pane body").closest("section[data-pane-root]");
 		const classesOf = (name: string) => screen.getByRole("button", {name}).className.split(" ");
 		expect({
+			line: document.querySelector("[data-tile-stack]")?.hasAttribute("data-tiles-line"),
 			radius: root?.classList.contains("rounded-r7"),
+			shadow: root?.classList.contains("shadow-panel-sm"),
 			card: root?.classList.contains("rounded-card"),
 			expand: {
 				primary: classesOf("Expand").includes("text-primary"),
@@ -146,7 +149,9 @@ describe("TileHost", () => {
 				secondary: classesOf("Close").includes("text-secondary"),
 			},
 		}).toStrictEqual({
-			radius: true,
+			line: true,
+			radius: false,
+			shadow: false,
 			card: false,
 			expand: {primary: true, secondary: false},
 			close: {primary: true, secondary: false},
@@ -215,7 +220,7 @@ describe("TileHost", () => {
 				orientation: "vertical",
 				now: "40",
 				min: "27",
-				max: "76",
+				max: "77",
 			},
 		});
 	});
@@ -234,7 +239,7 @@ describe("TileHost", () => {
 
 		expect({afterOneLeft, afterManyRight, afterManyLeft}).toStrictEqual({
 			afterOneLeft: "39",
-			afterManyRight: "76",
+			afterManyRight: "77",
 			afterManyLeft: "27",
 		});
 	});
@@ -565,6 +570,7 @@ describe("TileHost on a phone", () => {
 			sticky: slot.classList.contains("sticky"),
 			separators: screen.queryAllByRole("separator").map((separator) => ({
 				hairline: separator.classList.contains("w-px"),
+				ruled: separator.classList.contains("bg-border"),
 				gap: separator.classList.contains("w-3"),
 			})),
 		};
@@ -590,7 +596,7 @@ describe("TileHost on a phone", () => {
 				fullWidth: false,
 				paneMin: true,
 				sticky: false,
-				separators: [{hairline: true, gap: false}],
+				separators: [{hairline: true, ruled: true, gap: false}],
 			},
 			chat: {fixed: false, chatMin: true},
 		});
@@ -660,13 +666,18 @@ describe("TileHost on a phone", () => {
 		unregisterTasks();
 	});
 
-	it("drops the session card's phone inset while a side pane shares the row, as upstream's split runs edge to edge", () => {
+	it("drops the session card's inset at every width while a side pane shares the row, as upstream's line tiles run edge to edge", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
-		const phoneBlock = styles.slice(styles.indexOf('@media (width < 40rem) { [data-route-tile-shell="session"]'));
-
-		expect(phoneBlock.includes('[data-route-tile-shell="session"]:has([data-pane-phone]) { padding: 0;')).toBe(
-			true,
+		const lastShellRule = styles.lastIndexOf("[data-route-tile-shell] {");
+		const lineRule = styles.indexOf(
+			'[data-route-tile-shell="session"]:has([data-tiles-line]) { border-width: 0; padding: 0;',
 		);
+
+		expect({
+			lineRule: lineRule !== -1,
+			afterDesktopShell: lineRule > lastShellRule,
+			phoneOnlyRule: styles.includes("[data-pane-phone])"),
+		}).toStrictEqual({lineRule: true, afterDesktopShell: true, phoneOnlyRule: false});
 	});
 
 	it("flattens the pane surface below 640px, as upstream's phone pane has no radius or card shadow", () => {
@@ -788,21 +799,21 @@ describe("TileHost on a phone", () => {
 		unregisterChanges();
 	});
 
-	it("flattens the chat card while a side pane shares the phone row, as upstream's split tiles are square-cornered", () => {
+	it("flattens the chat card at every width while a side pane shares the row, as upstream's line tiles are square-cornered", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
 		const tileFrame = readFileSync("src/components/session-tile-frame.tsx", "utf8");
 		const fallback = readFileSync("src/components/app-shell-fallback.tsx", "utf8");
 
 		expect({
 			rule: styles.includes(
-				'@media (width < 40rem) { [data-route-tile-shell="session"]:has([data-pane-phone]) [data-session-tile] { border-radius: 0; box-shadow: none; } }',
+				'[data-route-tile-shell="session"]:has([data-tiles-line]) [data-session-tile] { border-radius: 0; box-shadow: none; }',
 			),
 			frameMarked: tileFrame.includes("data-session-tile"),
 			fallbackMarked: fallback.includes("data-session-tile"),
 		}).toStrictEqual({rule: true, frameMarked: true, fallbackMarked: true});
 	});
 
-	it("keeps the side-by-side tile with its resize handle at 640px and up", () => {
+	it("keeps the side-by-side tile with a hairline resize handle at 640px and up, as upstream's line mode does", () => {
 		mockViewport(640);
 		renderHost("session-wide");
 		openTestPane();
@@ -813,7 +824,7 @@ describe("TileHost on a phone", () => {
 				fullWidth: false,
 				paneMin: false,
 				sticky: false,
-				separators: [{hairline: false, gap: true}],
+				separators: [{hairline: true, ruled: true, gap: false}],
 			},
 			chat: {fixed: false, chatMin: false},
 		});

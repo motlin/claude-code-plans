@@ -220,9 +220,8 @@ function Divider({
 	const total = stack.children.reduce((sum, child) => sum + child.flex, 0);
 	const prefixFlex = stack.children.slice(0, index).reduce((sum, child) => sum + child.flex, 0);
 	const now = Math.round(((prefixFlex + before.flex) / total) * 100);
-	// Below 640px upstream's dividers are 1px hairlines with an 8px hit zone, not the 12px gap.
-	const hairline = host.phone;
-	const gapPx = hairline ? 1 : TILE_GAP_PX;
+	// Upstream's line mode (always on once a pane opens): 1px hairlines with an 8px hit zone, not the 12px gap.
+	const gapPx = 1;
 	const available = sizePx - gapPx * (stack.children.length - 1);
 	const bounds =
 		available > 0
@@ -291,14 +290,10 @@ function Divider({
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}
 			onPointerCancel={onPointerUp}
-			className={`group/divider relative flex shrink-0 touch-none items-center justify-center outline-none ${
-				hairline
-					? isRow
-						? "w-px cursor-col-resize before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
-						: "h-px cursor-row-resize before:absolute before:inset-x-0 before:-top-1 before:h-2 before:content-['']"
-					: isRow
-						? "w-3 cursor-col-resize"
-						: "h-3 cursor-row-resize"
+			className={`group/divider relative flex shrink-0 touch-none items-center justify-center bg-border outline-none ${
+				isRow
+					? "w-px cursor-col-resize before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
+					: "h-px cursor-row-resize before:absolute before:inset-x-0 before:-top-1 before:h-2 before:content-['']"
 			}`}
 		>
 			<span
@@ -587,8 +582,9 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			data-focus-region="pane"
 			aria-label={definition.title}
 			className={`relative isolate flex h-full min-w-0 flex-col bg-surface-2 ${
-				// Upstream's phone pane is flat: no radius, no card shadow (measured at 386px, 2026-10-30).
-				host.phone ? "" : "rounded-r7 shadow-panel-sm"
+				// Upstream's line-mode tiles are flat: no radius, no card shadow (measured at 386px and 1032px, 2026-10-30).
+				// Only the desktop expanded overlay, floating 9px inside the window, keeps its card.
+				isExpanded && !host.phone ? "rounded-r7 shadow-panel-sm" : ""
 			}`}
 		>
 			{definition.header === "custom" ? (
@@ -679,6 +675,8 @@ function StackView({
 		<div
 			ref={ref}
 			data-tile-stack={stack.direction}
+			// Upstream's tiles viewport switches to `data-tiles-line` whenever its panels layout holds a pane.
+			{...(isRoot && tileIdsOf(stack).length > 1 ? {"data-tiles-line": ""} : {})}
 			className={`flex h-full min-h-0 min-w-0 items-stretch ${stack.direction === "row" ? "flex-row" : "flex-col"}`}
 			style={isRoot ? undefined : {flex: `${stack.flex} 1 0`}}
 		>
