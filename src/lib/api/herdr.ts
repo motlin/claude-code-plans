@@ -59,6 +59,11 @@ export class HerdrRequestError extends Error {
 	}
 }
 
+/** The server holds no permission prompt for the session: the card answered is already gone. */
+export function isPermissionNotPending(error: unknown): boolean {
+	return error instanceof HerdrRequestError && error.status === 409 && error.code === "not_pending";
+}
+
 /** herdr refused the prompt because the agent is still working: queue it instead. */
 export function isAgentNotReady(error: unknown): boolean {
 	return error instanceof HerdrRequestError && error.status === 409 && error.code === "agent_not_ready";
@@ -142,7 +147,8 @@ export async function sendHerdrPermissionDecision(
 	const json: unknown = await response.json();
 
 	if (!response.ok) {
-		throw new Error(HerdrPromptErrorResponse.parse(json).error);
+		const {error, code} = HerdrPromptErrorResponse.parse(json);
+		throw new HerdrRequestError(error, response.status, code);
 	}
 
 	HerdrPromptSuccessResponse.parse(json);

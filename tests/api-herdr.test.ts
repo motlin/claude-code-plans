@@ -3,7 +3,9 @@ import {
 	HerdrPaneIndexResponse,
 	fetchHerdrElicitationDialog,
 	herdrPanesQueryOptions,
+	isPermissionNotPending,
 	sendHerdrElicitationDecision,
+	sendHerdrPermissionDecision,
 	sendHerdrPrompt,
 	sendHerdrQuestionAnswer,
 } from "../src/lib/api/herdr";
@@ -229,5 +231,39 @@ describe("fetchHerdrElicitationDialog", () => {
 		await expect(fetchHerdrElicitationDialog("session-test-100", fetcher)).rejects.toThrow(
 			"The terminal is not showing this elicitation",
 		);
+	});
+});
+
+describe("sendHerdrPermissionDecision", () => {
+	it("rejects with a not-pending error the card can recognise when the server holds no prompt", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(
+			Response.json({error: "No permission request is pending", code: "not_pending"}, {status: 409}),
+		);
+
+		const error: unknown = await sendHerdrPermissionDecision("session-test-100", "allow", fetcher).catch(
+			(caught: unknown) => caught,
+		);
+
+		expect({
+			message: error instanceof Error ? error.message : null,
+			notPending: isPermissionNotPending(error),
+		}).toStrictEqual({message: "No permission request is pending", notPending: true});
+	});
+
+	it("keeps other refusals as ordinary errors", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(
+			Response.json({error: "This permission request has no persistent allow option"}, {status: 409}),
+		);
+
+		const error: unknown = await sendHerdrPermissionDecision("session-test-100", "always", fetcher).catch(
+			(caught: unknown) => caught,
+		);
+
+		expect({
+			message: error instanceof Error ? error.message : null,
+			notPending: isPermissionNotPending(error),
+		}).toStrictEqual({message: "This permission request has no persistent allow option", notPending: false});
 	});
 });

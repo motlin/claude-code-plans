@@ -10,19 +10,16 @@ import {getSessionPrLink, isSessionArchived} from "./db/queries";
 import {isSessionUnseen} from "./db/viewed-state";
 import type {ActiveSessionPayload, SessionSummaryPayload} from "./hook-events";
 import {getLiveSubagentNodes} from "./live-subagent-store";
-import {hasPermissionPromptForSession} from "./notifications-store";
 import type {PrStatus} from "./pr-status";
 import {lookupSessionPrStatus} from "./pr-status-service";
 import {registryRemoteControl} from "./session-environment";
 import {getRegistrySessionState, type RegistrySessionState} from "./session-registry-store";
+import {sessionAwaitingPermission} from "./session-permission-wait";
 import {resolveMainState, resolveSessionBucket} from "./session-state";
 import {ownRepositoryPr, readOriginRepoName} from "./session-own-pr";
 import type {SessionEntry} from "./sessions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
-
-/** The registry's `waitingFor` while the CLI shows a tool permission prompt. */
-const REGISTRY_PERMISSION_WAIT = "permission prompt";
 
 /**
  * Convert an in-memory ActiveSessionEntry into the wire-level payload shape
@@ -91,8 +88,7 @@ export function toSessionSummaryPayload(
 	const pendingInput = activeSession !== null && registrySession === null && pendingApproval !== undefined;
 	// A standing permission prompt outlives the active-session sweep: the CLI
 	// writes nothing while it waits, so the session goes quiet but is not done.
-	const awaitingPermission =
-		hasPermissionPromptForSession(entry.id) || registrySession?.waitingFor === REGISTRY_PERMISSION_WAIT;
+	const awaitingPermission = sessionAwaitingPermission(entry.id, registrySession);
 	const {bucket, reason} = resolveSessionBucket({
 		mainState: main.state,
 		pendingInput,

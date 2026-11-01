@@ -95,7 +95,7 @@ describe("herdr permission decision handler", () => {
 			response: await describeResponse(response),
 			sendRequestCalls: sendRequest.mock.calls,
 		}).toStrictEqual({
-			response: {body: {error: "No permission request is pending"}, status: 409},
+			response: {body: {error: "No permission request is pending", code: "not_pending"}, status: 409},
 			sendRequestCalls: [],
 		});
 	});

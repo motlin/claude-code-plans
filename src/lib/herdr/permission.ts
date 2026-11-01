@@ -1,10 +1,10 @@
 import {z} from "zod";
 
 import {getActiveSessionEntry, setPendingPermissionRequest} from "../active-session-store";
-import {clearNotificationsForSession, getNotifications} from "../notifications-store";
-import {PERMISSION_PROMPT_NOTIFICATION} from "../permission-prompt";
+import {clearNotificationsForSession} from "../notifications-store";
 import {permissionDialogKey, persistentAllowKind, type PersistentAllowKind} from "../permission-suggestions";
 import {rejectCrossSite} from "../same-origin-guard";
+import {sessionAwaitingPermission} from "../session-permission-wait";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
@@ -42,10 +42,7 @@ function errorStatus(code: string): number {
 export const defaultHerdrPermissionDependencies: HerdrPermissionDependencies = {
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
-	hasPendingPermission: (sessionId) =>
-		getNotifications().some(
-			(entry) => entry.sessionId === sessionId && entry.notificationType === PERMISSION_PROMPT_NOTIFICATION,
-		),
+	hasPendingPermission: (sessionId) => sessionAwaitingPermission(sessionId),
 	persistentAllow: (sessionId) =>
 		persistentAllowKind(getActiveSessionEntry(sessionId)?.pendingPermissionRequest?.suggestions),
 	clearPendingPermission: (sessionId) => {
@@ -59,7 +56,7 @@ export const defaultHerdrPermissionDependencies: HerdrPermissionDependencies = {
 
 /**
  * Answer the CLI's tool permission prompt in the session's live herdr pane.
- * Keys are only sent while the hook state still shows the prompt, so a stale
+ * Keys are only sent while the hook state or the CLI registry still shows the prompt, so a stale
  * card can never type "1" into the composer of a pane that moved on, and the
  * persistent "2" only when the PermissionRequest hook said the dialog offers it.
  */
@@ -84,7 +81,7 @@ export async function handleHerdrPermission(
 	const {sessionId, decision} = parsed.data;
 
 	if (!dependencies.hasPendingPermission(sessionId)) {
-		return Response.json({error: "No permission request is pending"}, {status: 409});
+		return Response.json({error: "No permission request is pending", code: "not_pending"}, {status: 409});
 	}
 
 	const key = permissionDialogKey(decision, dependencies.persistentAllow(sessionId));

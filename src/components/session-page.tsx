@@ -81,6 +81,7 @@ import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
 import {WorkingMarker} from "./working-marker";
 import {useWorkingMarkerState} from "./use-working-marker-state";
+import {usePermissionAnswer} from "./use-permission-answer";
 import {SideChat} from "./side-chat";
 import {preloadSideChatPanel} from "./side-chat-panel-module";
 import {preloadErrorRecoveryActions} from "./error-recovery-actions-entry";
@@ -767,7 +768,22 @@ function SessionView({
 				: null,
 		[inlineQuestion, toolPermission, pendingElicitations],
 	);
-	const pendingPermission = toolPermission ?? elicitationPermission;
+	// A verdict elicitation answers through the CLI's elicitation dialog; Deny takes its Decline stop.
+	const answersElicitation = elicitationPermission !== null;
+	const sendPermissionDecision = useCallback(
+		async (decision: PermissionDecision) =>
+			answersElicitation
+				? sendHerdrElicitationDecision(sessionId, decision)
+				: sendHerdrPermissionDecision(sessionId, decision),
+		[answersElicitation, sessionId],
+	);
+	const candidatePermission = toolPermission ?? elicitationPermission;
+	// A card the server says isn't pending is stale: it drops and the lists that drew it refetch.
+	const {dropped: permissionDropped, answer: answerPermission} = usePermissionAnswer({
+		permissionId: candidatePermission?.notificationId ?? null,
+		send: sendPermissionDecision,
+	});
+	const pendingPermission = permissionDropped ? null : candidatePermission;
 	// A form or url elicitation stays with the terminal dialog, but the waiting notice names its server.
 	const elicitationNotice = useMemo(
 		() => findElicitationWaitingNotice(pendingElicitations ?? []),
@@ -814,15 +830,6 @@ function SessionView({
 			decide: async (decision) => sendHerdrPlanDecision(sessionId, decision),
 		}),
 		[answerRoute, sessionId],
-	);
-	// A verdict elicitation answers through the CLI's elicitation dialog; Deny takes its Decline stop.
-	const answersElicitation = elicitationPermission !== null;
-	const answerPermission = useCallback(
-		async (decision: PermissionDecision) =>
-			answersElicitation
-				? sendHerdrElicitationDecision(sessionId, decision)
-				: sendHerdrPermissionDecision(sessionId, decision),
-		[answersElicitation, sessionId],
 	);
 	const stopResponse = useStopResponse({
 		sessionId,
