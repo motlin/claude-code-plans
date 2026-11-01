@@ -11,7 +11,8 @@
 # it in place, and a running server's lazy import()s then hit deleted chunks.
 # `start` copies .output into SNAPSHOT_ROOT/<id>/.output and runs from there;
 # `restart` reuses the last snapshot. Older snapshots are pruned once the
-# server that used them has stopped.
+# server that used them has stopped; each snapshot keeps a copy of the
+# previous one's public/assets as .output/previous-assets.
 #
 # Environment overrides (used by tests/server-lifecycle.test.ts and
 # tests/server-snapshot.test.ts):
@@ -136,7 +137,7 @@ stop_server() {
 # copy lands under a temporary name and is renamed into place, so a snapshot
 # directory is always complete. APFS clones (cp -c) make the copy near-free.
 take_snapshot() {
-    local build="$PROJECT_DIR/.output" id tmp
+    local build="$PROJECT_DIR/.output" id tmp previous previous_assets
     if [ ! -f "$build/server/index.mjs" ]; then
         echo "No build at $build; run 'just build' first" >&2
         return 1
@@ -148,6 +149,17 @@ take_snapshot() {
         rm -rf "$tmp"
         mkdir -p "$tmp"
         cp -R "$build" "$tmp/"
+    fi
+    # Tabs still open from the previous build lazily import its hashed chunks;
+    # server/routes/assets serves them from previous-assets after a deploy.
+    # One generation only: the previous snapshot's own previous-assets is dropped.
+    previous=$(current_snapshot)
+    previous_assets="$SNAPSHOT_ROOT/$previous/.output/public/assets"
+    if [ -n "$previous" ] && [ -d "$previous_assets" ]; then
+        if ! cp -cR "$previous_assets" "$tmp/.output/previous-assets" 2>/dev/null; then
+            rm -rf "$tmp/.output/previous-assets"
+            cp -R "$previous_assets" "$tmp/.output/previous-assets"
+        fi
     fi
     mv "$tmp" "$SNAPSHOT_ROOT/$id"
     printf '%s\n' "$id" >"$SNAPSHOT_ROOT/current.tmp"

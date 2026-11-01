@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import type {ErrorComponentProps, StaticDataRouteOption} from "@tanstack/react-router";
 import {noop, QueryClientProvider, type QueryClient} from "@tanstack/react-query";
-import {useEffect, type ReactNode} from "react";
+import {useEffect, useRef, useState, type ReactNode} from "react";
 import {ThemeProvider} from "../components/theme-provider";
 import {SettingsProvider} from "../components/settings-provider";
 import {ToastProvider} from "../components/toast";
@@ -19,6 +19,7 @@ import {AppFrame} from "../components/app-frame";
 import {NotFoundContent} from "../components/not-found-content";
 import {AppShellFallback} from "../components/app-shell-fallback";
 import {useMarkAppMounted} from "../lib/app-mounted";
+import {isStaleChunkError, reloadForStaleChunk} from "../lib/stale-chunk-reload";
 import {getShellChinLabels} from "../lib/shell-chin-store";
 import {ChunkPrefetch} from "../components/chunk-prefetch";
 import {WaitingSessionPrefetch} from "../components/waiting-session-prefetch";
@@ -238,6 +239,23 @@ function RootErrorComponent({error, reset}: ErrorComponentProps) {
 
 export function DefaultErrorComponent({error}: ErrorComponentProps) {
 	const router = useRouter();
+	const staleChunk = isStaleChunkError(error);
+	// A React.lazy chunk from the previous deploy; Vite's preload errors are handled before they reach here.
+	const [reloading, setReloading] = useState(staleChunk);
+	const reloadAttempted = useRef(false);
+	useEffect(() => {
+		if (!staleChunk || reloadAttempted.current) return;
+		reloadAttempted.current = true;
+		setReloading(reloadForStaleChunk());
+	}, [staleChunk]);
+
+	if (reloading) {
+		return (
+			<p role="status" className="p-8 text-sm text-t6">
+				App updated, reloading…
+			</p>
+		);
+	}
 
 	if (error instanceof ApiResponseError && error.status === 404) {
 		return <NotFoundContent detail={error.message} />;

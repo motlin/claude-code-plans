@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync} from "node:fs";
+import {cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync} from "node:fs";
 import {createServer} from "node:net";
 import {tmpdir} from "node:os";
 import {basename, join, resolve} from "node:path";
@@ -37,11 +37,24 @@ async function freePort(): Promise<string> {
 	});
 }
 
-function writeBuild(): void {
+function writeBuild(assets: Record<string, string> = {}): void {
 	rmSync(join(projectDir, ".output"), {recursive: true, force: true});
 	mkdirSync(join(projectDir, ".output", "server"), {recursive: true});
+	mkdirSync(join(projectDir, ".output", "public", "assets"), {recursive: true});
 	cpSync(fixture, join(projectDir, ".output", "server", "index.mjs"));
 	writeFileSync(join(projectDir, ".output", "nitro.json"), "{}\n");
+	for (const [name, content] of Object.entries(assets)) {
+		writeFileSync(join(projectDir, ".output", "public", "assets", name), content);
+	}
+}
+
+function snapshotFiles(snapshot: string, dir: string): Record<string, string> {
+	const root = join(snapshotRoot, snapshot, ".output", dir);
+	return Object.fromEntries(
+		readdirSync(root)
+			.toSorted()
+			.map((name) => [name, readFileSync(join(root, name), "utf8")]),
+	);
 }
 
 function run(command: string): string {
@@ -104,6 +117,35 @@ describe("scripts/server.sh snapshots", () => {
 		expect(after).toHaveLength(1);
 		expect(after).not.toStrictEqual(before);
 		expect(listenerCommand()).toBe(`node ${join(snapshotRoot, after[0] ?? "", ".output", "server", "index.mjs")}`);
+	}, 30_000);
+
+	it("start carries the previous snapshot's hashed assets so open tabs from the old build still load them", () => {
+		writeBuild({"tip-OLD1.js": "old tip", "shared-SAME.js": "shared"});
+		run("start");
+		writeBuild({"tip-NEW2.js": "new tip", "shared-SAME.js": "shared"});
+		run("start");
+		const [snapshot = ""] = snapshots();
+
+		expect({
+			snapshots: snapshots().length,
+			assets: snapshotFiles(snapshot, "public/assets"),
+			previous: snapshotFiles(snapshot, "previous-assets"),
+		}).toStrictEqual({
+			snapshots: 1,
+			assets: {"shared-SAME.js": "shared", "tip-NEW2.js": "new tip"},
+			previous: {"shared-SAME.js": "shared", "tip-OLD1.js": "old tip"},
+		});
+	}, 60_000);
+
+	it("start keeps only one generation of previous assets", () => {
+		writeBuild({"tip-THIRD.js": "third"});
+		run("start");
+		const [snapshot = ""] = snapshots();
+
+		expect(snapshotFiles(snapshot, "previous-assets")).toStrictEqual({
+			"shared-SAME.js": "shared",
+			"tip-NEW2.js": "new tip",
+		});
 	}, 30_000);
 
 	it("stop still finds the snapshot server", () => {

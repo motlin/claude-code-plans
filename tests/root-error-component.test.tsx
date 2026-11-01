@@ -6,6 +6,19 @@ import {describe, expect, it, vi} from "vite-plus/test";
 import {ApiResponseError} from "../src/lib/api/client";
 import {DefaultErrorComponent} from "../src/routes/__root";
 
+const staleChunk = vi.hoisted(() => ({reloads: 0, allowed: true}));
+vi.mock("../src/lib/stale-chunk-reload", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../src/lib/stale-chunk-reload")>()),
+	reloadForStaleChunk: () => {
+		staleChunk.reloads += 1;
+		return staleChunk.allowed;
+	},
+}));
+
+const STALE_CHUNK = new TypeError(
+	"Failed to fetch dynamically imported module: https://plans.m4.notlin.com/assets/tool-approval-notify-tip-PCUCVhl8.js",
+);
+
 async function renderError(error: Error) {
 	const rootRoute = createRootRoute({
 		component: () => <DefaultErrorComponent error={error} reset={() => undefined} />,
@@ -73,5 +86,28 @@ describe("DefaultErrorComponent", () => {
 			homeLink: {text: "Back to home", destination: "/"},
 			invalidateCalls: [[]],
 		});
+	});
+
+	it("reloads once for a stale chunk from a previous deploy and says the app updated", async () => {
+		staleChunk.reloads = 0;
+		staleChunk.allowed = true;
+		await renderError(STALE_CHUNK);
+
+		expect({status: screen.getByRole("status").textContent, reloads: staleChunk.reloads}).toStrictEqual({
+			status: "App updated, reloading…",
+			reloads: 1,
+		});
+	});
+
+	it("shows the error when the stale-chunk reload guard already fired", async () => {
+		staleChunk.reloads = 0;
+		staleChunk.allowed = false;
+		await renderError(STALE_CHUNK);
+
+		expect({
+			heading: screen.getByRole("heading").textContent,
+			status: screen.queryByRole("status"),
+			reloads: staleChunk.reloads,
+		}).toStrictEqual({heading: "Something went wrong", status: null, reloads: 1});
 	});
 });

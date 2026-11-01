@@ -4,6 +4,10 @@ import {setupRouterSsrQueryIntegration} from "@tanstack/react-router-ssr-query";
 import {routeTree} from "./routeTree.gen";
 import {shouldRetryQuery} from "./lib/query-retry";
 import {DefaultErrorComponent} from "./routes/__root";
+import {installStaleChunkReload} from "./lib/stale-chunk-reload";
+
+// Before hydration, so a tab left open across a redeploy recovers from its first stale lazy chunk.
+if (typeof window !== "undefined") installStaleChunkReload(window);
 
 export function getRouter() {
 	const queryClient = new QueryClient({
