@@ -95,7 +95,7 @@ describe("useLiveHerdrPrompt held for the terminal", () => {
 		const postPrompt = vi
 			.fn<PostPrompt>()
 			.mockRejectedValue(new HerdrRequestError("no live pane", 502, "pane-not-found"));
-		const takeBack = vi.fn<(text: string) => void>();
+		const takeBack = vi.fn<(text: string) => boolean>().mockReturnValue(true);
 		const stop = registerComposer("session-alice", {insertText: () => {}, focus: () => {}, takeBack});
 		const {result} = renderHeld(postPrompt);
 
@@ -111,6 +111,25 @@ describe("useLiveHerdrPrompt held for the terminal", () => {
 			takeBack: [["Alice's prompt"]],
 			state: {phase: "idle", isPending: false, prompt: "", rejection: null},
 		});
+	});
+
+	it("withdraw keeps the held row when the composer refuses the take-back", async () => {
+		const postPrompt = vi
+			.fn<PostPrompt>()
+			.mockRejectedValue(new HerdrRequestError("no live pane", 502, "pane-not-found"));
+		const stop = registerComposer("session-alice", {insertText: () => {}, focus: () => {}, takeBack: () => false});
+		const {result} = renderHeld(postPrompt);
+
+		await act(async () => {
+			await result.current.send("Alice's prompt");
+		});
+		const held = result.current.state;
+		act(() => {
+			result.current.withdraw();
+		});
+		stop();
+
+		expect(result.current.state).toStrictEqual(held);
 	});
 });
 

@@ -186,8 +186,11 @@ export interface ComposerHandle {
 	getText?: () => string;
 	/** Runs the composer's Enter path on its current text; absent where no send can be rejected. */
 	submit?: () => void;
-	/** Puts a cancelled steer back, ahead of any draft, and focuses; absent where steers can't be sent. */
-	takeBack?: (text: string) => void;
+	/**
+	 * Puts a cancelled steer back, ahead of any draft, and focuses; false when refused (a command in bash mode).
+	 * Absent where steers can't be sent.
+	 */
+	takeBack?: (text: string) => boolean;
 }
 
 const composers = new Map<string, Set<ComposerHandle>>();
@@ -316,11 +319,13 @@ export function mergeTakeBack(text: string, draft: string): string {
 	return draft.trim() === "" ? text : `${text}\n\n${draft}`;
 }
 
-/** Puts a cancelled steer back into the session's composer; false when none can take it. */
+/** Puts a cancelled steer back into the session's composer; false when none takes it. */
 export function requestComposerTakeBack(sessionId: string, text: string): boolean {
-	const handles = mounted(sessionId).filter((handle) => handle.takeBack !== undefined);
-	for (const handle of handles) handle.takeBack?.(text);
-	return handles.length > 0;
+	let taken = false;
+	for (const handle of mounted(sessionId)) {
+		if (handle.takeBack?.(text) === true) taken = true;
+	}
+	return taken;
 }
 
 /** Puts a rejected prompt back into the session's first composer, above anything typed meanwhile; false when none is mounted. */

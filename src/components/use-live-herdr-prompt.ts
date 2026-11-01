@@ -128,8 +128,8 @@ export function useLiveHerdrPrompt(
 
 	/** Upstream `onRecallHeld`: the held row goes and its text returns to the composer above the draft. */
 	const withdraw = useCallback(() => {
-		if (stored.phase !== "held") return;
-		requestComposerTakeBack(sessionId, stored.prompt);
+		// A composer that refuses it (a command in bash mode) leaves the held row in place.
+		if (stored.phase !== "held" || !requestComposerTakeBack(sessionId, stored.prompt)) return;
 		setHeldRetries(0);
 		setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
 	}, [sessionId, stored.phase, stored.prompt]);

@@ -1,5 +1,6 @@
 import {
 	type CSSProperties,
+	Fragment,
 	memo,
 	type ReactNode,
 	useCallback,
@@ -12,6 +13,7 @@ import {
 	useState,
 } from "react";
 import {CircleStop, CornerDownLeft} from "lucide-react";
+import type {ThemedToken} from "@shikijs/core";
 
 import {useBandEnter} from "../hooks/use-band-enter";
 import {useComposerDraft} from "../hooks/use-composer-draft";
@@ -100,6 +102,7 @@ import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
 import {isShellCommandText, shellCommandUnavailableMessage} from "../lib/composer-shell-command";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
+import {useBashHighlight} from "../hooks/use-bash-highlight";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {useFileDropTarget} from "./composer-drop-scrim";
 import {ComposerSkillChip} from "./composer-skill-chip";
@@ -232,8 +235,35 @@ interface ComposerProps {
 	onShellCommand?: ((command: string) => Promise<boolean>) | undefined;
 }
 
+/** Upstream `gc`: a Shiki token's colour and italic / bold bits as inline style. */
+function bashTokenStyle(token: ThemedToken): CSSProperties {
+	const fontStyle = token.fontStyle ?? 0;
+	return {
+		color: token.color,
+		...((fontStyle & 1) !== 0 && {fontStyle: "italic"}),
+		...((fontStyle & 2) !== 0 && {fontWeight: "bold"}),
+	};
+}
+
+/** The bash-mode command, painted line by line over the transparent editor. */
+function BashHighlight({lines}: {lines: ThemedToken[][]}) {
+	return lines.map((tokens, line) => (
+		<Fragment key={line}>
+			{line > 0 && "\n"}
+			{tokens.map((token, index) => (
+				<span key={index} data-bash-token="" style={bashTokenStyle(token)}>
+					{token.content}
+				</span>
+			))}
+		</Fragment>
+	));
+}
+
 /** Upstream's bash-mode placeholder for a session whose terminal runs the command (`voKGw/`). */
 const BASH_PLACEHOLDER = "Run a shell command in the terminal and send the output to Claude";
+/** Upstream gUdQrb: prefilled or taken-back text refused while bash mode holds a command. */
+const BASH_ADD_REFUSAL =
+	"A command is in the message box, so nothing was added. Send or clear it first, then try again.";
 /** Upstream `Pu.bashStatus`, the editor's `aria-description` in bash mode. */
 const BASH_STATUS = "Bash mode. Press Escape to return to chat.";
 /** Upstream's Badge `variant:"pro" size:"sm"` pill in the actions' trailing slot. */
@@ -247,8 +277,8 @@ const BASH_CARD_CLASS = "inset-ring-1 inset-ring-[var(--text-pro)]";
 /** Room for the pill beside the send cell, so the command never runs under it. */
 const BASH_ROW_PADDING_CLASS =
 	"pr-[78px]! comfortable:pr-[80px]! pointer-coarse:pr-[99px]! comfortable:pointer-coarse:pr-[101px]!";
-/** The placeholder overlay stops short of the pill too. */
-const BASH_PLACEHOLDER_CLASS =
+/** The placeholder and painted overlays stop short of the pill too. */
+const BASH_OVERLAY_CLASS =
 	"right-[78px]! comfortable:right-[80px]! pointer-coarse:right-[99px]! comfortable:pointer-coarse:right-[101px]!";
 
 /**
@@ -554,7 +584,13 @@ export function Composer({
 	onRewind,
 	onShellCommand,
 }: ComposerProps) {
-	const {text: prompt, setText: setPrompt, clear: clearDraft} = useComposerDraft(draftKey);
+	const {
+		text: prompt,
+		setText: setPrompt,
+		bashMode: draftBashMode,
+		setBashMode,
+		clear: clearDraft,
+	} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	// Only the active pane's composer takes keys typed outside any field (upstream `paneOwnsTypeToFocus`).
 	useTypeToFocus(textareaRef, active && !disabled);
@@ -570,9 +606,14 @@ export function Composer({
 	const pendingCaretRef = useRef<number | null>(null);
 	const {queued: queuedComments} = useDiffComments(draftKey);
 	const contextChips = useContextChips(draftKey);
-	// Upstream's bash mode, in memory per draft: only a composer that can run shell commands enters it.
-	const [bashDraftKey, setBashDraftKey] = useState<string | null>(null);
-	const bashMode = onShellCommand !== undefined && bashDraftKey === draftKey;
+	// Upstream's bash mode, saved with the draft: only a composer that can run shell commands enters or restores it.
+	const bashMode = onShellCommand !== undefined && draftBashMode;
+	const bashModeRef = useRef(bashMode);
+	bashModeRef.current = bashMode;
+	// Upstream restores a saved bash mode only where it's available, and otherwise drops it from the draft.
+	useEffect(() => {
+		if (onShellCommand === undefined && draftBashMode) setBashMode(false);
+	}, [onShellCommand, draftBashMode, setBashMode]);
 	const hasContent = bashMode
 		? prompt.trim() !== ""
 		: prompt.trim() !== "" || queuedComments.length > 0 || contextChips.length > 0;
@@ -668,10 +709,17 @@ export function Composer({
 	const draftKeyRef = useRef(draftKey);
 	draftKeyRef.current = draftKey;
 	const waitingSendRef = useRef(false);
+	/** Upstream's prefill and take-back paths add nothing while a command is in the box (`isBashMode()`, gUdQrb). */
+	const refuseInBashMode = useCallback((): boolean => {
+		if (!bashModeRef.current) return false;
+		toast?.({kind: "error", message: BASH_ADD_REFUSAL});
+		return true;
+	}, [toast]);
 	useEffect(
 		() =>
 			registerComposer(draftKey, {
 				insertText: (text) => {
+					if (refuseInBashMode()) return;
 					const next = appendAttachment(promptRef.current, text);
 					promptRef.current = next;
 					setPrompt(next);
@@ -688,20 +736,23 @@ export function Composer({
 					handleSubmitRef.current();
 				},
 				takeBack: (text) => {
+					if (refuseInBashMode()) return false;
 					const next = mergeTakeBack(text, promptRef.current);
 					promptRef.current = next;
 					pendingCaretRef.current = text.length;
 					setCaret(text.length);
 					setPrompt(next);
 					textareaRef.current?.focus();
+					return true;
 				},
 			}),
-		[draftKey, setPrompt],
+		[draftKey, setPrompt, refuseInBashMode],
 	);
 
 	useEffect(
 		() =>
 			subscribePrefill?.((text) => {
+				if (refuseInBashMode()) return;
 				const textarea = textareaRef.current;
 				textarea?.focus();
 				// An unchanged prompt skips the caret layout effect, so place the caret now.
@@ -711,7 +762,7 @@ export function Composer({
 				setCaret(text.length);
 				setPrompt(text);
 			}),
-		[subscribePrefill, setPrompt],
+		[subscribePrefill, setPrompt, refuseInBashMode],
 	);
 
 	// Upstream disables the "/" and "@" suggestions in bash mode.
@@ -769,7 +820,10 @@ export function Composer({
 	} | null>(null);
 	const mentions =
 		mentionState?.draftKey === draftKey && mentionState.text === prompt ? mentionState.mentions : NO_MENTIONS;
-	const painted = chip !== null || mentions.length > 0;
+	// Upstream's epitaxyBashHighlight: the command takes Shiki's bash colours in the composer's own font.
+	const bashLines = useBashHighlight(prompt, bashMode && prompt !== "");
+	const bashPainted = bashMode && bashLines !== null;
+	const painted = bashPainted || chip !== null || mentions.length > 0;
 	// Upstream's bash-mode status rides on the editor as its aria-description.
 	const bashStatusProps = bashMode ? {"aria-description": BASH_STATUS} : {};
 	const placeholder = bashMode
@@ -984,14 +1038,14 @@ export function Composer({
 	function runShellCommand(command: string): void {
 		if (onShellCommand === undefined) return;
 		clearDraft();
-		setBashDraftKey(null);
+		setBashMode(false);
 		void onShellCommand(command).then((ran) => {
 			if (ran || draftKeyRef.current !== draftKey || promptRef.current !== "") return;
 			promptRef.current = command;
 			pendingCaretRef.current = command.length;
 			setCaret(command.length);
 			setPrompt(command);
-			setBashDraftKey(draftKey);
+			setBashMode(true);
 		});
 	}
 	/** Upstream's bash-mode keys: `!` in the empty editor enters, Backspace there or Escape (when idle) leaves. */
@@ -999,12 +1053,12 @@ export function Composer({
 		if (onShellCommand === undefined || e.altKey || e.metaKey || e.ctrlKey) return false;
 		if (!bashMode) {
 			if (e.key !== "!" || prompt !== "") return false;
-			setBashDraftKey(draftKey);
+			setBashMode(true);
 		} else if (e.key === "Backspace" && prompt === "") {
-			setBashDraftKey(null);
+			setBashMode(false);
 		} else if (e.key === "Escape" && !e.shiftKey && onStop === undefined && historyNav === null) {
 			// While Claude works, Escape stops it first, as upstream's working Escape does.
-			setBashDraftKey(null);
+			setBashMode(false);
 		} else {
 			return false;
 		}
@@ -1494,53 +1548,72 @@ export function Composer({
 						/>
 					)}
 					{painted && (
-						<div ref={paintedOverlayRef} aria-hidden="true" className={PAINTED_OVERLAY_CLASS}>
-							{chip !== null && (
-								<ComposerSkillChip
-									name={chip.name}
-									description={
-										slashCommands.find((command) => command.name === chip.name)?.description
-									}
-									selected={chipSelected}
-									onPress={(e) => {
-										// Upstream's atom can't hold the caret, so a press on the chip lands it after the chip.
-										e.preventDefault();
-										const textarea = textareaRef.current;
-										if (textarea === null) return;
-										textarea.focus();
-										textarea.setSelectionRange(chipLength, chipLength);
-									}}
-								/>
-							)}
-							{argumentHint === null ? (
-								<span data-skill-chip-rest="" className="text-primary">
-									{paintMentions(rest, chipLength, mentions, selectedMention, mentionChipActions)}
-								</span>
+						<div
+							ref={paintedOverlayRef}
+							aria-hidden="true"
+							data-bash-highlight={bashPainted ? "" : undefined}
+							className={
+								bashMode ? `${PAINTED_OVERLAY_CLASS} ${BASH_OVERLAY_CLASS}` : PAINTED_OVERLAY_CLASS
+							}
+						>
+							{bashPainted ? (
+								<BashHighlight lines={bashLines} />
 							) : (
 								<>
-									<span data-skill-chip-rest="" className="text-primary">
-										{paintMentions(
-											restLine,
-											chipLength,
-											mentions,
-											selectedMention,
-											mentionChipActions,
-										)}
-									</span>
-									<span
-										data-testid="slash-argument-hint"
-										data-skill-arg-hint="true"
-										aria-hidden="true"
-										style={{opacity: 0.5}}
-									>
-										{argumentHint}
-									</span>
-									{paintMentions(
-										rest.slice(restLine.length),
-										chipLength + restLine.length,
-										mentions,
-										selectedMention,
-										mentionChipActions,
+									{chip !== null && (
+										<ComposerSkillChip
+											name={chip.name}
+											description={
+												slashCommands.find((command) => command.name === chip.name)?.description
+											}
+											selected={chipSelected}
+											onPress={(e) => {
+												// Upstream's atom can't hold the caret, so a press on the chip lands it after the chip.
+												e.preventDefault();
+												const textarea = textareaRef.current;
+												if (textarea === null) return;
+												textarea.focus();
+												textarea.setSelectionRange(chipLength, chipLength);
+											}}
+										/>
+									)}
+									{argumentHint === null ? (
+										<span data-skill-chip-rest="" className="text-primary">
+											{paintMentions(
+												rest,
+												chipLength,
+												mentions,
+												selectedMention,
+												mentionChipActions,
+											)}
+										</span>
+									) : (
+										<>
+											<span data-skill-chip-rest="" className="text-primary">
+												{paintMentions(
+													restLine,
+													chipLength,
+													mentions,
+													selectedMention,
+													mentionChipActions,
+												)}
+											</span>
+											<span
+												data-testid="slash-argument-hint"
+												data-skill-arg-hint="true"
+												aria-hidden="true"
+												style={{opacity: 0.5}}
+											>
+												{argumentHint}
+											</span>
+											{paintMentions(
+												rest.slice(restLine.length),
+												chipLength + restLine.length,
+												mentions,
+												selectedMention,
+												mentionChipActions,
+											)}
+										</>
 									)}
 								</>
 							)}
@@ -1564,7 +1637,7 @@ export function Composer({
 						<div
 							data-testid="composer-placeholder"
 							aria-hidden="true"
-							className={`${PLACEHOLDER_OVERLAY_CLASS}${bashMode ? ` ${BASH_PLACEHOLDER_CLASS}` : ""}${isStreaming || disabled ? " opacity-50" : ""}`}
+							className={`${PLACEHOLDER_OVERLAY_CLASS}${bashMode ? ` ${BASH_OVERLAY_CLASS}` : ""}${isStreaming || disabled ? " opacity-50" : ""}`}
 						>
 							{placeholder}
 						</div>

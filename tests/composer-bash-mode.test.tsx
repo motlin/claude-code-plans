@@ -3,6 +3,8 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {composerDraftStorageKey} from "../src/hooks/use-composer-draft";
+import {requestComposerInsert, requestComposerTakeBack} from "../src/lib/context-attach";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {HerdrRequestError} from "../src/lib/api/herdr";
 import {
@@ -11,7 +13,23 @@ import {
 	shellCommandUnavailableMessage,
 } from "../src/lib/composer-shell-command";
 
+/** A stand-in for Shiki: the first word of each line is a command, the rest arguments. */
+const highlightCalls = vi.hoisted(() => [] as boolean[]);
+
+vi.mock("../src/hooks/use-bash-highlight", () => ({
+	useBashHighlight: (code: string, enabled: boolean) => {
+		highlightCalls.push(enabled);
+		if (!enabled) return null;
+		return code.split("\n").map((line) => {
+			const [command = "", ...args] = line.split(" ");
+			const rest = args.length === 0 ? [] : [{content: ` ${args.join(" ")}`, color: "#00aa00", offset: 0}];
+			return [{content: command, color: "#aa0000", fontStyle: 2, offset: 0}, ...rest];
+		});
+	},
+}));
+
 afterEach(() => {
+	highlightCalls.length = 0;
 	cleanup();
 	localStorage.clear();
 	vi.unstubAllGlobals();
@@ -46,9 +64,16 @@ interface RenderOptions {
 	onShellCommand?: ((command: string) => Promise<boolean>) | undefined;
 	working?: boolean;
 	coarse?: boolean;
+	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
 }
 
-function renderComposer({variant = "session", onShellCommand, working = false, coarse = false}: RenderOptions = {}) {
+function renderComposer({
+	variant = "session",
+	onShellCommand,
+	working = false,
+	coarse = false,
+	subscribePrefill,
+}: RenderOptions = {}) {
 	stubPointer(coarse);
 	const handlers = {
 		onSend: vi.fn<(prompt: string) => void>(),
@@ -67,6 +92,7 @@ function renderComposer({variant = "session", onShellCommand, working = false, c
 				onStop={working ? handlers.onStop : undefined}
 				onQueueForLater={working ? handlers.onQueueForLater : undefined}
 				onShellCommand={onShellCommand}
+				subscribePrefill={subscribePrefill}
 			/>
 		</ToastContext.Provider>,
 	);
@@ -277,6 +303,155 @@ describe("Composer bash mode with a live pane", () => {
 		pressBang(textarea);
 
 		expect({before, after: card().className.includes("inset-ring-1")}).toStrictEqual({before: false, after: true});
+	});
+});
+
+function paintedTokens() {
+	const overlay = document.querySelector<HTMLElement>("[data-bash-highlight]");
+	if (overlay === null) return null;
+	return {
+		text: overlay.textContent,
+		tokens: [...overlay.querySelectorAll<HTMLElement>("[data-bash-token]")].map((span) => ({
+			content: span.textContent,
+			style: span.getAttribute("style"),
+		})),
+	};
+}
+
+const ALLOW = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true);
+
+describe("Composer bash mode highlighting", () => {
+	it("paints the typed command as bash over a transparent editor", () => {
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "git status\nls"}});
+
+		expect({painted: paintedTokens(), transparent: textarea.className.includes("text-transparent")}).toStrictEqual({
+			painted: {
+				text: "git status\nls",
+				tokens: [
+					{content: "git", style: "color: rgb(170, 0, 0); font-weight: bold;"},
+					{content: " status", style: "color: rgb(0, 170, 0);"},
+					{content: "ls", style: "color: rgb(170, 0, 0); font-weight: bold;"},
+				],
+			},
+			transparent: true,
+		});
+	});
+
+	it("leaves chat text unhighlighted and never asks for the bash grammar", () => {
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		fireEvent.change(textarea, {target: {value: "git status"}});
+
+		expect({
+			painted: paintedTokens(),
+			transparent: textarea.className.includes("text-transparent"),
+			enabled: [...new Set(highlightCalls)],
+		}).toStrictEqual({painted: null, transparent: false, enabled: [false]});
+	});
+});
+
+describe("Composer bash mode drafts", () => {
+	it("saves bash mode with the draft and restores it", async () => {
+		const first = renderComposer({onShellCommand: ALLOW});
+		pressBang(first.textarea);
+		fireEvent.change(first.textarea, {target: {value: "ls -la"}});
+		cleanup();
+		const stored: unknown = JSON.parse(localStorage.getItem(composerDraftStorageKey("session-alice")) ?? "null");
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		await flush();
+
+		expect({stored, state: bashState(textarea)}).toStrictEqual({
+			stored: {text: "ls -la", bashMode: true},
+			state: {...BASH_STATE, placeholder: null, value: "ls -la"},
+		});
+	});
+
+	it("drops bash mode from the draft on leaving it", () => {
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "ls"}});
+		fireEvent.keyDown(textarea, {key: "Escape"});
+		cleanup();
+
+		expect(JSON.parse(localStorage.getItem(composerDraftStorageKey("session-alice")) ?? "null")).toStrictEqual({
+			text: "ls",
+		});
+	});
+
+	it("restores a bash-mode draft as chat where no live pane can run it", async () => {
+		localStorage.setItem(composerDraftStorageKey("session-alice"), JSON.stringify({text: "ls", bashMode: true}));
+		const {textarea} = renderComposer();
+		await flush();
+
+		expect({bashMode: bashState(textarea).bashMode, value: textarea.value}).toStrictEqual({
+			bashMode: false,
+			value: "ls",
+		});
+	});
+});
+
+const COMMAND_IN_BOX = "A command is in the message box, so nothing was added. Send or clear it first, then try again.";
+
+describe("Composer bash mode refuses added text", () => {
+	it("refuses a take-back, so the caller keeps the cancelled message", () => {
+		const {handlers, textarea} = renderComposer({onShellCommand: ALLOW});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "ls"}});
+		let taken = true;
+		act(() => {
+			taken = requestComposerTakeBack("session-alice", "Fix the tests");
+		});
+
+		expect({taken, value: textarea.value, toasts: handlers.toast.mock.calls}).toStrictEqual({
+			taken: false,
+			value: "ls",
+			toasts: [[{kind: "error", message: COMMAND_IN_BOX}]],
+		});
+	});
+
+	it("refuses inserted text such as a Fix-this prompt", () => {
+		const {handlers, textarea} = renderComposer({onShellCommand: ALLOW});
+		pressBang(textarea);
+		act(() => {
+			requestComposerInsert("session-alice", "Fix this finding");
+		});
+
+		expect({state: bashState(textarea), toasts: handlers.toast.mock.calls}).toStrictEqual({
+			state: BASH_STATE,
+			toasts: [[{kind: "error", message: COMMAND_IN_BOX}]],
+		});
+	});
+
+	it("refuses a prefill", () => {
+		const listeners: Array<(text: string) => void> = [];
+		const {handlers, textarea} = renderComposer({
+			onShellCommand: ALLOW,
+			subscribePrefill: (listener) => {
+				listeners.push(listener);
+				return () => undefined;
+			},
+		});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "pwd"}});
+		act(() => {
+			for (const listener of listeners) listener("Summarize the repo");
+		});
+
+		expect({value: textarea.value, toasts: handlers.toast.mock.calls}).toStrictEqual({
+			value: "pwd",
+			toasts: [[{kind: "error", message: COMMAND_IN_BOX}]],
+		});
+	});
+
+	it("still takes a cancelled message back in chat mode", () => {
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		let taken = false;
+		act(() => {
+			taken = requestComposerTakeBack("session-alice", "Fix the tests");
+		});
+
+		expect({taken, value: textarea.value}).toStrictEqual({taken: true, value: "Fix the tests"});
 	});
 });
 

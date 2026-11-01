@@ -6,8 +6,15 @@ export const COMPOSER_DRAFT_DEBOUNCE_MS = 150;
 
 const COMPOSER_DRAFT_PREFIX = "ccp-composer-draft:";
 
-/** `failedSend` is upstream's local-session marker: the prompt herdr rejected, so a reload can show its card again. */
-const ComposerDraftSchema = z.strictObject({text: z.string(), failedSend: z.string().optional()});
+/**
+ * `failedSend` is upstream's local-session marker: the prompt herdr rejected, so a reload can show its card again.
+ * `bashMode` is upstream's saved bash mode, so a restored draft comes back as a shell command.
+ */
+const ComposerDraftSchema = z.strictObject({
+	text: z.string(),
+	failedSend: z.string().optional(),
+	bashMode: z.literal(true).optional(),
+});
 
 type StoredDraft = z.infer<typeof ComposerDraftSchema>;
 
@@ -37,10 +44,6 @@ function readStoredDraft(draftKey: string): StoredDraft | null {
 	}
 }
 
-function readDraft(draftKey: string): string {
-	return readStoredDraft(draftKey)?.text ?? "";
-}
-
 function storeDraft(draftKey: string, draft: StoredDraft): void {
 	try {
 		const storage = browserLocalStorage();
@@ -54,9 +57,13 @@ function storeDraft(draftKey: string, draft: StoredDraft): void {
 }
 
 /** Keeps the stored `failedSend` only while the text still equals it (upstream `T7` writes `failedSend:false` on an edit). */
-function writeDraft(draftKey: string, text: string): void {
+function writeDraft(draftKey: string, text: string, bashMode: boolean): void {
 	const failedSend = readStoredDraft(draftKey)?.failedSend;
-	storeDraft(draftKey, failedSend === text ? {text, failedSend} : {text});
+	storeDraft(draftKey, {
+		text,
+		...(failedSend === text && {failedSend}),
+		...(bashMode && {bashMode: true}),
+	});
 }
 
 /** Records a rejected prompt in the draft, so the send-rejected card comes back after a reload. */
@@ -73,7 +80,10 @@ export function readFailedSend(draftKey: string): string | null {
 export interface ComposerDraft {
 	text: string;
 	setText: (text: string) => void;
-	/** Empties the composer and drops the stored draft immediately (e.g. after a send). */
+	/** Upstream's bash mode, saved with the draft. */
+	bashMode: boolean;
+	setBashMode: (bashMode: boolean) => void;
+	/** Empties the composer, leaves bash mode, and drops the stored draft immediately (e.g. after a send). */
 	clear: () => void;
 }
 
@@ -83,9 +93,13 @@ export interface ComposerDraft {
  */
 export function useComposerDraft(draftKey: string): ComposerDraft {
 	const [text, setTextState] = useState("");
+	// Keyed by draft, so a draft switch never shows the previous draft's mode before the restore lands.
+	const [bash, setBash] = useState<{key: string; on: boolean} | null>(null);
+	const latest = useRef({text: "", bashMode: false});
 	const pending = useRef<{
 		key: string;
 		text: string;
+		bashMode: boolean;
 		timer: ReturnType<typeof setTimeout>;
 	} | null>(null);
 
@@ -94,33 +108,53 @@ export function useComposerDraft(draftKey: string): ComposerDraft {
 		if (!current) return;
 		clearTimeout(current.timer);
 		pending.current = null;
-		writeDraft(current.key, current.text);
+		writeDraft(current.key, current.text, current.bashMode);
 	}, []);
 
 	useEffect(() => {
-		setTextState(readDraft(draftKey));
+		const stored = readStoredDraft(draftKey);
+		latest.current = {text: stored?.text ?? "", bashMode: stored?.bashMode === true};
+		setTextState(latest.current.text);
+		setBash({key: draftKey, on: latest.current.bashMode});
 		return flush;
+	}, [draftKey, flush]);
+
+	const schedule = useCallback(() => {
+		if (pending.current) clearTimeout(pending.current.timer);
+		pending.current = {
+			key: draftKey,
+			...latest.current,
+			timer: setTimeout(flush, COMPOSER_DRAFT_DEBOUNCE_MS),
+		};
 	}, [draftKey, flush]);
 
 	const setText = useCallback(
 		(next: string) => {
+			latest.current = {...latest.current, text: next};
 			setTextState(next);
-			if (pending.current) clearTimeout(pending.current.timer);
-			pending.current = {
-				key: draftKey,
-				text: next,
-				timer: setTimeout(flush, COMPOSER_DRAFT_DEBOUNCE_MS),
-			};
+			schedule();
 		},
-		[draftKey, flush],
+		[schedule],
+	);
+
+	const setBashMode = useCallback(
+		(on: boolean) => {
+			latest.current = {...latest.current, bashMode: on};
+			setBash({key: draftKey, on});
+			schedule();
+		},
+		[draftKey, schedule],
 	);
 
 	const clear = useCallback(() => {
 		if (pending.current) clearTimeout(pending.current.timer);
 		pending.current = null;
+		latest.current = {text: "", bashMode: false};
 		setTextState("");
-		writeDraft(draftKey, "");
+		setBash({key: draftKey, on: false});
+		writeDraft(draftKey, "", false);
 	}, [draftKey]);
 
-	return {text, setText, clear};
+	const bashMode = bash?.key === draftKey && bash.on;
+	return {text, setText, bashMode, setBashMode, clear};
 }
