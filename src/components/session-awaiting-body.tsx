@@ -1,6 +1,6 @@
 import {useMutation, useQuery} from "@tanstack/react-query";
 import {CornerDownLeft} from "lucide-react";
-import {useId, useState, type ComponentType, type KeyboardEvent, type ReactNode} from "react";
+import {useCallback, useId, useState, type ComponentType, type KeyboardEvent, type ReactNode} from "react";
 
 import {sendHerdrPermissionDecision, sendHerdrPrompt} from "../lib/api/herdr";
 import {planQueryOptions} from "../lib/api/plans";
@@ -26,6 +26,7 @@ import {QUICK_REPLY_HINT} from "./session-hover-card-classes";
 import {AwaitingBodySkeleton, AwaitingTitle} from "./session-awaiting-skeleton";
 import {questionAnswerable, useAwaitingGate} from "./use-awaiting-gate";
 import {useToast} from "./toast-context";
+import {usePermissionAnswer} from "./use-permission-answer";
 
 const SEND_FAILED = "Response couldn’t be sent. You can try again.";
 
@@ -286,8 +287,14 @@ const PERMISSION_BUTTON_CLASS =
 function PermissionBody({sessionId, message, writable}: {sessionId: string; message: string; writable: boolean}) {
 	const bodyId = useId();
 	const toast = useToast();
+	const sendDecision = useCallback(
+		async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
+		[sessionId],
+	);
+	// A prompt the server says isn't pending is stale: the card drops and the lists that drew it refetch.
+	const {dropped, answer} = usePermissionAnswer({permissionId: message, send: sendDecision});
 	const decide = useMutation({
-		mutationFn: async (decision: PermissionDecision) => sendHerdrPermissionDecision(sessionId, decision),
+		mutationFn: answer,
 		onError: () => {
 			toast({kind: "error", message: SEND_FAILED});
 		},
@@ -295,6 +302,7 @@ function PermissionBody({sessionId, message, writable}: {sessionId: string; mess
 	const send = (decision: PermissionDecision) => {
 		if (!decide.isPending) decide.mutate(decision);
 	};
+	if (dropped) return <AwaitingFallback />;
 	return (
 		<div className="flex flex-col gap-1.25 px-4 pt-1 pb-2.5">
 			<AskedLine bodyId={bodyId}>{truncateCodePoints(message, AWAITING_TEXT_CAP)}</AskedLine>

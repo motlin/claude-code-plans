@@ -184,6 +184,7 @@ afterEach(() => {
 	cleanup();
 	vi.useRealTimers();
 	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
 });
 
 describe("SessionHoverCard timing and shell", () => {
@@ -547,6 +548,50 @@ describe("SessionHoverCard plan, permission and no-gate cards", () => {
 			buttons: ["Deny", "Allow once"],
 			interactive: true,
 			posts: [["/api/herdr/permission", JSON.stringify({sessionId: SESSION_ID, decision: "allow"})]],
+		});
+	});
+
+	it("drops a permission card the server says is no longer pending, refetches its lists, and says why", async () => {
+		const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async (url, init) =>
+			Promise.resolve(
+				init?.method === "POST" && url === "/api/herdr/permission"
+					? new Response(JSON.stringify({error: "No permission request is pending", code: "not_pending"}), {
+							status: 409,
+						})
+					: new Response(JSON.stringify({ok: true}), {status: 200}),
+			),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		const invalidate = vi.spyOn(QueryClient.prototype, "invalidateQueries").mockResolvedValue();
+		renderCard(
+			{title: "Run tests", summary: null, blocked: true},
+			{permission: "Claude needs your permission to use Bash", writable: true},
+		);
+		hover();
+		await advance(400);
+		act(() => {
+			fireEvent.click(screen.getByRole("button", {name: "Deny"}));
+		});
+		await advance(0);
+
+		expect({
+			posts: posts(fetchMock).map(([url, init]) => [url, init?.body]),
+			invalidated: invalidate.mock.calls,
+			buttons: card()?.querySelectorAll("button").length,
+			body: card()?.querySelector("[data-card-fallback]")?.textContent,
+			warning: screen.queryByText("That permission request is no longer pending")?.tagName ?? null,
+			error: screen.queryByText("Response couldn’t be sent. You can try again."),
+		}).toStrictEqual({
+			posts: [["/api/herdr/permission", JSON.stringify({sessionId: SESSION_ID, decision: "deny"})]],
+			invalidated: [
+				[{queryKey: ["notifications"]}],
+				[{queryKey: ["sessions", "recent"]}],
+				[{queryKey: ["sessions", "grouped"]}],
+			],
+			buttons: 0,
+			body: "Awaiting inputOpen the session to respond",
+			warning: "P",
+			error: null,
 		});
 	});
 
