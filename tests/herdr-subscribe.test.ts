@@ -1,6 +1,9 @@
 import {EventEmitter} from "node:events";
-import type {Interface as ReadlineInterface} from "node:readline";
-import type {Socket} from "node:net";
+import {mkdtempSync, rmSync} from "node:fs";
+import {createConnection, createServer, type Server, type Socket} from "node:net";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {createInterface, type Interface as ReadlineInterface} from "node:readline";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {HERDR_EVENTS} from "../src/lib/hook-events";
 import {createHerdrPaneTable, type HerdrPaneState} from "../src/lib/herdr/pane-table";
@@ -862,6 +865,85 @@ describe("herdr bridge manager", () => {
 				"stop /test/herdr.sock",
 			],
 			known: [[defaultServer, laterServer], [defaultServer, laterServer], [defaultServer], null, null],
+		});
+	});
+});
+
+describe("herdr event bridge over a real socket", () => {
+	let directory = "";
+	let server: Server | null = null;
+
+	beforeEach(() => {
+		// Unix socket paths are capped near 104 bytes, so keep the fake herdr socket under a short temp dir.
+		directory = mkdtempSync(join(tmpdir(), "ccp-herdr-"));
+	});
+
+	afterEach(async () => {
+		await new Promise<void>((resolve) => {
+			if (server === null) {
+				resolve();
+				return;
+			}
+			server.close(() => {
+				resolve();
+			});
+		});
+		server = null;
+		rmSync(directory, {recursive: true, force: true});
+	});
+
+	it("treats a subscription write that hits EPIPE as a disconnect and reconnects without an uncaught error", async () => {
+		const socketPath = join(directory, "herdr.sock");
+		let connections = 0;
+		const fakeHerdr = createServer((connection) => {
+			connections += 1;
+			if (connections === 1) {
+				// Hang up before reading, so the bridge's subscription write after connect fails with EPIPE.
+				connection.destroy();
+				return;
+			}
+			connection.once("data", () => {
+				connection.write(`${JSON.stringify({id: "ccp:sub", result: {type: "subscription_started"}})}\n`);
+			});
+		});
+		server = fakeHerdr;
+		await new Promise<void>((resolve) => {
+			fakeHerdr.listen(socketPath, resolve);
+		});
+
+		const uncaught: unknown[] = [];
+		const onUncaught = (error: unknown) => uncaught.push(error);
+		process.prependListener("uncaughtException", onUncaught);
+		const reconnecting: boolean[] = [];
+		const subscribed = new Promise<void>((resolve) => {
+			const stop = __testing.createBridge({
+				probe: async () =>
+					Promise.resolve({available: true as const, socketPath, version: "0.8.0-test", protocol: 100}),
+				connect: createConnection,
+				createLineReader: (socket) => createInterface({input: socket}),
+				getSnapshot: async () => Promise.resolve(paneState([{paneId: "workspace-100:pane-100", revision: 0}])),
+				getPanes: async () => Promise.resolve([]),
+				paneTable: createHerdrPaneTable(),
+				broadcast: () => {},
+				schedule: setTimeout,
+				cancel: clearTimeout,
+				viewedStateTracker: viewedStateTracker(),
+				setReconnecting: (value) => {
+					reconnecting.push(value);
+					if (!value) {
+						stop();
+						resolve();
+					}
+				},
+			});
+		});
+		await subscribed;
+		process.removeListener("uncaughtException", onUncaught);
+
+		expect({uncaught, reconnecting, connections}).toStrictEqual({
+			uncaught: [],
+			reconnecting: [true, false],
+			connections: 2,
 		});
 	});
 });

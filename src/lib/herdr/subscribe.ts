@@ -311,6 +311,9 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		};
 		nextSocket.on("error", handleDisconnect);
 		nextSocket.once("close", handleDisconnect);
+		// A readline interface re-emits its input's errors on itself, and an emitter with no error listener throws,
+		// so without this a write EPIPE escapes as an uncaughtException before the socket listener above ever runs.
+		nextLineReader.on("error", handleDisconnect);
 
 		nextLineReader.on("line", (line) => {
 			if (stopped || line.trim() === "") return;
