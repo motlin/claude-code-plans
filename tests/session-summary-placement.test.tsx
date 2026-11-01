@@ -7,6 +7,7 @@ import type {ReactNode} from "react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
+import {clearSentQuestionCard} from "../src/lib/question-card-store";
 import {SessionPage} from "../src/components/session-page";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {STORAGE_KEYS} from "../src/components/settings-context";
@@ -629,6 +630,11 @@ describe("SessionPage dock composition", () => {
 			viewedState: detail.viewedState,
 		};
 
+		afterEach(() => {
+			// The sent store is module state: an answer sent in one test must not leave the next one a receipt.
+			clearSentQuestionCard("toolu_question");
+		});
+
 		async function renderWaitingQuestion(herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean}) {
 			await renderSessionPage({...detail, pr}, [], (queryClient) => {
 				seedUsage(queryClient);
@@ -662,11 +668,13 @@ describe("SessionPage dock composition", () => {
 
 			expect({
 				footnote: card.queryByText("Answer in the terminal"),
+				receipt: document.querySelector("[data-hook-question] [data-question-receipt]")?.textContent,
 				posts: fetchMock.mock.calls
 					.filter(([input]) => String(input) === "/api/herdr/question")
 					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
 			}).toStrictEqual({
 				footnote: null,
+				receipt: "Ship it?No",
 				posts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
 			});
 		});

@@ -4,10 +4,11 @@ import type {ClientToolCall, ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
 import {QuestionCard} from "../question-card";
+import {QuestionReceipt} from "../question-receipt";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
 import {labelledAnswers} from "../../lib/question-card-draft";
-import {clearSentQuestionCard, wasQuestionCardSeen} from "../../lib/question-card-store";
+import {clearSentQuestionCard, isQuestionCardSent, wasQuestionCardSeen} from "../../lib/question-card-store";
 import {
 	describeAskUserQuestionResult,
 	isWithdrawnQuestion,
@@ -46,40 +47,6 @@ function ReadOnlyOption({label, description, index}: {label: string; description
 				<span className="text-body text-primary truncate">{label}</span>
 				{description && <span className="text-footnote text-secondary truncate">{description}</span>}
 			</div>
-		</div>
-	);
-}
-
-/**
- * True when the user's note adds information beyond the answer value itself.
- * When the user picks 'Other' and types a custom answer, Claude Code echoes
- * the same string in both fields; suppress that redundant duplicate.
- */
-function notesAddInformation(notes: string | null, answerValue: string): notes is string {
-	if (notes === null) return false;
-	const trimmed = notes.trim();
-	return trimmed !== "" && trimmed !== answerValue.trim();
-}
-
-/**
- * One row of upstream's question receipt: the question in primary w500 over the
- * chosen answer (or the Other text, or the unanswered outcome's word) in secondary.
- * Unchosen options are omitted.
- */
-function AnsweredQuestion({question, answer, notes}: {question: string; answer: string; notes: string | null}) {
-	const trimmed = answer.trim();
-	return (
-		<div data-answered-question className="flex flex-col gap-0.5 px-3 py-2">
-			<p className="text-body font-medium text-primary break-words [unicode-bidi:plaintext]">{question}</p>
-			{trimmed !== "" && (
-				<p className="text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">{trimmed}</p>
-			)}
-			{notesAddInformation(notes, trimmed) && (
-				<p className="text-footnote text-secondary italic whitespace-pre-wrap">
-					<span className="text-primary">Notes: </span>
-					{notes}
-				</p>
-			)}
 		</div>
 	);
 }
@@ -170,8 +137,9 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	useEffect(() => {
 		if (!isPending) clearSentQuestionCard(toolCall.id);
 	}, [isPending, toolCall.id]);
-	// Upstream fades the receipt in only when it replaces a live card seen in this page.
-	const [receiptEnters] = useState(() => wasQuestionCardSeen(toolCall.id));
+	// Upstream fades the receipt in only when it replaces a live card seen in this page,
+	// and the card's own sent receipt already faded in when it was answered here.
+	const [receiptEnters] = useState(() => wasQuestionCardSeen(toolCall.id) && !isQuestionCardSent(toolCall.id));
 
 	// Upstream draws a pending question as its card, inline where the call is; it answers along the session's route.
 	if (isPending && questions !== null) {
@@ -237,23 +205,15 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	);
 	if (receipt.length > 0) {
 		const notes = recordedNotes(toolCall.resultMeta, result, questions);
-		// Upstream's `epitaxy-question-receipt`: every answered pair of one call in a 480px card,
-		// divided by its ring's hairline, 3px nearer the row above and 7px further from the next.
 		return (
-			<div
-				className={`card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text${
-					receiptEnters ? " animate-question-receipt-enter motion-reduce:animate-none" : ""
-				}`}
-			>
-				{receipt.map((entry, i) => (
-					<AnsweredQuestion
-						key={i}
-						question={entry.question}
-						answer={entry.answer ?? (entry.unanswered === undefined ? "" : OUTCOME_LABEL[entry.unanswered])}
-						notes={notes.get(entry.question) ?? null}
-					/>
-				))}
-			</div>
+			<QuestionReceipt
+				enters={receiptEnters}
+				rows={receipt.map((entry) => ({
+					question: entry.question,
+					answer: entry.answer ?? (entry.unanswered === undefined ? "" : OUTCOME_LABEL[entry.unanswered]),
+					notes: notes.get(entry.question) ?? null,
+				}))}
+			/>
 		);
 	}
 

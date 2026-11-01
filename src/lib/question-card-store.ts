@@ -72,7 +72,7 @@ export function clearQuestionCardState(key: string): void {
 /**
  * Upstream's in-memory sent store: the answers and page a card submitted, kept
  * until the call's result lands (or the send fails) so a card that remounts
- * while sending redraws them busy instead of as a fresh editable card.
+ * while sending redraws their receipt instead of a fresh editable card.
  */
 const sent = new Map<string, QuestionCardState>();
 
@@ -86,6 +86,11 @@ export function readSentQuestionCard(key: string, questionCount: number): Questi
 	if (state === undefined || state.drafts.length !== questionCount || state.skipped.length !== questionCount)
 		return null;
 	return state;
+}
+
+/** Whether the card under `key` has an answer sending, whatever its shape. */
+export function isQuestionCardSent(key: string): boolean {
+	return sent.has(key);
 }
 
 /** Called with the failure message when the send failed, or null when its result landed. */

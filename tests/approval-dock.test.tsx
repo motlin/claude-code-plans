@@ -272,48 +272,69 @@ describe("QuestionCard", () => {
 		});
 	});
 
-	it("keeps busy Submit focusable with a hidden label and a centred spinner, as upstream's busy primary", async () => {
+	it("swaps the card for upstream's receipt of the submitted answers the moment it submits, before the send settles", () => {
 		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => new Promise<void>(() => {}));
-		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={onSubmit} />);
-		const idle = screen.getByRole("button", {name: /^Submit/});
-		const before = {busy: idle.getAttribute("aria-busy"), spinner: idle.querySelector("[data-spinner]") !== null};
-		fireEvent.click(screen.getByRole("button", {name: /^Vitest/}));
-		idle.focus();
-		fireEvent.click(idle);
-		await vi.waitFor(() => {
-			expect(onSubmit).toHaveBeenCalledTimes(1);
-		});
-		const submit = screen.getByRole("button", {name: /^Submit/});
-		fireEvent.click(submit);
-		const overlay = submit.querySelector("[data-spinner]")?.parentElement;
+		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+		const {container} = render(<QuestionCard questions={QUESTIONS} onSubmit={onSubmit} />);
+		now.mockReturnValue(1400);
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
+		fireEvent.click(screen.getByRole("button", {name: "Other"}));
+		fireEvent.change(screen.getByRole("textbox", {name: "Other option"}), {target: {value: "Mutation"}});
+		fireEvent.click(screen.getByRole("button", {name: /^Coverage/}));
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		const receipt = container.querySelector("[data-question-receipt]");
+		now.mockRestore();
 
 		expect({
-			before,
-			same: submit === idle,
-			busy: submit.getAttribute("aria-busy"),
-			ariaDisabled: submit.getAttribute("aria-disabled"),
-			disabled: submit.hasAttribute("disabled"),
-			focused: document.activeElement === submit,
-			relative: submit.classList.contains("relative"),
-			label: submit.firstElementChild?.className,
-			overlay: overlay?.className,
-			overlayHidden: overlay?.getAttribute("aria-hidden"),
-			calls: onSubmit.mock.calls.length,
-			disabledReason: submit.parentElement?.hasAttribute("aria-describedby"),
+			card: container.querySelector("[data-approval-card-root]") !== null,
+			className: receipt?.className,
+			rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
+				[...row.children].map((line) => line.textContent),
+			),
+			calls: onSubmit.mock.calls,
 		}).toStrictEqual({
-			before: {busy: null, spinner: false},
-			same: true,
-			busy: "true",
-			ariaDisabled: "true",
-			disabled: false,
-			focused: true,
-			relative: true,
-			label: "inline-flex min-w-0 items-center gap-1 opacity-0",
-			overlay: "absolute inset-0 grid place-items-center leading-[0]",
-			overlayHidden: "true",
-			calls: 1,
-			disabledReason: false,
+			card: false,
+			className:
+				"card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
+			rows: [
+				["Which test runner?", "Vitest"],
+				["Which features?", "Mutation, Coverage, Watch"],
+			],
+			calls: [[[{selected: [0]}, {selected: [0, 1], other: "Mutation"}]]],
 		});
+	});
+
+	it("reads a skipped question as Skipped in the submitted receipt", () => {
+		const {container} = render(<QuestionCard questions={QUESTIONS} onSubmit={async () => new Promise(() => {})} />);
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+
+		expect(
+			[...container.querySelectorAll("[data-answered-question]")].map((row) =>
+				[...row.children].map((line) => line.textContent),
+			),
+		).toStrictEqual([
+			["Which test runner?", "Vitest"],
+			["Which features?", "Skipped"],
+		]);
+	});
+
+	it("brings the card back, editable with the error, when the send rejects", async () => {
+		const {container} = render(
+			<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => Promise.reject(new Error("pane gone"))} />,
+		);
+		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
+		const whileSending = container.querySelector("[data-approval-card-root]") !== null;
+		await screen.findByText("pane gone");
+
+		expect({
+			whileSending,
+			receipt: container.querySelector("[data-question-receipt]") !== null,
+			jest: screen.getByRole("button", {name: /^Jest/}).getAttribute("aria-pressed"),
+			submitDisabled: screen.getByRole("button", {name: /^Submit/}).hasAttribute("disabled"),
+		}).toStrictEqual({whileSending: false, receipt: false, jest: "true", submitDisabled: false});
 	});
 
 	it("focuses the Other box as Other is chosen, single- or multi-select, as upstream's flushSync-then-focus", () => {
@@ -575,16 +596,21 @@ describe("QuestionCard", () => {
 			expect({skip, next, submit}).toStrictEqual({skip: false, next: false, submit: false});
 		});
 
-		it("moves focus from the Other box to the card root when Skip submits the last page", async () => {
+		it("moves focus out of the Other box when Skip submits the last page, leaving it on the page as the receipt replaces the card", async () => {
 			const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(async () => {});
-			render(<QuestionCard questions={[QUESTIONS[1]!]} onSubmit={onSubmit} />);
+			const {container} = render(<QuestionCard questions={[QUESTIONS[1]!]} onSubmit={onSubmit} />);
 			fireEvent.click(screen.getByRole("button", {name: "Other"}));
+			const otherFocused = document.activeElement === screen.getByRole("textbox", {name: "Other option"});
 			fireEvent.click(screen.getByRole("button", {name: "Skip"}));
 			await vi.waitFor(() => {
 				expect(onSubmit).toHaveBeenCalledTimes(1);
 			});
 
-			expect(document.activeElement).toBe(screen.getByRole("group", {name: "Which features?"}));
+			expect({
+				otherFocused,
+				focus: document.activeElement === document.body,
+				receipt: container.querySelector("[data-question-receipt]") !== null,
+			}).toStrictEqual({otherFocused: true, focus: true, receipt: true});
 		});
 	});
 
@@ -902,7 +928,7 @@ describe("QuestionCard", () => {
 			}).toStrictEqual({question: "Which test runner?", skipEnter: true, stored: null});
 		});
 
-		it("redraws the submitted answers and page, busy, when a card remounts while sending, as upstream's sent store", () => {
+		it("keeps the card gone, redrawing the receipt without a fade, when a card remounts while sending (a stale refetch)", () => {
 			const first = render(
 				<QuestionCard
 					draftKey="sending-1"
@@ -913,31 +939,23 @@ describe("QuestionCard", () => {
 			pickAndType();
 			fireEvent.click(screen.getByRole("button", {name: /^Submit/}));
 			first.unmount();
-			render(<QuestionCard draftKey="sending-1" questions={QUESTIONS} onSubmit={async () => {}} />);
-			const card = screen.getByRole("group");
-			const submit = screen.getByRole("button", {name: /^Submit/});
+			const {container} = render(
+				<QuestionCard draftKey="sending-1" questions={QUESTIONS} onSubmit={async () => {}} />,
+			);
+			const receipt = container.querySelector("[data-question-receipt]");
 
 			expect({
-				question: card.getAttribute("aria-label"),
-				skipEnter: card.hasAttribute("data-skip-approval-enter"),
-				other: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Other option"}).value,
-				busy: submit.getAttribute("aria-busy"),
-				ariaDisabled: submit.getAttribute("aria-disabled"),
-				rows: within(card)
-					.getAllByRole("button")
-					.filter((button) => button.hasAttribute("aria-pressed"))
-					.map((button) => [button.getAttribute("aria-pressed"), button.hasAttribute("disabled")]),
+				card: container.querySelector("[data-approval-card-root]") !== null,
+				fades: receipt?.classList.contains("animate-question-receipt-enter"),
+				rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
+					[...row.children].map((line) => line.textContent),
+				),
 			}).toStrictEqual({
-				question: "Which features?",
-				skipEnter: true,
-				other: "Mutation",
-				busy: "true",
-				ariaDisabled: "true",
+				card: false,
+				fades: false,
 				rows: [
-					["false", true],
-					["false", true],
-					["false", true],
-					["true", true],
+					["Which test runner?", "Jest"],
+					["Which features?", "Mutation"],
 				],
 			});
 		});
@@ -1158,7 +1176,7 @@ describe("AskUserQuestionRenderer pending", () => {
 			submission: submitAnswer.mock.calls[0]?.[0],
 		}).toStrictEqual({
 			asking: null,
-			card: true,
+			card: false,
 			submission: {
 				toolUseId: "tool-q",
 				questions: QUESTIONS,
@@ -1195,6 +1213,90 @@ describe("AskUserQuestionRenderer pending", () => {
 		expect({whileSending, afterResult: readSentQuestionCard("tool-q-sent", QUESTIONS.length)}).toStrictEqual({
 			whileSending: true,
 			afterResult: null,
+		});
+	});
+});
+
+describe("answering a hook question until the transcript confirms it", () => {
+	const RESULT =
+		'Your questions have been answered: "Which test runner?"="Jest", "Which features?"="Watch". You can now continue with these answers in mind.';
+	const call: ClientToolCall = {
+		id: "tool-q-hook",
+		name: "AskUserQuestion",
+		input: {questions: QUESTIONS},
+		param: "",
+		sourceUuid: "u-q",
+	};
+	const frame = (container: HTMLElement) => {
+		const receipt = container.querySelector("[data-question-receipt]");
+		return {
+			card: container.querySelector("[data-approval-card-root]") !== null,
+			fades: receipt?.classList.contains("animate-question-receipt-enter") ?? null,
+			rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
+				[...row.children].map((line) => line.textContent),
+			),
+		};
+	};
+
+	it("hides the card on ⌘⏎ and keeps it hidden through a stale refetch, the pending record and the result", async () => {
+		let resolveSend: () => void = () => {};
+		const onSubmit = vi.fn<(answers: unknown[]) => Promise<void>>(
+			async () =>
+				new Promise<void>((resolve) => {
+					resolveSend = resolve;
+				}),
+		);
+		const submitAnswer = vi.fn<(submission: unknown) => Promise<void>>(async () => {});
+		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+		const hookCard = <QuestionCard key="hook" draftKey={call.id} questions={QUESTIONS} onSubmit={onSubmit} />;
+		const view = render(hookCard);
+		now.mockReturnValue(1400);
+		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Watch/}));
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		now.mockRestore();
+		const afterHotkey = frame(view.container);
+		// A refetch returning the stale pending question remounts the hook card.
+		view.rerender(<></>);
+		view.rerender(hookCard);
+		const staleRefetch = frame(view.container);
+		await act(async () => {
+			resolveSend();
+			await Promise.resolve();
+		});
+		const afterSend = frame(view.container);
+		const transcript = (toolCall: ClientToolCall) => (
+			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer}}>
+				<AskUserQuestionRenderer toolCall={toolCall} />
+			</AskUserQuestionProvider>
+		);
+		view.rerender(transcript(call));
+		const pendingRecord = frame(view.container);
+		view.rerender(transcript({...call, result: RESULT}));
+		const answered = frame(view.container);
+
+		const sentReceipt = {
+			card: false,
+			rows: [
+				["Which test runner?", "Jest"],
+				["Which features?", "Watch"],
+			],
+		};
+		expect({
+			afterHotkey,
+			staleRefetch,
+			afterSend,
+			pendingRecord,
+			answered,
+			submitted: submitAnswer.mock.calls,
+		}).toStrictEqual({
+			afterHotkey: {...sentReceipt, fades: true},
+			staleRefetch: {...sentReceipt, fades: false},
+			afterSend: {...sentReceipt, fades: false},
+			pendingRecord: {...sentReceipt, fades: false},
+			answered: {...sentReceipt, fades: false},
+			submitted: [],
 		});
 	});
 });

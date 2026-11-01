@@ -4,7 +4,7 @@ import {flushSync} from "react-dom";
 
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, onScreen} from "../lib/dock-keys";
 import type {QuestionAnswer} from "../lib/hook-events";
-import type {QuestionLike} from "../lib/ask-user-question";
+import {OUTCOME_LABEL, type QuestionLike} from "../lib/ask-user-question";
 import {
 	clearQuestionCardState,
 	clearSentQuestionCard,
@@ -16,8 +16,9 @@ import {
 	wasQuestionCardSeen,
 	writeQuestionCardState,
 } from "../lib/question-card-store";
-import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
+import {chooseOther, labelledAnswers, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
 import {ApprovalActionButton} from "./approval-card";
+import {QuestionReceipt, type QuestionReceiptRow} from "./question-receipt";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
 import {DisabledReason} from "./ui/disabled-reason";
@@ -44,6 +45,20 @@ function answerOf(draft: QuestionCardDraft): QuestionAnswer {
 	if (!draft.otherChosen) return {selected};
 	const other = draft.other.trim();
 	return {selected, other: other === "" ? EMPTY_OTHER : other};
+}
+
+/** The receipt rows of a submitted card: each picked answer as upstream builds it, or Skipped. */
+function sentReceiptRows(
+	questions: readonly QuestionLike[],
+	drafts: readonly QuestionCardDraft[],
+	skipped: readonly boolean[],
+): QuestionReceiptRow[] {
+	const answers = drafts.map((entry, at) => (skipped[at] === true ? null : answerOf(entry)));
+	return labelledAnswers(questions, answers).map(({question, answer}, at) => ({
+		question,
+		answer: answers[at] === null ? OUTCOME_LABEL.skipped : answer,
+		notes: null,
+	}));
 }
 
 function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
@@ -144,8 +159,9 @@ function useMarkSeen(cardRootRef: RefObject<HTMLDivElement | null>, draftKey: st
  * box once chosen, and Skip beside Next / Submit (⌘⏎). With `onSubmit` it
  * answers one answer per question, null for a skipped one; without it every
  * control is disabled. With `draftKey` (upstream's `tool.draftKey ?? tool.id`) the
- * picks, skips and page survive a remount until the card submits, and a card
- * remounting while its answer is sending redraws the submitted answers, busy.
+ * picks, skips and page survive a remount until the card submits. Submitting
+ * swaps the card for a receipt of its answers at once, which a remount redraws
+ * while the answer is sending; a failed send brings the card back.
  */
 export function QuestionCard({
 	questions,
@@ -172,6 +188,8 @@ export function QuestionCard({
 	const [drafts, setDrafts] = useState<QuestionCardDraft[]>(() => restored?.drafts ?? questions.map(initialDraft));
 	const [skipped, setSkipped] = useState<boolean[]>(() => restored?.skipped ?? questions.map(() => false));
 	const [sending, setSending] = useState(wasSent !== null);
+	// The sent receipt fades in only when this instance submitted; a remount mid-send redraws it still.
+	const [receiptEnters, setReceiptEnters] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const otherRef = useRef<HTMLTextAreaElement>(null);
 	const cardRootRef = useRef<HTMLDivElement>(null);
@@ -210,7 +228,10 @@ export function QuestionCard({
 	const question = questions[index];
 	const draft = drafts[index];
 	if (question === undefined || draft === undefined) return null;
-	const editable = onSubmit !== undefined && !sending;
+	// The answered card leaves at once for the receipt of what it sent, which
+	// stays through remounts until the result lands; a failed send brings the card back.
+	if (sending) return <QuestionReceipt rows={sentReceiptRows(questions, drafts, skipped)} enters={receiptEnters} />;
+	const editable = onSubmit !== undefined;
 	const multi = question.multiSelect === true;
 	const isLast = index === questions.length - 1;
 	const settled = (at: number) => skipped[at] === true || isAnswered(drafts[at] ?? initialDraft(question));
@@ -240,6 +261,7 @@ export function QuestionCard({
 		if (onSubmit === undefined) return;
 		setError(null);
 		setSending(true);
+		setReceiptEnters(true);
 		savedRef.current.submitted = true;
 		if (draftKey !== undefined) {
 			clearQuestionCardState(draftKey);
@@ -293,8 +315,7 @@ export function QuestionCard({
 	const primary = (
 		<ApprovalActionButton
 			variant="primary"
-			busy={sending}
-			disabled={!sending && (!editable || !canAdvance)}
+			disabled={!editable || !canAdvance}
 			onMouseDown={keepFocus}
 			onClick={advance}
 		>
@@ -330,7 +351,7 @@ export function QuestionCard({
 						<button
 							type="button"
 							aria-label="Show previous question"
-							disabled={index === 0 || sending}
+							disabled={index === 0}
 							onMouseDown={(event) => {
 								event.preventDefault();
 							}}
@@ -347,7 +368,7 @@ export function QuestionCard({
 						<button
 							type="button"
 							aria-label="Show next question"
-							disabled={isLast || sending}
+							disabled={isLast}
 							onMouseDown={(event) => {
 								event.preventDefault();
 							}}
