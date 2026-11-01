@@ -307,3 +307,103 @@ describe("dictation-to-focus", () => {
 		expect(document.activeElement).toBe(screen.getByRole("button", {name: "Rename"}));
 	});
 });
+
+/** jsdom has no DataTransfer; the hook reads only `files` and `getData`. */
+function plainText(text: string) {
+	return {files: [], getData: (format: string) => (format === "text/plain" ? text : "")};
+}
+
+function paste(target: EventTarget, text: string): boolean {
+	const clipboardData = plainText(text);
+	const event = new Event("paste", {bubbles: true, cancelable: true});
+	Object.defineProperty(event, "clipboardData", {value: clipboardData});
+	return target.dispatchEvent(event);
+}
+
+describe("paste-to-focus", () => {
+	it("routes a paste with nothing focused into the composer, with no keydown first", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		blurToBody();
+
+		const dispatched = paste(document.body, "plant basil");
+
+		expect({...state(prompts()[0]!), dispatched}).toStrictEqual({
+			value: "plant basil",
+			focused: true,
+			dispatched: false,
+		});
+	});
+
+	it("focuses the editor when the composer card padding is clicked, so a native paste lands there", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		blurToBody();
+		const card = document.querySelector<HTMLElement>("[data-composer-card]")!;
+		fireEvent.mouseDown(card);
+		fireEvent.click(card);
+
+		expect(state(prompts()[0]!)).toStrictEqual({value: "", focused: true});
+	});
+
+	it("routes a paste that lands on a focused button into the composer at its caret", () => {
+		render(
+			<>
+				<button type="button">Rename</button>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} />
+			</>,
+		);
+		const textarea = prompts()[0]!;
+		fireEvent.change(textarea, {target: {value: "plant basil"}});
+		textarea.setSelectionRange(5, 5);
+		const button = screen.getByRole("button", {name: "Rename"});
+		button.focus();
+
+		paste(button, "s");
+
+		expect({...state(textarea), caret: textarea.selectionStart}).toStrictEqual({
+			value: "plants basil",
+			focused: true,
+			caret: 6,
+		});
+	});
+
+	it("routes an insertFromPaste beforeinput with nothing focused into the composer", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		blurToBody();
+		const event = new InputEvent("beforeinput", {inputType: "insertFromPaste", bubbles: true, cancelable: true});
+		Object.defineProperty(event, "dataTransfer", {value: plainText("water")});
+
+		document.body.dispatchEvent(event);
+
+		expect(state(prompts()[0]!)).toStrictEqual({value: "water", focused: true});
+	});
+
+	it("leaves pastes alone in other fields, open dialogs, a disabled composer and when empty", () => {
+		const {rerender} = render(
+			<>
+				<input aria-label="Search" />
+				<div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" />
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} />
+			</>,
+		);
+		const search = screen.getByRole("textbox", {name: "Search"});
+		search.focus();
+		const inField = paste(search, "a");
+		blurToBody();
+		const inDialog = paste(document.body, "b");
+		rerender(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		blurToBody();
+		const empty = paste(document.body, "");
+		rerender(<Composer variant="session" draftKey="session-alice" onSend={() => {}} disabled />);
+		blurToBody();
+		const disabled = paste(document.body, "c");
+
+		expect({inField, inDialog, empty, disabled, ...state(prompts()[0]!)}).toStrictEqual({
+			inField: true,
+			inDialog: true,
+			empty: true,
+			disabled: true,
+			value: "",
+			focused: false,
+		});
+	});
+});

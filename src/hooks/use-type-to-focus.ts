@@ -17,7 +17,7 @@ function claimsTypedKey(event: KeyboardEvent): boolean {
 
 /**
  * Text inserts that arrive without a keydown: macOS dictation and other input methods send `beforeinput`
- * (insertText, insertReplacementText, insertFromComposition) or a bare composition commit. Like a typed key, they
+ * (insertText, insertReplacementText, insertFromComposition, insertFromPaste), a bare composition commit, or a paste. Like a typed key, they
  * belong to whatever field, menu or dialog holds them, and the composer takes them only from outside all of those.
  */
 function claimsInsert(target: EventTarget | null, defaultPrevented: boolean): boolean {
@@ -27,7 +27,7 @@ function claimsInsert(target: EventTarget | null, defaultPrevented: boolean): bo
 	return document.querySelector('[aria-modal="true"],[role="menu"]') === null;
 }
 
-const ROUTED_INPUT_TYPES = new Set(["insertText", "insertReplacementText", "insertFromComposition"]);
+const ROUTED_INPUT_TYPES = new Set(["insertText", "insertReplacementText", "insertFromComposition", "insertFromPaste"]);
 
 function insertedText(event: InputEvent): string {
 	return event.data ?? event.dataTransfer?.getData("text/plain") ?? "";
@@ -35,8 +35,8 @@ function insertedText(event: InputEvent): string {
 
 /**
  * Upstream's global type-to-focus: a printable key pressed outside any editable field moves focus into the
- * active composer and types the character there at its caret. Dictated or composed text inserted with no
- * editable focus (no keydown at all) takes the same route. The insert goes through `setRangeText`
+ * active composer and types the character there at its caret. Dictated, composed or pasted text inserted with
+ * no editable focus (no keydown at all) takes the same route. The insert goes through `setRangeText`
  * and an `input` event, so React's onChange (and the draft store) sees it like a real keystroke.
  */
 export function useTypeToFocus(textareaRef: RefObject<HTMLTextAreaElement | null>, enabled: boolean): void {
@@ -69,6 +69,18 @@ export function useTypeToFocus(textareaRef: RefObject<HTMLTextAreaElement | null
 			if (event.inputType === "insertFromComposition") compositionRouted = true;
 			insert(textarea, text);
 		};
+		// Cmd-V (and dictation tools like Wispr Flow that paste through a synthetic Cmd-V) fires `paste` on the
+		// focused element even when it isn't editable, and the browser then drops the text. Plain-text pastes
+		// take the same route as a dictated insert; file pastes stay with whatever handles them.
+		const onPaste = (event: ClipboardEvent) => {
+			const textarea = target();
+			const data = event.clipboardData;
+			if (textarea === null || data === null || data.files.length > 0) return;
+			const text = data.getData("text/plain");
+			if (text === "" || !claimsInsert(event.target, event.defaultPrevented)) return;
+			event.preventDefault();
+			insert(textarea, text);
+		};
 		const onCompositionStart = () => {
 			compositionRouted = false;
 		};
@@ -81,11 +93,13 @@ export function useTypeToFocus(textareaRef: RefObject<HTMLTextAreaElement | null
 		};
 		window.addEventListener("keydown", onKeyDown);
 		window.addEventListener("beforeinput", onBeforeInput);
+		window.addEventListener("paste", onPaste);
 		window.addEventListener("compositionstart", onCompositionStart);
 		window.addEventListener("compositionend", onCompositionEnd);
 		return () => {
 			window.removeEventListener("keydown", onKeyDown);
 			window.removeEventListener("beforeinput", onBeforeInput);
+			window.removeEventListener("paste", onPaste);
 			window.removeEventListener("compositionstart", onCompositionStart);
 			window.removeEventListener("compositionend", onCompositionEnd);
 		};
