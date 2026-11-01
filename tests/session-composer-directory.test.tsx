@@ -2,10 +2,10 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {act, cleanup, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
-import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
+import {type HerdrPaneIndexData, herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {
 	sessionDetailQueryOptions,
 	sessionSubagentsQueryOptions,
@@ -91,7 +91,29 @@ const detail: SessionDetailData = {
 	},
 };
 
-function seededQueryClient(detailOverrides: Partial<SessionDetailData>) {
+const LIVE_PANE: HerdrPaneIndexData["panes"][number] = {
+	host: "herdr",
+	paneId: "pane-test-101",
+	terminalId: "terminal-test-101",
+	workspaceId: "workspace-test-101",
+	tabId: "tab-test-101",
+	focused: false,
+	cwd: "/home/alice/factorio.school",
+	foregroundCwd: null,
+	agentStatus: "idle",
+	agent: "claude",
+	terminalTitle: null,
+	agentSessionId: SESSION_ID,
+	revision: 1,
+	sessionId: SESSION_ID,
+	via: "agent-session",
+	viewedState: detail.viewedState,
+};
+
+function seededQueryClient(
+	detailOverrides: Partial<SessionDetailData>,
+	herdrPanes: HerdrPaneIndexData = {panes: [], writesEnabled: false},
+) {
 	const queryClient = new QueryClient({
 		defaultOptions: {queries: {retry: false}},
 	});
@@ -122,15 +144,15 @@ function seededQueryClient(detailOverrides: Partial<SessionDetailData>) {
 		chainVersion: "v1",
 	});
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);
-	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {
-		panes: [],
-		writesEnabled: false,
-	});
+	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, herdrPanes);
 	return queryClient;
 }
 
-async function renderSession(detailOverrides: Partial<SessionDetailData> = {}): Promise<QueryClient> {
-	const queryClient = seededQueryClient(detailOverrides);
+async function renderSession(
+	detailOverrides: Partial<SessionDetailData> = {},
+	herdrPanes?: HerdrPaneIndexData,
+): Promise<QueryClient> {
+	const queryClient = seededQueryClient(detailOverrides, herdrPanes);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -228,5 +250,45 @@ describe("archived session composer note", () => {
 			slotClass: note.parentElement?.className,
 			noteClassHasBandEnter: note.classList.contains("band-enter"),
 		}).toStrictEqual({slot: true, slotClass: "contents", noteClassHasBandEnter: true});
+	});
+});
+
+describe("session composer bash mode", () => {
+	it("types !<command> into the live pane through the herdr prompt route", async () => {
+		stubBrowserGlobals();
+		const posts: unknown[] = [];
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				if (String(input) === "/api/herdr/prompt") {
+					posts.push(JSON.parse(String(init?.body)));
+					return Response.json({ok: true});
+				}
+				return new Promise<Response>(() => {});
+			}),
+		);
+		await renderSession({}, {panes: [LIVE_PANE], writesEnabled: true});
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		fireEvent.keyDown(textarea, {key: "!"});
+		fireEvent.change(textarea, {target: {value: "ls -la"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		await waitFor(() => {
+			expect(posts).toStrictEqual([{sessionId: SESSION_ID, prompt: "!ls -la"}]);
+		});
+	});
+
+	it("refuses a `! command` in a session without a live pane and sends nothing", async () => {
+		stubBrowserGlobals();
+		await renderSession();
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		fireEvent.keyDown(textarea, {key: "!"});
+		fireEvent.change(textarea, {target: {value: "! ls"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({
+			toast: (await screen.findByText("Shell commands are only available in local sessions.")).textContent,
+			value: textarea.value,
+		}).toStrictEqual({toast: "Shell commands are only available in local sessions.", value: "! ls"});
 	});
 });

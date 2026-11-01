@@ -61,10 +61,10 @@
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 646601,
+		"ceiling": 653636,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Classifier artifact share state (2026-10-29): the api-request Request disclosure lists each artifact the classifier was told about (share mode/role, live sharing, probe outcome, capabilities, grant observed, publish env, last publish, local paths) with labels from src/lib/schema-choices.ts, on top of the growth since the 2026-10-29 plan comment marks raise (640011 to 645949, within tolerance). Session went to 646601 gzip, about 190 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Composer bash mode (2026-11-01): the session composer enters upstream's bash mode (pill, ring, shell placeholder, key handling) and runs !<command> in the live pane, on top of the growth since the 2026-10-29 artifact share state raise (646601, now within tolerance until this commit). Session went to 653636 gzip, about 570 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.raw": {

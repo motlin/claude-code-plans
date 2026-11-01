@@ -189,6 +189,7 @@ import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {getSessionPromptBehavior} from "./session-prompt-behavior";
 import {sessionAnswerRoute, sessionLiveness} from "../hooks/use-question-answer-route";
 import {useLiveHerdrPrompt} from "./use-live-herdr-prompt";
+import {runShellCommandInPane} from "../lib/composer-shell-command";
 import {useHerdrReconnecting} from "../hooks/use-herdr-reconnecting";
 import {
 	errorRecoveryAvailability,
@@ -993,6 +994,14 @@ function SessionView({
 		},
 		[composerSend, enqueuePrompt, liveHerdrPrompt, sessionId, toast],
 	);
+	// Upstream's bash mode, where the terminal is the runner: `!<command>` typed into the live pane like a prompt.
+	const runShellCommand = useMemo(
+		() =>
+			promptBehavior.usesHerdr
+				? async (command: string) => runShellCommandInPane(sessionId, command, {toast})
+				: undefined,
+		[promptBehavior.usesHerdr, sessionId, toast],
+	);
 	const paneState: ComposerPaneState = promptBehavior.hasLivePane
 		? workingMarkerState.status === "idle"
 			? "idle"
@@ -1420,6 +1429,7 @@ function SessionView({
 															mentionCwd={sessionDirectory}
 															promptHistory={promptHistory}
 															onRewind={rewindAvailableFromComposer}
+															onShellCommand={runShellCommand}
 														/>
 													</SessionBackgroundTasksOpener>
 												)}

@@ -98,6 +98,7 @@ import {slashCommandOptionId} from "./slash-command-option-id";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
+import {isShellCommandText, shellCommandUnavailableMessage} from "../lib/composer-shell-command";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {useFileDropTarget} from "./composer-drop-scrim";
@@ -224,7 +225,31 @@ interface ComposerProps {
 	active?: boolean | undefined;
 	/** Opens the Rewind picker for a sent `/rewind`; absent, `/rewind` reaches the CLI as typed. */
 	onRewind?: (() => void) | undefined;
+	/**
+	 * Runs a bash-mode command in the session's live pane; resolves false when it was refused. Present only with a
+	 * live pane: `!` in the empty composer then enters upstream's bash mode. Without it, a `! command` send is refused.
+	 */
+	onShellCommand?: ((command: string) => Promise<boolean>) | undefined;
 }
+
+/** Upstream's bash-mode placeholder for a session whose terminal runs the command (`voKGw/`). */
+const BASH_PLACEHOLDER = "Run a shell command in the terminal and send the output to Claude";
+/** Upstream `Pu.bashStatus`, the editor's `aria-description` in bash mode. */
+const BASH_STATUS = "Bash mode. Press Escape to return to chat.";
+/** Upstream's Badge `variant:"pro" size:"sm"` pill in the actions' trailing slot. */
+const BASH_PILL_CLASS =
+	"inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full px-2 align-middle font-sans text-caption font-medium bg-[var(--pro-tint)] text-[var(--text-pro)]";
+/** Sits just left of the send cell (28px, or the 49px touch split, after its 6px / 8px leading gap). */
+const BASH_PILL_SLOT_CLASS =
+	"absolute bottom-0 right-[34px] comfortable:right-[36px] pointer-coarse:right-[55px] comfortable:pointer-coarse:right-[57px] flex min-h-7 items-center";
+/** Upstream `ed`: the host card's ring while in bash mode. */
+const BASH_CARD_CLASS = "inset-ring-1 inset-ring-[var(--text-pro)]";
+/** Room for the pill beside the send cell, so the command never runs under it. */
+const BASH_ROW_PADDING_CLASS =
+	"pr-[78px]! comfortable:pr-[80px]! pointer-coarse:pr-[99px]! comfortable:pointer-coarse:pr-[101px]!";
+/** The placeholder overlay stops short of the pill too. */
+const BASH_PLACEHOLDER_CLASS =
+	"right-[78px]! comfortable:right-[80px]! pointer-coarse:right-[99px]! comfortable:pointer-coarse:right-[101px]!";
 
 /**
  * The card's trailing Send / Stop button. Memoized on stable props, so a keystroke re-renders it only when
@@ -527,6 +552,7 @@ export function Composer({
 	subscribePrefill,
 	active = true,
 	onRewind,
+	onShellCommand,
 }: ComposerProps) {
 	const {text: prompt, setText: setPrompt, clear: clearDraft} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -544,7 +570,12 @@ export function Composer({
 	const pendingCaretRef = useRef<number | null>(null);
 	const {queued: queuedComments} = useDiffComments(draftKey);
 	const contextChips = useContextChips(draftKey);
-	const hasContent = prompt.trim() !== "" || queuedComments.length > 0 || contextChips.length > 0;
+	// Upstream's bash mode, in memory per draft: only a composer that can run shell commands enters it.
+	const [bashDraftKey, setBashDraftKey] = useState<string | null>(null);
+	const bashMode = onShellCommand !== undefined && bashDraftKey === draftKey;
+	const hasContent = bashMode
+		? prompt.trim() !== ""
+		: prompt.trim() !== "" || queuedComments.length > 0 || contextChips.length > 0;
 	const canSend = hasContent && !isStreaming && !disabled;
 	const [launch, setLaunch] = useState<{draftKey: string; options: LaunchOptions}>({
 		draftKey,
@@ -683,7 +714,8 @@ export function Composer({
 		[subscribePrefill, setPrompt],
 	);
 
-	const slash = slashTrigger(prompt, caret);
+	// Upstream disables the "/" and "@" suggestions in bash mode.
+	const slash = bashMode ? null : slashTrigger(prompt, caret);
 	const query = slash?.query ?? null;
 	// Esc dismisses the whole `/` trigger, as upstream does: typing more keeps it closed until the token is gone.
 	const [slashDismissed, setSlashDismissed] = useState(false);
@@ -738,8 +770,13 @@ export function Composer({
 	const mentions =
 		mentionState?.draftKey === draftKey && mentionState.text === prompt ? mentionState.mentions : NO_MENTIONS;
 	const painted = chip !== null || mentions.length > 0;
-	const placeholder =
-		onStop !== undefined && onQueueForLater !== undefined ? workingPlaceholder(isMac) : PLACEHOLDER[variant];
+	// Upstream's bash-mode status rides on the editor as its aria-description.
+	const bashStatusProps = bashMode ? {"aria-description": BASH_STATUS} : {};
+	const placeholder = bashMode
+		? BASH_PLACEHOLDER
+		: onStop !== undefined && onQueueForLater !== undefined
+			? workingPlaceholder(isMac)
+			: PLACEHOLDER[variant];
 	// The textarea's selection end, so a selection spanning exactly one chip paints it selected.
 	const [selectionEnd, setSelectionEnd] = useState(0);
 	const selectedMention = mentions.find((m) => m.start === caret && m.end === selectionEnd);
@@ -751,7 +788,7 @@ export function Composer({
 
 	// A caret right after an accepted chip isn't a query: upstream's atom never reopens the menu.
 	const trigger =
-		mentionSessionId === undefined || slashOpen || mentionEndingAt(mentions, caret) !== undefined
+		mentionSessionId === undefined || bashMode || slashOpen || mentionEndingAt(mentions, caret) !== undefined
 			? null
 			: fileMentionTrigger(prompt, caret);
 	// Esc suppresses the trigger at `start` while its token extends the dismissed one, as upstream does.
@@ -908,6 +945,15 @@ export function Composer({
 		const trimmed = prompt.trim();
 		setUnknownCommand(null);
 		setCommandError(null);
+		if (bashMode) {
+			runShellCommand(trimmed);
+			return;
+		}
+		// Upstream refuses a typed `! command` where nothing can run it, rather than sending it as a prompt.
+		if (onShellCommand === undefined && isShellCommandText(trimmed)) {
+			toast?.({kind: "error", message: shellCommandUnavailableMessage(variant)});
+			return;
+		}
 		if (trimmed.startsWith("/") && runHostCommand(trimmed)) return;
 		// Other slash commands run as typed; attached context and comments wait for the next real prompt.
 		if (trimmed.startsWith("/")) {
@@ -933,6 +979,37 @@ export function Composer({
 			if (draftKeyRef.current !== draftKey || promptRef.current !== prompt) return;
 			finish();
 		});
+	}
+	/** Bash mode's send: never queued or steered; the composer clears and returns to chat, or takes a refused command back. */
+	function runShellCommand(command: string): void {
+		if (onShellCommand === undefined) return;
+		clearDraft();
+		setBashDraftKey(null);
+		void onShellCommand(command).then((ran) => {
+			if (ran || draftKeyRef.current !== draftKey || promptRef.current !== "") return;
+			promptRef.current = command;
+			pendingCaretRef.current = command.length;
+			setCaret(command.length);
+			setPrompt(command);
+			setBashDraftKey(draftKey);
+		});
+	}
+	/** Upstream's bash-mode keys: `!` in the empty editor enters, Backspace there or Escape (when idle) leaves. */
+	function handleBashKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean {
+		if (onShellCommand === undefined || e.altKey || e.metaKey || e.ctrlKey) return false;
+		if (!bashMode) {
+			if (e.key !== "!" || prompt !== "") return false;
+			setBashDraftKey(draftKey);
+		} else if (e.key === "Backspace" && prompt === "") {
+			setBashDraftKey(null);
+		} else if (e.key === "Escape" && !e.shiftKey && onStop === undefined && historyNav === null) {
+			// While Claude works, Escape stops it first, as upstream's working Escape does.
+			setBashDraftKey(null);
+		} else {
+			return false;
+		}
+		e.preventDefault();
+		return true;
 	}
 	/** Upstream still sends an unknown command, but explains the CLI's coming "Unknown command" reply. */
 	function noteUnknownCommand(text: string): void {
@@ -1284,6 +1361,7 @@ export function Composer({
 			handleMentionChipKey(e) ||
 			handleSlashKey(e) ||
 			handleMentionKey(e) ||
+			handleBashKey(e) ||
 			handleHistoryKey(e)
 		) {
 			return;
@@ -1297,7 +1375,11 @@ export function Composer({
 				return;
 			}
 			const trigger = e.nativeEvent;
-			if (commandChord && e.altKey && onFork !== undefined) {
+			if (commandChord && e.altKey && bashMode) {
+				// Upstream offers no fork from bash mode.
+			} else if (bashMode) {
+				handleSubmit(undefined, trigger);
+			} else if (commandChord && e.altKey && onFork !== undefined) {
 				handleSubmit((text) => {
 					onFork(text, chinLaunchOptions);
 				}, trigger);
@@ -1371,7 +1453,8 @@ export function Composer({
 			<div
 				ref={cardRef}
 				data-composer-card
-				className={COMPOSER_CARD_CLASS}
+				data-bash-mode={bashMode ? "" : undefined}
+				className={bashMode ? `${COMPOSER_CARD_CLASS} ${BASH_CARD_CLASS}` : COMPOSER_CARD_CLASS}
 				onClick={() => textareaRef.current?.focus()}
 			>
 				{dropState !== "idle" && !disabled && <ComposerDropScrim />}
@@ -1385,7 +1468,7 @@ export function Composer({
 				)}
 				<div
 					ref={mentionInputRef}
-					className={`${COMPOSER_EDITOR_ROW_CLASS} pointer-coarse:pr-[51px] comfortable:pointer-coarse:pr-[53px]`}
+					className={`${COMPOSER_EDITOR_ROW_CLASS} ${bashMode ? BASH_ROW_PADDING_CLASS : "pointer-coarse:pr-[51px] comfortable:pointer-coarse:pr-[53px]"}`}
 				>
 					<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">
 						<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} active={active} />
@@ -1481,7 +1564,7 @@ export function Composer({
 						<div
 							data-testid="composer-placeholder"
 							aria-hidden="true"
-							className={`${PLACEHOLDER_OVERLAY_CLASS}${isStreaming || disabled ? " opacity-50" : ""}`}
+							className={`${PLACEHOLDER_OVERLAY_CLASS}${bashMode ? ` ${BASH_PLACEHOLDER_CLASS}` : ""}${isStreaming || disabled ? " opacity-50" : ""}`}
 						>
 							{placeholder}
 						</div>
@@ -1542,6 +1625,7 @@ export function Composer({
 									: undefined
 						}
 						aria-placeholder={placeholder}
+						{...bashStatusProps}
 						disabled={isStreaming || disabled}
 						rows={1}
 						enterKeyHint="enter"
@@ -1569,10 +1653,23 @@ export function Composer({
 						hintId={hintId}
 						forkLabel={onFork === undefined ? undefined : forkLabel}
 						sendAndStay={onSendAndStay !== undefined}
-						queueForLater={onQueueForLater !== undefined}
+						queueForLater={onQueueForLater !== undefined && !bashMode}
 						onTouchSubmit={touchSubmit}
 						editorRef={textareaRef}
 					/>
+					{bashMode && (
+						<div className={BASH_PILL_SLOT_CLASS}>
+							<span
+								data-cds="Badge"
+								data-bash-pill=""
+								aria-hidden="true"
+								title="Run as a shell command"
+								className={BASH_PILL_CLASS}
+							>
+								bash
+							</span>
+						</div>
+					)}
 				</div>
 			</div>
 			{environment === undefined ? (

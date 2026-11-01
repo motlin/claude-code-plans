@@ -1,0 +1,374 @@
+// @vitest-environment jsdom
+
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {Composer} from "../src/components/composer";
+import {ToastContext, type ToastOptions} from "../src/components/toast-context";
+import {HerdrRequestError} from "../src/lib/api/herdr";
+import {
+	isShellCommandText,
+	runShellCommandInPane,
+	shellCommandUnavailableMessage,
+} from "../src/lib/composer-shell-command";
+
+afterEach(() => {
+	cleanup();
+	localStorage.clear();
+	vi.unstubAllGlobals();
+});
+
+function stubPointer(coarse: boolean) {
+	vi.stubGlobal(
+		"matchMedia",
+		vi.fn((query: string) => ({
+			matches: coarse && query === "(pointer: coarse)",
+			media: query,
+			onchange: null,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+			addListener: () => undefined,
+			removeListener: () => undefined,
+			dispatchEvent: () => false,
+		})),
+	);
+}
+
+async function flush() {
+	await act(async () => {
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
+	});
+}
+
+interface RenderOptions {
+	variant?: "session" | "home";
+	onShellCommand?: ((command: string) => Promise<boolean>) | undefined;
+	working?: boolean;
+	coarse?: boolean;
+}
+
+function renderComposer({variant = "session", onShellCommand, working = false, coarse = false}: RenderOptions = {}) {
+	stubPointer(coarse);
+	const handlers = {
+		onSend: vi.fn<(prompt: string) => void>(),
+		onStop: vi.fn<() => void>(),
+		onQueueForLater: vi.fn<(prompt: string) => void>(),
+		toast: vi.fn<(options: ToastOptions) => void>(),
+	};
+	render(
+		<ToastContext.Provider value={handlers.toast}>
+			<Composer
+				variant={variant}
+				draftKey={variant === "home" ? "home" : "session-alice"}
+				onSend={(prompt) => {
+					handlers.onSend(prompt);
+				}}
+				onStop={working ? handlers.onStop : undefined}
+				onQueueForLater={working ? handlers.onQueueForLater : undefined}
+				onShellCommand={onShellCommand}
+			/>
+		</ToastContext.Provider>,
+	);
+	const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+	return {handlers, textarea};
+}
+
+function card(): HTMLElement {
+	const element = document.querySelector<HTMLElement>("[data-composer-card]");
+	if (element === null) throw new Error("no composer card");
+	return element;
+}
+
+function bashState(textarea: HTMLTextAreaElement) {
+	return {
+		bashMode: card().hasAttribute("data-bash-mode"),
+		pill: document.querySelector("[data-bash-pill]")?.textContent ?? null,
+		placeholder: screen.queryByTestId("composer-placeholder")?.textContent ?? null,
+		description: textarea.getAttribute("aria-description"),
+		value: textarea.value,
+	};
+}
+
+const CHAT_PLACEHOLDER = "Type / for commands";
+
+const BASH_STATE = {
+	bashMode: true,
+	pill: "bash",
+	placeholder: "Run a shell command in the terminal and send the output to Claude",
+	description: "Bash mode. Press Escape to return to chat.",
+	value: "",
+};
+
+function pressBang(textarea: HTMLTextAreaElement): boolean {
+	return fireEvent.keyDown(textarea, {key: "!"});
+}
+
+describe("Composer bash mode with a live pane", () => {
+	it("enters bash mode when ! is typed into the empty composer, without inserting it", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+		});
+		const placeholderBefore = bashState(textarea).placeholder;
+		const notCancelled = pressBang(textarea);
+
+		expect({placeholderBefore, notCancelled, state: bashState(textarea)}).toStrictEqual({
+			placeholderBefore: CHAT_PLACEHOLDER,
+			notCancelled: false,
+			state: BASH_STATE,
+		});
+	});
+
+	it("types ! normally when the composer already has text", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+		});
+		fireEvent.change(textarea, {target: {value: "Alice"}});
+		const notCancelled = pressBang(textarea);
+
+		expect({notCancelled, bashMode: bashState(textarea).bashMode}).toStrictEqual({
+			notCancelled: true,
+			bashMode: false,
+		});
+	});
+
+	it("exits bash mode on Backspace in the empty composer", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+		});
+		pressBang(textarea);
+		const notCancelled = fireEvent.keyDown(textarea, {key: "Backspace"});
+
+		expect({notCancelled, state: bashState(textarea)}).toStrictEqual({
+			notCancelled: false,
+			state: {bashMode: false, pill: null, placeholder: CHAT_PLACEHOLDER, description: null, value: ""},
+		});
+	});
+
+	it("keeps bash mode on Backspace while the command has text", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+		});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "ls"}});
+		const notCancelled = fireEvent.keyDown(textarea, {key: "Backspace"});
+
+		expect({notCancelled, bashMode: bashState(textarea).bashMode}).toStrictEqual({
+			notCancelled: true,
+			bashMode: true,
+		});
+	});
+
+	it("exits bash mode on Escape and keeps the typed text", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+		});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "ls"}});
+		fireEvent.keyDown(textarea, {key: "Escape"});
+
+		expect({bashMode: bashState(textarea).bashMode, value: textarea.value}).toStrictEqual({
+			bashMode: false,
+			value: "ls",
+		});
+	});
+
+	it("leaves Escape to Stop while Claude works", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+			working: true,
+		});
+		pressBang(textarea);
+		const notCancelled = fireEvent.keyDown(textarea, {key: "Escape"});
+
+		expect({notCancelled, bashMode: bashState(textarea).bashMode}).toStrictEqual({
+			notCancelled: true,
+			bashMode: true,
+		});
+	});
+
+	it("runs the command through onShellCommand on Enter, then clears and returns to chat", async () => {
+		const onShellCommand = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true);
+		const {handlers, textarea} = renderComposer({onShellCommand});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "  ls -la  "}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		await flush();
+
+		expect({
+			commands: onShellCommand.mock.calls,
+			sent: handlers.onSend.mock.calls,
+			state: bashState(textarea),
+		}).toStrictEqual({
+			commands: [["ls -la"]],
+			sent: [],
+			state: {bashMode: false, pill: null, placeholder: CHAT_PLACEHOLDER, description: null, value: ""},
+		});
+	});
+
+	it("does nothing on Enter with an empty command", async () => {
+		const onShellCommand = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true);
+		const {textarea} = renderComposer({onShellCommand});
+		pressBang(textarea);
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		await flush();
+
+		expect({commands: onShellCommand.mock.calls, bashMode: bashState(textarea).bashMode}).toStrictEqual({
+			commands: [],
+			bashMode: true,
+		});
+	});
+
+	it("puts a refused command back in bash mode", async () => {
+		const onShellCommand = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(false);
+		const {textarea} = renderComposer({onShellCommand});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "ls"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		await flush();
+
+		expect({bashMode: bashState(textarea).bashMode, value: textarea.value}).toStrictEqual({
+			bashMode: true,
+			value: "ls",
+		});
+	});
+
+	it("never queues or steers a command while Claude works", async () => {
+		const onShellCommand = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true);
+		const {handlers, textarea} = renderComposer({onShellCommand, working: true});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "git status"}});
+		fireEvent.keyDown(textarea, {key: "Enter", metaKey: true});
+		await flush();
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "pwd"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		await flush();
+
+		expect({
+			commands: onShellCommand.mock.calls,
+			sent: handlers.onSend.mock.calls,
+			queued: handlers.onQueueForLater.mock.calls,
+		}).toStrictEqual({commands: [["git status"], ["pwd"]], sent: [], queued: []});
+	});
+
+	it("reduces the touch Send menu to Stop in bash mode", async () => {
+		const {textarea} = renderComposer({
+			onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+			working: true,
+			coarse: true,
+		});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "ls"}});
+		fireEvent.click(screen.getByRole("button", {name: "More send options"}));
+		await flush();
+		const entries = [...screen.getByRole("menu").querySelectorAll('[role="menuitem"], [role="separator"]')]
+			.filter((node) => node.closest("[data-cds-sheet-control]") === null)
+			.map((node) => (node.getAttribute("role") === "separator" ? "---" : node.textContent));
+
+		expect(entries).toStrictEqual(["Stop"]);
+	});
+
+	it("rings the card in the pro colour while in bash mode", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true),
+		});
+		const before = card().className.includes("inset-ring-1");
+		pressBang(textarea);
+
+		expect({before, after: card().className.includes("inset-ring-1")}).toStrictEqual({before: false, after: true});
+	});
+});
+
+describe("Composer shell commands without a live pane", () => {
+	it("types ! as text when bash mode is unavailable", () => {
+		const {textarea} = renderComposer();
+		const notCancelled = pressBang(textarea);
+
+		expect({notCancelled, bashMode: bashState(textarea).bashMode}).toStrictEqual({
+			notCancelled: true,
+			bashMode: false,
+		});
+	});
+
+	it("refuses a `! command` send in a session with upstream's local-session message", () => {
+		const {handlers, textarea} = renderComposer();
+		fireEvent.change(textarea, {target: {value: "! ls"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({
+			sent: handlers.onSend.mock.calls,
+			toasts: handlers.toast.mock.calls,
+			value: textarea.value,
+		}).toStrictEqual({
+			sent: [],
+			toasts: [[{kind: "error", message: "Shell commands are only available in local sessions."}]],
+			value: "! ls",
+		});
+	});
+
+	it("refuses a `! command` send on the home composer with upstream's start-a-session message", () => {
+		const {handlers, textarea} = renderComposer({variant: "home"});
+		fireEvent.change(textarea, {target: {value: "! ls"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect({sent: handlers.onSend.mock.calls, toasts: handlers.toast.mock.calls}).toStrictEqual({
+			sent: [],
+			toasts: [[{kind: "error", message: "Start a local session first to run shell commands."}]],
+		});
+	});
+
+	it("still sends a ! that isn't followed by whitespace", () => {
+		const {handlers, textarea} = renderComposer();
+		fireEvent.change(textarea, {target: {value: "!important"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+
+		expect(handlers.onSend.mock.calls).toStrictEqual([["!important"]]);
+	});
+});
+
+describe("composer-shell-command", () => {
+	it("matches upstream's `! command` shape", () => {
+		expect(["! ls", "!  git status", "!\tpwd", "!ls", "!", "! ", "ls"].map(isShellCommandText)).toStrictEqual([
+			true,
+			true,
+			true,
+			false,
+			false,
+			false,
+			false,
+		]);
+	});
+
+	it("names upstream's refusal per composer", () => {
+		expect([shellCommandUnavailableMessage("session"), shellCommandUnavailableMessage("home")]).toStrictEqual([
+			"Shell commands are only available in local sessions.",
+			"Start a local session first to run shell commands.",
+		]);
+	});
+
+	it("types !<command> into the live pane through the prompt write path", async () => {
+		const post = vi.fn<(sessionId: string, prompt: string) => Promise<void>>().mockResolvedValue(undefined);
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		const ran = await runShellCommandInPane("session-alice", "ls -la", {post, toast});
+
+		expect({ran, posts: post.mock.calls, toasts: toast.mock.calls}).toStrictEqual({
+			ran: true,
+			posts: [["session-alice", "!ls -la"]],
+			toasts: [],
+		});
+	});
+
+	it("reports a refused write and hands the command back", async () => {
+		const post = vi
+			.fn<(sessionId: string, prompt: string) => Promise<void>>()
+			.mockRejectedValue(new HerdrRequestError("agent is not ready", 409, "agent_not_ready"));
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		const ran = await runShellCommandInPane("session-alice", "ls", {post, toast});
+
+		expect({ran, toasts: toast.mock.calls}).toStrictEqual({
+			ran: false,
+			toasts: [[{kind: "error", message: "Couldn’t run the shell command", description: "agent is not ready"}]],
+		});
+	});
+});
