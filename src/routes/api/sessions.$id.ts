@@ -21,12 +21,12 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const {sessions, metadata} = await import("../../lib/db/schema");
 				const {canonicalSessionRouteId, sessionBridgeMetadataKey} =
 					await import("../../lib/db/bridge-session-index");
-				const {isCurrentlyIndexing} = await import("../../lib/db/indexer");
+				const {indexFile, isCurrentlyIndexing} = await import("../../lib/db/indexer");
 				const {eq, sql} = await import("drizzle-orm");
 				const {getSummary} = await import("../../lib/summaries");
 				const {getCurrentSessionMessageIndex, getSessionViewedState} =
 					await import("../../lib/db/viewed-state");
-				const {readSession} = await import("../../lib/sessions");
+				const {readSession, resolveSessionFilePath} = await import("../../lib/sessions");
 				const {readSessionProvenance} = await import("../../lib/session-provenance");
 				const {readConfig} = await import("../../lib/config");
 				const {homedir} = await import("node:os");
@@ -41,22 +41,33 @@ export const Route = createFileRoute("/api/sessions/$id")({
 
 				// Capture the indexing state with the DB snapshot, before Git/provenance awaits.
 				const indexing = isCurrentlyIndexing();
-				const sessionRow = index
-					.select({
-						title: sessions.title,
-						customTitle: sessions.customTitle,
-						aiTitle: sessions.aiTitle,
-						projectId: sessions.projectId,
-						mtimeMs: sessions.mtimeMs,
-						filePath: sessions.filePath,
-						canonicalRouteId: canonicalSessionRouteId,
-						canonicalRoutePending: sql<number>`CASE WHEN ${indexing ? 1 : 0} THEN NOT EXISTS (
+				const selectSessionRow = () =>
+					index
+						.select({
+							title: sessions.title,
+							customTitle: sessions.customTitle,
+							aiTitle: sessions.aiTitle,
+							projectId: sessions.projectId,
+							mtimeMs: sessions.mtimeMs,
+							filePath: sessions.filePath,
+							canonicalRouteId: canonicalSessionRouteId,
+							canonicalRoutePending: sql<number>`CASE WHEN ${indexing ? 1 : 0} THEN NOT EXISTS (
 							SELECT 1 FROM ${metadata} WHERE ${metadata.key} = ${sessionBridgeMetadataKey(id)}
 						) ELSE 0 END`,
-					})
-					.from(sessions)
-					.where(eq(sessions.id, id))
-					.get();
+						})
+						.from(sessions)
+						.where(eq(sessions.id, id))
+						.get();
+				let sessionRow = selectSessionRow();
+
+				// The first full index can take minutes: a transcript it has not reached yet is pending, not missing.
+				if (!sessionRow && indexing && !getSubagentById(index, id)) {
+					const resolved = await resolveSessionFilePath(PROJECTS_DIR, id);
+					if (resolved) {
+						await indexFile(index, resolved.filePath, PROJECTS_DIR, join(homeRoot, ".claude", "plans"));
+						sessionRow = selectSessionRow();
+					}
+				}
 
 				if (!sessionRow) {
 					const subagent = getSubagentById(index, id);
