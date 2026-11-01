@@ -166,6 +166,7 @@ import type {ParsedArtifact} from "./artifact-output";
 import type {ArtifactListEntry} from "./artifact-schemas";
 import type {PermissionDecision} from "./permission-decision";
 import {
+	cleanPromptText,
 	stripCommandTags,
 	parseBashInput,
 	parseBashOutput,
@@ -329,15 +330,48 @@ export class FirstUserMessageCollector {
 	}
 }
 
-/** Every prompt the user typed into a session, oldest first; CLI-injected records are skipped. */
+/**
+ * The text a user record's bubble shows, or null when the user typed none of it:
+ * meta and compact-summary records, tool results, slash commands with their
+ * caveat and stdout, bash-mode records, interruptions, and anything left empty
+ * once the harness tags the bubble hides (`<task-notification>`,
+ * `<system-reminder>`, ...) are stripped.
+ */
+function typedPromptText(line: string): string | null {
+	let obj: unknown;
+	try {
+		obj = JSON.parse(line);
+	} catch {
+		return null;
+	}
+	if (!isRecord(obj) || obj["type"] !== "user") return null;
+	if (obj["isMeta"] === true || obj["isCompactSummary"] === true || obj["isVisibleInTranscriptOnly"] === true) {
+		return null;
+	}
+	const message = RawMessageSchema.safeParse(obj["message"]);
+	const content = message.success ? message.data.content : undefined;
+	if (content === undefined) return null;
+	const texts =
+		typeof content === "string"
+			? [content]
+			: content.flatMap((block) => (block.type === "text" && typeof block.text === "string" ? [block.text] : []));
+	for (const text of texts) {
+		if (!isSessionTitlePrompt(text) || parseBashInput(text) !== null || parseBashOutput(text) !== null) continue;
+		const cleaned = cleanPromptText(text);
+		if (cleaned !== "") return cleaned;
+	}
+	return null;
+}
+
+/** Every prompt the user typed into a session, oldest first, as its bubble shows it; harness-injected records are skipped. */
 export async function readSessionPrompts(filePath: string): Promise<string[]> {
 	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	const prompts: string[] = [];
 	try {
 		for await (const line of rl) {
 			if (!line.trim()) continue;
-			const prompt = extractFirstUserText(line);
-			if (prompt !== null && !prompt.isMeta) prompts.push(prompt.text);
+			const prompt = typedPromptText(line);
+			if (prompt !== null) prompts.push(prompt);
 		}
 	} finally {
 		await rl.close();

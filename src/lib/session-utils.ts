@@ -105,6 +105,11 @@ export function stripHarnessTags(text: string): string {
 	return text.replace(HARNESS_TAG_RE, "");
 }
 
+/** A prompt's bubble text, without command tags or the harness tags upstream hides; empty when nothing the user typed remains. */
+export function cleanPromptText(text: string): string {
+	return stripHarnessTags(stripCommandTags(text)).trim();
+}
+
 const BASH_INPUT_RE = /^\s*<bash-input>([\s\S]*?)<\/bash-input>\s*$/;
 const BASH_OUTPUT_RE = /^\s*<bash-stdout>([\s\S]*?)<\/bash-stdout>\s*<bash-stderr>([\s\S]*?)<\/bash-stderr>\s*$/;
 

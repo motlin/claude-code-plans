@@ -83,7 +83,7 @@ import {toolBucket, type ToolBucket} from "../lib/tool-runs";
 import {AttachmentBanner, Banner} from "./attachment-banner";
 import {
 	stripCommandTags,
-	stripHarnessTags,
+	cleanPromptText,
 	parseCommandBlock,
 	parseBashInput,
 	parseBashOutput,
@@ -4673,11 +4673,6 @@ function UserPromptText({text, leading}: {text: string; leading: boolean}) {
 	const command = leading ? splitLeadingSlashCommand(text) : null;
 	if (command === null) return <UserPlainText text={text} />;
 	return <SlashCommandText name={command.name} rest={command.rest} />;
-}
-
-/** A prompt's bubble text, without command tags or the harness tags upstream hides. */
-function cleanPromptText(text: string): string {
-	return stripHarnessTags(stripCommandTags(text)).trim();
 }
 
 function renderUserContentBlocks(
