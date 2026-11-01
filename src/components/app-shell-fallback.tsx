@@ -236,6 +236,21 @@ function isShellChinLabels(value: unknown): value is ShellChinLabels {
 
 const HOME_ROW_WIDTHS = ["w-1/2", "w-2/5", "w-3/5", "w-1/3", "w-5/12"];
 
+export type FallbackShell = "artifacts" | "home" | "session";
+
+/**
+ * The shell the loaded page at `pathname` shows. The server paints from the requested path, but the
+ * client hydrates after a redirect-only route's `beforeLoad` has moved it, so those routes paint
+ * their target's shell: `/settings` opens the settings dialog over home. The other redirect-only
+ * routes (`/plugins`, `/customize/`, `/command/…`, `/plugin/…`) land on Customize pages, which
+ * share the session default.
+ */
+export function fallbackShellFor(pathname: string): FallbackShell {
+	if (pathname === "/artifacts") return "artifacts";
+	if (pathname === "/" || pathname === "/settings" || pathname === "/settings/") return "home";
+	return "session";
+}
+
 export function AppShellFallback({
 	pathname = "",
 	chin = null,
@@ -245,6 +260,7 @@ export function AppShellFallback({
 	chin?: ShellChinLabels | null;
 }) {
 	const appMounted = useAppMounted();
+	const shell = fallbackShellFor(pathname);
 	const [labels] = useState(() => chin ?? readPaintedChin());
 	const {keys: searchKeys} = useShortcutKeys("search_or_start");
 
@@ -335,9 +351,9 @@ export function AppShellFallback({
 			</div>
 
 			<div className="flex min-w-0 flex-1 flex-col bg-surface-2">
-				{pathname === "/artifacts" ? (
+				{shell === "artifacts" ? (
 					<ArtifactsSkeleton />
-				) : pathname === "/" ? (
+				) : shell === "home" ? (
 					// The loaded home page's tile shell, so the titlebar does not jump on hydration.
 					<div data-route-tile-shell="home">
 						<div className="min-h-0 flex-1">

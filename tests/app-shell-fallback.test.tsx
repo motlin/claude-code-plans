@@ -5,7 +5,7 @@ import {hydrateRoot} from "react-dom/client";
 import {renderToStaticMarkup} from "react-dom/server";
 import {render} from "@testing-library/react";
 import {describe, expect, it, vi} from "vite-plus/test";
-import {AppShellFallback} from "../src/components/app-shell-fallback";
+import {AppShellFallback, fallbackShellFor} from "../src/components/app-shell-fallback";
 import {getVisibleNavItems, navItems} from "../src/components/sidebar/navigation";
 import {SidebarSearchField} from "../src/components/sidebar/sidebar-search-field";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../src/lib/nav-sections";
@@ -576,5 +576,39 @@ describe("AppShellFallback dock frame", () => {
 			end: "Opus 5.5 High",
 			readouts: ["+", "Auto", "Opus 5.5 High"],
 		});
+	});
+});
+
+describe("AppShellFallback redirect-only routes", () => {
+	it("classifies each path by the shell its loaded page shows, redirect-only routes by their target's", () => {
+		expect(
+			[
+				"/",
+				"/artifacts",
+				"/session/example-alice",
+				"/settings",
+				"/settings/",
+				"/plugins",
+				"/customize",
+				"/command/user/example.md",
+				"/plugin/example/skills/x",
+			].map((pathname) => [pathname, fallbackShellFor(pathname)]),
+		).toStrictEqual([
+			["/", "home"],
+			["/artifacts", "artifacts"],
+			["/session/example-alice", "session"],
+			["/settings", "home"],
+			["/settings/", "home"],
+			["/plugins", "session"],
+			["/customize", "session"],
+			["/command/user/example.md", "session"],
+			["/plugin/example/skills/x", "session"],
+		]);
+	});
+
+	it("paints the home shell on /settings, the same markup the client hydrates after redirecting to /#settings/general", () => {
+		expect(renderToStaticMarkup(<AppShellFallback pathname="/settings" />)).toBe(
+			renderToStaticMarkup(<AppShellFallback pathname="/" />),
+		);
 	});
 });
