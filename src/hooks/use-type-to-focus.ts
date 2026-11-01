@@ -16,26 +16,78 @@ function claimsTypedKey(event: KeyboardEvent): boolean {
 }
 
 /**
+ * Text inserts that arrive without a keydown: macOS dictation and other input methods send `beforeinput`
+ * (insertText, insertReplacementText, insertFromComposition) or a bare composition commit. Like a typed key, they
+ * belong to whatever field, menu or dialog holds them, and the composer takes them only from outside all of those.
+ */
+function claimsInsert(target: EventTarget | null, defaultPrevented: boolean): boolean {
+	if (defaultPrevented) return false;
+	const element = target instanceof Element ? target : null;
+	if (element instanceof HTMLInputElement || isEditableTarget(element) || isInModalLayer(element)) return false;
+	return document.querySelector('[aria-modal="true"],[role="menu"]') === null;
+}
+
+const ROUTED_INPUT_TYPES = new Set(["insertText", "insertReplacementText", "insertFromComposition"]);
+
+function insertedText(event: InputEvent): string {
+	return event.data ?? event.dataTransfer?.getData("text/plain") ?? "";
+}
+
+/**
  * Upstream's global type-to-focus: a printable key pressed outside any editable field moves focus into the
- * active composer and types the character there at its caret. The insert goes through `setRangeText`
+ * active composer and types the character there at its caret. Dictated or composed text inserted with no
+ * editable focus (no keydown at all) takes the same route. The insert goes through `setRangeText`
  * and an `input` event, so React's onChange (and the draft store) sees it like a real keystroke.
  */
 export function useTypeToFocus(textareaRef: RefObject<HTMLTextAreaElement | null>, enabled: boolean): void {
 	useEffect(() => {
 		if (!enabled) return undefined;
-		const onKeyDown = (event: KeyboardEvent) => {
+		const target = (): HTMLTextAreaElement | null => {
 			const textarea = textareaRef.current;
-			if (textarea === null || textarea.disabled) return;
-			if (!claimsTypedKey(event)) return;
-			event.preventDefault();
+			return textarea === null || textarea.disabled ? null : textarea;
+		};
+		const insert = (textarea: HTMLTextAreaElement, text: string) => {
 			textarea.focus();
 			// setRangeText skips React's value tracker, so the input event reads as a change.
-			textarea.setRangeText(event.key, textarea.selectionStart, textarea.selectionEnd, "end");
+			textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, "end");
 			textarea.dispatchEvent(new Event("input", {bubbles: true}));
 		};
+		// A composition whose text a beforeinput already routed must not insert again on compositionend.
+		let compositionRouted = false;
+		const onKeyDown = (event: KeyboardEvent) => {
+			const textarea = target();
+			if (textarea === null || !claimsTypedKey(event)) return;
+			event.preventDefault();
+			insert(textarea, event.key);
+		};
+		const onBeforeInput = (event: InputEvent) => {
+			if (!ROUTED_INPUT_TYPES.has(event.inputType)) return;
+			const textarea = target();
+			const text = insertedText(event);
+			if (textarea === null || text === "" || !claimsInsert(event.target, event.defaultPrevented)) return;
+			event.preventDefault();
+			if (event.inputType === "insertFromComposition") compositionRouted = true;
+			insert(textarea, text);
+		};
+		const onCompositionStart = () => {
+			compositionRouted = false;
+		};
+		const onCompositionEnd = (event: CompositionEvent) => {
+			const routed = compositionRouted;
+			compositionRouted = false;
+			const textarea = target();
+			if (routed || textarea === null || event.data === "" || !claimsInsert(event.target, false)) return;
+			insert(textarea, event.data);
+		};
 		window.addEventListener("keydown", onKeyDown);
+		window.addEventListener("beforeinput", onBeforeInput);
+		window.addEventListener("compositionstart", onCompositionStart);
+		window.addEventListener("compositionend", onCompositionEnd);
 		return () => {
 			window.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("beforeinput", onBeforeInput);
+			window.removeEventListener("compositionstart", onCompositionStart);
+			window.removeEventListener("compositionend", onCompositionEnd);
 		};
 	}, [textareaRef, enabled]);
 }

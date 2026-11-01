@@ -616,6 +616,22 @@ export function Composer({
 		if (!isStreaming) textareaRef.current?.focus();
 	}, [isStreaming]);
 
+	// Chrome blurs a focused textarea the moment it turns disabled and never gives focus back, so a brief
+	// `disabled` flicker (a pending herdr send, a pane-state update) left dictation with no target. Note focus
+	// on the render that disables the editor, and take it back on re-enable unless the user moved it meanwhile.
+	const lockedRef = useRef(false);
+	const focusedAtLockRef = useRef(false);
+	if (disabled && !lockedRef.current && typeof document !== "undefined") {
+		focusedAtLockRef.current = textareaRef.current !== null && document.activeElement === textareaRef.current;
+	}
+	lockedRef.current = disabled;
+	useEffect(() => {
+		if (disabled || !focusedAtLockRef.current) return;
+		focusedAtLockRef.current = false;
+		const active = document.activeElement;
+		if (active === null || active === document.body) textareaRef.current?.focus();
+	}, [disabled]);
+
 	const promptRef = useRef(prompt);
 	promptRef.current = prompt;
 	const draftKeyRef = useRef(draftKey);

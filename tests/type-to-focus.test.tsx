@@ -161,3 +161,149 @@ describe("type-to-focus", () => {
 		]);
 	});
 });
+
+function dictate(target: EventTarget, data: string, inputType = "insertText"): boolean {
+	return target.dispatchEvent(new InputEvent("beforeinput", {inputType, data, bubbles: true, cancelable: true}));
+}
+
+describe("dictation-to-focus", () => {
+	it("routes a dictated beforeinput insert with nothing focused into the composer", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		blurToBody();
+
+		const dispatched = dictate(document.body, "plant basil");
+
+		expect({...state(prompts()[0]!), dispatched}).toStrictEqual({
+			value: "plant basil",
+			focused: true,
+			dispatched: false,
+		});
+	});
+
+	it("routes an insertReplacementText dictation and appends at the caret", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		const textarea = prompts()[0]!;
+		fireEvent.change(textarea, {target: {value: "plant basil"}});
+		textarea.setSelectionRange(11, 11);
+		blurToBody();
+
+		dictate(document.body, " today", "insertReplacementText");
+
+		expect({...state(textarea), caret: textarea.selectionStart}).toStrictEqual({
+			value: "plant basil today",
+			focused: true,
+			caret: 17,
+		});
+	});
+
+	it("routes a composition commit with nothing focused into the composer once", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		blurToBody();
+
+		document.body.dispatchEvent(new CompositionEvent("compositionstart", {bubbles: true, data: ""}));
+		document.body.dispatchEvent(new CompositionEvent("compositionend", {bubbles: true, data: "water"}));
+
+		expect(state(prompts()[0]!)).toStrictEqual({value: "water", focused: true});
+	});
+
+	it("does not route a composition commit a beforeinput already inserted", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		blurToBody();
+
+		document.body.dispatchEvent(new CompositionEvent("compositionstart", {bubbles: true, data: ""}));
+		dictate(document.body, "water", "insertFromComposition");
+		document.body.dispatchEvent(new CompositionEvent("compositionend", {bubbles: true, data: "water"}));
+
+		expect(state(prompts()[0]!)).toStrictEqual({value: "water", focused: true});
+	});
+
+	it("leaves dictation alone in other fields, open dialogs and a disabled composer", () => {
+		const {rerender} = render(
+			<>
+				<input aria-label="Search" />
+				<div role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" />
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} />
+			</>,
+		);
+		const search = screen.getByRole("textbox", {name: "Search"});
+		search.focus();
+		const inField = dictate(search, "a");
+		blurToBody();
+		const inDialog = dictate(document.body, "b");
+		rerender(<Composer variant="session" draftKey="session-alice" onSend={() => {}} disabled />);
+		blurToBody();
+		const disabled = dictate(document.body, "c");
+
+		expect({inField, inDialog, disabled, ...state(prompts()[0]!)}).toStrictEqual({
+			inField: true,
+			inDialog: true,
+			disabled: true,
+			value: "",
+			focused: false,
+		});
+	});
+
+	it("keeps the composer focused with the caret at the end across a re-render between two dictations", () => {
+		const {rerender} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		const textarea = prompts()[0]!;
+		textarea.focus();
+		textarea.setRangeText("plant basil", 0, 0, "end");
+		fireEvent.input(textarea);
+		rerender(<Composer variant="session" draftKey="session-alice" onSend={() => {}} isStreaming={false} />);
+		const afterRerender = {...state(textarea), caret: textarea.selectionStart};
+		textarea.setRangeText(" today", textarea.selectionStart, textarea.selectionEnd, "end");
+		fireEvent.input(textarea);
+
+		expect({afterRerender, final: state(textarea)}).toStrictEqual({
+			afterRerender: {value: "plant basil", focused: true, caret: 11},
+			final: {value: "plant basil today", focused: true},
+		});
+	});
+
+	it("takes focus back after a disabled flicker drops it, so the next dictation still lands", () => {
+		const {rerender} = render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		const textarea = prompts()[0]!;
+		textarea.focus();
+		textarea.setRangeText("plant basil", 0, 0, "end");
+		fireEvent.input(textarea);
+		rerender(<Composer variant="session" draftKey="session-alice" onSend={() => {}} disabled />);
+		// Chrome blurs a focused textarea the moment it turns disabled; jsdom refuses to blur a disabled one.
+		textarea.disabled = false;
+		textarea.blur();
+		textarea.disabled = true;
+		rerender(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		const afterFlicker = {...state(textarea), caret: textarea.selectionStart};
+		textarea.setRangeText(" today", textarea.selectionStart, textarea.selectionEnd, "end");
+		fireEvent.input(textarea);
+
+		expect({afterFlicker, final: state(textarea)}).toStrictEqual({
+			afterFlicker: {value: "plant basil", focused: true, caret: 11},
+			final: {value: "plant basil today", focused: true},
+		});
+	});
+
+	it("leaves focus where the user moved it while the composer was disabled", () => {
+		const {rerender} = render(
+			<>
+				<button type="button">Rename</button>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} />
+			</>,
+		);
+		prompts()[0]!.focus();
+		rerender(
+			<>
+				<button type="button">Rename</button>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} disabled />
+			</>,
+		);
+		screen.getByRole("button", {name: "Rename"}).focus();
+		rerender(
+			<>
+				<button type="button">Rename</button>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} />
+			</>,
+		);
+
+		expect(document.activeElement).toBe(screen.getByRole("button", {name: "Rename"}));
+	});
+});
