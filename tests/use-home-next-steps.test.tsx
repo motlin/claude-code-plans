@@ -14,11 +14,8 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 
-import {
-	HomeLaunchFolderProvider,
-	useHomeLaunchFolder,
-	type HomeLaunchFolder,
-} from "../src/components/home/launch-folder";
+import {useHomeLaunchFolder, type HomeLaunchFolder} from "../src/components/home/launch-folder";
+import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-provider";
 import {useHomeNextSteps} from "../src/components/home/use-home-next-steps";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";

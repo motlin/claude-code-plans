@@ -41,7 +41,7 @@ import {useEventStreamStatus} from "../../hooks/use-claude-events";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {streamDropHint} from "../../lib/stream-drop";
 import {type BackgroundTasksFocus, useBackgroundTasksOpener} from "../background-tasks-opener-context";
-import {useCopyToClipboard} from "../files/file-actions-menu";
+import {useCopyToClipboard} from "../files/use-copy-to-clipboard";
 import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
 import {ContextBreakdownBody} from "./context-breakdown";

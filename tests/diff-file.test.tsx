@@ -3,7 +3,7 @@
 import {cleanup, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {DiffFile} from "../src/components/changes/diff-file";
-import {preloadFileTypeIcons} from "../src/components/lazy-file-type-icon";
+import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
 
 const PATCH = `diff --git a/src/greet.ts b/src/greet.ts
 index 1111111..2222222 100644

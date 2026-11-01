@@ -2,19 +2,13 @@ import {useEffect, useRef, useState} from "react";
 import {createPortal} from "react-dom";
 
 import {closeSideChat, setSideChatMode, useSideChat} from "../lib/side-chat-store";
-import {deferredComponent, deferredModule} from "./deferred-component";
+import {deferredComponent} from "./deferred-component";
 import {registerPane} from "./panes/pane-registry";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
+import {sideChatPanel} from "./side-chat-panel-module";
 import {useToast} from "./toast-context";
 import {ViewportPortal} from "./viewport-portal";
 
-// The side chat's thread and input stay off the session's cold load; the closed card is invisible until they arrive.
-const sideChatPanel = deferredModule(async () =>
-	import("./side-chat-panel").then(({SideChatPanel}) => ({SideChatPanel})),
-);
-
-/** The side chat panel's one download, warmed when the session page goes idle. */
-export const preloadSideChatPanel = sideChatPanel.preload;
 const SideChatPanel = deferredComponent(sideChatPanel, "SideChatPanel");
 
 const ASIDE_CLASS =

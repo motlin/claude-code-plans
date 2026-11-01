@@ -11,16 +11,8 @@ import {
 import {sessionStateKindLabels} from "../lib/schema-choices";
 import type {GitPrState} from "../lib/pr-status";
 import type {SessionStateKind} from "../lib/session-state";
+import {GIT_PR_STATE_LABELS} from "./git-pr-state-labels";
 import {Tooltip} from "./ui/tooltip";
-
-export const GIT_PR_STATE_LABELS = {
-	opened: "Open",
-	draft: "Draft",
-	merged: "Merged",
-	closed: "Closed",
-	conflicting: "Merge conflicts",
-	queued: "Queued",
-} satisfies Record<GitPrState, string>;
 
 const DOT_WRAPPER = "flex min-h-3.5 min-w-3.5 shrink-0 items-center justify-center";
 

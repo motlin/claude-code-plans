@@ -4,7 +4,8 @@ import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/reac
 import {type ComponentProps} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {FileActionsMenuItems, isEditableText} from "../src/components/files/file-actions-menu";
+import {FileActionsMenuItems} from "../src/components/files/file-actions-menu";
+import {isEditableText} from "../src/components/files/file-extensions";
 import {ToastProvider} from "../src/components/toast";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../src/components/ui/menu";
 import {writeClipboardText} from "../src/lib/clipboard";

@@ -5,7 +5,8 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {FileRefsProvider, ProseMarkdown, SessionFileRefs} from "../src/components/file-refs";
+import {ProseMarkdown, SessionFileRefs} from "../src/components/file-refs";
+import {FileRefsProvider} from "../src/components/file-refs-context";
 import {FilesPaneView} from "../src/components/panes/files-pane";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";

@@ -128,7 +128,7 @@ export default defineConfig({
 			"react-hooks/rules-of-hooks": "error",
 			eqeqeq: ["error", "smart"],
 			"react/only-export-components": [
-				"warn",
+				"error",
 				{
 					allowConstantExport: true,
 				},

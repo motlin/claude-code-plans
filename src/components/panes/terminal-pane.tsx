@@ -9,7 +9,7 @@ import {type ConnectionStatus, HerdrTerminal} from "../herdr-terminal";
 import {ShellTerminal} from "../shell-terminal";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import type {PaneChrome} from "./pane-registry";
-import {consumePendingTerminalFocus} from "./terminal-pane-shortcut";
+import {consumePendingTerminalFocus} from "./pending-terminal-focus";
 import {GHOST_ICON_BUTTON, type TerminalTabActions, TerminalTabStrip} from "./terminal-tab-strip";
 import {useOptionalPaneHost} from "./pane-host-context";
 

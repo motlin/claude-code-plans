@@ -1,19 +1,10 @@
 import {useShortcut} from "../../hooks/use-shortcut";
 import {assertNever} from "../../lib/assert-never";
 import {usePaneHost} from "./pane-host-context";
+import {requestTerminalFocus} from "./pending-terminal-focus";
 import {terminalShortcutAction} from "./terminal-shortcut-action";
 
 const TERMINAL_FOCUS_SELECTOR = '[data-pane-kind="terminal"] [data-terminal-focus]';
-
-/** Set by ⌃` when it opens the pane, consumed on mount so the new pane takes focus. */
-let pendingTerminalFocus = false;
-
-/** Whether ⌃` just opened the Terminal pane; clears the request so only the pane it opened takes focus. */
-export function consumePendingTerminalFocus(): boolean {
-	const pending = pendingTerminalFocus;
-	pendingTerminalFocus = false;
-	return pending;
-}
 
 function focusTerminal(): void {
 	document.querySelector<HTMLElement>(TERMINAL_FOCUS_SELECTOR)?.focus();
@@ -37,7 +28,7 @@ export function TerminalPaneShortcut({available}: {available: boolean}) {
 			case "noop":
 				return false;
 			case "open":
-				pendingTerminalFocus = true;
+				requestTerminalFocus();
 				host.openPane("terminal");
 				return true;
 			case "close":

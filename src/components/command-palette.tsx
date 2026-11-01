@@ -159,16 +159,14 @@ import {clearAll} from "../lib/unread-store";
 import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
 import {HighlightRuns} from "./highlight-runs";
 import {
-	isAltEnter,
 	type PaletteCardSession,
 	PaletteRenameDialog,
 	PaletteRowActionsButton,
 	PaletteRowActionsCard,
 	type RowActionsCloseOptions,
 	type RowActionsRepeatKey,
-	motionReduced,
-	rowActionsAnchorRect,
 } from "./palette-row-actions";
+import {isAltEnter, motionReduced, rowActionsAnchorRect} from "./palette-row-actions-geometry";
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast-context";
 import {Shortcut, WIDE_KEYCAP_CLASS} from "./ui/shortcut";

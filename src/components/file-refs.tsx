@@ -1,6 +1,5 @@
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {
-	createContext,
 	type KeyboardEvent,
 	type MouseEvent,
 	type ReactNode,
@@ -21,21 +20,8 @@ import {relativeToCwd} from "./files/mention-path";
 import {MarkdownArticle} from "./markdown-article";
 import {usePaneHost} from "./panes/pane-host-context";
 import {useOpenInDefaultApp} from "./use-open-in-default-app";
+import {FileRefsContext, FileRefsProvider, useFileRefsCwd} from "./file-refs-context";
 import {useResolvedFileRefs, EMPTY_REFS} from "./use-resolved-file-refs";
-
-interface FileRefsContextValue {
-	/** Keys the session's missing-file set. */
-	sessionId: string;
-	/** The session's working directory; relative refs resolve against it first. */
-	cwd: string | undefined;
-	/** Absolute paths the session touched; a bare name can resolve to a unique one. */
-	sessionPaths: readonly string[];
-	open: (ref: FileRef) => void;
-}
-
-const FileRefsContext = createContext<FileRefsContextValue | null>(null);
-
-export const FileRefsProvider = FileRefsContext.Provider;
 
 /**
  * Transcript file refs for a session page: clicking one opens the file as a
@@ -137,11 +123,6 @@ function useCheckedOpen(
 		},
 		[queryClient, sessionId, open],
 	);
-}
-
-/** The surrounding {@link FileRefsProvider}'s working directory, if any. */
-export function useFileRefsCwd(): string | undefined {
-	return useContext(FileRefsContext)?.cwd;
 }
 
 /**

@@ -4,7 +4,7 @@ import {formatTokenCount} from "../lib/home-stats";
 import {formatModelName} from "../lib/model-name";
 import {formatUsd, type SessionCostState} from "../lib/session-cost";
 import {formatDuration} from "../lib/format-duration";
-import {Popover, PopoverContent} from "./ui/popover";
+import {PopoverRoot, PopoverTitle, PopoverTrigger, PopoverContent} from "./ui/popover";
 
 const POPUP_CLASS =
 	"flex w-[320px] max-w-[calc(100vw-16px)] flex-col gap-2 rounded-card bg-[var(--menu-bg)] p-3 text-[12px]/[16px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -41,7 +41,7 @@ function CostRow({kind, label, value}: {kind: string; label: string; value: stri
 function CostBreakdown({cost}: {cost: SessionCostState}) {
 	return (
 		<>
-			<Popover.Title className="sr-only">Session cost</Popover.Title>
+			<PopoverTitle className="sr-only">Session cost</PopoverTitle>
 			<div data-cost-row="total" className={`${ROW_CLASS} font-medium`}>
 				<span>Total cost</span>
 				<span className="tabular-nums">{formatUsd(cost.totalCostUSD)}</span>
@@ -92,17 +92,17 @@ export function SessionCostPill({
 	children: ReactNode;
 }) {
 	return (
-		<Popover.Root>
-			<Popover.Trigger
+		<PopoverRoot>
+			<PopoverTrigger
 				data-origin-pill="cost"
 				aria-label={`Session cost: ${formatUsd(cost.totalCostUSD)}`}
 				className={className}
 			>
 				{children}
-			</Popover.Trigger>
+			</PopoverTrigger>
 			<PopoverContent side="bottom" align="start" sideOffset={6} className={POPUP_CLASS}>
 				<CostBreakdown cost={cost} />
 			</PopoverContent>
-		</Popover.Root>
+		</PopoverRoot>
 	);
 }

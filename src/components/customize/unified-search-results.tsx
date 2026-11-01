@@ -2,7 +2,8 @@ import {ChevronDown, ChevronUp, Plug, Puzzle, Scroll, SquareSlash, TriangleAlert
 import {useRef, useState} from "react";
 import {CustomizeListRowsSkeleton} from "./customize-panel-skeleton";
 import {ListRow} from "./list-row";
-import {PluginRowActions, useCopyInstallCommand} from "./plugin-row-actions";
+import {PluginRowActions} from "./plugin-row-actions";
+import {useCopyInstallCommand} from "./use-copy-install-command";
 import {SkillRowActions} from "./skill-row-actions";
 import {Tooltip} from "../ui/tooltip";
 import {SectionHeader} from "./section-header";

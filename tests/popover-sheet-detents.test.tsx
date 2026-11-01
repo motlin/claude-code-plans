@@ -3,7 +3,8 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {Popover, PopoverContent, preloadPopoverSheet} from "../src/components/ui/popover";
+import {PopoverRoot, PopoverTrigger, PopoverContent} from "../src/components/ui/popover";
+import {preloadPopoverSheet} from "../src/components/ui/popover-sheet-loader";
 
 /* jsdom serializes upstream's `min(50dvh, calc((100dvh - safe-top) * .9))` and `calc((100dvh - safe-top) * .9)`. */
 const HALF = "min(50dvh, 0.9 * (100dvh - env(safe-area-inset-top, 0px)))";
@@ -42,10 +43,10 @@ afterEach(() => {
 
 function renderSheet(body = <input aria-label="Name" />) {
 	render(
-		<Popover.Root>
-			<Popover.Trigger>Open</Popover.Trigger>
+		<PopoverRoot>
+			<PopoverTrigger>Open</PopoverTrigger>
 			<PopoverContent>{body}</PopoverContent>
-		</Popover.Root>,
+		</PopoverRoot>,
 	);
 	fireEvent.click(screen.getByRole("button", {name: "Open"}));
 	return screen.getByRole("dialog");

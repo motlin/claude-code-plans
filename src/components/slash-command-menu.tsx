@@ -9,7 +9,7 @@ import {
 } from "../lib/slash-commands";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {DENSITY_CLASSES} from "./ui/menu-internals";
-import {TOOLTIP_CLASS} from "./ui/tooltip";
+import {TOOLTIP_CLASS} from "./ui/tooltip-classes";
 import {placeRowTooltip} from "./ui/tooltip-placement";
 
 /* Upstream renders the slash popup in a compact-density portal whatever the account's density. */

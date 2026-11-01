@@ -1,5 +1,5 @@
 import {createContext, type KeyboardEvent, type RefObject, useContext} from "react";
-import {useDensity} from "./density";
+import {useDensity} from "./density-context";
 
 /* The pieces of the menu primitive that both the anchored popup (./menu) and the lazy sheet (./menu-sheet) use. */
 

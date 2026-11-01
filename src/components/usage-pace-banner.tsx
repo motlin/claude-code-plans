@@ -4,7 +4,7 @@ import {usageQueryOptions} from "../lib/api/usage";
 import type {ReactElement, ReactNode} from "react";
 import {formatPaceBannerReset, limitReached, meterPercent, usageBand} from "../lib/usage";
 import {ResetCountdown} from "./reset-countdown";
-import {useComposerNotice, useInNoticeRegion} from "./composer-notice-region";
+import {useComposerNotice, useInNoticeRegion} from "./composer-notice-context";
 import {useUsageBandDismissals, writeUsageBandDismissal} from "../lib/usage-pace-dismissal";
 
 /**

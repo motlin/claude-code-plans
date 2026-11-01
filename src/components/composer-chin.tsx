@@ -34,7 +34,7 @@ import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
-import {Popover, PopoverContent} from "./ui/popover";
+import {PopoverRoot, PopoverTitle, PopoverTrigger, PopoverContent} from "./ui/popover";
 import {Tooltip} from "./ui/tooltip";
 import {UsagePopoverLimitRow} from "./usage-limit-row";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
@@ -57,7 +57,7 @@ function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onN
 	const planDetail = account?.planDetail;
 	return (
 		<>
-			<Popover.Title className="sr-only">Usage</Popover.Title>
+			<PopoverTitle className="sr-only">Usage</PopoverTitle>
 			<div className="flex flex-col py-1.5">
 				<div className="flex flex-col gap-1.5">
 					<div
@@ -101,9 +101,9 @@ export function UsageRing({usage}: {usage: ComposerUsage | null}) {
 	const now = Date.now();
 	const percent = usageRingPercent(usage);
 	return (
-		<Popover.Root open={open} onOpenChange={setOpen}>
+		<PopoverRoot open={open} onOpenChange={setOpen}>
 			<Tooltip content={formatUsageTooltipRows(usage, now).join("\n")} multiline>
-				<Popover.Trigger aria-label={formatUsageAriaLabel(usage, now)} className={USAGE_RING_CLASS}>
+				<PopoverTrigger aria-label={formatUsageAriaLabel(usage, now)} className={USAGE_RING_CLASS}>
 					<svg width="14" height="14" viewBox="0 0 14 14" className="-rotate-90" aria-hidden="true">
 						<circle cx="7" cy="7" r="6" fill="none" strokeWidth="2" stroke="var(--color-alpha-4)" />
 						<circle
@@ -120,7 +120,7 @@ export function UsageRing({usage}: {usage: ComposerUsage | null}) {
 							className="transition-[stroke-dashoffset] duration-300"
 						/>
 					</svg>
-				</Popover.Trigger>
+				</PopoverTrigger>
 			</Tooltip>
 			<PopoverContent side="top" align="end" sideOffset={6} className={POPUP_CLASS}>
 				<UsagePopoverBody
@@ -130,7 +130,7 @@ export function UsageRing({usage}: {usage: ComposerUsage | null}) {
 					}}
 				/>
 			</PopoverContent>
-		</Popover.Root>
+		</PopoverRoot>
 	);
 }
 

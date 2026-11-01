@@ -27,6 +27,7 @@ import {
 	USAGE_RING_CLASS,
 } from "./composer-tokens";
 import {HOME_DOCK_CLASS, SESSION_DOCK_COLUMN_CLASS, SESSION_FOOTER_CLASS, SESSION_TILE_CLASS} from "./dock-tokens";
+import {fallbackShellFor} from "./fallback-shell";
 
 const NAV_ROW_CLASS =
 	"df-nav-row h-[var(--sb-row-h)] rounded-[var(--sb-radius)] flex-1 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
@@ -235,21 +236,6 @@ function isShellChinLabels(value: unknown): value is ShellChinLabels {
 }
 
 const HOME_ROW_WIDTHS = ["w-1/2", "w-2/5", "w-3/5", "w-1/3", "w-5/12"];
-
-export type FallbackShell = "artifacts" | "home" | "session";
-
-/**
- * The shell the loaded page at `pathname` shows. The server paints from the requested path, but the
- * client hydrates after a redirect-only route's `beforeLoad` has moved it, so those routes paint
- * their target's shell: `/settings` opens the settings dialog over home. The other redirect-only
- * routes (`/plugins`, `/customize/`, `/command/…`, `/plugin/…`) land on Customize pages, which
- * share the session default.
- */
-export function fallbackShellFor(pathname: string): FallbackShell {
-	if (pathname === "/artifacts") return "artifacts";
-	if (pathname === "/" || pathname === "/settings" || pathname === "/settings/") return "home";
-	return "session";
-}
 
 export function AppShellFallback({
 	pathname = "",

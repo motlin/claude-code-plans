@@ -5,7 +5,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {FileRefsProvider} from "../src/components/file-refs";
+import {FileRefsProvider} from "../src/components/file-refs-context";
 import {SessionChat} from "../src/components/session-chat";
 import {ToastProvider} from "../src/components/toast";
 import {DensityScope} from "../src/components/ui/density";

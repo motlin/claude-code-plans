@@ -8,7 +8,8 @@ import {isLiveSessionState, sessionRowIconKind} from "../lib/session-state";
 import {TOUCH_HIT} from "../lib/touch-reveal";
 import {toggleUnseen} from "../lib/unread-store";
 import {useSettings} from "./settings-context";
-import {GIT_PR_STATE_LABELS, SessionStateIcon} from "./status-dot";
+import {SessionStateIcon} from "./status-dot";
+import {GIT_PR_STATE_LABELS} from "./git-pr-state-labels";
 import {Tooltip} from "./ui/tooltip";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 

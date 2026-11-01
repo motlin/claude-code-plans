@@ -31,7 +31,7 @@ import {MarkdownArticle} from "../markdown-article";
 import {useSettings} from "../settings-context";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
-import {useCopyToClipboard} from "./file-actions-menu";
+import {useCopyToClipboard} from "./use-copy-to-clipboard";
 import {ViewerMenuItems} from "./file-context-menu";
 import {mentionPath} from "./mention-path";
 import {FindBar} from "./find-in-file";

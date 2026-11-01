@@ -16,7 +16,7 @@ import {SessionPage} from "../src/components/session-page";
 import {ToastProvider} from "../src/components/toast";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
-import {preloadSideChatPanel} from "../src/components/side-chat";
+import {preloadSideChatPanel} from "../src/components/side-chat-panel-module";
 import {loadSessionPromptCards} from "../src/components/session-prompt-cards-entry";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.

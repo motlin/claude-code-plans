@@ -11,7 +11,7 @@ import {
 	type NextStepRow,
 } from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
-import {Popover, PopoverContent} from "../ui/popover";
+import {PopoverRoot, PopoverTrigger, PopoverContent} from "../ui/popover";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
 import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
@@ -493,17 +493,17 @@ function RestRow({
 		onOpen(subject);
 	};
 	return (
-		<Popover.Root
+		<PopoverRoot
 			open={open}
 			onOpenChange={(next) => {
 				onOpenChange(next);
 			}}
 		>
-			<Popover.Trigger data-next-step-open className={STEP_BUTTON_CLASS}>
+			<PopoverTrigger data-next-step-open className={STEP_BUTTON_CLASS}>
 				<span className="min-w-0 flex-1 truncate text-secondary">{title}</span>
 				<ChevronDown aria-hidden="true" className={STEP_CARET_CLASS} />
 				<StepSpacer />
-			</Popover.Trigger>
+			</PopoverTrigger>
 			<PopoverContent
 				side="bottom"
 				align="start"
@@ -522,7 +522,7 @@ function RestRow({
 					})}
 				</ul>
 			</PopoverContent>
-		</Popover.Root>
+		</PopoverRoot>
 	);
 }
 

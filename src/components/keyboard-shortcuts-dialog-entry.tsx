@@ -1,6 +1,7 @@
 import {useSyncExternalStore} from "react";
 import {useShortcut} from "../hooks/use-shortcut";
-import {deferredComponent, deferredModule} from "./deferred-component";
+import {deferredComponent} from "./deferred-component";
+import {keyboardShortcutsDialogModule} from "./keyboard-shortcuts-dialog-module";
 import {
 	getKeyboardShortcutsOpen,
 	getServerKeyboardShortcutsOpen,
@@ -8,13 +9,7 @@ import {
 	subscribeKeyboardShortcutsOpen,
 } from "./keyboard-shortcuts-open";
 
-// The shortcut list and its rows stay off the cold load until the dialog first opens or the page goes idle.
-const dialogModule = deferredModule(async () =>
-	import("./keyboard-shortcuts-dialog").then(({KeyboardShortcutsDialog}) => ({KeyboardShortcutsDialog})),
-);
-
-export const loadKeyboardShortcutsDialog = dialogModule.preload;
-const KeyboardShortcutsDialog = deferredComponent(dialogModule, "KeyboardShortcutsDialog");
+const KeyboardShortcutsDialog = deferredComponent(keyboardShortcutsDialogModule, "KeyboardShortcutsDialog");
 
 /**
  * Binds ⌘/ and mounts the Keyboard shortcuts dialog from its first open on; until then a closed dialog renders
@@ -26,7 +21,7 @@ export function DeferredKeyboardShortcutsDialog() {
 		getKeyboardShortcutsOpen,
 		getServerKeyboardShortcutsOpen,
 	);
-	const mounted = open || dialogModule.loaded() !== undefined;
+	const mounted = open || keyboardShortcutsDialogModule.loaded() !== undefined;
 	useShortcut(
 		"shortcuts_modal",
 		(event) => {

@@ -3,7 +3,7 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {Popover, PopoverContent} from "../src/components/ui/popover";
+import {PopoverRoot, PopoverTrigger, PopoverContent} from "../src/components/ui/popover";
 
 afterEach(() => {
 	cleanup();
@@ -26,12 +26,12 @@ describe("Popover sheet chunk", () => {
 			})),
 		);
 		render(
-			<Popover.Root>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent>
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		const popup = await screen.findByRole("dialog");

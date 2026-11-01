@@ -34,7 +34,7 @@ import {type InteractionMeasurement, measureInteraction} from "./harness/measure
 import {metricIds} from "./perf-ids";
 import {ratchet} from "./ratchet";
 import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
-import {preloadSideChatPanel} from "../../src/components/side-chat";
+import {preloadSideChatPanel} from "../../src/components/side-chat-panel-module";
 import {loadSessionPromptCards} from "../../src/components/session-prompt-cards-entry";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.

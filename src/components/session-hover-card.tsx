@@ -17,7 +17,7 @@ import {
 	SESSION_HOVER_CARD,
 	type HoverCardKind,
 } from "./session-hover-card-classes";
-import {useDensity} from "./ui/density";
+import {useDensity} from "./ui/density-context";
 import {AwaitingBodySkeleton} from "./session-awaiting-skeleton";
 
 type PositionerProps = ComponentProps<typeof PreviewCard.Positioner>;

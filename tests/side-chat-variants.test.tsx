@@ -8,7 +8,8 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 import {TileHost} from "../src/components/panes/tile-host";
-import {SideChat, preloadSideChatPanel} from "../src/components/side-chat";
+import {SideChat} from "../src/components/side-chat";
+import {preloadSideChatPanel} from "../src/components/side-chat-panel-module";
 import {ToastProvider} from "../src/components/toast";
 import {askSideChat, getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
 

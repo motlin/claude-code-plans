@@ -92,7 +92,7 @@ import {
 	ENVIRONMENT_BAR_ROW_CLASS,
 	ENVIRONMENT_PLACE_CLASS,
 } from "./composer-tokens";
-import {preloadFileTypeIcons} from "./lazy-file-type-icon";
+import {preloadFileTypeIcons} from "./file-type-icons-loader";
 import {ToastContext} from "./toast-context";
 import {fileMentionOptionId} from "./file-mention-option-id";
 import {preloadComposerSurfaces, useComposerSurfaces} from "./composer-surfaces-entry";
@@ -106,7 +106,7 @@ import {useBashHighlight} from "../hooks/use-bash-highlight";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {useFileDropTarget} from "./composer-drop-scrim";
 import {ComposerSkillChip} from "./composer-skill-chip";
-import {type MentionChipActions, paintMentions} from "./composer-mention-chip";
+import {type MentionChipActions, paintMentions} from "./composer-mention-paint";
 
 type ComposerVariant = "session" | "home";
 

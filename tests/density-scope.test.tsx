@@ -6,7 +6,8 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionHoverCard} from "../src/components/session-hover-card";
 import {ToastProvider} from "../src/components/toast";
-import {DensityOverride, DensityScope, useDensity} from "../src/components/ui/density";
+import {DensityOverride, DensityScope} from "../src/components/ui/density";
+import {useDensity} from "../src/components/ui/density-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger, type MenuContentProps} from "../src/components/ui/menu";
 import {ViewportPortal} from "../src/components/viewport-portal";
 

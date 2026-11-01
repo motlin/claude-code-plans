@@ -10,7 +10,7 @@ import {NextStepsList} from "../src/components/home/start-card";
 import {ProjectPicker} from "../src/components/home/project-picker";
 import {SessionCostPill} from "../src/components/session-cost-pill";
 import {SettingsSearch} from "../src/components/settings/settings-search";
-import {preloadPopoverSheet} from "../src/components/ui/popover";
+import {preloadPopoverSheet} from "../src/components/ui/popover-sheet-loader";
 
 /** A coarse pointer at `width`: upstream's sheet gate `(pointer: coarse) and (max-width: 639.98px)`. */
 function stubCoarseAtWidth(width: number) {

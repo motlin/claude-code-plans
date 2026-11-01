@@ -2,7 +2,8 @@ import {useCallback, useRef, useState, type ReactNode} from "react";
 import {topLeftClearanceStyle} from "../lib/top-left-clearance";
 import {useNarrowViewport} from "../lib/sidebar-store";
 import {usePhoneSheet} from "../lib/use-phone-sheet";
-import {DensityProvider, useScopeDensity} from "./ui/density";
+import {DensityProvider} from "./ui/density";
+import {useScopeDensity} from "./ui/density-context";
 import {Sidebar, SidebarEdgeHandle} from "./sidebar/index";
 import {PHONE_SHEET_TRANSITION_MS, PhoneSheet, PhoneSheetTrigger} from "./sidebar/phone-sheet";
 

@@ -5,12 +5,8 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {useEffect, useRef, useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {
-	HOME_RECENT_LIMIT,
-	HomeLaunchFolderProvider,
-	useHomeLaunchFolder,
-	useHomeWorktree,
-} from "../src/components/home/launch-folder";
+import {HOME_RECENT_LIMIT, useHomeLaunchFolder, useHomeWorktree} from "../src/components/home/launch-folder";
+import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-provider";
 import {ProjectPicker} from "../src/components/home/project-picker";
 import {HomeStartCard, StartCard} from "../src/components/home/start-card";
 import {projectsQueryOptions} from "../src/lib/api/projects";

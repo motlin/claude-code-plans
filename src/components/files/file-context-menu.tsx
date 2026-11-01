@@ -4,13 +4,8 @@ import {fileContentUrl, fileViewQueryOptions} from "../../lib/api/file";
 import type {AttachContextHandler, ContextAttachment} from "../../lib/context-attach";
 import type {FileTabsAction} from "../../lib/file-tabs";
 import {requestFindInFile} from "../../lib/find-in-file-request";
-import {
-	CopySubmenu,
-	FileActionsMenuItems,
-	OpenInSubmenu,
-	ShowInFinderItem,
-	useCopyToClipboard,
-} from "./file-actions-menu";
+import {CopySubmenu, FileActionsMenuItems, OpenInSubmenu, ShowInFinderItem} from "./file-actions-menu";
+import {useCopyToClipboard} from "./use-copy-to-clipboard";
 import {MenuItem, MenuSeparator} from "../ui/menu";
 import {mentionPath, relativeToCwd} from "./mention-path";
 

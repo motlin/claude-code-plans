@@ -4,7 +4,7 @@ import {Folder} from "lucide-react";
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {fileMentionMenuWidth} from "../lib/file-mentions";
 import {fileMentionOptionId} from "./file-mention-option-id";
-import {type FileTypeIconModule, useFileTypeIcons} from "./lazy-file-type-icon";
+import {type FileTypeIconModule, useFileTypeIcons} from "./file-type-icons-loader";
 import {Tooltip} from "./ui/tooltip";
 
 const POPUP_CLASS =

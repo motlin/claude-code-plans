@@ -6,7 +6,8 @@ import {resolve} from "node:path";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {Tooltip, TOOLTIP_CLASS} from "../src/components/ui/tooltip";
+import {Tooltip} from "../src/components/ui/tooltip";
+import {TOOLTIP_CLASS} from "../src/components/ui/tooltip-classes";
 
 const globalsCss = readFileSync(resolve(__dirname, "..", "src", "styles", "globals.css"), "utf8");
 

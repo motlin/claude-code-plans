@@ -15,7 +15,7 @@ import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
-import {motionReduced, rowActionsAnchorRect} from "../src/components/palette-row-actions";
+import {motionReduced, rowActionsAnchorRect} from "../src/components/palette-row-actions-geometry";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";

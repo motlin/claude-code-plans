@@ -17,10 +17,12 @@ import {
 } from "../lib/session-menu-items";
 import type {SessionBucket} from "../lib/session-state";
 import {markSeen, markUnseen} from "../lib/unread-store";
+import {type Box, CARD_OVERLAP_PX, isAltEnter, virtualAnchor} from "./palette-row-actions-geometry";
 import {SessionRenameDialog} from "./session-rename-dialog";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 import {useToast} from "./toast-context";
-import {inlineEndSide, Menu, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
+import {Menu, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
+import {inlineEndSide} from "./ui/menu-anchor";
 import {Tooltip} from "./ui/tooltip";
 
 /** A session row the ⌥⏎ card can act on; `archived`/`bucket` are unknown for server-only hits. */
@@ -39,66 +41,6 @@ interface CardItem {
 	label: string;
 }
 
-interface Box {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-}
-
-/** Upstream's `panelScale`: the palette recedes to this while the card is open. */
-const RECEDE_SCALE = 0.97;
-/** Upstream's `cardLift`. */
-const CARD_LIFT_PX = 4;
-/** Upstream's `cardOverlap`: the card's inline-start edge sits this far over the receded palette. */
-const CARD_OVERLAP_PX = 44;
-
-/** True under the OS reduced-motion setting or Settings ▸ Motion ▸ Reduced (`html[data-motion=reduced]`). */
-export function motionReduced(): boolean {
-	if (document.documentElement.dataset["motion"] === "reduced") return true;
-	return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-/**
- * Upstream's card anchor: the results list's x and width at the selected row's y (clamped into the list
- * viewport), scaled by the recede about the dialog's centre unless motion is reduced, then lifted 4px.
- */
-export function rowActionsAnchorRect({
-	list,
-	row,
-	dialog,
-	reducedMotion,
-}: {
-	list: Box;
-	row: Pick<Box, "y" | "height">;
-	dialog: Box;
-	reducedMotion: boolean;
-}): Box {
-	const y = Math.min(Math.max(row.y, list.y), Math.max(list.y, list.y + list.height - row.height));
-	const scale = reducedMotion ? 1 : RECEDE_SCALE;
-	const centreX = dialog.x + dialog.width / 2;
-	const centreY = dialog.y + dialog.height / 2;
-	return {
-		x: centreX + (list.x - centreX) * scale,
-		y: centreY + (y - centreY) * scale - CARD_LIFT_PX,
-		width: list.width * scale,
-		height: row.height * scale,
-	};
-}
-
-function virtualAnchor(box: Box) {
-	return {
-		getBoundingClientRect: () => ({
-			...box,
-			top: box.y,
-			left: box.x,
-			right: box.x + box.width,
-			bottom: box.y + box.height,
-			toJSON: () => box,
-		}),
-	};
-}
-
 const SHIFT_COLLISION_AVOIDANCE = {side: "shift", align: "shift"} as const;
 
 /** Upstream's `Ze`: digits are ignored this long after the item list changes, so a late item isn't mis-hit. */
@@ -112,17 +54,6 @@ export type RowActionsRepeatKey = "Enter" | "ArrowLeft";
 export interface RowActionsCloseOptions {
 	refocus: boolean;
 	swallowRepeat?: RowActionsRepeatKey;
-}
-
-/** Upstream's `Cs`: Enter with Alt or AltGraph, no Shift or Meta, not mid-IME composition. */
-export function isAltEnter(event: KeyboardEvent<HTMLElement>): boolean {
-	return (
-		event.key === "Enter" &&
-		(event.altKey || event.getModifierState("AltGraph")) &&
-		!event.shiftKey &&
-		!event.metaKey &&
-		!event.nativeEvent.isComposing
-	);
 }
 
 /**

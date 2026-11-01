@@ -18,7 +18,8 @@ import {
 } from "../../lib/workflow-progress";
 import {formatPaddedElapsed} from "../../lib/working-marker";
 import {ShimmerText} from "../shimmer-text";
-import {AgentCount, useNow} from "../tool-renderers/workflow-card";
+import {AgentCount} from "../tool-renderers/workflow-card";
+import {useNow} from "../../hooks/use-now";
 import {Tooltip} from "../ui/tooltip";
 import {WorkflowAgentCells} from "../workflow-agent-cells";
 

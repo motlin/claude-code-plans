@@ -1,18 +1,8 @@
 import {useQuery} from "@tanstack/react-query";
-import {
-	createContext,
-	type Dispatch,
-	type ReactNode,
-	type SetStateAction,
-	useContext,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import {createContext, type Dispatch, type SetStateAction, useContext, useEffect, useMemo, useState} from "react";
 
 import {projectsQueryOptions} from "../../lib/api/projects";
 import {recentSessionsQueryOptions} from "../../lib/api/sessions";
-import {onHomeLaunchFolderRequest, takePendingHomeLaunchFolder} from "../../lib/home-composer-focus";
 import {readHomeWorktreePref, writeHomeWorktreePref} from "../../lib/home-worktree-pref";
 import {startSessionProjects, type StartProject} from "../../lib/palette-start-session";
 
@@ -22,7 +12,7 @@ export const HOME_RECENT_LIMIT = 25;
 type ChosenFolder = [string | null, Dispatch<SetStateAction<string | null>>];
 type Launching = [boolean, Dispatch<SetStateAction<boolean>>];
 
-interface WorktreeState {
+export interface WorktreeState {
 	/** The persisted, browser-wide preference. */
 	pref: boolean;
 	/** This draft's override (upstream's per-opening `Jp` state); null follows the preference. */
@@ -38,14 +28,14 @@ interface WorktreeState {
 	endDraft: () => void;
 }
 
-interface SharedLaunchFolder {
+export interface SharedLaunchFolder {
 	chosen: ChosenFolder;
 	launching: Launching;
 	worktree: WorktreeState;
 }
 
 /** Upstream `n0`'s state: the preference starts off and loads after mount, so SSR and hydration agree. */
-function useWorktreeState(): WorktreeState {
+export function useWorktreeState(): WorktreeState {
 	const [pref, setPref] = useState(false);
 	const [draft, setDraft] = useState<boolean | null>(null);
 	const [taken, setTaken] = useState<ReadonlySet<string>>(() => new Set());
@@ -86,26 +76,7 @@ function useWorktreeState(): WorktreeState {
 	}, [pref, draft, taken, used]);
 }
 
-const LaunchFolderContext = createContext<SharedLaunchFolder | null>(null);
-
-/**
- * Shares the home launch folder, and whether the composer is launching a session in it, between the
- * start card and the docked composer. The folder starts from one requested before home mounted and
- * follows later requests.
- */
-export function HomeLaunchFolderProvider({children}: Readonly<{children: ReactNode}>) {
-	const chosen = useState<string | null>(null);
-	const launching = useState(false);
-	const worktree = useWorktreeState();
-	const [, setChosenId] = chosen;
-	useEffect(() => {
-		const pending = takePendingHomeLaunchFolder();
-		if (pending !== null) setChosenId(pending);
-		return onHomeLaunchFolderRequest(setChosenId);
-	}, [setChosenId]);
-	const shared = useMemo(() => ({chosen, launching, worktree}), [chosen, launching, worktree]);
-	return <LaunchFolderContext.Provider value={shared}>{children}</LaunchFolderContext.Provider>;
-}
+export const LaunchFolderContext = createContext<SharedLaunchFolder | null>(null);
 
 export interface HomeLaunchFolder {
 	/** Launchable folders, most recently used first. */

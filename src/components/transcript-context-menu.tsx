@@ -7,7 +7,7 @@ import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {writeClipboardText} from "../lib/clipboard";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
-import {useFileRefsCwd} from "./file-refs";
+import {useFileRefsCwd} from "./file-refs-context";
 import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";

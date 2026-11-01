@@ -12,7 +12,7 @@ import {
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {AppFrame} from "../src/components/app-frame";
-import {useDensity} from "../src/components/ui/density";
+import {useDensity} from "../src/components/ui/density-context";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";

@@ -2,7 +2,7 @@ import {useEffect} from "react";
 import {useIdlePrefetch} from "../hooks/use-idle-prefetch";
 import {warmOnIntent} from "../lib/idle-prefetch";
 import {loadCommandPalette} from "./command-palette-loader";
-import {loadKeyboardShortcutsDialog} from "./keyboard-shortcuts-dialog-entry";
+import {loadKeyboardShortcutsDialog} from "./keyboard-shortcuts-dialog-module";
 import {loadSettingsDialog} from "./settings/settings-dialog-loader";
 
 const SHELL_CHUNKS = [loadCommandPalette, loadSettingsDialog, loadKeyboardShortcutsDialog];

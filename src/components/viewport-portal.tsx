@@ -1,7 +1,8 @@
 import {useSyncExternalStore, type ReactNode} from "react";
 import {createPortal} from "react-dom";
 
-import {DensityScope, useDensity} from "./ui/density";
+import {DensityScope} from "./ui/density";
+import {useDensity} from "./ui/density-context";
 
 function subscribeNever(): () => void {
 	return () => {};

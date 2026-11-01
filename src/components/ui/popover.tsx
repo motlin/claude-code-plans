@@ -15,6 +15,7 @@ import {
 	useState,
 } from "react";
 
+import {loadedPopoverSheet, preloadPopoverSheet} from "./popover-sheet-loader";
 import {useSheetPresentation} from "./sheet-presentation";
 
 interface PopoverSheet {
@@ -37,7 +38,7 @@ type PopoverActions = NonNullable<ComponentProps<typeof BasePopover.Root>["actio
  * Upstream's `Bl` → `r3`: tracks the root's open state (controlled or not) and runs the sheet gate with
  * `closable = !(open !== undefined && !consumerHandlesOpenChange)`, latched from open through the exit.
  */
-function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>) {
+export function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>) {
 	const {open, defaultOpen, onOpenChange, onOpenChangeComplete, actionsRef} = props;
 	const ownActionsRef = useRef<PopoverActions extends RefObject<infer T> ? T : never>(null);
 	const actions = actionsRef ?? ownActionsRef;
@@ -73,12 +74,9 @@ function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>) {
 	);
 }
 
-/** Upstream's cds `Ql`: the gated root and the Base UI trigger and title, with `PopoverContent` as the surface. */
-export const Popover = {
-	Root: PopoverRoot,
-	Trigger: BasePopover.Trigger,
-	Title: BasePopover.Title,
-};
+/** Upstream's cds `Ql` trigger and title, beside the gated `PopoverRoot`, with `PopoverContent` as the surface. */
+export const PopoverTrigger = BasePopover.Trigger;
+export const PopoverTitle = BasePopover.Title;
 
 export interface PopoverContentProps {
 	children: ReactNode;
@@ -98,29 +96,12 @@ export interface PopoverContentProps {
 	onPointerEnter?: () => void;
 }
 
-type PopoverSheetModule = typeof import("./popover-sheet");
-
-let popoverSheetModule: PopoverSheetModule | null = null;
-let popoverSheetLoad: Promise<PopoverSheetModule> | null = null;
-
-/**
- * The sheet presentation (sheet DOM, drag, detents, keyboard inset) is its own chunk, as upstream's
- * `cds_mobile_sheets`. A root whose gate would open a sheet starts the load as it mounts, so by the first
- * tap the module is in hand and the sheet renders synchronously.
- */
-export async function preloadPopoverSheet(): Promise<PopoverSheetModule> {
-	popoverSheetLoad ??= import("./popover-sheet").then((module) => {
-		popoverSheetModule = module;
-		return module;
-	});
-	return popoverSheetLoad;
-}
-
 const LazyPopoverSheetContent = lazy(async () =>
 	preloadPopoverSheet().then((module) => ({default: module.PopoverSheetContent})),
 );
 
 function PopoverSheet(props: ComponentProps<typeof LazyPopoverSheetContent>) {
+	const popoverSheetModule = loadedPopoverSheet();
 	if (popoverSheetModule !== null) return <popoverSheetModule.PopoverSheetContent {...props} />;
 	return (
 		<Suspense fallback={null}>

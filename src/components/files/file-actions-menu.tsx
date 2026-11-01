@@ -1,35 +1,16 @@
 import {revealFileInFinder} from "../../lib/api/file";
-import {writeClipboardText} from "../../lib/clipboard";
 import type {AttachContextHandler} from "../../lib/context-attach";
 import {vscodeFolderUrl} from "../../lib/session-open-in";
 import {useToast} from "../toast-context";
 import {MenuItem, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
+import {FILES_PANE_EXTENSION, isEditableText} from "./file-extensions";
 import {mentionPath, relativeToCwd} from "./mention-path";
+import {useCopyToClipboard} from "./use-copy-to-clipboard";
 
 /*
  * claude.ai/code's shared file-actions block (`Un` in c856385e2), desktop
  * `local` variant: Attach as context · Copy ▸ · ─ · Open in ▸ · Show in Finder.
  */
-
-/** Upstream `FD` (shared-28): binary, office, archive and media files no editor should open. */
-const NON_EDITOR_EXTENSION =
-	/\.(doc[xm]?|xls[xm]?|ppt[xm]?|od[tsp]|rtf|epub|mobi|pages|numbers|zip|t?gz|tar|bz2|xz|zst|7z|rar|jar|war|dmg|iso|deb|rpm|apk|msi|pkg|img|wasm|exe|dll|so(?:\.\d+)*|dylib|bin|class|pyc|o|a|db|sqlite3?|parquet|woff2?|ttf|otf|eot|pdf|mp4|webm|m4v|mov|ogv|avi|mkv|wmv|flv|mpe?g|m2ts|3gp|mp3|m4a|aac|flac|wav|ogg|oga|opus|aiff?|wma|midi?|ico|tiff?|heic|heif|jfif|psd|tga|dng|svgz)$/i;
-
-/** Upstream `$3` (shared-m-0): the image extensions `mw` excludes. */
-const IMAGE_EXTENSIONS: ReadonlySet<string> = new Set(["png", "jpg", "jpeg", "gif", "bmp", "webp", "avif"]);
-
-/** Upstream `fT` (shared-28): files the Files pane can preview. */
-const FILES_PANE_EXTENSION = /\.(html?|svg|pdf|mp4|webm|m4v|mov|ogv)$/i;
-
-function extension(path: string): string {
-	const dot = path.lastIndexOf(".");
-	return dot < 0 ? "" : path.slice(dot + 1).toLowerCase();
-}
-
-/** Upstream `p3`: a file an editor can open (not binary/office/archive/media, not an image). */
-export function isEditableText(path: string): boolean {
-	return !NON_EDITOR_EXTENSION.test(path) && !IMAGE_EXTENSIONS.has(extension(path));
-}
 
 /** `vscode://file/<abs>`, plus `:<line>` to open the file at that line. */
 function vscodeFileUrl(path: string, line?: number): string {
@@ -39,20 +20,6 @@ function vscodeFileUrl(path: string, line?: number): string {
 
 function baseName(path: string): string {
 	return path.slice(path.lastIndexOf("/") + 1) || path;
-}
-
-/** Upstream `we`: one success toast for every Copy row. The failure toast is a local extra. */
-export function useCopyToClipboard(): (text: string) => void {
-	const toast = useToast();
-	return (text) => {
-		void writeClipboardText(text).then((copied) => {
-			toast(
-				copied
-					? {kind: "success", message: "Copied to clipboard."}
-					: {kind: "error", message: "Couldn’t copy to clipboard."},
-			);
-		});
-	};
 }
 
 interface CopySubmenuProps {

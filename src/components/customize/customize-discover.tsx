@@ -19,7 +19,7 @@ import {
 import {IconTile} from "./icon-tile";
 import {SectionHeader} from "./section-header";
 import {resolveOption} from "./sections";
-import {useCopyInstallCommand} from "./plugin-row-actions";
+import {useCopyInstallCommand} from "./use-copy-install-command";
 
 const CARD_LIMIT = 8;
 

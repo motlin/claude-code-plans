@@ -19,7 +19,8 @@ import {
 
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
-import {type Density, DensityProvider, useScopeDensity} from "./density";
+import {DensityProvider} from "./density";
+import {type Density, useScopeDensity} from "./density-context";
 import {
 	DENSITY_CLASSES,
 	handleAcceleratorKey,
@@ -36,28 +37,13 @@ import {
 	useItemClass,
 	useMenuSizing,
 } from "./menu-internals";
+import {inlineEndSide, submenuAnchor} from "./menu-anchor";
 import type {SheetContentProps} from "./menu-sheet";
+import {loadedMenuSheet, preloadMenuSheet} from "./menu-sheet-loader";
 import {MenuSwitch} from "./menu-switch";
 import {useSheetPresentation} from "./sheet-presentation";
 import {Shortcut} from "./shortcut";
 import {Tooltip} from "./tooltip";
-
-type MenuSheetModule = typeof import("./menu-sheet");
-
-let menuSheetModule: MenuSheetModule | null = null;
-let menuSheetLoad: Promise<MenuSheetModule> | null = null;
-
-/**
- * The sheet presentation (sheet DOM, drag, drill-in) is its own chunk. A root whose gate would open a sheet
- * starts the load as it mounts, so by the first tap the module is in hand and the sheet renders synchronously.
- */
-export async function preloadMenuSheet(): Promise<MenuSheetModule> {
-	menuSheetLoad ??= import("./menu-sheet").then((module) => {
-		menuSheetModule = module;
-		return module;
-	});
-	return menuSheetLoad;
-}
 
 const LazyRootSheetContent = lazy(async () =>
 	preloadMenuSheet().then((module) => ({default: module.RootSheetContent})),
@@ -67,6 +53,7 @@ const LazyNestedSheetContent = lazy(async () =>
 );
 
 function RootSheet(props: SheetContentProps) {
+	const menuSheetModule = loadedMenuSheet();
 	if (menuSheetModule !== null) return <menuSheetModule.RootSheetContent {...props} />;
 	return (
 		<Suspense fallback={null}>
@@ -76,6 +63,7 @@ function RootSheet(props: SheetContentProps) {
 }
 
 function NestedSheet(props: SheetContentProps & {treeId: string}) {
+	const menuSheetModule = loadedMenuSheet();
 	if (menuSheetModule !== null) return <menuSheetModule.NestedSheetContent {...props} />;
 	return (
 		<Suspense fallback={null}>
@@ -773,33 +761,6 @@ export function MenuSub(props: ComponentProps<typeof BaseMenu.SubmenuRoot>) {
 			</SubmenuControlContext.Provider>
 		</SubmenuTriggerContext.Provider>
 	);
-}
-
-/**
- * cds' `ua()`: a submenu anchors to the parent popup's horizontal span at the
- * trigger row's height, so `sideOffset` measures from the popup edge, not the
- * row (the default 2 lands 6px past the row; Copy ▸'s -4 sits on the row edge).
- */
-export function submenuAnchor(triggerRef: RefObject<HTMLElement | null>) {
-	return {
-		get contextElement() {
-			return triggerRef.current ?? undefined;
-		},
-		getBoundingClientRect: () => {
-			const trigger = triggerRef.current?.getBoundingClientRect();
-			const popup = triggerRef.current?.closest('[role="menu"]')?.getBoundingClientRect();
-			const x = popup?.x ?? trigger?.x ?? 0;
-			const y = trigger?.y ?? 0;
-			const width = popup?.width ?? trigger?.width ?? 0;
-			const height = trigger?.height ?? 0;
-			return {x, y, width, height, top: y, left: x, right: x + width, bottom: y + height};
-		},
-	};
-}
-
-/** cds resolves a submenu's logical inline-end side against the document direction. */
-export function inlineEndSide(): "left" | "right" {
-	return document.documentElement.dir === "rtl" ? "left" : "right";
 }
 
 export interface MenuSubTriggerProps extends Omit<

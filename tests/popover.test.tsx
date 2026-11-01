@@ -3,7 +3,8 @@
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {Popover, PopoverContent, preloadPopoverSheet} from "../src/components/ui/popover";
+import {PopoverRoot, PopoverTrigger, PopoverContent} from "../src/components/ui/popover";
+import {preloadPopoverSheet} from "../src/components/ui/popover-sheet-loader";
 
 /* The sheet presentation is a lazy chunk; load it once so sheets render synchronously on open. */
 beforeAll(async () => {
@@ -34,12 +35,12 @@ afterEach(() => {
 describe("PopoverContent under a fine pointer", () => {
 	it("renders the anchored Portal → Positioner → Popup with the consumer className and no sheet chrome", () => {
 		render(
-			<Popover.Root>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent side="top" align="end" sideOffset={6} className="w-[360px] rounded-r7 p-3">
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		const popup = screen.getByRole("dialog");
@@ -69,12 +70,12 @@ describe("PopoverContent under a fine pointer", () => {
 
 	it("leaves body scroll untouched and the portal unforced, as a non-modal anchored popover", async () => {
 		render(
-			<Popover.Root>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent>
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		/* Base UI takes its scroll lock on a zero-delay timeout. */
@@ -89,12 +90,12 @@ describe("PopoverContent under a fine pointer", () => {
 
 	it("stays anchored when structurallyAnchored", () => {
 		render(
-			<Popover.Root defaultOpen>
-				<Popover.Trigger>Search</Popover.Trigger>
+			<PopoverRoot defaultOpen>
+				<PopoverTrigger>Search</PopoverTrigger>
 				<PopoverContent structurallyAnchored className="w-80">
 					<p>Results</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		expect({
 			popupClass: screen.getByRole("dialog").className,
@@ -124,12 +125,12 @@ describe("PopoverContent under a coarse pointer", () => {
 
 	function renderUsage() {
 		render(
-			<Popover.Root>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent side="top" align="end" className="w-[360px] max-w-[90vw] rounded-r7 p-3">
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		return screen.getByRole("dialog");
@@ -234,12 +235,12 @@ describe("PopoverContent under a coarse pointer", () => {
 		stubCoarseAtWidth(420);
 		const onOpenChange = vi.fn<(open: boolean) => void>();
 		render(
-			<Popover.Root onOpenChange={onOpenChange}>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot onOpenChange={onOpenChange}>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent className="w-80">
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		const close = screen.getByRole("button", {name: "Close"});
@@ -265,12 +266,12 @@ describe("PopoverContent under a coarse pointer", () => {
 	it("labels the Close button with closeLabel", () => {
 		stubCoarseAtWidth(420);
 		render(
-			<Popover.Root defaultOpen>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot defaultOpen>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent closeLabel="Dismiss usage">
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		expect(screen.getByRole("button", {name: "Dismiss usage"}).hasAttribute("data-cds-sheet-control")).toBe(true);
 	});
@@ -278,12 +279,12 @@ describe("PopoverContent under a coarse pointer", () => {
 	it("holds a focus-visible Close button visible through a press until the next keydown", () => {
 		stubCoarseAtWidth(420);
 		render(
-			<Popover.Root defaultOpen>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot defaultOpen>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent>
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		const popup = screen.getByRole("dialog");
 		const close = screen.getByRole("button", {name: "Close"});
@@ -313,12 +314,12 @@ describe("PopoverContent under a coarse pointer", () => {
 	it("stays anchored at 420px when the consumer controls open without onOpenChange", () => {
 		stubCoarseAtWidth(420);
 		render(
-			<Popover.Root open>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot open>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent className="w-80">
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		expect({
 			popupClass: screen.getByRole("dialog").className,
@@ -329,12 +330,12 @@ describe("PopoverContent under a coarse pointer", () => {
 	it("presents a sheet at 420px when the consumer controls open with onOpenChange", () => {
 		stubCoarseAtWidth(420);
 		render(
-			<Popover.Root open onOpenChange={() => undefined}>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot open onOpenChange={() => undefined}>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent className="w-80">
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		expect(screen.getByRole("dialog").getAttribute("data-presentation")).toBe("sheet");
 	});
@@ -342,12 +343,12 @@ describe("PopoverContent under a coarse pointer", () => {
 	it("stays anchored at 420px when structurallyAnchored", () => {
 		stubCoarseAtWidth(420);
 		render(
-			<Popover.Root defaultOpen>
-				<Popover.Trigger>Search</Popover.Trigger>
+			<PopoverRoot defaultOpen>
+				<PopoverTrigger>Search</PopoverTrigger>
 				<PopoverContent structurallyAnchored className="w-80">
 					<p>Results</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		expect({
 			popupClass: screen.getByRole("dialog").className,
@@ -431,12 +432,12 @@ describe("PopoverContent sheet height pinning", () => {
 
 	it("pins the popup to its measured content height and re-pins when the DismissButton grows", () => {
 		render(
-			<Popover.Root>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent>
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		const popup = screen.getByRole("dialog");
@@ -462,12 +463,12 @@ describe("PopoverContent sheet height pinning", () => {
 
 	it("leaves the height unpinned until the popup has laid out", () => {
 		render(
-			<Popover.Root>
-				<Popover.Trigger>Usage</Popover.Trigger>
+			<PopoverRoot>
+				<PopoverTrigger>Usage</PopoverTrigger>
 				<PopoverContent>
 					<p>Body</p>
 				</PopoverContent>
-			</Popover.Root>,
+			</PopoverRoot>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
 		fireResize();

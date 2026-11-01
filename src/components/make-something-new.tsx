@@ -1,14 +1,7 @@
 import {Link} from "@tanstack/react-router";
-import {ChartLine, FileText, Palette, Presentation, type LucideIcon} from "lucide-react";
 import {useId} from "react";
-import {ARTIFACT_TEMPLATES, type ArtifactTemplate, type ArtifactTemplateSlug} from "../lib/artifact-templates";
-
-export const TEMPLATE_ICONS: Record<ArtifactTemplateSlug, LucideIcon> = {
-	pages: FileText,
-	slides: Presentation,
-	design: Palette,
-	dashboard: ChartLine,
-};
+import {TEMPLATE_ICONS} from "./artifact-template-icons";
+import {ARTIFACT_TEMPLATES, type ArtifactTemplate} from "../lib/artifact-templates";
 
 /** Upstream's cds Badge: New is accent on tint-blue, Beta is secondary on neutral. */
 const BADGE_CLASS: Record<ArtifactTemplate["badge"], string> = {

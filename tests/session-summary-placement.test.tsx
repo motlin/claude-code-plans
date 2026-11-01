@@ -29,7 +29,7 @@ import type {Subagent} from "../src/lib/subagents";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
-import {preloadSideChatPanel} from "../src/components/side-chat";
+import {preloadSideChatPanel} from "../src/components/side-chat-panel-module";
 import {loadSessionPromptCards} from "../src/components/session-prompt-cards-entry";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.

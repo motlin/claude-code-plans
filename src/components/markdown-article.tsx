@@ -25,7 +25,7 @@ import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from ".
 import {useCodeThemes} from "../hooks/use-code-themes";
 import {handleCodeCopyClick} from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
-import {OPEN_DELAY_MS, REASON_TOOLTIP_CLASS, SIDE_CLASS} from "./ui/tooltip";
+import {OPEN_DELAY_MS, REASON_TOOLTIP_CLASS, SIDE_CLASS} from "./ui/tooltip-classes";
 import {ViewportPortal} from "./viewport-portal";
 
 interface FileRefProps {

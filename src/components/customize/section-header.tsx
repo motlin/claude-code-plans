@@ -1,6 +1,6 @@
 import type {ReactNode} from "react";
 
-import {useDensity} from "../ui/density";
+import {useDensity} from "../ui/density-context";
 
 /** Upstream cds `Counter` (xs): 18px pill, 11px medium, neutral fill. */
 function Counter({count, inset}: {count: number; inset: boolean}) {

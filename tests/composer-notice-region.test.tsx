@@ -8,8 +8,8 @@ import {
 	ComposerNoticeRegion,
 	NOTICE_ENTER_CLASS,
 	NOTICE_EXIT_CLASS,
-	useComposerNotice,
 } from "../src/components/composer-notice-region";
+import {useComposerNotice} from "../src/components/composer-notice-context";
 import type {NoticeSlot} from "../src/lib/composer-notices";
 import {UsagePaceBand} from "../src/components/usage-pace-banner";
 

@@ -33,7 +33,7 @@ import {metricIds} from "./perf-ids";
 import {ratchet} from "./ratchet";
 import {preloadComposerSurfaces} from "../../src/components/composer-surfaces-entry";
 import {loadSessionPromptCards} from "../../src/components/session-prompt-cards-entry";
-import {preloadSideChatPanel} from "../../src/components/side-chat";
+import {preloadSideChatPanel} from "../../src/components/side-chat-panel-module";
 
 /**
  * Client lab benchmark for live SSE traffic while a session is open (measurement plan §2.4 L7–L10). The app frame and

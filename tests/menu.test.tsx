@@ -19,10 +19,11 @@ import {
 	MenuSubContent,
 	MenuSubTrigger,
 	MenuTrigger,
-	preloadMenuSheet,
-	submenuAnchor,
 } from "../src/components/ui/menu";
-import {type Density, DensityOverride, DensityScope} from "../src/components/ui/density";
+import {preloadMenuSheet} from "../src/components/ui/menu-sheet-loader";
+import {submenuAnchor} from "../src/components/ui/menu-anchor";
+import {DensityOverride, DensityScope} from "../src/components/ui/density";
+import {type Density} from "../src/components/ui/density-context";
 
 /* The sheet presentation is a lazy chunk; load it up front so sheet tests render synchronously, as on a phone. */
 beforeAll(async () => {

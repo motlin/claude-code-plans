@@ -1,6 +1,6 @@
 import type {ReactNode} from "react";
 
-import {HomeLaunchFolderProvider} from "./launch-folder";
+import {HomeLaunchFolderProvider} from "./launch-folder-provider";
 import {HomePage} from "./home-page";
 import {HomeStartCard} from "./start-card";
 import {START_CARD_WRAPPER_CLASS, useStartCardPlacement} from "./start-card-placement";

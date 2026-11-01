@@ -5,7 +5,8 @@ import {act, cleanup, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
-import {HOME_RECENT_LIMIT, HomeLaunchFolderProvider, useHomeLaunchFolder} from "../src/components/home/launch-folder";
+import {HOME_RECENT_LIMIT, useHomeLaunchFolder} from "../src/components/home/launch-folder";
+import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-provider";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 
