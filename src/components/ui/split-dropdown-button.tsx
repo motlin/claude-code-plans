@@ -14,6 +14,8 @@ import {Tooltip} from "./tooltip";
 export type SplitItem =
 	| {
 			label: ReactNode;
+			/** A muted second line, as on upstream's "Always allow" row with its scope. */
+			description?: ReactNode;
 			icon?: ReactNode;
 			/** A global shortcut hint drawn as keycaps, e.g. "cmd+enter". */
 			shortcut?: string;
@@ -197,6 +199,7 @@ function MenuItems({items}: {items: SplitItem[]}) {
 				<MenuItem
 					onSelect={item.onSelect}
 					{...(item.icon === undefined ? {} : {icon: item.icon})}
+					{...(item.description === undefined ? {} : {description: item.description})}
 					{...(item.shortcut === undefined ? {} : {shortcut: item.shortcut})}
 					{...(item.disabled === undefined ? {} : {disabled: item.disabled})}
 				>

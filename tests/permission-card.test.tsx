@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {actAndSettle} from "./act-and-settle";
 import type {ComponentProps} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
+import {ApprovalCardShell} from "../src/components/approval-card";
 import {PermissionCard} from "../src/components/permission-card";
+import {APPROVAL_LEADING_ALLOW_KEY} from "../src/lib/approval-leading-allow";
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {clearApprovalAnswered, isApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
 import {
@@ -17,7 +19,10 @@ import {
 } from "../src/lib/permission-card";
 import type {PersistentAllowKind} from "../src/lib/permission-suggestions";
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	localStorage.removeItem(APPROVAL_LEADING_ALLOW_KEY);
+});
 
 function assistantToolUse(id: string, name: string, input: Record<string, unknown>, extra = {}) {
 	return {
@@ -65,8 +70,11 @@ describe("findPendingPermission", () => {
 		).toStrictEqual({
 			notificationId: "notification-test-100",
 			toolUseId: "t2",
-			title: {action: "run", meta: "Remove the build output"},
+			title: {action: "run this command", meta: null},
 			detail: "rm -rf dist",
+			detailLang: "bash",
+			clampTitle: true,
+			description: "Remove the build output",
 		});
 	});
 
@@ -74,8 +82,11 @@ describe("findPendingPermission", () => {
 		{
 			input: {command: "npm run dev", description: "Start the dev server", run_in_background: true},
 			expected: {
-				title: {action: "run", meta: "Start the dev server"},
+				title: {action: "run this command", meta: null},
 				detail: "npm run dev",
+				detailLang: "bash",
+				clampTitle: true,
+				description: "Start the dev server",
 				detailNote: "Keeps running in the background.",
 			},
 		},
@@ -87,29 +98,68 @@ describe("findPendingPermission", () => {
 				run_in_background: true,
 			},
 			expected: {
-				title: {action: "run", meta: "Fetch x"},
+				title: {action: "run this command", meta: null},
 				detail: "curl x",
-				detailNote: "Runs outside Claude's sandbox. Keeps running in the background.",
+				detailLang: "bash",
+				clampTitle: true,
+				description: "Fetch x",
+				detailNote: "Runs outside Claude’s sandbox. Keeps running in the background.",
 			},
 		},
 		{
 			input: {command: "curl x", description: "curl x", dangerouslyDisableSandbox: true},
 			expected: {
-				title: {action: "run", meta: null},
+				title: {action: "run this command", meta: null},
 				detail: "curl x",
-				detailNote: "Runs outside Claude's sandbox.",
+				detailLang: "bash",
+				clampTitle: true,
+				detailNote: "Runs outside Claude’s sandbox.",
 			},
 		},
-	])("notes a Bash command's sandbox and background flags as upstream does ($input.command)", ({input, expected}) => {
-		expect(
-			findPendingPermission({
-				sessionId: "session-test-100",
-				isActive: true,
-				notifications: [permissionNotification()],
-				records: [assistantToolUse("t2", "Bash", input)],
-			}),
-		).toStrictEqual({notificationId: "notification-test-100", toolUseId: "t2", ...expected});
-	});
+		{
+			input: {command: "ls", description: "List files", timeout: 120000},
+			expected: {
+				title: {action: "run this command", meta: null},
+				detail: "ls",
+				detailLang: "bash",
+				clampTitle: true,
+				description: "List files",
+				detailNote: "Time limit: 2 minutes.",
+			},
+		},
+		{
+			input: {command: "ls", timeout: 45000},
+			expected: {
+				title: {action: "run this command", meta: null},
+				detail: "ls",
+				detailLang: "bash",
+				clampTitle: true,
+				detailNote: "Time limit: 45 seconds.",
+			},
+		},
+		{
+			input: {command: "make", timeout: 60000, run_in_background: true},
+			expected: {
+				title: {action: "run this command", meta: null},
+				detail: "make",
+				detailLang: "bash",
+				clampTitle: true,
+				detailNote: "Keeps running in the background. Time limit: 1 minute.",
+			},
+		},
+	])(
+		"notes a Bash command's sandbox, background and time-limit flags as upstream does ($input.command)",
+		({input, expected}) => {
+			expect(
+				findPendingPermission({
+					sessionId: "session-test-100",
+					isActive: true,
+					notifications: [permissionNotification()],
+					records: [assistantToolUse("t2", "Bash", input)],
+				}),
+			).toStrictEqual({notificationId: "notification-test-100", toolUseId: "t2", ...expected});
+		},
+	);
 
 	it("carries a Workflow's description and upstream's token warning", () => {
 		expect(
@@ -122,7 +172,7 @@ describe("findPendingPermission", () => {
 		).toStrictEqual({
 			notificationId: "notification-test-100",
 			toolUseId: "t2",
-			title: {action: "run a workflow", meta: "noop-a"},
+			title: {action: "run the workflow", meta: "noop-a"},
 			detail: null,
 			description: "Replies ok",
 			tokenWarning: true,
@@ -140,8 +190,11 @@ describe("findPendingPermission", () => {
 		).toStrictEqual({
 			notificationId: "notification-test-100",
 			toolUseId: "t2",
-			title: {action: "run", meta: "Remove the build output"},
+			title: {action: "run this command", meta: null},
 			detail: "rm -rf dist",
+			detailLang: "bash",
+			clampTitle: true,
+			description: "Remove the build output",
 			persistentAllow: "always",
 		});
 	});
@@ -159,6 +212,7 @@ describe("findPendingPermission", () => {
 			toolUseId: "t3",
 			title: {action: "write", meta: "b.ts"},
 			detail: "/repo/b.ts",
+			clampTitle: true,
 		});
 	});
 
@@ -226,8 +280,11 @@ describe("findPendingPermission", () => {
 			permissionWait: {
 				notificationId: "t4",
 				toolUseId: "t4",
-				title: {action: "run", meta: "Open the oxfmt comment PR and check the other test"},
+				title: {action: "run this command", meta: null},
 				detail: "gh pr create --fill",
+				detailLang: "bash",
+				clampTitle: true,
+				description: "Open the oxfmt comment PR and check the other test",
 			},
 			inputWait: null,
 		});
@@ -244,8 +301,11 @@ describe("findPendingPermission", () => {
 		).toStrictEqual({
 			notificationId: "notification-test-100",
 			toolUseId: "t2",
-			title: {action: "run", meta: "Remove the build output"},
+			title: {action: "run this command", meta: null},
 			detail: "rm -rf dist",
+			detailLang: "bash",
+			clampTitle: true,
+			description: "Remove the build output",
 		});
 	});
 
@@ -286,21 +346,11 @@ describe("permission title copy", () => {
 		{
 			tool: "Bash",
 			input: {command: "rm -rf dist", description: "Remove the build output"},
-			title: "Allow Claude to run Remove the build output?",
-			parts: [
-				[PRIMARY, "run"],
-				[PRIMARY, "Remove the build output"],
-			],
-			label: "Permission request: run",
-			detail: "rm -rf dist",
-		},
-		{
-			tool: "Bash",
-			input: {command: "rm -rf dist"},
-			title: "Allow Claude to run?",
-			parts: [[PRIMARY, "run"]],
-			label: "Permission request: run",
-			detail: "rm -rf dist",
+			title: "Allow Claude to run this command?",
+			parts: [[PRIMARY, "run this command"]],
+			valueClass: "line-clamp-2",
+			label: "Permission request: run this command",
+			detail: "$ rm -rf dist",
 		},
 		{
 			tool: "Read",
@@ -310,95 +360,29 @@ describe("permission title copy", () => {
 				[PRIMARY, "read"],
 				[PRIMARY, "a.ts"],
 			],
+			valueClass: "line-clamp-2",
 			label: "Permission request: read",
 			detail: "/repo/src/a.ts",
 		},
 		{
-			tool: "MultiEdit",
-			input: {file_path: "/repo/src/b.ts", edits: []},
-			title: "Allow Claude to edit b.ts?",
-			parts: [
-				[PRIMARY, "edit"],
-				[PRIMARY, "b.ts"],
-			],
-			label: "Permission request: edit",
-			detail: "/repo/src/b.ts",
-		},
-		{
-			tool: "NotebookEdit",
-			input: {notebook_path: "/repo/n.ipynb", new_source: "x"},
-			title: "Allow Claude to edit n.ipynb?",
-			parts: [
-				[PRIMARY, "edit"],
-				[PRIMARY, "n.ipynb"],
-			],
-			label: "Permission request: edit",
-			detail: "/repo/n.ipynb",
-		},
-		{
 			tool: "Grep",
 			input: {pattern: "TODO", path: "/repo"},
-			title: "Allow Claude to search TODO?",
-			parts: [
-				[PRIMARY, "search"],
-				[PRIMARY, "TODO"],
-			],
-			label: "Permission request: search",
-			detail: null,
-		},
-		{
-			tool: "WebSearch",
-			input: {query: "vitest jsdom"},
-			title: "Allow Claude to search the web vitest jsdom?",
-			parts: [
-				[PRIMARY, "search the web"],
-				[PRIMARY, "vitest jsdom"],
-			],
-			label: "Permission request: search the web",
-			detail: null,
-		},
-		{
-			tool: "Skill",
-			input: {skill: "commit", args: "--all"},
-			title: "Allow Claude to run skill /commit?",
-			parts: [
-				[PRIMARY, "run skill"],
-				[PRIMARY, "/commit"],
-			],
-			label: "Permission request: run skill",
-			detail: "--all",
-		},
-		{
-			tool: "Agent",
-			input: {description: "Find the bug", prompt: "look"},
-			title: "Allow Claude to run an agent Find the bug?",
-			parts: [
-				[PRIMARY, "run an agent"],
-				[PRIMARY, "Find the bug"],
-			],
-			label: "Permission request: run an agent",
-			detail: null,
-		},
-		{
-			tool: "Workflow",
-			input: {name: "upstream-sync-noop", description: "Does nothing"},
-			title: "Allow Claude to run a workflow upstream-sync-noop?",
-			parts: [
-				[PRIMARY, "run a workflow"],
-				[PRIMARY, "upstream-sync-noop"],
-			],
-			label: "Permission request: run a workflow",
-			detail: null,
+			title: "Allow Claude to search files?",
+			parts: [[PRIMARY, "search files"]],
+			valueClass: null,
+			label: "Permission request: search files",
+			detail: "TODO",
 		},
 		{
 			tool: "mcp__github__create_issue",
 			input: {title: "Bug", labels: ["a"]},
 			title: "Allow Claude to use mcp__github__create_issue?",
 			parts: [[PRIMARY, "use mcp__github__create_issue"]],
+			valueClass: null,
 			label: "Permission request: use mcp__github__create_issue",
 			detail: '{\n  "title": "Bug",\n  "labels": [\n    "a"\n  ]\n}',
 		},
-	])("titles $tool $input as upstream does", ({tool, input, title, parts, label, detail}) => {
+	])("titles $tool $input as upstream does", ({tool, input, title, parts, valueClass, label, detail}) => {
 		const pending = findPendingPermission({
 			sessionId: "session-test-100",
 			isActive: true,
@@ -406,22 +390,286 @@ describe("permission title copy", () => {
 			records: [assistantToolUse("t9", tool, input)],
 		})!;
 		const {container} = render(
-			<PermissionCard title={pending.title} detail={pending.detail} canAnswer onDecision={async () => {}} />,
+			<PermissionCard
+				title={pending.title}
+				detail={pending.detail}
+				detailLang={pending.detailLang ?? null}
+				clampTitle={pending.clampTitle === true}
+				canAnswer
+				onDecision={async () => {}}
+			/>,
 		);
 		const card = container.querySelector("[data-approval-card-root]")!;
-		const value = card.querySelector("[data-permission-title] [data-approval-value]");
+		const value = card.querySelector("[data-permission-title] [data-permission-title-value]");
 		expect({
 			title: value?.textContent,
 			parts: [...(value?.children ?? [])].map((span) => [span.className, span.textContent]),
+			valueClass: value?.getAttribute("class") ?? null,
+			approvalValue: value?.hasAttribute("data-approval-value"),
 			label: card.getAttribute("aria-label"),
 			detail: card.querySelector("[data-permission-detail]")?.textContent ?? null,
 		}).toStrictEqual({
 			title,
 			parts,
+			valueClass,
+			approvalValue: valueClass === null,
 			label,
 			detail,
 		});
 	});
+
+	it.each([
+		{
+			tool: "Glob",
+			input: {pattern: "**/*.ts"},
+			expected: {title: {action: "find files", meta: null}, detail: "**/*.ts"},
+		},
+		{
+			tool: "Grep",
+			input: {pattern: "TODO", path: "/repo"},
+			expected: {title: {action: "search files", meta: null}, detail: "TODO"},
+		},
+		{
+			tool: "WebSearch",
+			input: {query: "vitest jsdom"},
+			expected: {title: {action: "search the web", meta: null}, detail: "vitest jsdom"},
+		},
+		{
+			tool: "Skill",
+			input: {skill: "commit", args: "--all"},
+			expected: {title: {action: "run skill", meta: "/commit"}, detail: "--all"},
+		},
+		{
+			tool: "Agent",
+			input: {description: "Find the bug", prompt: "look"},
+			expected: {title: {action: "run an agent", meta: null}, detail: null, description: "Find the bug"},
+		},
+		{
+			tool: "Task",
+			input: {description: "Find the bug", prompt: "look"},
+			expected: {title: {action: "run an agent", meta: null}, detail: null, description: "Find the bug"},
+		},
+		{
+			tool: "Workflow",
+			input: {name: "upstream-sync-noop", description: "Does nothing"},
+			expected: {
+				title: {action: "run the workflow", meta: "upstream-sync-noop"},
+				detail: null,
+				description: "Does nothing",
+				tokenWarning: true,
+			},
+		},
+		{
+			tool: "Workflow",
+			input: {script: "export default {}"},
+			expected: {title: {action: "run a workflow", meta: null}, detail: null, tokenWarning: true},
+		},
+		{
+			tool: "Read",
+			input: {file_path: "/repo/a.ts"},
+			expected: {title: {action: "read", meta: "a.ts"}, detail: "/repo/a.ts", clampTitle: true},
+		},
+		{
+			tool: "Read",
+			input: {file_path: "/repo/a.ts", offset: 5, limit: 1},
+			expected: {
+				title: {action: "read", meta: "a.ts"},
+				detail: "/repo/a.ts",
+				detailNote: "Line 5",
+				clampTitle: true,
+			},
+		},
+		{
+			tool: "Read",
+			input: {file_path: "/repo/a.ts", offset: 5, limit: 10},
+			expected: {
+				title: {action: "read", meta: "a.ts"},
+				detail: "/repo/a.ts",
+				detailNote: "Lines 5 to 14",
+				clampTitle: true,
+			},
+		},
+		{
+			tool: "Read",
+			input: {file_path: "/repo/a.ts", offset: 5},
+			expected: {
+				title: {action: "read", meta: "a.ts"},
+				detail: "/repo/a.ts",
+				detailNote: "From line 5",
+				clampTitle: true,
+			},
+		},
+		{
+			tool: "Read",
+			input: {file_path: "/repo/a.pdf", limit: 10, pages: "3"},
+			expected: {
+				title: {action: "read", meta: "a.pdf"},
+				detail: "/repo/a.pdf",
+				detailNote: "First 10 lines, Page 3",
+				clampTitle: true,
+			},
+		},
+		{
+			tool: "Read",
+			input: {file_path: "/repo/a.pdf", pages: "1-3"},
+			expected: {
+				title: {action: "read", meta: "a.pdf"},
+				detail: "/repo/a.pdf",
+				detailNote: "Pages 1-3",
+				clampTitle: true,
+			},
+		},
+		{
+			tool: "Write",
+			input: {file_path: "/repo/b.ts", content: ""},
+			expected: {
+				title: {action: "write", meta: "b.ts"},
+				detail: "/repo/b.ts",
+				detailNote: "Leaves the file empty.",
+				clampTitle: true,
+			},
+		},
+		{
+			tool: "Edit",
+			input: {file_path: "/repo/b.ts", old_string: "a", new_string: "b", replace_all: true},
+			expected: {
+				title: {action: "edit", meta: "b.ts"},
+				detail: "/repo/b.ts",
+				detailNote: "Replaces every match in the file.",
+				clampTitle: true,
+			},
+		},
+		{
+			tool: "MultiEdit",
+			input: {file_path: "/repo/b.ts", edits: []},
+			expected: {title: {action: "edit", meta: "b.ts"}, detail: "/repo/b.ts", clampTitle: true},
+		},
+		{
+			tool: "NotebookEdit",
+			input: {notebook_path: "/repo/n.ipynb", cell_id: "c1", new_source: "x"},
+			expected: {
+				title: {action: "edit", meta: "n.ipynb"},
+				detail: "/repo/n.ipynb",
+				detailNote: "Replaces cell c1.",
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input: {
+				notebook_path: "/repo/n.ipynb",
+				cell_id: "c1",
+				edit_mode: "insert",
+				cell_type: "code",
+				new_source: "x",
+			},
+			expected: {
+				title: {action: "edit", meta: "n.ipynb"},
+				detail: "/repo/n.ipynb",
+				detailNote: "Adds a new cell after cell c1. Cell type: code.",
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input: {notebook_path: "/repo/n.ipynb", edit_mode: "insert", new_source: "x"},
+			expected: {
+				title: {action: "edit", meta: "n.ipynb"},
+				detail: "/repo/n.ipynb",
+				detailNote: "Adds a new cell at the top.",
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input: {notebook_path: "/repo/n.ipynb", cell_id: "c2", edit_mode: "delete", new_source: ""},
+			expected: {
+				title: {action: "edit", meta: "n.ipynb"},
+				detail: "/repo/n.ipynb",
+				detailNote: "Deletes cell c2.",
+			},
+		},
+		{
+			tool: "Monitor",
+			input: {command: "tail -f log", description: "Watch the log"},
+			expected: {
+				title: {action: "run and watch a command", meta: null},
+				detail: "tail -f log",
+				detailLang: "bash",
+			},
+		},
+		{
+			tool: "Monitor",
+			input: {url: "wss://example.test"},
+			expected: {
+				title: {action: "open and watch a connection", meta: null},
+				detail: '{\n  "url": "wss://example.test"\n}',
+			},
+		},
+		{
+			tool: "CronCreate",
+			input: {cron: "0 9 * * *", prompt: "Check the build"},
+			expected: {title: {action: "schedule a prompt", meta: null}, detail: "Check the build"},
+		},
+		{
+			tool: "EnterWorktree",
+			input: {name: "feature-a"},
+			expected: {title: {action: "create a worktree", meta: null}, detail: "feature-a"},
+		},
+		{
+			tool: "EnterWorktree",
+			input: {path: "/repo/.worktrees/a"},
+			expected: {title: {action: "move to a worktree", meta: null}, detail: "/repo/.worktrees/a"},
+		},
+		{tool: "ExitWorktree", input: {}, expected: {title: {action: "leave the worktree", meta: null}, detail: null}},
+		{
+			tool: "ExitWorktree",
+			input: {action: "remove"},
+			expected: {title: {action: "delete the worktree and its branch", meta: null}, detail: null},
+		},
+		...(
+			[
+				["TaskCreate", "create a task"],
+				["TaskUpdate", "update a task"],
+				["TaskGet", "read a task"],
+				["TaskList", "list its tasks"],
+				["TaskStop", "stop a task"],
+				["TaskOutput", "read a task’s output"],
+				["TodoWrite", "update its to-do list"],
+				["CronDelete", "delete a scheduled prompt"],
+				["CronList", "list its scheduled prompts"],
+				["ScheduleWakeup", "schedule a wake-up"],
+				["SendMessage", "send a message to an agent"],
+				["ListAgents", "list its agents"],
+				["EnterPlanMode", "start planning"],
+				["ReportFindings", "report its findings"],
+				["KillBash", "stop a command"],
+				["KillShell", "stop a command"],
+				["BashOutput", "read a command’s output"],
+				["LS", "list a folder"],
+				["ToolSearch", "load tools"],
+				["REPL", "run code"],
+				["JavaScript", "run code"],
+			] as const
+		).map(([tool, action]) => ({tool, input: {}, expected: {title: {action, meta: null}, detail: null}})),
+		{
+			tool: "ToolSearch",
+			input: {query: "select:Read"},
+			expected: {title: {action: "load tools", meta: null}, detail: '{\n  "query": "select:Read"\n}'},
+		},
+	] as {tool: string; input: Record<string, unknown>; expected: Record<string, unknown>}[])(
+		"copies upstream's $tool permission copy for $input",
+		({tool, input, expected}) => {
+			const {
+				notificationId: _notificationId,
+				toolUseId: _toolUseId,
+				...copy
+			} = findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: true,
+				notifications: [permissionNotification()],
+				records: [assistantToolUse("t9", tool, input)],
+			})!;
+			expect(copy).toStrictEqual(expected);
+		},
+	);
 
 	it("holds its session as answered at the click, before the decision settles", () => {
 		render(
@@ -502,8 +750,11 @@ function renderCard({
 				</div>
 			</div>
 			<PermissionCard
-				title={{action: "run", meta: "Remove the build output"}}
+				title={{action: "run this command", meta: null}}
 				detail="rm -rf dist"
+				detailLang="bash"
+				clampTitle
+				description="Remove the build output"
 				canAnswer={canAnswer}
 				persistentAllow={persistentAllow}
 				onDecision={onDecision}
@@ -534,9 +785,9 @@ describe("PermissionCard", () => {
 				return [label?.dataset["approvalDigit"], label?.textContent];
 			}),
 		}).toStrictEqual({
-			label: "Permission request: run",
-			title: "Allow Claude to run Remove the build output?",
-			command: "rm -rf dist",
+			label: "Permission request: run this command",
+			title: "Allow Claude to run this command?",
+			command: "$ rm -rf dist",
 			denyKeys: [],
 			allowKeys: ["Ctrl", "⏎Enter"],
 			denyShortcut: "Escape",
@@ -582,8 +833,12 @@ describe("PermissionCard", () => {
 			dockLook: ["shadow-[var(--approval-card-shadow)]", "bg-surface-popover"].filter((name) =>
 				card.classList.contains(name),
 			),
-			title: missing(card.querySelector("[data-permission-title]"), ["text-[13px]/[19px]", "font-[580]"]),
+			title: card.querySelector("[data-permission-title]")?.getAttribute("class"),
 			value: card.querySelector("[data-permission-detail]")?.getAttribute("class"),
+			codeCard: card
+				.querySelector("[data-permission-detail] > [data-approval-value] > div")
+				?.getAttribute("class"),
+			gutter: card.querySelector("[data-permission-detail] .select-none")?.textContent,
 			deny: missing(screen.getByRole("button", {name: /^Deny/}), [
 				"h-6",
 				"rounded-r5",
@@ -604,35 +859,115 @@ describe("PermissionCard", () => {
 			presentation: "card",
 			card: [],
 			dockLook: [],
-			title: [],
-			value: "bg-alpha-1 rounded-r4 py-2 px-3 text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
+			title: "text-[13px]/[19px] font-normal min-w-0 break-words",
+			value: "flow-root",
+			codeCard:
+				"flex overflow-clip rounded-lg px-2 py-1 text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]",
+			gutter: "$ ",
 			deny: [],
 			allow: [],
 		});
 	});
 
-	it("spaces the card as upstream's inline permission card: 480px wide, 24px gaps, a 10px title block and 12px details", () => {
+	it("spaces the card as upstream's inline permission card: 480px wide, 24px gaps, a tinted title band and 12px details", () => {
 		const {container} = renderCard();
 		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
 		const body = card.querySelector<HTMLElement>("[data-approval-card-body]")!;
+		const region = card.querySelector<HTMLElement>("[data-testid=approval-title-region]");
 		const title = card.querySelector<HTMLElement>("[data-permission-title]")!;
 		const value = card.querySelector<HTMLElement>("[data-permission-detail]")!;
 		const classes = (element: Element | null) => new Set(element?.getAttribute("class")?.split(/\s+/));
 		const has = (element: Element | null, names: string[]) => names.filter((name) => classes(element).has(name));
 		expect({
-			card: has(card, ["gap-[24px]", "w-full", "max-w-[480px]", "gap-3"]),
-			body: has(body, ["gap-[24px]", "gap-2.5"]),
-			titleBlock: has(title.parentElement, ["flex", "flex-col", "gap-[10px]"]),
-			titleBlockParentIsBody: title.parentElement?.parentElement === body,
-			details: has(value.parentElement, ["flex", "flex-col", "gap-[12px]"]),
-			detailsFollowTitle: title.nextElementSibling === value.parentElement,
+			card: has(card, [
+				"gap-[24px]",
+				"w-full",
+				"max-w-[480px]",
+				"gap-3",
+				"!pt-0",
+				"overflow-clip",
+				"max-h-[60vh]",
+				"max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))]",
+			]),
+			regionIsFirstChild: card.firstElementChild === region,
+			region: region?.getAttribute("class"),
+			band: region?.firstElementChild?.getAttribute("class"),
+			titleRow: title.parentElement?.getAttribute("class"),
+			titleRowInBand: title.parentElement?.parentElement === region?.firstElementChild,
+			body: has(body, ["gap-[24px]", "gap-2.5", "-mt-[18px]", "-mt-1"]),
+			details: value.parentElement?.getAttribute("class"),
+			detailsAreBodyChild: value.parentElement?.parentElement === body,
+			detailsText: [...(value.parentElement?.children ?? [])].map((child) => child.textContent),
 		}).toStrictEqual({
-			card: ["gap-[24px]", "w-full", "max-w-[480px]"],
-			body: ["gap-[24px]"],
-			titleBlock: ["flex", "flex-col", "gap-[10px]"],
-			titleBlockParentIsBody: true,
-			details: ["flex", "flex-col", "gap-[12px]"],
-			detailsFollowTitle: true,
+			card: [
+				"gap-[24px]",
+				"w-full",
+				"max-w-[480px]",
+				"!pt-0",
+				"overflow-clip",
+				"max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))]",
+			],
+			regionIsFirstChild: true,
+			region: "shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-3 px-3",
+			band: "-mx-3 flex flex-col gap-1.5 bg-alpha-1 px-3 py-2",
+			titleRow: "text-primary min-h-6 shrink-0 flex items-center gap-1",
+			titleRowInBand: true,
+			body: ["gap-[24px]", "-mt-[18px]"],
+			details: "flex flex-col gap-[12px] empty:hidden",
+			detailsAreBodyChild: true,
+			detailsText: ["Remove the build output", "$ rm -rf dist"],
+		});
+	});
+
+	it("keeps the question and plan cards' shells without a title band", () => {
+		const {container} = render(
+			<ApprovalCardShell
+				presentation="card"
+				body={<span>Plan</span>}
+				actions={<button type="button">Ok</button>}
+			/>,
+		);
+		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		expect({
+			region: card.querySelector("[data-testid=approval-title-region]"),
+			card: card.getAttribute("class"),
+			body: card.querySelector("[data-approval-card-body]")?.getAttribute("class"),
+		}).toStrictEqual({
+			region: null,
+			card: "@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
+			body: "-mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 gap-[24px]",
+		});
+	});
+
+	it("draws a Bash command's description and time-limit note under the title band", () => {
+		const pending = findPendingPermission({
+			sessionId: "session-test-100",
+			isActive: true,
+			notifications: [permissionNotification()],
+			records: [assistantToolUse("t9", "Bash", {command: "ls", description: "List files", timeout: 120000})],
+		})!;
+		const {container} = render(
+			<PermissionCard
+				title={pending.title}
+				detail={pending.detail}
+				detailLang={pending.detailLang ?? null}
+				detailNote={pending.detailNote ?? null}
+				description={pending.description ?? null}
+				clampTitle={pending.clampTitle === true}
+				canAnswer
+				onDecision={async () => {}}
+			/>,
+		);
+		const card = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		const details = card.querySelector("[data-permission-detail]")?.parentElement;
+		expect({
+			title: card.querySelector("[data-permission-title]")?.textContent,
+			label: card.getAttribute("aria-label"),
+			details: [...(details?.children ?? [])].map((child) => child.textContent),
+		}).toStrictEqual({
+			title: "Allow Claude to run this command?",
+			label: "Permission request: run this command",
+			details: ["List files", "$ ls", "Time limit: 2 minutes."],
 		});
 	});
 
@@ -669,8 +1004,7 @@ describe("PermissionCard", () => {
 				/>
 			</BackgroundTasksOpenerProvider>,
 		);
-		const title = container.querySelector("[data-permission-title]")!;
-		const details = [...(title.nextElementSibling?.children ?? [])];
+		const details = [...(container.querySelector("[data-approval-card-body] > div")?.children ?? [])];
 		expect(details.map((element) => [element.getAttribute("class"), element.textContent])).toStrictEqual([
 			[
 				"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]",
@@ -739,6 +1073,99 @@ describe("PermissionCard", () => {
 			items: ["Allow onceCtrl+⏎"],
 			shortcut: "Control+Enter",
 			calls: [["allow"]],
+		});
+	});
+
+	describe("leading-allow preference, as upstream's epitaxy-approval-card-leading-allow", () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it("leads with Allow once and keeps Always allow, with its scope, in the menu when the stored lead is once", async () => {
+			localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, "once");
+			const {onDecision} = renderCard({persistentAllow: "always"});
+			const primary = screen.getByRole("button", {name: /^Allow once/});
+			const labelSpan = primary.querySelector<HTMLElement>("[data-approval-digit]");
+			const facts = {
+				buttons: screen
+					.getAllByRole("button")
+					.map((button) => button.getAttribute("aria-label") ?? button.textContent),
+				shortcut: primary.getAttribute("aria-keyshortcuts"),
+				labelData: labelSpan === null ? null : Object.fromEntries(Object.entries(labelSpan.dataset)),
+			};
+			await actAndSettle(() => {
+				fireEvent.click(screen.getByRole("button", {name: "More allow options"}));
+			});
+			const items = screen.getAllByRole("menuitem").map((item) => item.textContent);
+			fireEvent.click(screen.getByRole("menuitem", {name: /^Always allow/}));
+			expect({
+				...facts,
+				items,
+				calls: onDecision.mock.calls,
+				stored: localStorage.getItem(APPROVAL_LEADING_ALLOW_KEY),
+			}).toStrictEqual({
+				buttons: ["Deny", "Allow onceCtrl⏎Enter", "More allow options"],
+				shortcut: "Control+Enter",
+				labelData: {approvalDigit: "2", approvalPrimary: ""},
+				items: ["Always allowDon’t ask again for this tool"],
+				calls: [["always"]],
+				stored: "always",
+			});
+		});
+
+		it("sends allow from the Allow once primary", () => {
+			localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, "once");
+			const {onDecision} = renderCard({persistentAllow: "always"});
+			fireEvent.click(screen.getByRole("button", {name: /^Allow once/}));
+			expect(onDecision.mock.calls).toStrictEqual([["allow"]]);
+		});
+
+		it("stores once after Allow once is picked from an always-led menu, so the next card leads with it", async () => {
+			const first = renderCard({persistentAllow: "always"});
+			await actAndSettle(() => {
+				fireEvent.click(screen.getByRole("button", {name: "More allow options"}));
+			});
+			fireEvent.click(screen.getByRole("menuitem", {name: /^Allow once/}));
+			const stored = localStorage.getItem(APPROVAL_LEADING_ALLOW_KEY);
+			first.unmount();
+			renderCard({persistentAllow: "always"});
+			expect({
+				stored,
+				buttons: screen
+					.getAllByRole("button")
+					.map((button) => button.getAttribute("aria-label") ?? button.textContent),
+			}).toStrictEqual({
+				stored: "once",
+				buttons: ["Deny", "Allow onceCtrl⏎Enter", "More allow options"],
+			});
+		});
+
+		it("leads with Always allow for an unknown stored value", () => {
+			localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, "sometimes");
+			renderCard({persistentAllow: "always"});
+			expect(screen.getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
+				"Deny",
+				"Always allow, Don’t ask again for this tool",
+				"",
+			]);
+		});
+
+		it.each([
+			{persistentAllow: "always", label: "Always allow", scope: "Don’t ask again for this tool"},
+			{persistentAllow: "perChat", label: "Allow for this session", scope: "Applies to this session only"},
+		] as const)("tips the leading $label with its scope", ({persistentAllow, label, scope}) => {
+			renderCard({persistentAllow});
+			const primary = screen.getByRole("button", {name: `${label}, ${scope}`});
+			vi.useFakeTimers();
+			fireEvent.pointerEnter(primary.parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const tooltip = screen.getByRole("tooltip");
+			expect({
+				text: tooltip.textContent,
+				describedBy: primary.getAttribute("aria-describedby") === tooltip.id,
+			}).toStrictEqual({text: scope, describedBy: true});
 		});
 	});
 

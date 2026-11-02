@@ -29,9 +29,13 @@ export interface PendingPermission {
 	title: PermissionTitle;
 	/** The block under the title: the command, the full path, the skill args, or the input as JSON. */
 	detail: string | null;
-	/** Upstream's footnote under the detail: a Bash command run outside the sandbox or in the background. */
+	/** A command detail drawn as upstream's highlighted code card. */
+	detailLang?: PermissionDetailLang;
+	/** Upstream's `clampTitle`: the title value is clamped to two lines. */
+	clampTitle?: true;
+	/** Upstream's footnote under the detail, such as a Bash command's sandbox, background and time-limit notes. */
 	detailNote?: string;
-	/** A Workflow's description line. */
+	/** The description line in the body: a Bash command's, an agent's or a Workflow's. */
 	description?: string;
 	/** Upstream's "Dynamic workflows … tasks pane." callout. */
 	tokenWarning?: true;
@@ -235,34 +239,71 @@ export function permissionAnswerKey(permission: PendingPermission): string {
 	return permission.toolUseId ?? permission.notificationId;
 }
 
+/** The highlighter language of a command detail: upstream's `detailLang`. */
+export type PermissionDetailLang = "bash" | "powershell";
+
 interface PermissionCopy {
 	action: string;
 	meta?: string | null;
 	detail?: string | null;
+	detailLang?: PermissionDetailLang;
+	clampTitle?: true;
 	detailNote?: string;
 	description?: string;
 	tokenWarning?: true;
 }
 
-/** Upstream's Bash copy: the sandbox and background notes, and no meta when a noted command's description repeats it. */
-function commandCopy(input: Record<string, unknown>): PermissionCopy {
+function numberInput(input: Record<string, unknown>, key: string): number | null {
+	const value = input[key];
+	return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** Joins the notes that apply, or yields nothing when none does. */
+function notes(parts: readonly (string | null)[], separator = " "): {detailNote?: string} {
+	const detailNote = parts.filter((part) => part !== null).join(separator);
+	return detailNote === "" ? {} : {detailNote};
+}
+
+function plural(count: number, unit: string): string {
+	return `${count} ${unit}${count === 1 ? "" : "s"}`;
+}
+
+/** Upstream's "Time limit: {n} seconds." note, in minutes when the limit is a whole number of them. */
+function timeLimitNote(timeout: number | null): string | null {
+	if (timeout === null || timeout <= 0) return null;
+	const seconds = Math.round(timeout / 1000);
+	return seconds % 60 === 0
+		? `Time limit: ${plural(seconds / 60, "minute")}.`
+		: `Time limit: ${plural(seconds, "second")}.`;
+}
+
+/**
+ * Upstream's Bash copy: "run this command" with the command as a highlighted detail,
+ * the description in the body unless it repeats the command, and the sandbox, background and time-limit notes.
+ */
+function commandCopy(input: Record<string, unknown>, detailLang: PermissionDetailLang): PermissionCopy {
 	const command = stringInput(input, "command");
 	const description = stringInput(input, "description");
-	const detailNote = [
-		input["dangerouslyDisableSandbox"] === true ? "Runs outside Claude's sandbox." : null,
-		input["run_in_background"] === true ? "Keeps running in the background." : null,
-	]
-		.filter((note) => note !== null)
-		.join(" ");
-	if (detailNote === "") return {action: "run", meta: description, detail: command};
-	return {action: "run", meta: description === command ? null : description, detail: command, detailNote};
+	return {
+		action: "run this command",
+		detail: command,
+		detailLang,
+		clampTitle: true,
+		...(description === null || description === command ? {} : {description}),
+		...notes([
+			input["dangerouslyDisableSandbox"] === true ? "Runs outside Claude’s sandbox." : null,
+			input["run_in_background"] === true ? "Keeps running in the background." : null,
+			timeLimitNote(numberInput(input, "timeout")),
+		]),
+	};
 }
 
 function workflowCopy(input: Record<string, unknown>): PermissionCopy {
+	const name = stringInput(input, "name");
 	const description = stringInput(input, "description");
 	return {
-		action: "run a workflow",
-		meta: stringInput(input, "name"),
+		action: name === null ? "run a workflow" : "run the workflow",
+		meta: name,
 		...(description === null ? {} : {description}),
 		tokenWarning: true,
 	};
@@ -273,38 +314,132 @@ function fileCopy(action: string, path: string | null): PermissionCopy {
 	return path === null ? {action} : {action, meta: path.replace(/^.*[\\/]/, ""), detail: path};
 }
 
+/** Upstream's Read range note: the line range, then the page range, comma-joined. */
+function readNote(input: Record<string, unknown>): string | null {
+	const offset = numberInput(input, "offset");
+	const limit = numberInput(input, "limit");
+	const pages = stringInput(input, "pages");
+	let lines: string | null = null;
+	if (offset !== null && limit !== null) {
+		lines = limit === 1 ? `Line ${offset}` : `Lines ${offset} to ${offset + limit - 1}`;
+	} else if (offset !== null) {
+		lines = `From line ${offset}`;
+	} else if (limit !== null) {
+		lines = `First ${plural(limit, "line")}`;
+	}
+	const page = pages === null ? null : /^\d+$/.test(pages.trim()) ? `Page ${pages.trim()}` : `Pages ${pages.trim()}`;
+	return [lines, page].filter((part) => part !== null).join(", ") || null;
+}
+
+/** Upstream's NotebookEdit notes: what happens to which cell, then its type. */
+function notebookNote(input: Record<string, unknown>): string | null {
+	const cell = stringInput(input, "cell_id");
+	const cellType = stringInput(input, "cell_type");
+	const mode = stringInput(input, "edit_mode") ?? "replace";
+	let change: string | null = null;
+	if (mode === "insert")
+		change = cell === null ? "Adds a new cell at the top." : `Adds a new cell after cell ${cell}.`;
+	else if (cell !== null) change = mode === "delete" ? `Deletes cell ${cell}.` : `Replaces cell ${cell}.`;
+	return (
+		[change, cellType === null ? null : `Cell type: ${cellType}.`].filter((part) => part !== null).join(" ") || null
+	);
+}
+
+/** Upstream's `Mm` map: tools with a dedicated verb and nothing else to name in the title. */
+const TOOL_VERBS: Readonly<Record<string, string>> = {
+	TaskCreate: "create a task",
+	TaskUpdate: "update a task",
+	TaskGet: "read a task",
+	TaskList: "list its tasks",
+	TaskStop: "stop a task",
+	TaskOutput: "read a task’s output",
+	TodoWrite: "update its to-do list",
+	CronDelete: "delete a scheduled prompt",
+	CronList: "list its scheduled prompts",
+	ScheduleWakeup: "schedule a wake-up",
+	SendMessage: "send a message to an agent",
+	ListAgents: "list its agents",
+	EnterPlanMode: "start planning",
+	ReportFindings: "report its findings",
+	KillBash: "stop a command",
+	KillShell: "stop a command",
+	BashOutput: "read a command’s output",
+	LS: "list a folder",
+	ToolSearch: "load tools",
+	REPL: "run code",
+	JavaScript: "run code",
+};
+
+/** The input as upstream's generic JSON detail, or nothing for an empty input (upstream's rows stand in later). */
+function jsonDetail(input: Record<string, unknown>): string | null {
+	return Object.keys(input).length === 0 ? null : JSON.stringify(input, null, 2);
+}
+
 /** Upstream's per-tool action, meta and detail (claude.ai/code's permission copy builder). */
 function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 	const text = (key: string) => stringInput(input, key);
 	switch (name) {
 		case "Bash":
+		case "BashTool":
+			return commandCopy(input, "bash");
 		case "PowerShell":
-			return commandCopy(input);
+			return commandCopy(input, "powershell");
 		case "Read":
-			return fileCopy("read", text("file_path"));
+			return {...fileCopy("read", text("file_path")), clampTitle: true, ...notes([readNote(input)])};
 		case "Write":
-			return fileCopy("write", text("file_path"));
+			return {
+				...fileCopy("write", text("file_path")),
+				clampTitle: true,
+				...notes([input["content"] === "" ? "Leaves the file empty." : null]),
+			};
 		case "Edit":
 		case "MultiEdit":
-			return fileCopy("edit", text("file_path"));
+			return {
+				...fileCopy("edit", text("file_path")),
+				clampTitle: true,
+				...notes([input["replace_all"] === true ? "Replaces every match in the file." : null]),
+			};
 		case "NotebookEdit":
-			return fileCopy("edit", text("notebook_path"));
-		case "Grep":
+			return {...fileCopy("edit", text("notebook_path")), ...notes([notebookNote(input)])};
 		case "Glob":
-			return {action: "search", meta: text("pattern")};
+			return {action: "find files", detail: text("pattern")};
+		case "Grep":
+			return {action: "search files", detail: text("pattern")};
 		case "WebSearch":
-			return {action: "search the web", meta: text("query")};
+			return {action: "search the web", detail: text("query")};
 		case "Skill": {
 			const skill = text("skill");
 			return {action: "run skill", meta: skill === null ? null : `/${skill}`, detail: text("args")};
 		}
 		case "Task":
-		case "Agent":
-			return {action: "run an agent", meta: text("description")};
+		case "Agent": {
+			const description = text("description");
+			return {action: "run an agent", ...(description === null ? {} : {description})};
+		}
 		case "Workflow":
 			return workflowCopy(input);
-		default:
-			return {action: `use ${name}`, detail: JSON.stringify(input, null, 2)};
+		case "Monitor": {
+			const command = text("command");
+			return command === null
+				? {action: "open and watch a connection", detail: jsonDetail(input)}
+				: {action: "run and watch a command", detail: command, detailLang: "bash"};
+		}
+		case "CronCreate":
+			return {action: "schedule a prompt", detail: text("prompt")};
+		case "EnterWorktree": {
+			const path = text("path");
+			return path === null
+				? {action: "create a worktree", detail: text("name")}
+				: {action: "move to a worktree", detail: path};
+		}
+		case "ExitWorktree":
+			return {action: text("action") === "remove" ? "delete the worktree and its branch" : "leave the worktree"};
+		default: {
+			const verb = TOOL_VERBS[name];
+			return verb === undefined
+				? {action: `use ${name}`, detail: JSON.stringify(input, null, 2)}
+				: {action: verb, detail: jsonDetail(input)};
+		}
 	}
 }
 

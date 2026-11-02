@@ -499,7 +499,7 @@ describe("SessionPage dock composition", () => {
 				},
 			],
 		);
-		const card = screen.getByRole("group", {name: "Permission request: run"});
+		const card = screen.getByRole("group", {name: "Permission request: run this command"});
 		expect({
 			dock: dockContents(),
 			inline: card.closest("[data-inline-permission]") !== null,
@@ -794,7 +794,7 @@ describe("SessionPage dock composition", () => {
 					},
 				],
 			);
-			const card = within(screen.getByRole("group", {name: "Permission request: run"}));
+			const card = within(screen.getByRole("group", {name: "Permission request: run this command"}));
 			const line = () => {
 				const root = document.querySelector('[data-testid="code-working-line"]');
 				return {

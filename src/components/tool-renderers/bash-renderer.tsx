@@ -44,8 +44,8 @@ function CommandRow({children}: {children: ReactNode}) {
 	);
 }
 
-export function HighlightedCommand({command}: {command: string}) {
-	const tokens = useHighlightedLines(command, "shellscript");
+export function HighlightedCommand({command, language = "shellscript"}: {command: string; language?: string}) {
+	const tokens = useHighlightedLines(command, language);
 
 	if (!tokens) {
 		return <CommandRow>{command}</CommandRow>;

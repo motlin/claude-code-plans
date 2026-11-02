@@ -1578,6 +1578,8 @@ function SessionView({
 											answerKey={permissionKey}
 											title={shownPermission.title}
 											detail={shownPermission.detail}
+											detailLang={shownPermission.detailLang ?? null}
+											clampTitle={shownPermission.clampTitle === true}
 											detailNote={shownPermission.detailNote ?? null}
 											description={shownPermission.description ?? null}
 											tokenWarning={shownPermission.tokenWarning === true}

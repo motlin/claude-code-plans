@@ -136,6 +136,7 @@ export function ApprovalCardShell({
 	rootRef,
 	label,
 	digits,
+	title,
 	body,
 	actions,
 	note,
@@ -149,6 +150,11 @@ export function ApprovalCardShell({
 	label?: string;
 	/** Widest keycap digit count, which upstream uses to size the keycap column. */
 	digits?: number;
+	/**
+	 * Upstream's in-flow tool card title: drawn in a tinted band flush with the card's top (`approval-title-region`),
+	 * with the body pulled up under it. Inline ("card") presentation only.
+	 */
+	title?: ReactNode;
 	body: ReactNode;
 	actions: ReactNode;
 	/** A line between the scrolling body and the actions, such as the elicitation form's caution. */
@@ -168,6 +174,9 @@ export function ApprovalCardShell({
 			? "card-ring w-full max-w-[480px] gap-[24px]"
 			: "bg-surface-popover shadow-[var(--approval-card-shadow)] gap-3";
 	const bodyGap = presentation === "card" ? "gap-[24px]" : "gap-2.5";
+	const band = presentation === "card" && title !== undefined;
+	// The banded card is upstream's in-flow tool card: no top padding, clipped to its radius, and a taller floor.
+	const frame = band ? "max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))] !pt-0 overflow-clip" : "max-h-[60vh]";
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
 			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions -- upstream's focusable card root: arrows roam its action buttons, Enter focuses the primary, and clicks stop short of the transcript */}
@@ -195,11 +204,19 @@ export function ApprovalCardShell({
 				onClick={(event) => {
 					event.stopPropagation();
 				}}
-				className={`@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
+				className={`@container relative isolate flex ${frame} flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
 			>
+				{band && (
+					<div
+						data-testid="approval-title-region"
+						className="shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-3 px-3"
+					>
+						<div className="-mx-3 flex flex-col gap-1.5 bg-alpha-1 px-3 py-2">{title}</div>
+					</div>
+				)}
 				<div
 					data-approval-card-body
-					className={`-mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 ${bodyGap}`}
+					className={`-mx-3 ${band ? "-mt-[18px]" : "-mt-1"} -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 ${bodyGap}`}
 				>
 					{body}
 				</div>
