@@ -1,5 +1,5 @@
 import {lstat, readdir, readFile, realpath, stat} from "node:fs/promises";
-import {createReadStream, realpathSync, type Stats} from "node:fs";
+import {createReadStream, existsSync, realpathSync, type Stats} from "node:fs";
 import {join, basename, extname, isAbsolute, relative, resolve, sep} from "node:path";
 import {createLineReader} from "../line-reader";
 import {eq, ne, notInArray, sql} from "drizzle-orm";
@@ -1836,11 +1836,22 @@ function pruneDeletedSessions(
 	const onDiskPaths = new Set(
 		Array.from(discoveredPaths).filter((path) => isPrimaryTranscriptPath(projectsDir, path)),
 	);
-	const onDiskIds = new Set(Array.from(onDiskPaths, (path) => basename(path, ".jsonl")));
 	const existingSessions = indexDb
 		.select({id: schema.sessions.id, filePath: schema.sessions.filePath})
 		.from(schema.sessions)
 		.all();
+	// A transcript created after the scan listed its directory can already be
+	// indexed (on demand by the session page), so it is on disk though undiscovered.
+	for (const session of existingSessions) {
+		if (
+			!onDiskPaths.has(session.filePath) &&
+			isPrimaryTranscriptPath(projectsDir, session.filePath) &&
+			existsSync(session.filePath)
+		) {
+			onDiskPaths.add(session.filePath);
+		}
+	}
+	const onDiskIds = new Set(Array.from(onDiskPaths, (path) => basename(path, ".jsonl")));
 
 	for (const session of existingSessions) {
 		if (onDiskPaths.has(session.filePath)) continue;
@@ -1913,6 +1924,52 @@ function invalidateBridgedTitlesOnce(db: IndexDb): void {
 
 type ReadDirectory = (path: string) => Promise<string[]>;
 
+/** Slack for coarse filesystem mtimes, so a transcript written as the scan began still counts as written during it. */
+const SCAN_START_MTIME_SLACK_MS = 2000;
+
+/**
+ * Index the primary transcripts written since `sinceMs`. The scan lists each
+ * directory once, and on a cold cache that takes minutes, so a session created
+ * after its directory was listed would otherwise stay unindexed until it next
+ * changes. Only stats files; unchanged ones are skipped by their mtime.
+ */
+async function indexTranscriptsWrittenSince(
+	projectsDir: string,
+	sinceMs: number,
+	readDirectory: ReadDirectory,
+	indexTranscript: (path: string, project: string) => Promise<void>,
+	signal?: AbortSignal,
+): Promise<void> {
+	let projectDirs: string[];
+	try {
+		projectDirs = await readDirectory(projectsDir);
+	} catch {
+		return;
+	}
+	for (const project of projectDirs) {
+		signal?.throwIfAborted();
+		const projectPath = join(projectsDir, project);
+		let files: string[];
+		try {
+			if (!(await stat(projectPath)).isDirectory()) continue;
+			files = await readDirectory(projectPath);
+		} catch {
+			continue;
+		}
+		for (const file of files) {
+			if (!file.endsWith(".jsonl")) continue;
+			const path = join(projectPath, file);
+			let mtimeMs: number;
+			try {
+				mtimeMs = (await stat(path)).mtimeMs;
+			} catch {
+				continue;
+			}
+			if (mtimeMs >= sinceMs) await indexTranscript(path, project);
+		}
+	}
+}
+
 const isAgentTranscript = (name: string) => name.startsWith("agent-") && name.endsWith(".jsonl");
 
 /**
@@ -1963,6 +2020,7 @@ export async function fullScan(
 		trackActivity(`scan ${label}`, async () => retryWhileBusy(run, signal));
 
 	indexingInProgress = true;
+	const scanStartMs = Date.now() - SCAN_START_MTIME_SLACK_MS;
 	try {
 		await step("project names", () => {
 			repairProjectDisplayNames(indexDb);
@@ -2113,6 +2171,16 @@ export async function fullScan(
 				pruneDeletedSessions(indexDb, summariesDb, projectsDir, onDiskPaths);
 			});
 		}
+
+		await indexTranscriptsWrittenSince(
+			projectsDir,
+			scanStartMs,
+			readDirectory,
+			async (path, project) => {
+				await step(`late jsonl ${path}`, async () => indexJsonlFile(indexDb, path, project));
+			},
+			signal,
+		);
 
 		if (tasksDir) {
 			await step(`tasks ${tasksDir}`, async () => scanTasksDir(indexDb, tasksDir));

@@ -2,7 +2,7 @@ import {realpathSync, type Stats} from "node:fs";
 import {stat} from "node:fs/promises";
 import {basename, dirname, join, resolve} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
-import {awaitInitialScan, getDb} from "./db";
+import {awaitInitialIndexScan, awaitInitialScan, getDb} from "./db";
 import {retryWhileBusy} from "./db/busy";
 import {trackActivity, trackActivitySync} from "./perf/event-loop-stalls";
 import {jsonlReadOffset} from "./jsonl-resume-offset";
@@ -773,11 +773,13 @@ async function handleFileChange(path: string): Promise<void> {
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	if (handleContextMirrorEvent(path, contextMirrorDir, broadcastTyped)) return;
-	await awaitInitialScan();
+	// Transcripts wait only for the index scan: the file-content scan after it can take minutes.
+	await awaitInitialIndexScan();
 	handleWorkflowFileEvent(path, projectsDir, broadcastTyped);
 	const normalizedPath = resolve(path);
 	const gitIndexRoot = fileContentRootByGitIndexPath.get(normalizedPath);
 	if (gitIndexRoot) {
+		await awaitInitialScan();
 		try {
 			await trackActivity(`git index refresh ${gitIndexRoot}`, async () =>
 				refreshTrackedFileRoot(getDb().index, gitIndexRoot),
@@ -789,6 +791,7 @@ async function handleFileChange(path: string): Promise<void> {
 	}
 	const fileContentRoot = fileContentRootForPath(path);
 	if (fileContentRoot && trackedFileIndex.has(fileContentRoot, path)) {
+		await awaitInitialScan();
 		try {
 			await handleFileContentChange(getDb().index, path, fileContentRoots);
 		} catch {
@@ -866,8 +869,9 @@ async function handleFileUnlink(path: string): Promise<void> {
 	if (handleSessionRegistryEvent(path)) return;
 	if (handleJobFileEvent(path, jobsDir, broadcastTyped)) return;
 	if (handleContextMirrorEvent(path, contextMirrorDir, broadcastTyped)) return;
-	await awaitInitialScan();
+	await awaitInitialIndexScan();
 	if (isPathInsideFileContentRoots(path, fileContentRoots)) {
+		await awaitInitialScan();
 		try {
 			handleFileContentUnlink(getDb().index, path);
 		} catch {

@@ -178,6 +178,34 @@ describe("db boot ordering", () => {
 		expect(resolved).toBe(true);
 	});
 
+	it("awaitInitialIndexScan() settles once fullScan ends, while the file-content scan still runs", async () => {
+		const order: string[] = [];
+		let finishFileContent: () => void = () => {};
+		const fullScan = vi.fn<FullScan>(async () => {
+			await Promise.resolve();
+			order.push("index-scan:done");
+		});
+		const scanFileContentRoots = vi.fn<ScanFileContentRoots>(
+			async () =>
+				new Promise<void>((resolve) => {
+					finishFileContent = () => {
+						order.push("file-content-scan:done");
+						resolve();
+					};
+				}),
+		);
+		mockDbModule({fullScan, scanFileContentRoots});
+
+		const {runInitialScan, awaitInitialIndexScan} = await import("../src/lib/db");
+		const scan = runInitialScan(["/root"], new Set());
+		await awaitInitialIndexScan();
+		order.push("index-waiter");
+		finishFileContent();
+		await scan;
+
+		expect(order).toStrictEqual(["index-scan:done", "index-waiter", "file-content-scan:done"]);
+	});
+
 	function busyError(): Error {
 		return Object.assign(new Error("database is locked"), {code: "SQLITE_BUSY"});
 	}

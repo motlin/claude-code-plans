@@ -47,7 +47,11 @@ beforeAll(async () => {
 	vi.resetModules();
 	const {openTestDb} = await import("../../src/lib/db/connection");
 	db = openTestDb();
-	vi.doMock("../../src/lib/db", () => ({getDb: () => db, awaitInitialScan: async () => Promise.resolve()}));
+	vi.doMock("../../src/lib/db", () => ({
+		getDb: () => db,
+		awaitInitialScan: async () => Promise.resolve(),
+		awaitInitialIndexScan: async () => Promise.resolve(),
+	}));
 	serverScope = await import("../../src/lib/perf/server-scope");
 	watcher = await import("../../src/lib/watcher");
 	sseBroadcast = await import("../../src/lib/sse-broadcast");

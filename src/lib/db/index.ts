@@ -19,7 +19,12 @@ const PLANS_DIR = join(homedir(), ".claude", "plans");
 // only entrypoints. The holder pattern lets awaitInitialScan() observe
 // whether a scan has been started without forcing one to start.
 
-type ScanHolder = {promise: Promise<void> | null; controller: AbortController};
+type ScanHolder = {
+	promise: Promise<void> | null;
+	/** Settles when the session/plan index scan ends, before the slower file-content scan. */
+	indexPromise: Promise<void> | null;
+	controller: AbortController;
+};
 type DbHolder = {db: AppDb | null};
 
 // An instance that predates the abort controller left a holder without one in
@@ -28,6 +33,7 @@ function getScanHolder(): ScanHolder {
 	const holder = hmrPersist<Partial<ScanHolder>>("appDbScanPromise", () => ({}));
 	return Object.assign(holder, {
 		promise: holder.promise ?? null,
+		indexPromise: holder.indexPromise ?? null,
 		controller: holder.controller ?? new AbortController(),
 	});
 }
@@ -84,11 +90,14 @@ export function runInitialScan(
 	const holder = getScanHolder();
 	if (holder.promise === null) {
 		const {signal} = holder.controller;
-		holder.promise = (async () => {
+		const indexPromise = runScanWithRetry("Initial database scan", signal, async () => {
 			const db = getDb();
-			await runScanWithRetry("Initial database scan", signal, async () =>
-				fullScan(db.index, db.summaries, PROJECTS_DIR, TASKS_DIR, PLANS_DIR, undefined, signal),
-			);
+			await fullScan(db.index, db.summaries, PROJECTS_DIR, TASKS_DIR, PLANS_DIR, undefined, signal);
+		});
+		holder.indexPromise = indexPromise;
+		holder.promise = (async () => {
+			await indexPromise;
+			const db = getDb();
 			await runScanWithRetry("Initial file-content scan", signal, async () =>
 				scanFileContentRoots(db.index, fileContentRoots, ignoredDirNames, signal),
 			);
@@ -99,6 +108,16 @@ export function runInitialScan(
 
 export async function awaitInitialScan(): Promise<void> {
 	return getScanHolder().promise ?? Promise.resolve();
+}
+
+/**
+ * Settles once the initial session/plan index scan ends, without waiting for
+ * the file-content scan: transcript events queued behind that slower scan left
+ * a session created during startup unindexed for minutes.
+ */
+export async function awaitInitialIndexScan(): Promise<void> {
+	const holder = getScanHolder();
+	return holder.indexPromise ?? holder.promise ?? Promise.resolve();
 }
 
 /** Aborts when shutdownDb() begins, so startup work can stop before the DB closes under it. */
