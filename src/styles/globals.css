@@ -228,7 +228,8 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code rounded-sm is .25rem (4px), measured on the task-event button. */
 	--radius-sm: 0.25rem;
 	--radius-md: calc(var(--radius) - 2px);
-	--radius-lg: var(--radius);
+	/* Upstream claude.ai/code rounded-lg is .5rem (8px), measured on the live Next-steps row. */
+	--radius-lg: 0.5rem;
 	--radius-xl: calc(var(--radius) + 4px);
 
 	/* Upstream claude.ai/code — typography scale */

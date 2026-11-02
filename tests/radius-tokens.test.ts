@@ -15,4 +15,11 @@ describe("radius tokens match upstream claude.ai/code", () => {
 			upstream: ".25rem",
 		});
 	});
+
+	it("--radius-lg is upstream's .5rem (8px), so rounded-lg is 8px", () => {
+		expect({local: token(styles, "--radius-lg"), upstream: token(upstream, "--radius-lg")}).toStrictEqual({
+			local: "0.5rem",
+			upstream: ".5rem",
+		});
+	});
 });
