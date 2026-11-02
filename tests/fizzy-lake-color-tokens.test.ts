@@ -40,4 +40,12 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			dark: {"--upstream-accent-pressed": "#032042"},
 		});
 	});
+
+	it("--upstream-fill-ghost-hover is upstream's fizzy --cds-fill-ghost-hover, #0000000d light and #ffffff13 dark", () => {
+		const names = ["--upstream-fill-ghost-hover"] as const;
+		expect({light: tokens(block(FIZZY_LIGHT), names), dark: tokens(block(FIZZY_DARK), names)}).toStrictEqual({
+			light: {"--upstream-fill-ghost-hover": "#0000000d"},
+			dark: {"--upstream-fill-ghost-hover": "#ffffff13"},
+		});
+	});
 });

@@ -726,6 +726,12 @@ html[data-interface-font="dyslexic"] {
 :root[data-cds-fizzy-lake~="color"] {
 	/* Upstream `--cds-bg-accent`, the same in both modes: selected mention and skill chips, pressed titlebar toggles. */
 	--upstream-accent-pressed: color-mix(in srgb, #257de0 12%, transparent);
+	/* Upstream `--cds-fill-ghost-hover`: every ghost hover (pre-rollout 4% ink). */
+	--upstream-fill-ghost-hover: #0000000d;
+}
+
+:root.dark[data-cds-fizzy-lake~="color"] {
+	--upstream-fill-ghost-hover: #ffffff13;
 }
 
 @layer utilities {
