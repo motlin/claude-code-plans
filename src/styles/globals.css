@@ -746,6 +746,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-plain-secondary: #0009;
 	/* Upstream `--cds-text-warning` (pre-rollout yellow-600 / yellow-300). */
 	--upstream-warning: #794c02;
+	/* Upstream `--cds-bg-tint-blue`, the same in both modes: the ⌘K palette's committed filter chips. */
+	--upstream-tint-blue: #257de01f;
 }
 
 :root.dark[data-cds-fizzy-lake~="color"] {

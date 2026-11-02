@@ -109,4 +109,12 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			},
 		});
 	});
+
+	it("--upstream-tint-blue is upstream's fizzy --cds-bg-tint-blue, #257de01f in both modes", () => {
+		const names = ["--upstream-tint-blue"] as const;
+		expect({light: tokens(block(FIZZY_LIGHT), names), dark: tokens(block(FIZZY_DARK), names)}).toStrictEqual({
+			light: {"--upstream-tint-blue": "#257de01f"},
+			dark: {"--upstream-tint-blue": null},
+		});
+	});
 });

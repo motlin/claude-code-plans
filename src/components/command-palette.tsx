@@ -1,5 +1,6 @@
 import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {useAnsweredSessionIds, withAnsweredHolds} from "../lib/answered-sessions";
+import {useFizzyLake} from "../lib/fizzy-lake";
 import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter, useCommandState} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
@@ -234,9 +235,17 @@ const PALETTE_FILTER_ICONS = {
 	actions: <Keyboard />,
 } as const satisfies Record<PaletteFilter, ReactNode>;
 
-/** Upstream's neutral Badge in a "Filter by" hint row. */
-const FILTER_BADGE_CLASS =
-	"inline-flex items-center gap-1 h-[22px] rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-fill-ghost-hover text-secondary shrink-0 -my-px relative top-px";
+/**
+ * Upstream's neutral Badge in a "Filter by" hint row: filled, or (fizzy-lake color, upstream's
+ * `stacks:` variants) an outlined pill on the border-line ink.
+ */
+const FILTER_BADGE_CLASS = {
+	fizzy: "inline-flex items-center gap-1 h-[22px] rounded-full border-[1.5px] border-solid border-[color:var(--upstream-border-line)] dark:border-strong bg-transparent px-[7px] text-xs leading-[15px] font-[540] text-secondary shrink-0 -my-px relative top-px",
+	base: "inline-flex items-center gap-1 h-[22px] rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-fill-ghost-hover text-secondary shrink-0 -my-px relative top-px",
+};
+
+/** A Badge label's descender pad, which upstream's `stacks:pb-0` drops. */
+const BADGE_LABEL_PAD = {fizzy: "pb-0", base: "pb-[0.05em]"};
 
 /** One typed-search row: an instant title match over recents, or a server hit. */
 interface SearchRow {
@@ -806,6 +815,7 @@ function PalettePopup({
 }) {
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
+	const look = useFizzyLake("color") ? "fizzy" : "base";
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const popupRef = useRef<HTMLDivElement>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
@@ -1335,8 +1345,8 @@ function PalettePopup({
 				value={`filter:${filter}`}
 				icon={PALETTE_FILTER_ICONS[filter]}
 				badge={
-					<span className={FILTER_BADGE_CLASS}>
-						<span className="pb-[0.05em]">{paletteFilterLabels[filter]}</span>
+					<span className={FILTER_BADGE_CLASS[look]}>
+						<span className={BADGE_LABEL_PAD[look]}>{paletteFilterLabels[filter]}</span>
 					</span>
 				}
 				onSelect={() => {
@@ -2155,8 +2165,8 @@ function PalettePopup({
 											value={`filter-value:${suggestion.filter}:${suggestion.value}`}
 											icon={PALETTE_FILTER_ICONS[suggestion.filter]}
 											badge={
-												<span className={FILTER_BADGE_CLASS}>
-													<span className="pb-[0.05em]">{suggestion.label}</span>
+												<span className={FILTER_BADGE_CLASS[look]}>
+													<span className={BADGE_LABEL_PAD[look]}>{suggestion.label}</span>
 												</span>
 											}
 											onSelect={() => {
@@ -2428,7 +2438,7 @@ function PaletteFooter({
 
 /** Upstream's committed filter chips, in a strip before the textarea. */
 const CHIP_BADGE_CLASSES =
-	"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-upstream-tint-blue text-upstream-accent";
+	"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-control bg-upstream-tint-blue text-upstream-accent";
 
 function FilterChips({
 	chips,
@@ -2442,6 +2452,7 @@ function FilterChips({
 }) {
 	const stripRef = useRef<HTMLDivElement>(null);
 	const shownRef = useRef<ReadonlySet<PaletteChipFilter>>(new Set());
+	const look = useFizzyLake("color") ? "fizzy" : "base";
 	// Upstream's `$t`: scroll a newly set chip into view.
 	useLayoutEffect(() => {
 		const strip = stripRef.current;
@@ -2474,7 +2485,7 @@ function FilterChips({
 					aria-label={`${foldText}: ${new Intl.ListFormat("en", {type: "unit"}).format(chips.map((chip) => chip.label))}`}
 					className={`${CHIP_BADGE_CLASSES} sm:hidden`}
 				>
-					<span className="pb-[0.05em]">{foldText}</span>
+					<span className={BADGE_LABEL_PAD[look]}>{foldText}</span>
 					<ChipClearButton label="Clear filters" onClear={onClearAll} />
 				</span>
 			)}
@@ -2487,7 +2498,9 @@ function FilterChips({
 					data-filter={chip.filter}
 					className={`${CHIP_BADGE_CLASSES} min-w-0 max-w-[10rem] shrink-0${folded ? " max-sm:hidden" : ""}`}
 				>
-					<span className="min-w-0 overflow-x-clip pb-[0.05em] text-ellipsis whitespace-nowrap">
+					<span
+						className={`min-w-0 overflow-x-clip ${BADGE_LABEL_PAD[look]} text-ellipsis whitespace-nowrap`}
+					>
 						{chip.text}
 					</span>
 					<ChipClearButton

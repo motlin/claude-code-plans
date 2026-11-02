@@ -24,6 +24,7 @@ import {routinesQueryOptions, type Routine} from "../src/lib/api/routines";
 import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
 import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
+import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -78,6 +79,7 @@ async function renderPalette(
 	sessions = [recentSession("sess-1", "Refactor auth module")],
 	initialPath = "/",
 	seed: (queryClient: QueryClient) => void = () => {},
+	fizzyLake: readonly FizzyLakePart[] = FIZZY_LAKE_PARTS,
 ) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, {
@@ -87,12 +89,14 @@ async function renderPalette(
 	seed(queryClient);
 	const rootRoute = createRootRoute({
 		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<Harness />
-					<Outlet />
-				</ToastProvider>
-			</QueryClientProvider>
+			<FizzyLakeContext.Provider value={fizzyLake}>
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<Harness />
+						<Outlet />
+					</ToastProvider>
+				</QueryClientProvider>
+			</FizzyLakeContext.Provider>
 		),
 	});
 	const sessionRoute = createRoute({
@@ -2786,6 +2790,7 @@ describe("CommandPalette filter values", () => {
 					icon: [...(row.querySelector("svg")?.classList ?? [])].filter((name) => name !== "lucide"),
 					label: label?.textContent,
 					badge: badge?.className.split(" ").toSorted(),
+					badgeLabel: badge?.firstElementChild?.className,
 					badgeText: badge?.textContent,
 				};
 			}),
@@ -2801,12 +2806,28 @@ describe("CommandPalette filter values", () => {
 			].map(([icon, text]) => ({
 				icon: [icon],
 				label: "Filter by ",
-				badge: "inline-flex items-center gap-1 h-[22px] rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-fill-ghost-hover text-secondary shrink-0 -my-px relative top-px"
+				badge: "inline-flex items-center gap-1 h-[22px] rounded-full border-[1.5px] border-solid border-[color:var(--upstream-border-line)] dark:border-strong bg-transparent px-[7px] text-xs leading-[15px] font-[540] text-secondary shrink-0 -my-px relative top-px"
 					.split(" ")
 					.toSorted(),
+				badgeLabel: "pb-0",
 				badgeText: text,
 			})),
 			wrapper: null,
+		});
+	});
+
+	it("keeps the pre-rollout filled hint badge without fizzy-lake color", async () => {
+		const dialog = await openPalette(undefined, undefined, undefined, ["panels", "type"]);
+
+		typeQuery(dialog, "/");
+
+		const badge = dialog.querySelector(
+			'[cmdk-item][data-value="filter:date"] [data-palette-label]',
+		)?.nextElementSibling;
+		expect({classes: badge?.className, label: badge?.firstElementChild?.className}).toStrictEqual({
+			classes:
+				"inline-flex items-center gap-1 h-[22px] rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-fill-ghost-hover text-secondary shrink-0 -my-px relative top-px",
+			label: "pb-[0.05em]",
 		});
 	});
 
@@ -2913,9 +2934,9 @@ describe("CommandPalette committed filter chips", () => {
 	});
 
 	const CHIP_CLASSES =
-		"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium min-w-0 max-w-[10rem] shrink-0 bg-upstream-tint-blue text-upstream-accent";
+		"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-control min-w-0 max-w-[10rem] shrink-0 bg-upstream-tint-blue text-upstream-accent";
 	const FOLD_CLASSES =
-		"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-medium bg-upstream-tint-blue text-upstream-accent sm:hidden";
+		"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-control bg-upstream-tint-blue text-upstream-accent sm:hidden";
 
 	function typeQuery(dialog: HTMLElement, value: string) {
 		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value}});
@@ -2931,6 +2952,22 @@ describe("CommandPalette committed filter chips", () => {
 			clear: chip.querySelector('button[aria-label="Clear filter"]')?.getAttribute("type") ?? null,
 		}));
 	}
+
+	it.each([
+		{parts: FIZZY_LAKE_PARTS, label: "min-w-0 overflow-x-clip pb-0 text-ellipsis whitespace-nowrap"},
+		{
+			parts: ["panels", "type"] as const,
+			label: "min-w-0 overflow-x-clip pb-[0.05em] text-ellipsis whitespace-nowrap",
+		},
+	])("drops the chip label's 0.05em bottom pad under fizzy-lake color (parts $parts)", async ({parts, label}) => {
+		const dialog = await openPalette(undefined, undefined, undefined, parts);
+
+		typeQuery(dialog, "date:today ");
+
+		expect(dialog.querySelector('[role=group][data-filter="date"]')?.firstElementChild?.className).toStrictEqual(
+			label,
+		);
+	});
 
 	it("commits key:value words into a chip strip before the textarea", async () => {
 		const dialog = await openPalette();
