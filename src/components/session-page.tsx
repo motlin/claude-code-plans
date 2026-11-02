@@ -72,6 +72,7 @@ import {ComposerNoticeProvider, ComposerNoticeRegion} from "./composer-notice-re
 import {sessionProcessLive} from "../lib/session-state";
 import {sessionFastMode} from "../lib/session-fast-mode";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
+import {recallLastHeldSteer} from "../lib/steer-recall";
 import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib/working-marker";
 import {WaitingForInputNotice} from "./approval-card";
 import {UrlElicitationDock} from "./url-elicitation-dock";
@@ -866,13 +867,6 @@ function SessionView({
 		}),
 		[answerRoute, sessionId],
 	);
-	const stopResponse = useStopResponse({
-		sessionId,
-		// Esc denies the docked permission prompt instead of stopping the turn.
-		enabled: stopAvailable && pendingPermission === null,
-		onInterrupt,
-		onError: onInterruptError,
-	});
 	const composerGate = composerPendingGate({
 		hookQuestion: unansweredHookQuestion,
 		transcriptQuestion: inlineQuestion !== null,
@@ -904,6 +898,14 @@ function SessionView({
 		},
 		[removeQueuedPrompt, sessionId],
 	);
+	const stopResponse = useStopResponse({
+		sessionId,
+		// Esc denies the docked permission prompt instead of stopping the turn.
+		enabled: stopAvailable && pendingPermission === null,
+		onInterrupt,
+		onError: onInterruptError,
+		onEscapeRecall: () => recallLastHeldSteer(sessionId, steeredPrompts(queuedPrompts), removeQueuedPrompt),
+	});
 	const {send: composerSend} = composerSendPlan(composerGate, {busy: paneBusy, queued: queuedPrompts.length});
 	const errorRecoveryAvailable = errorRecoveryAvailability({
 		hasLivePane: promptBehavior.hasLivePane,

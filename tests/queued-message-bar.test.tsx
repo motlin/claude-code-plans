@@ -139,6 +139,22 @@ describe("QueuedMessageBar", () => {
 		});
 	});
 
+	it("sizes the collapsed bar and expanded header to the control height plus 16px (48px at comfortable)", () => {
+		renderBar([ALICE, BOB]);
+		const bar = screen.getByRole("button", {name: /2 messages queued/});
+		const barClasses = bar.className.split(" ");
+		fireEvent.click(bar);
+		const header = screen.getByRole("button", {name: "Collapse queued messages"}).parentElement;
+
+		expect({
+			bar: barClasses.filter((c) => c.includes("min-h-")),
+			header: header?.className.split(" ").filter((c) => c.includes("min-h-")),
+		}).toStrictEqual({
+			bar: ["min-h-10", "comfortable:min-h-12"],
+			header: ["min-h-10", "comfortable:min-h-12"],
+		});
+	});
+
 	it("expands to a list of rows with Clear all, and collapsing returns focus to the bar", () => {
 		const {onClearAll} = renderBar([ALICE, BOB]);
 		const bar = screen.getByRole("button", {name: /2 messages queued/});
@@ -192,6 +208,36 @@ describe("QueuedMessageBar", () => {
 			items: ["Edit in composer", "Send now", "Remove from queue"],
 			separators: 1,
 			sent: [["q2"]],
+		});
+	});
+
+	it("opens the same row actions on right-click, keeping the row's DotsVertical shown while open", async () => {
+		const {onRemove} = renderBar([ALICE, BOB]);
+		fireEvent.click(screen.getByRole("button", {name: /2 messages queued/}));
+		const rows = within(screen.getByRole("list", {name: "Queued messages"})).getAllByRole("listitem");
+		const second = rows[1];
+		if (second === undefined) throw new Error("Expected two rows");
+		fireEvent.contextMenu(second, {clientX: 20, clientY: 20});
+		const menu = await screen.findByRole("menu");
+		const items = within(menu)
+			.getAllByRole("menuitem")
+			.map((item) => item.textContent);
+		const dots = within(second).getByRole("button", {name: "Queued message actions", hidden: true});
+		const dotsShown = dots.className.split(" ").includes("opacity-100");
+		fireEvent.click(within(menu).getByRole("menuitem", {name: "Remove from queue"}));
+
+		expect({
+			takeBack: second.hasAttribute("data-take-back-entry"),
+			items,
+			separators: within(menu).getAllByRole("separator").length,
+			dotsShown,
+			removed: onRemove.mock.calls,
+		}).toStrictEqual({
+			takeBack: true,
+			items: ["Edit in composer", "Send now", "Remove from queue"],
+			separators: 1,
+			dotsShown: true,
+			removed: [["q2"]],
 		});
 	});
 

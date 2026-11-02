@@ -27,12 +27,15 @@ export interface StopResponseOptions {
 	onError: (error: unknown) => void;
 	interrupt?: (sessionId: string, force: boolean) => Promise<void>;
 	now?: () => number;
+	/** Upstream's `onEscapeRecall`: Esc runs it first and stops only when it reports nothing recalled. */
+	onEscapeRecall?: () => boolean;
 }
 
 /**
  * Stop Claude's response in the live herdr pane from the composer Stop button
  * or Esc (which yields to open menus and dialogs). A second press within
- * {@link STOP_FORCE_WINDOW_MS} sends ctrl+c instead of Esc.
+ * {@link STOP_FORCE_WINDOW_MS} sends ctrl+c instead of Esc. Esc first offers `onEscapeRecall` the key;
+ * the Stop button always stops.
  */
 export function useStopResponse({
 	sessionId,
@@ -41,6 +44,7 @@ export function useStopResponse({
 	onError,
 	interrupt = async (id, force) => sendHerdrInterrupt(id, force),
 	now = Date.now,
+	onEscapeRecall,
 }: StopResponseOptions): () => void {
 	const lastPressRef = useRef<number | null>(null);
 
@@ -60,6 +64,7 @@ export function useStopResponse({
 	useShortcut(
 		"stop_response",
 		() => {
+			if (onEscapeRecall?.() === true) return;
 			stop();
 		},
 		{disabled: !enabled},

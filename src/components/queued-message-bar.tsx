@@ -3,7 +3,7 @@ import {ChevronDown, ChevronUp, CornerDownLeft, EllipsisVertical, Pencil, X} fro
 
 import {type QueuedPrompt, queueBandExpanded, queuedPreview, setQueueBandExpanded} from "../lib/composer-queue";
 import {Spinner} from "./ui/spinner";
-import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
+import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 
 const SEND_NOW_DESCRIPTION = "Stops Claude’s current response.";
 
@@ -138,7 +138,7 @@ export function QueuedMessageBar({sessionId, items, onEdit, onSendNow, onRemove,
 				ref={receiveFocus}
 				type="button"
 				aria-expanded={false}
-				className="flex items-center gap-1.25 w-full min-w-0 min-h-10 px-3 rounded-card bg-alpha-1 select-none text-start cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-alpha-2"
+				className="flex items-center gap-1.25 w-full min-w-0 min-h-10 comfortable:min-h-12 px-3 rounded-card bg-alpha-1 select-none text-start cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-alpha-2"
 				onClick={(event) => {
 					toggle(event, true);
 				}}
@@ -155,7 +155,7 @@ export function QueuedMessageBar({sessionId, items, onEdit, onSendNow, onRemove,
 	} else {
 		band = (
 			<div className="flex flex-col w-full rounded-card bg-alpha-1 select-none overflow-clip divide-y divide-border">
-				<div className="flex items-center gap-1.25 w-full min-h-10 px-3">
+				<div className="flex items-center gap-1.25 w-full min-h-10 comfortable:min-h-12 px-3">
 					<span className="min-w-0 flex-1 text-body font-medium text-primary">{count}</span>
 					<button
 						ref={receiveFocus}
@@ -220,6 +220,46 @@ export function QueuedMessageBar({sessionId, items, onEdit, onSendNow, onRemove,
 	);
 }
 
+function QueuedRowItems({
+	item,
+	onEdit,
+	onSendNow,
+	onRemove,
+}: {
+	item: QueuedPrompt;
+	onEdit: (item: QueuedPrompt) => void;
+	onSendNow: (id: string) => Promise<void>;
+	onRemove: (id: string) => void;
+}) {
+	return (
+		<>
+			<MenuItem
+				onSelect={() => {
+					onEdit(item);
+				}}
+			>
+				Edit in composer
+			</MenuItem>
+			<MenuItem
+				onSelect={() => {
+					void onSendNow(item.id);
+				}}
+			>
+				Send now
+			</MenuItem>
+			<MenuSeparator />
+			<MenuItem
+				variant="danger"
+				onSelect={() => {
+					onRemove(item.id);
+				}}
+			>
+				Remove from queue
+			</MenuItem>
+		</>
+	);
+}
+
 function QueuedRow({
 	item,
 	separated,
@@ -233,54 +273,42 @@ function QueuedRow({
 	onSendNow: (id: string) => Promise<void>;
 	onRemove: (id: string) => void;
 }) {
+	// Upstream's `se`: the row's DotsVertical stays shown while its right-click menu is open.
+	const [contextOpen, setContextOpen] = useState(false);
+	const actions = {item, onEdit, onSendNow, onRemove};
 	return (
 		<>
 			{separated && <div role="presentation" aria-hidden="true" className="border-t border-border" />}
-			<div
-				role="listitem"
-				data-take-back-entry=""
-				data-perf-pending-prompt=""
-				className="group/row relative flex items-start gap-1.25 min-w-0 p-1.25 rounded"
-			>
-				<span className="min-w-0 flex-1 text-body line-clamp-2 select-text text-primary break-words whitespace-pre-wrap group-hover/row:[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))] pointer-coarse:[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))]">
-					{item.text}
-				</span>
-				<div className="absolute end-1.25 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-					<Menu>
-						<MenuTrigger
-							aria-label="Queued message actions"
-							className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary opacity-0 transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-[popup-open]:opacity-100"
-						>
-							<EllipsisVertical aria-hidden="true" className="size-3.5" />
-						</MenuTrigger>
-						<MenuContent side="bottom" align="end">
-							<MenuItem
-								onSelect={() => {
-									onEdit(item);
-								}}
+			{/* Upstream renders each row as a `ContextMenu.Trigger` carrying the listitem attributes. */}
+			<ContextMenu onOpenChange={setContextOpen}>
+				<ContextMenuTrigger
+					render={<div />}
+					role="listitem"
+					data-take-back-entry=""
+					data-perf-pending-prompt=""
+					className="group/row relative flex items-start gap-1.25 min-w-0 p-1.25 rounded"
+				>
+					<span className="min-w-0 flex-1 text-body line-clamp-2 select-text text-primary break-words whitespace-pre-wrap group-hover/row:[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))] pointer-coarse:[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))]">
+						{item.text}
+					</span>
+					<div className="absolute end-1.25 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+						<Menu>
+							<MenuTrigger
+								aria-label="Queued message actions"
+								className={`flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-[popup-open]:opacity-100 ${contextOpen ? "opacity-100" : "opacity-0"}`}
 							>
-								Edit in composer
-							</MenuItem>
-							<MenuItem
-								onSelect={() => {
-									void onSendNow(item.id);
-								}}
-							>
-								Send now
-							</MenuItem>
-							<MenuSeparator />
-							<MenuItem
-								variant="danger"
-								onSelect={() => {
-									onRemove(item.id);
-								}}
-							>
-								Remove from queue
-							</MenuItem>
-						</MenuContent>
-					</Menu>
-				</div>
-			</div>
+								<EllipsisVertical aria-hidden="true" className="size-3.5" />
+							</MenuTrigger>
+							<MenuContent side="bottom" align="end">
+								<QueuedRowItems {...actions} />
+							</MenuContent>
+						</Menu>
+					</div>
+				</ContextMenuTrigger>
+				<MenuContent>
+					<QueuedRowItems {...actions} />
+				</MenuContent>
+			</ContextMenu>
 		</>
 	);
 }

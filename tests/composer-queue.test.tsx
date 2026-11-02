@@ -4,6 +4,8 @@ import {act, cleanup, fireEvent, render, renderHook, screen, waitFor, within} fr
 import {useState} from "react";
 import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer, type ComposerQueueView} from "../src/components/composer";
+import {pickWorkingPlaceholder} from "../src/lib/working-placeholder";
+import {recallLastHeldSteer} from "../src/lib/steer-recall";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {type DeliveryResult, useComposerQueue} from "../src/hooks/use-composer-queue";
@@ -672,10 +674,126 @@ describe("Composer while working", () => {
 		expect(textarea.getAttribute("aria-placeholder")).toBe("⏎ to send, Ctrl⏎ to queue for later");
 	});
 
+	it("picks the compact working placeholder only when the full sentence doesn't fit", () => {
+		expect({
+			fitsMac: pickWorkingPlaceholder({fits: true, isMac: true}),
+			overflowMac: pickWorkingPlaceholder({fits: false, isMac: true}),
+			overflowOther: pickWorkingPlaceholder({fits: false, isMac: false}),
+		}).toStrictEqual({
+			fitsMac: "⏎ to send, ⌘⏎ to queue for later",
+			overflowMac: "⌘⏎ to queue",
+			overflowOther: "Ctrl⏎ to queue",
+		});
+	});
+
+	it("shows the compact working placeholder when the full one overflows, keeping the full aria-placeholder", () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(120);
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(260);
+		const textarea = renderComposer({onQueueForLater: () => {}, onStop: () => {}});
+
+		expect({
+			visible: screen.getByTestId("composer-placeholder-text").textContent,
+			aria: textarea.getAttribute("aria-placeholder"),
+		}).toStrictEqual({visible: "⌘⏎ to queue", aria: "⏎ to send, ⌘⏎ to queue for later"});
+	});
+
+	it("keeps the full working placeholder visible when it fits", () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
+		renderComposer({onQueueForLater: () => {}, onStop: () => {}});
+
+		expect(screen.getByTestId("composer-placeholder-text").textContent).toBe("⏎ to send, ⌘⏎ to queue for later");
+	});
+
+	it("keeps the normal placeholder on a coarse pointer, where plain Enter doesn't send (upstream's gate)", () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+			"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+		);
+		vi.stubGlobal(
+			"matchMedia",
+			(query: string) =>
+				({
+					matches: query === "(pointer: coarse)",
+					media: query,
+					addEventListener: () => {},
+					removeEventListener: () => {},
+				}) as unknown as MediaQueryList,
+		);
+		try {
+			const textarea = renderComposer({onQueueForLater: () => {}, onStop: () => {}});
+			expect(textarea.getAttribute("aria-placeholder")).toBe("Type / for commands");
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it("keeps the working placeholder on a coarse Windows pointer, where plain Enter still sends", () => {
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+		vi.stubGlobal(
+			"matchMedia",
+			(query: string) =>
+				({
+					matches: query === "(pointer: coarse)",
+					media: query,
+					addEventListener: () => {},
+					removeEventListener: () => {},
+				}) as unknown as MediaQueryList,
+		);
+		try {
+			const textarea = renderComposer({onQueueForLater: () => {}, onStop: () => {}});
+			expect(textarea.getAttribute("aria-placeholder")).toBe("⏎ to send, Ctrl⏎ to queue for later");
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it("keeps the normal placeholder while the composer is disabled", () => {
+		render(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() => {}}
+				onStop={() => {}}
+				onQueueForLater={() => {}}
+				disabled
+			/>,
+		);
+
+		expect(screen.getByRole("textbox", {name: "Prompt"}).getAttribute("aria-placeholder")).toBe(
+			"Type / for commands",
+		);
+	});
+
 	it("keeps the idle placeholder when the live pane is not working", () => {
 		const textarea = renderComposer({onQueueForLater: () => {}});
 
 		expect(textarea.getAttribute("aria-placeholder")).toBe("Type / for commands");
+	});
+
+	it("draws upstream's StopFilled glyph on the Stop face, with no scale-90 wrapper", () => {
+		renderComposer({onStop: () => {}});
+		const stop = screen.getByRole("button", {name: "Stop"});
+		const rect = stop.querySelector("svg rect");
+
+		expect({
+			rect:
+				rect === null
+					? null
+					: {
+							x: rect.getAttribute("x"),
+							y: rect.getAttribute("y"),
+							width: rect.getAttribute("width"),
+							height: rect.getAttribute("height"),
+							rx: rect.getAttribute("rx"),
+							fill: rect.getAttribute("fill"),
+						},
+			viewBox: stop.querySelector("svg")?.getAttribute("viewBox"),
+			scaled: stop.querySelector(".scale-90") !== null,
+		}).toStrictEqual({
+			rect: {x: "4", y: "4", width: "12", height: "12", rx: "2.5", fill: "currentColor"},
+			viewBox: "0 0 20 20",
+			scaled: false,
+		});
 	});
 
 	it("swallows a repeated ⌘⏎ keydown", () => {
@@ -704,10 +822,12 @@ describe("Esc modal guard", () => {
 		onInterrupt,
 		queue,
 		slashCommands,
+		onEscapeRecall,
 	}: {
 		onInterrupt: () => void;
 		queue?: ComposerQueueView;
 		slashCommands?: readonly SlashCommand[];
+		onEscapeRecall?: () => boolean;
 	}) {
 		const stop = useStopResponse({
 			sessionId: "session-alice",
@@ -715,6 +835,7 @@ describe("Esc modal guard", () => {
 			interrupt: async () => {},
 			onInterrupt,
 			onError: () => {},
+			...(onEscapeRecall === undefined ? {} : {onEscapeRecall}),
 		});
 		return (
 			<Composer
@@ -735,6 +856,73 @@ describe("Esc modal guard", () => {
 		textarea.focus();
 		fireEvent.keyDown(textarea, {key: "Escape", code: "Escape"});
 		expect(onInterrupt.mock.calls.length).toBe(1);
+	});
+
+	const HELD_ALICE: QueuedPrompt = {id: "s1", text: "Alice's first steer", midTurn: true};
+	const HELD_BOB: QueuedPrompt = {id: "s2", text: "Bob's second steer", midTurn: true};
+
+	function RecallingStopper({onInterrupt, initial}: {onInterrupt: () => void; initial: readonly QueuedPrompt[]}) {
+		const [held, setHeld] = useState(initial);
+		return (
+			<>
+				<Stopper
+					onInterrupt={onInterrupt}
+					onEscapeRecall={() =>
+						recallLastHeldSteer("session-alice", held, (id) => {
+							setHeld((items) => items.filter((item) => item.id !== id));
+						})
+					}
+				/>
+				<output data-testid="held">{held.map((item) => item.text).join("|")}</output>
+			</>
+		);
+	}
+
+	it("recalls the last browser-held steer into an empty composer on Esc instead of stopping", () => {
+		const onInterrupt = vi.fn<() => void>();
+		render(<RecallingStopper onInterrupt={onInterrupt} initial={[HELD_ALICE, HELD_BOB]} />);
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		fireEvent.keyDown(document.body, {key: "Escape", code: "Escape"});
+
+		expect({
+			draft: textarea.value,
+			focused: document.activeElement === textarea,
+			held: screen.getByTestId("held").textContent,
+			interrupts: onInterrupt.mock.calls.length,
+		}).toStrictEqual({draft: "Bob's second steer", focused: true, held: "Alice's first steer", interrupts: 0});
+	});
+
+	it("stops on Esc over a draft, keeping the held steer (the take-back refuses over a draft)", () => {
+		const onInterrupt = vi.fn<() => void>();
+		render(<RecallingStopper onInterrupt={onInterrupt} initial={[HELD_ALICE]} />);
+		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+		fireEvent.change(textarea, {target: {value: "Carol's draft"}});
+		fireEvent.keyDown(document.body, {key: "Escape", code: "Escape"});
+
+		expect({
+			draft: textarea.value,
+			held: screen.getByTestId("held").textContent,
+			interrupts: onInterrupt.mock.calls.length,
+		}).toStrictEqual({draft: "Carol's draft", held: "Alice's first steer", interrupts: 1});
+	});
+
+	it("stops once on Esc with no browser-held steer (a steer already typed into the CLI is never recalled)", () => {
+		const onInterrupt = vi.fn<() => void>();
+		render(<RecallingStopper onInterrupt={onInterrupt} initial={[]} />);
+		fireEvent.keyDown(document.body, {key: "Escape", code: "Escape"});
+
+		expect(onInterrupt.mock.calls.length).toBe(1);
+	});
+
+	it("stops from the Stop button even with a held steer: only Esc recalls", () => {
+		const onInterrupt = vi.fn<() => void>();
+		render(<RecallingStopper onInterrupt={onInterrupt} initial={[HELD_ALICE]} />);
+		fireEvent.click(screen.getByRole("button", {name: "Stop"}));
+
+		expect({
+			held: screen.getByTestId("held").textContent,
+			interrupts: onInterrupt.mock.calls.length,
+		}).toStrictEqual({held: "Alice's first steer", interrupts: 1});
 	});
 
 	it("closes the slash popup instead of stopping", () => {

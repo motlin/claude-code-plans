@@ -107,7 +107,7 @@ describe("Composer send slot while working", () => {
 		return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 	}
 
-	it("shows upstream's Stop with an empty draft: Escape keyshortcut, code-prompt-stop, CircleStop 20px in a scale-90 span", () => {
+	it("shows upstream's Stop with an empty draft: Escape keyshortcut, code-prompt-stop, StopFilled 20px straight in the button", () => {
 		renderWorking();
 		const stop = screen.getByRole("button", {name: "Stop"});
 		const icon = stop.querySelector("svg");
@@ -115,7 +115,7 @@ describe("Composer send slot while working", () => {
 		expect({
 			keys: stop.getAttribute("aria-keyshortcuts"),
 			testId: stop.dataset["testid"],
-			wrapper: icon?.parentElement?.className,
+			unwrapped: icon?.parentElement === stop,
 			icon: icon?.getAttribute("class"),
 			face: stop.closest("[data-send-face]")?.className,
 			cell: stop.closest("[data-send-face]")?.parentElement?.className,
@@ -123,8 +123,8 @@ describe("Composer send slot while working", () => {
 		}).toStrictEqual({
 			keys: "Escape",
 			testId: "code-prompt-stop",
-			wrapper: "flex scale-90",
-			icon: "lucide lucide-circle-stop size-5",
+			unwrapped: true,
+			icon: "size-5",
 			face: "col-start-1 row-start-1 flex cursor-default items-center justify-end",
 			cell: "grid items-center justify-items-end",
 			send: null,

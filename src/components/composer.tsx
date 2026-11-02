@@ -12,14 +12,14 @@ import {
 	useRef,
 	useState,
 } from "react";
-import {CircleStop, CornerDownLeft} from "lucide-react";
+import {CornerDownLeft} from "lucide-react";
 import type {ThemedToken} from "@shikijs/core";
 
 import {useBandEnter} from "../hooks/use-band-enter";
 import {useComposerDraft} from "../hooks/use-composer-draft";
 import {useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
 import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
-import {useIsMac} from "../hooks/use-is-mac";
+import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {useTypeToFocus} from "../hooks/use-type-to-focus";
 import type {ComposerState} from "../lib/composer-state";
@@ -97,11 +97,14 @@ import {ToastContext} from "./toast-context";
 import {fileMentionOptionId} from "./file-mention-option-id";
 import {preloadComposerSurfaces, useComposerSurfaces} from "./composer-surfaces-entry";
 import {slashCommandOptionId} from "./slash-command-option-id";
+import {StopFilledIcon} from "./ui/stop-filled-icon";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
 import {isShellCommandText, shellCommandUnavailableMessage} from "../lib/composer-shell-command";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
+import {WorkingPlaceholderText} from "./composer-working-placeholder";
+import {showsWorkingPlaceholder, workingPlaceholder} from "../lib/working-placeholder";
 import {useBashHighlight} from "../hooks/use-bash-highlight";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {useFileDropTarget} from "./composer-drop-scrim";
@@ -114,11 +117,6 @@ const PLACEHOLDER: Record<ComposerVariant, string> = {
 	session: SESSION_COMPOSER_PLACEHOLDER,
 	home: "Describe a task or ask a question",
 };
-
-/** Upstream's placeholder while Claude works: `{sendKey} to send, {queueKey} to queue for later`. */
-function workingPlaceholder(isMac: boolean): string {
-	return `⏎ to send, ${isMac ? "⌘⏎" : "Ctrl⏎"} to queue for later`;
-}
 
 /**
  * The prompt follows Transcript text size via `--prompt-text-size` / `--prompt-line-height`
@@ -488,9 +486,7 @@ const SendSlot = memo(function SendSlot({
 						onClick={isStreaming ? onCancel : stop}
 						className={ICON_BUTTON_CLASS}
 					>
-						<span className="flex scale-90">
-							<CircleStop className="size-5" aria-hidden="true" />
-						</span>
+						<StopFilledIcon />
 					</button>
 				</Tooltip>
 			}
@@ -600,6 +596,8 @@ export function Composer({
 	const backgroundTasks = useBackgroundTasksOpener();
 	const hintId = useId();
 	const isMac = useIsMac();
+	const isWindows = useIsWindows();
+	const coarsePointer = useCoarsePointer();
 	const slashMenuId = useId();
 	const mentionMenuId = useId();
 	const [caret, setCaret] = useState(0);
@@ -826,11 +824,15 @@ export function Composer({
 	const painted = bashPainted || chip !== null || mentions.length > 0;
 	// Upstream's bash-mode status rides on the editor as its aria-description.
 	const bashStatusProps = bashMode ? {"aria-description": BASH_STATUS} : {};
-	const placeholder = bashMode
-		? BASH_PLACEHOLDER
-		: onStop !== undefined && onQueueForLater !== undefined
-			? workingPlaceholder(isMac)
-			: PLACEHOLDER[variant];
+	const showWorking =
+		!bashMode &&
+		showsWorkingPlaceholder({
+			working: onStop !== undefined && onQueueForLater !== undefined,
+			disabled: disabled || isStreaming,
+			coarse: coarsePointer,
+			isWindows,
+		});
+	const placeholder = bashMode ? BASH_PLACEHOLDER : showWorking ? workingPlaceholder(isMac) : PLACEHOLDER[variant];
 	// The textarea's selection end, so a selection spanning exactly one chip paints it selected.
 	const [selectionEnd, setSelectionEnd] = useState(0);
 	const selectedMention = mentions.find((m) => m.start === caret && m.end === selectionEnd);
@@ -1639,7 +1641,7 @@ export function Composer({
 							aria-hidden="true"
 							className={`${PLACEHOLDER_OVERLAY_CLASS}${bashMode ? ` ${BASH_OVERLAY_CLASS}` : ""}${isStreaming || disabled ? " opacity-50" : ""}`}
 						>
-							{placeholder}
+							{showWorking ? <WorkingPlaceholderText isMac={isMac} /> : placeholder}
 						</div>
 					)}
 					<textarea
