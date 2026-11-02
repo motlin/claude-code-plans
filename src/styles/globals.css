@@ -225,6 +225,8 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream cds shadow-card-ring: a hairline inset ring; a Card sets --card-ring-color to border-strong. */
 	--shadow-card-ring: inset 0 0 0 1px var(--card-ring-color, var(--card-outline));
 
+	/* Upstream claude.ai/code rounded-xs is .125rem (2px): agent cells and plan-comment marks. */
+	--radius-xs: 0.125rem;
 	/* Upstream claude.ai/code rounded-sm is .25rem (4px), measured on the task-event button. */
 	--radius-sm: 0.25rem;
 	--radius-md: calc(var(--radius) - 2px);

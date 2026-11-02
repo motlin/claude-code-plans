@@ -9,6 +9,13 @@ function token(source: string, name: string): string | null {
 }
 
 describe("radius tokens match upstream claude.ai/code", () => {
+	it("--radius-xs is upstream's .125rem (2px), so rounded-xs is 2px", () => {
+		expect({local: token(styles, "--radius-xs"), upstream: token(upstream, "--radius-xs")}).toStrictEqual({
+			local: "0.125rem",
+			upstream: ".125rem",
+		});
+	});
+
 	it("--radius-sm is upstream's .25rem (4px), so rounded-sm is 4px", () => {
 		expect({local: token(styles, "--radius-sm"), upstream: token(upstream, "--radius-sm")}).toStrictEqual({
 			local: "0.25rem",
