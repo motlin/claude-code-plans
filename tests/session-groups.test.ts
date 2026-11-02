@@ -61,7 +61,7 @@ describe("DEFAULT_SESSION_LIST_PREFS", () => {
 });
 
 describe("buildGroups state mode", () => {
-	it("orders Needs input, Ready for review, Working, Completed, as upstream does", () => {
+	it("orders Needs input, Ready for review, Working, Idle, as upstream does", () => {
 		const rows = [
 			row("done-1", {bucket: "done", lastActivityAt: NOW - 3 * HOUR}),
 			row("review-1", {bucket: "review"}),
@@ -73,7 +73,7 @@ describe("buildGroups state mode", () => {
 			"Needs input",
 			"Ready for review",
 			"Working",
-			"Completed",
+			"Idle",
 		]);
 	});
 
@@ -94,7 +94,7 @@ describe("buildGroups state mode", () => {
 				hiddenCount: 0,
 			},
 			{key: "state-working", label: "Working", rows: ["working-1"], hiddenCount: 0},
-			{key: "state-done", label: "Completed", rows: ["done-2", "done-1"], hiddenCount: 0},
+			{key: "state-done", label: "Idle", rows: ["done-2", "done-1"], hiddenCount: 0},
 		]);
 	});
 
@@ -110,7 +110,7 @@ describe("buildGroups state mode", () => {
 
 		expect(summarize(groups)).toStrictEqual([
 			{key: "state-blocked", label: "Needs input", rows: ["head"], hiddenCount: 0},
-			{key: "state-done", label: "Completed", rows: ["solo"], hiddenCount: 0},
+			{key: "state-done", label: "Idle", rows: ["solo"], hiddenCount: 0},
 		]);
 		expect(
 			groups.map((group) =>
@@ -121,7 +121,7 @@ describe("buildGroups state mode", () => {
 		).toStrictEqual([{head: ["child", "grandchild"]}, {}]);
 	});
 
-	it("caps Completed at 5 rows and reports the hidden count, leaving other groups uncapped", () => {
+	it("caps Idle at 5 rows and reports the hidden count, leaving other groups uncapped", () => {
 		const rows = [
 			...Array.from({length: 23}, (_, index) =>
 				row(`done-${index}`, {bucket: "done", lastActivityAt: NOW - (index + 1) * 60_000}),
@@ -140,7 +140,7 @@ describe("buildGroups state mode", () => {
 			},
 			{
 				key: "state-done",
-				label: "Completed",
+				label: "Idle",
 				rows: Array.from({length: 5}, (_, index) => `done-${index}`),
 				hiddenCount: 18,
 			},
@@ -196,7 +196,7 @@ describe("buildGroups state mode", () => {
 
 		expect(summarize(buildGroups(rows, prefs(), NOW))).toStrictEqual([
 			{key: "state-working", label: "Working", rows: ["old-working"], hiddenCount: 0},
-			{key: "state-done", label: "Completed", rows: ["recent-done"], hiddenCount: 0},
+			{key: "state-done", label: "Idle", rows: ["recent-done"], hiddenCount: 0},
 		]);
 		expect(summarize(buildGroups(rows, prefs({activityDays: "1d"}), NOW))).toStrictEqual([
 			{key: "state-working", label: "Working", rows: ["old-working"], hiddenCount: 0},
@@ -204,7 +204,7 @@ describe("buildGroups state mode", () => {
 		expect(summarize(buildGroups(rows, prefs({activityDays: "all"}), NOW))).toStrictEqual([
 			{key: "state-blocked", label: "Needs input", rows: ["old-blocked"], hiddenCount: 0},
 			{key: "state-working", label: "Working", rows: ["old-working"], hiddenCount: 0},
-			{key: "state-done", label: "Completed", rows: ["recent-done", "old-done"], hiddenCount: 0},
+			{key: "state-done", label: "Idle", rows: ["recent-done", "old-done"], hiddenCount: 0},
 		]);
 	});
 
@@ -220,7 +220,7 @@ describe("buildGroups state mode", () => {
 		expect(summarize(buildGroups(rows, prefs(), NOW))).toStrictEqual([
 			{
 				key: "state-done",
-				label: "Completed",
+				label: "Idle",
 				rows: ["live-day-old", "live-stale", ...Array.from({length: 3}, (_, index) => `ended-${index}`)],
 				hiddenCount: 3,
 			},
@@ -243,7 +243,7 @@ describe("buildGroups state mode", () => {
 		const rows = [row("live"), row("archived", {archived: true, lastActivityAt: NOW - 2 * HOUR})];
 
 		expect(summarize(buildGroups(rows, prefs({statusFilter: "archived"}), NOW))).toStrictEqual([
-			{key: "state-done", label: "Completed", rows: ["archived"], hiddenCount: 0},
+			{key: "state-done", label: "Idle", rows: ["archived"], hiddenCount: 0},
 		]);
 	});
 
@@ -251,10 +251,10 @@ describe("buildGroups state mode", () => {
 		const rows = [row("live"), row("archived", {archived: true, lastActivityAt: NOW - 2 * HOUR})];
 
 		expect(summarize(buildGroups(rows, prefs(), NOW))).toStrictEqual([
-			{key: "state-done", label: "Completed", rows: ["live"], hiddenCount: 0},
+			{key: "state-done", label: "Idle", rows: ["live"], hiddenCount: 0},
 		]);
 		expect(summarize(buildGroups(rows, prefs({statusFilter: "all"}), NOW))).toStrictEqual([
-			{key: "state-done", label: "Completed", rows: ["live", "archived"], hiddenCount: 0},
+			{key: "state-done", label: "Idle", rows: ["live", "archived"], hiddenCount: 0},
 		]);
 	});
 });

@@ -234,9 +234,9 @@ describe("sidebar multi-select", () => {
 	});
 });
 
-async function openCompletedHeaderMenu(): Promise<HTMLElement> {
-	const header = screen.getByText("Completed").closest("[data-group-toggle]");
-	if (!(header instanceof HTMLElement)) throw new Error("no Completed header");
+async function openIdleHeaderMenu(): Promise<HTMLElement> {
+	const header = screen.getByText("Idle").closest("[data-group-toggle]");
+	if (!(header instanceof HTMLElement)) throw new Error("no Idle header");
 	fireEvent.contextMenu(header, {clientX: 40, clientY: 50});
 	await flush();
 	return await waitFor(() => screen.getByRole("menu"));
@@ -261,7 +261,7 @@ describe("sidebar group header context menu", () => {
 	it("offers New session, Select all, Collapse all / Expand all and Archive all (N) like upstream", async () => {
 		await renderGroups({groupBy: "state"});
 
-		expect(headerMenuItems(await openCompletedHeaderMenu())).toStrictEqual([
+		expect(headerMenuItems(await openIdleHeaderMenu())).toStrictEqual([
 			{label: "New session", disabledReason: null},
 			{label: "---", disabledReason: null},
 			{label: "Select all", disabledReason: null},
@@ -276,7 +276,7 @@ describe("sidebar group header context menu", () => {
 	it("selects every row in a state group from the header's context menu", async () => {
 		const {container} = await renderGroups({groupBy: "state"});
 
-		await openCompletedHeaderMenu();
+		await openIdleHeaderMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Select all"}));
 		await flush();
 
@@ -292,7 +292,7 @@ describe("sidebar group header context menu", () => {
 	it("disables Select all under two visible sessions and Archive all with nothing to archive", async () => {
 		await renderGroups({groupBy: "state", sessions: [session("a1", "Alpha one", 1)], activeItemId: "a1"});
 
-		expect(headerMenuItems(await openCompletedHeaderMenu())).toStrictEqual([
+		expect(headerMenuItems(await openIdleHeaderMenu())).toStrictEqual([
 			{label: "New session", disabledReason: null},
 			{label: "---", disabledReason: null},
 			{label: "Select all", disabledReason: "Select all needs at least two visible sessions in this group."},
@@ -311,10 +311,10 @@ describe("sidebar group header context menu", () => {
 	it("Collapse all collapses every shown group, then Expand all expands them again", async () => {
 		await renderGroups({groupBy: "state"});
 
-		fireEvent.click(menuItemByLabel(await openCompletedHeaderMenu(), "Collapse all"));
+		fireEvent.click(menuItemByLabel(await openIdleHeaderMenu(), "Collapse all"));
 		await flush();
 		const collapsed = readSidebarState().collapsedGroups;
-		const collapsedMenu = headerMenuItems(await openCompletedHeaderMenu()).slice(4, 6);
+		const collapsedMenu = headerMenuItems(await openIdleHeaderMenu()).slice(4, 6);
 		fireEvent.click(screen.getByRole("menuitem", {name: "Expand all"}));
 		await flush();
 
@@ -331,7 +331,7 @@ describe("sidebar group header context menu", () => {
 	it("Archive all asks to confirm, then archives every unpinned row that is not open", async () => {
 		await renderGroups({groupBy: "state", activeItemId: "u3"});
 
-		fireEvent.click(menuItemByLabel(await openCompletedHeaderMenu(), "Archive all (4)"));
+		fireEvent.click(menuItemByLabel(await openIdleHeaderMenu(), "Archive all (4)"));
 		await flush();
 		const dialog = await waitFor(() => screen.getByRole("alertdialog"));
 		const title = dialog.querySelector("h2")?.textContent;
@@ -341,7 +341,7 @@ describe("sidebar group header context menu", () => {
 			expect(archiveCalls()).toHaveLength(4);
 		});
 		expect({title, calls: archiveCalls()}).toStrictEqual({
-			title: "Archive all sessions in \u201cCompleted\u201d?",
+			title: "Archive all sessions in \u201cIdle\u201d?",
 			calls: [
 				{url: "/api/sessions/a1/archived", method: "PUT"},
 				{url: "/api/sessions/b1/archived", method: "PUT"},
@@ -354,7 +354,7 @@ describe("sidebar group header context menu", () => {
 	it("New session goes home", async () => {
 		const {router} = await renderGroups({groupBy: "state", path: "/session/a1"});
 
-		fireEvent.click(menuItemByLabel(await openCompletedHeaderMenu(), "New session"));
+		fireEvent.click(menuItemByLabel(await openIdleHeaderMenu(), "New session"));
 
 		await waitFor(() => {
 			expect(router.state.location.pathname).toBe("/");

@@ -1,6 +1,6 @@
 import {z} from "zod";
 
-import {sessionBucketLabels} from "./schema-choices";
+import {sidebarStateGroupLabels} from "./schema-choices";
 import {resolveFamilies} from "./session-families";
 import type {SessionBucket} from "./session-state";
 import {assertNever} from "./assert-never";
@@ -391,7 +391,7 @@ export function buildGroups<Row extends SessionGroupRow>(
 			return STATE_ORDER.map((bucket) =>
 				group(
 					`state-${bucket}`,
-					sessionBucketLabels[bucket],
+					sidebarStateGroupLabels[bucket],
 					liveFirst(visible.filter((row) => familyBucket.get(row.sessionId) === bucket)),
 					groupCap(bucket === "done", `state-${bucket}`, revealed),
 					nested,
@@ -414,7 +414,7 @@ export function buildGroups<Row extends SessionGroupRow>(
 
 /** The header label the sidebar shows over an empty list, so its Filter control stays reachable. */
 export const EMPTY_LIST_GROUP_LABELS = {
-	state: sessionBucketLabels.done,
+	state: sidebarStateGroupLabels.done,
 	date: "Today",
 	project: "Other",
 	custom: "Ungrouped",

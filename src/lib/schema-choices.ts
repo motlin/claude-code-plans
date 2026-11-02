@@ -411,12 +411,18 @@ const sessionSummaryStateLabels = {
 } satisfies Record<z.infer<typeof SessionSummaryStateSchema>, string>;
 
 /** Upstream claude.ai/code sidebar group names. */
-export const sessionBucketLabels = {
+const sessionBucketLabels = {
 	blocked: "Needs input",
 	review: "Ready for review",
 	working: "Working",
 	done: "Completed",
 } satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
+
+/** The code sidebar's Status sections: upstream labels the done bucket "Idle" there (`wP = {...uG, done: kx.idle}`). */
+export const sidebarStateGroupLabels = {
+	...sessionBucketLabels,
+	done: "Idle",
+} as const satisfies Record<z.infer<typeof SessionBucketSchema>, string>;
 
 /** Filter & group menu options (src/lib/session-groups.ts); local "Project" is upstream "Folder". */
 export const sessionGroupByLabels = {

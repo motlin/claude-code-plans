@@ -144,7 +144,7 @@ describe("sidebar session list", () => {
 			[...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
 				(node) => node.textContent,
 			),
-		).toEqual(["Working", "Completed"]);
+		).toEqual(["Working", "Idle"]);
 		expect(screen.getByRole("link", {name: /^Gamma working/})).toBeTruthy();
 		expect(screen.getByRole("link", {name: /^Gamma done/})).toBeTruthy();
 	});
@@ -153,9 +153,9 @@ describe("sidebar session list", () => {
 		const {navigate} = await renderSidebar();
 
 		await waitFor(() => {
-			expect(screen.getByRole("button", {name: "Completed"})).toBeTruthy();
+			expect(screen.getByRole("button", {name: "Idle"})).toBeTruthy();
 		});
-		fireEvent.click(screen.getByRole("button", {name: "Completed"}));
+		fireEvent.click(screen.getByRole("button", {name: "Idle"}));
 		expect(screen.queryByRole("link", {name: /^Gamma done/})).toBeNull();
 
 		await navigate({to: "/session/$id", params: {id: "w1"}});
@@ -165,6 +165,6 @@ describe("sidebar session list", () => {
 			expect(screen.getByRole("link", {name: /^Gamma working/})).toBeTruthy();
 		});
 		expect(screen.queryByRole("link", {name: /^Gamma done/})).toBeNull();
-		expect(screen.getByRole("button", {name: "Completed"}).getAttribute("aria-expanded")).toBe("false");
+		expect(screen.getByRole("button", {name: "Idle"}).getAttribute("aria-expanded")).toBe("false");
 	});
 });

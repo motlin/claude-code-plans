@@ -382,7 +382,7 @@ describe("sidebar Group and sort menu", () => {
 
 	it("regroups the list and persists when a Group by option is chosen", async () => {
 		const {container} = await renderSidebarGroups();
-		expect(groupNames(container)).toEqual(["Working", "Completed"]);
+		expect(groupNames(container)).toEqual(["Working", "Idle"]);
 
 		await openFilterMenu();
 		await openSubmenu(/^Group by/);
@@ -474,7 +474,7 @@ describe("sidebar Group and sort menu", () => {
 				node.textContent.trim(),
 			),
 			empty: recents?.querySelector("[data-sidebar-empty]")?.textContent,
-		}).toStrictEqual({labels: ["Completed"], empty: "No sessions match the current filtersShow all sessions"});
+		}).toStrictEqual({labels: ["Idle"], empty: "No sessions match the current filtersShow all sessions"});
 
 		await openFilterMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Reset to defaults"}));
@@ -484,7 +484,7 @@ describe("sidebar Group and sort menu", () => {
 			groups: groupNames(container),
 			empty: container.querySelector("[data-sidebar-empty]"),
 			stored: storedPrefs(),
-		}).toStrictEqual({groups: ["Working", "Completed"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
+		}).toStrictEqual({groups: ["Working", "Idle"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
 	});
 
 	it("marks an archived row with sr-only Archived right after its title, not a visible pill, as upstream does", async () => {

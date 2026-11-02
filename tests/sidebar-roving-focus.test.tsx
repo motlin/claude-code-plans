@@ -265,14 +265,14 @@ describe("sidebar body roving focus", () => {
 			press("ArrowDown"),
 			press("ArrowDown"),
 			press("ArrowDown"),
-		]).toEqual(["Projects", "Plans", "More navigation items", "Completed", "First row"]);
+		]).toEqual(["Projects", "Plans", "More navigation items", "Idle", "First row"]);
 		expect(scrollIntoView).toHaveBeenLastCalledWith({block: "nearest"});
 	});
 
 	it("roves up from the first group toggle to More", async () => {
 		await renderSidebar();
 
-		screen.getByRole("button", {name: "Completed"}).focus();
+		screen.getByRole("button", {name: "Idle"}).focus();
 		expect(press("ArrowUp")).toBe("More navigation items");
 	});
 
@@ -315,7 +315,7 @@ describe("sidebar body roving focus", () => {
 	it("moves along a group header's buttons with ArrowRight and ArrowLeft, clamping at the end", async () => {
 		await renderSidebar();
 
-		screen.getByRole("button", {name: "Completed"}).focus();
+		screen.getByRole("button", {name: "Idle"}).focus();
 		expect([
 			press("ArrowRight"),
 			press("ArrowRight"),
@@ -405,7 +405,7 @@ describe("sidebar body roving focus", () => {
 			groupAndSort: screen
 				.getAllByRole("button", {name: "Group and sort"})
 				.map((button) => button.getAttribute("tabindex")),
-		}).toStrictEqual({stops: ["Search field", "New", "Completed"], groupAndSort: ["-1"]});
+		}).toStrictEqual({stops: ["Search field", "New", "Idle"], groupAndSort: ["-1"]});
 	});
 
 	it("keeps every group header button out of the tab order across several groups", async () => {
@@ -423,7 +423,7 @@ describe("sidebar body roving focus", () => {
 				.getAllByRole("button", {name: "Group and sort"})
 				.map((button) => button.getAttribute("tabindex")),
 		}).toStrictEqual({
-			toggles: ["Pinned", "Needs input", "Working", "Completed"],
+			toggles: ["Pinned", "Needs input", "Working", "Idle"],
 			stops: ["Search field", "New", "Needs input"],
 			groupAndSort: ["-1", "-1", "-1"],
 		});
@@ -445,16 +445,16 @@ describe("sidebar body roving focus", () => {
 
 		expect(rowLink("Second row").dataset["selected"]).toBe("focused");
 		screen.getByRole("link", {name: "New"}).focus();
-		expect(bodyTabStops()).toEqual(["Search field", "New", "Completed"]);
+		expect(bodyTabStops()).toEqual(["Search field", "New", "Idle"]);
 	});
 
 	it("re-chooses the tab stops when Tab is pressed", async () => {
 		await renderSidebar();
 
 		screen.getByRole("link", {name: "New"}).focus();
-		screen.getByRole("button", {name: "Completed"}).setAttribute("tabindex", "-1");
+		screen.getByRole("button", {name: "Idle"}).setAttribute("tabindex", "-1");
 		fireEvent.keyDown(document.activeElement!, {key: "Tab"});
-		expect(bodyTabStops()).toEqual(["Search field", "New", "Completed"]);
+		expect(bodyTabStops()).toEqual(["Search field", "New", "Idle"]);
 	});
 
 	it("leaves the tab stops alone while rows are selected", async () => {

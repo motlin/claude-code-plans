@@ -161,7 +161,7 @@ describe("sidebar SessionGroups", () => {
 	it("renders the state groups in upstream order with their rows", async () => {
 		const {container} = await renderGroups(FIXTURE);
 
-		expect(groupNames(container)).toEqual(["Needs input", "Ready for review", "Working", "Completed"]);
+		expect(groupNames(container)).toEqual(["Needs input", "Ready for review", "Working", "Idle"]);
 		expect({
 			blocked: rowTitlesIn(container, "state-blocked"),
 			review: rowTitlesIn(container, "state-review"),
@@ -206,7 +206,7 @@ describe("sidebar SessionGroups", () => {
 			session("d1", "Completed one", "done", 5),
 		]);
 
-		expect(groupNames(container)).toEqual(["Working", "Completed"]);
+		expect(groupNames(container)).toEqual(["Working", "Idle"]);
 	});
 
 	it("shows each row's session title with its trailing state mark beside the link and its status text inside it", async () => {
@@ -339,7 +339,7 @@ describe("sidebar SessionGroups", () => {
 
 		expect(snapshot("state-done")).toEqual({rowless: null, rowlessGap: true, badgeClass: null, badge: []});
 
-		fireEvent.click(within(header("state-done")).getByRole("button", {name: /^Completed/}));
+		fireEvent.click(within(header("state-done")).getByRole("button", {name: /^Idle/}));
 		fireEvent.click(within(header("state-working")).getByRole("button", {name: /^Working/}));
 
 		expect({done: snapshot("state-done"), working: snapshot("state-working")}).toEqual({
@@ -403,7 +403,7 @@ describe("sidebar SessionGroups", () => {
 		syncUnseenFromSummaries(rows.map(({id, unseen}) => ({id, unseen})));
 		const {container} = await renderGroups(rows);
 
-		fireEvent.click(screen.getByRole("button", {name: "Completed"}));
+		fireEvent.click(screen.getByRole("button", {name: "Idle"}));
 
 		const label = container.querySelector('[data-group-key="state-done"] > [data-sidebar-group-label]');
 		expect({
@@ -412,7 +412,7 @@ describe("sidebar SessionGroups", () => {
 		}).toEqual({rowless: "", badges: 0});
 	});
 
-	it("pages Completed 5 rows per Show more click, announcing each page, and folds back to 5 with Show less", async () => {
+	it("pages Idle 5 rows per Show more click, announcing each page, and folds back to 5 with Show less", async () => {
 		const done = Array.from({length: 45}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
 		const {container} = await renderGroups(done);
 		const overflowRows = () =>
@@ -423,7 +423,7 @@ describe("sidebar SessionGroups", () => {
 		const status = () =>
 			container.querySelector('[data-group-key="state-done"] [data-group-rows] > span[role="status"]');
 
-		const showMore = screen.getByRole("button", {name: "Show 5 more in Completed"});
+		const showMore = screen.getByRole("button", {name: "Show 5 more in Idle"});
 		expect({
 			shown: rowTitlesIn(container, "state-done").length,
 			overflow: overflowRows(),
@@ -433,7 +433,7 @@ describe("sidebar SessionGroups", () => {
 			status: {className: status()?.className, text: status()?.textContent},
 		}).toStrictEqual({
 			shown: 5,
-			overflow: [{text: "Show more", label: "Show 5 more in Completed"}],
+			overflow: [{text: "Show more", label: "Show 5 more in Idle"}],
 			roving: true,
 			labelClass: "ps-[var(--sb-iconless-pad)]",
 			leadingSlot: null,
@@ -443,21 +443,21 @@ describe("sidebar SessionGroups", () => {
 		fireEvent.click(showMore);
 		expect({shown: rowTitlesIn(container, "state-done").length, status: status()?.textContent}).toStrictEqual({
 			shown: 10,
-			status: "Showing 5 more in Completed",
+			status: "Showing 5 more in Idle",
 		});
 
-		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}), {detail: 2});
+		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}), {detail: 2});
 		expect(rowTitlesIn(container, "state-done")).toHaveLength(10);
 
 		for (let click = 0; click < 7; click++) {
-			fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}));
+			fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}));
 		}
 		expect({shown: rowTitlesIn(container, "state-done"), overflow: overflowRows()}).toStrictEqual({
 			shown: Array.from({length: 45}, (_, index) => `Done ${index}`),
-			overflow: [{text: "Show less", label: "Show less in Completed"}],
+			overflow: [{text: "Show less", label: "Show less in Idle"}],
 		});
 
-		fireEvent.click(screen.getByRole("button", {name: "Show less in Completed"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show less in Idle"}));
 
 		expect({
 			shown: rowTitlesIn(container, "state-done").length,
@@ -465,8 +465,8 @@ describe("sidebar SessionGroups", () => {
 			status: status()?.textContent,
 		}).toStrictEqual({
 			shown: 5,
-			overflow: [{text: "Show more", label: "Show 5 more in Completed"}],
-			status: "Showing less in Completed",
+			overflow: [{text: "Show more", label: "Show 5 more in Idle"}],
+			status: "Showing less in Idle",
 		});
 	});
 
@@ -493,10 +493,10 @@ describe("sidebar SessionGroups", () => {
 	it("holds Show less, described and ignoring clicks, while folding back would hide the open session", async () => {
 		const done = Array.from({length: 12}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
 		const {container} = await renderGroups(done, {activeItemId: "d10"});
-		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}));
-		fireEvent.click(screen.getByRole("button", {name: "Show 2 more in Completed"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show 2 more in Idle"}));
 
-		const showLess = screen.getByRole("button", {name: "Show less in Completed"});
+		const showLess = screen.getByRole("button", {name: "Show less in Idle"});
 		const describedBy = showLess.getAttribute("aria-describedby");
 		const description = describedBy === null ? null : document.getElementById(describedBy);
 		expect({
@@ -516,10 +516,10 @@ describe("sidebar SessionGroups", () => {
 	it("leaves Show less live when the open session stays inside the first 5 rows", async () => {
 		const done = Array.from({length: 12}, (_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1));
 		await renderGroups(done, {activeItemId: "d4"});
-		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}));
-		fireEvent.click(screen.getByRole("button", {name: "Show 2 more in Completed"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show 2 more in Idle"}));
 
-		const showLess = screen.getByRole("button", {name: "Show less in Completed"});
+		const showLess = screen.getByRole("button", {name: "Show less in Idle"});
 		expect({
 			disabled: showLess.getAttribute("aria-disabled"),
 			held: showLess.getAttribute("data-held"),
@@ -959,16 +959,16 @@ describe("sidebar SessionGroups", () => {
 		const {container} = await renderGroups(done, {nextCursor: "cursor-2"});
 
 		for (let click = 0; click < 3; click++) {
-			fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Completed"}));
+			fireEvent.click(screen.getByRole("button", {name: "Show 5 more in Idle"}));
 		}
 		expect(requests).toStrictEqual([]);
-		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Completed"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show 3 more in Idle"}));
 
 		const loading = await screen.findByRole("button", {name: "Loading…"});
 		expect({
 			text: loading.textContent,
 			disabled: loading.getAttribute("aria-disabled"),
-			showLess: screen.queryByRole("button", {name: "Show less in Completed"}),
+			showLess: screen.queryByRole("button", {name: "Show less in Idle"}),
 		}).toStrictEqual({text: "Loading…", disabled: "true", showLess: null});
 		fireEvent.click(loading);
 
@@ -980,7 +980,7 @@ describe("sidebar SessionGroups", () => {
 		});
 		expect(rowTitlesIn(container, "state-done").at(-1)).toBe("Done older page");
 		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
-		expect(screen.getByRole("button", {name: "Show less in Completed"})).toBeTruthy();
+		expect(screen.getByRole("button", {name: "Show less in Idle"})).toBeTruthy();
 	});
 	it("keeps the row background on upstream's wrapper while the kebab or context menu is open, hiding the mark only for the kebab", async () => {
 		const {container} = await renderGroups(FIXTURE, {activeItemId: "w1"});

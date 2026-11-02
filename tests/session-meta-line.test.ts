@@ -11,7 +11,7 @@ describe("sessionMetaLine", () => {
 				underNeedsInput: false,
 				branch: "main",
 				folder: "claude-code-plans",
-				heading: "Completed",
+				heading: "Idle",
 			}),
 		).toEqual({kind: "place", branch: "main", folder: "claude-code-plans"});
 	});
@@ -64,7 +64,7 @@ describe("sessionMetaLine", () => {
 	});
 
 	it("has no line with no branch and no folder", () => {
-		expect(sessionMetaLine({bucket: "done", underNeedsInput: false, pr, heading: "Completed"})).toBeUndefined();
+		expect(sessionMetaLine({bucket: "done", underNeedsInput: false, pr, heading: "Idle"})).toBeUndefined();
 	});
 
 	it("shows only the reason for a blocked row under Needs input", () => {

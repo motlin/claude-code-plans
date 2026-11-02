@@ -190,7 +190,7 @@ describe("sidebar Pinned section", () => {
 			groups: visibleGroupNames(container),
 			recents: rowTitles(container.querySelector('[data-testid="sidebar-recents"]')),
 		}).toEqual({
-			groups: ["Needs input", "Working", "Completed"],
+			groups: ["Needs input", "Working", "Idle"],
 			recents: ["Blocked one", "Working one", "Completed newest"],
 		});
 	});
