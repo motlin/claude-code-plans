@@ -68,7 +68,7 @@ type JoinedVariant = "primary" | "secondary" | "danger";
 const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: string; line: string}> = {
 	primary: {
 		root: "",
-		fill: "bg-fill-primary text-on-primary font-medium hover:bg-fill-primary-hover aria-expanded:bg-fill-primary-hover",
+		fill: "bg-fill-primary text-on-primary font-control hover:bg-fill-primary-hover aria-expanded:bg-fill-primary-hover",
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-primary ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-on-primary opacity-25",
 	},
@@ -80,7 +80,7 @@ const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: str
 	},
 	danger: {
 		root: "",
-		fill: "bg-fill-danger text-on-danger font-medium hover:bg-fill-danger-hover aria-expanded:bg-fill-danger-hover",
+		fill: "bg-fill-danger text-on-danger font-control hover:bg-fill-danger-hover aria-expanded:bg-fill-danger-hover",
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-danger ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-on-danger opacity-25",
 	},

@@ -297,7 +297,7 @@ describe("SplitDropdownButton", () => {
 			const fill = [
 				"bg-fill-primary",
 				"text-on-primary",
-				"font-medium",
+				"font-control",
 				"hover:bg-fill-primary-hover",
 				"aria-expanded:bg-fill-primary-hover",
 			];
@@ -363,7 +363,7 @@ describe("SplitDropdownButton", () => {
 			const fill = [
 				"bg-fill-danger",
 				"text-on-danger",
-				"font-medium",
+				"font-control",
 				"hover:bg-fill-danger-hover",
 				"aria-expanded:bg-fill-danger-hover",
 			];

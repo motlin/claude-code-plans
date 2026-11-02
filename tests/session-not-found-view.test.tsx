@@ -77,7 +77,7 @@ describe("missing-session view", () => {
 					"rounded-r4",
 					"px-1.5",
 					"text-[12px]/[17px]",
-					"font-medium",
+					"font-control",
 					"bg-fill-primary",
 					"text-on-primary",
 					"hover:bg-fill-primary-hover",
